@@ -1,7 +1,6 @@
 module TypeInference.GenerateConstraints.KindInference where
 
 import Syntax.RST.Types qualified as RST
-import Syntax.RST.Types (Polarity(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.TST.Types (getKind)
 import Syntax.CST.Kinds
@@ -10,34 +9,35 @@ import Lookup
 import Errors
 import Driver.Environment
 
+
 import Control.Monad.Reader
 import Control.Monad.Except
-import Control.Monad.State
-import Data.List.NonEmpty
-import Data.Map 
+import Data.List.NonEmpty qualified as NE
+import Data.List.NonEmpty (NonEmpty)
+import Data.Map qualified as M
 
 --------------------------------------------------------------------------------------------
 -- Kind Inference Monad 
 --------------------------------------------------------------------------------------------
---type KindedTypes = (S.Set (TST.Typ Pos), S.Set (TST.Typ Neg))
+type KindReader a m = (MonadError (NonEmpty Error) m, MonadReader (M.Map ModuleName Environment, a) m)
 
-data KindState = KindState { posTypes :: [TST.Typ Pos], negTypes :: [TST.Typ Neg] } 
-initialState :: KindState
-initialState = KindState { posTypes = [], negTypes = []}
+getKindM :: forall a m res. KindReader a m 
+         => (Environment -> Maybe res)
+         -> Error
+         -> m (ModuleName, res)
+getKindM f err = asks fst >>= \env -> go (M.toList env)
+  where
+    go :: [(ModuleName, Environment)] -> m (ModuleName, res)
+    go [] = throwError (err NE.:| [])
+    go ((mn,env):envs) = 
+      case f env of 
+        Just res -> pure (mn,res)
+        Nothing -> go envs
 
--- newtype KindReader = KindReader {location :: Loc}
---initialReader:: Loc -> Map ModuleName Environment -> (Map ModuleName Environment,KindReader)
--- initialReader loc env = (env, KindReader {location = loc})
-
-type KindM a = (ReaderT (Map ModuleName Environment, ()) (StateT KindState (Except (NonEmpty Error)))) a
- 
-
-runKindM ::  KindM a -> Map ModuleName Environment -> KindState -> Either (NonEmpty Error) (a, KindState)
-runKindM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 --------------------------------------------------------------------------------------------
--- Kind Inference
+-- Types
 --------------------------------------------------------------------------------------------
-getXtorKinds :: [RST.XtorSig pol] -> KindM (Maybe MonoKind)
+getXtorKinds :: KindReader a m => [RST.XtorSig pol] -> m (Maybe MonoKind)
 getXtorKinds [] = return Nothing
 getXtorKinds (fst:rst) = do
   let nm = RST.sig_name fst
@@ -46,29 +46,35 @@ getXtorKinds (fst:rst) = do
   if knd == knd' then return knd else error "Kinds of constructors do not match" 
 
 
-checkTypeScheme :: RST.TypeScheme pol -> KindM (TST.TypeScheme pol)
+checkMaybeTypeScheme :: KindReader a m => Maybe (RST.TypeScheme pol) -> m (Maybe (TST.TypeScheme pol))
+checkMaybeTypeScheme Nothing = return Nothing 
+checkMaybeTypeScheme (Just ty) = do
+  ty' <- checkTypeScheme ty 
+  return (Just ty')
+
+checkTypeScheme :: KindReader a m => RST.TypeScheme pol -> m (TST.TypeScheme pol)
 checkTypeScheme RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = do
   ty' <- checkKind ty
   return TST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty'}
 
-checkVariantType :: RST.VariantType pol -> KindM (TST.VariantType pol)
+checkVariantType :: KindReader a m => RST.VariantType pol -> m (TST.VariantType pol)
 checkVariantType (RST.CovariantType ty) = TST.CovariantType <$> checkKind ty
 checkVariantType (RST.ContravariantType ty) = TST.ContravariantType <$> checkKind ty
 
-checkPrdCnsType :: RST.PrdCnsType pol -> KindM (TST.PrdCnsType pol)
+checkPrdCnsType :: KindReader a m => RST.PrdCnsType pol -> m (TST.PrdCnsType pol)
 checkPrdCnsType (RST.PrdCnsType rep ty) = do 
   ty' <- checkKind ty
   return (TST.PrdCnsType rep ty')
 
-checkLinearContext :: RST.LinearContext pol -> KindM (TST.LinearContext pol)
+checkLinearContext :: KindReader a m => RST.LinearContext pol -> m (TST.LinearContext pol)
 checkLinearContext = mapM checkPrdCnsType
 
-checkXtorSig :: RST.XtorSig pol -> KindM (TST.XtorSig pol)
+checkXtorSig :: KindReader a m => RST.XtorSig pol -> m (TST.XtorSig pol)
 checkXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = do 
   ctxt' <- checkLinearContext ctxt 
   return (TST.MkXtorSig {sig_name = nm, sig_args = ctxt' })
 
-checkKind :: RST.Typ pol -> KindM (TST.Typ pol)
+checkKind :: KindReader a m => RST.Typ pol -> m (TST.Typ pol)
 checkKind (RST.TySkolemVar loc pol tv) = do
   let knd = KindVar (MkKVar (unSkolemTVar tv))
   return (TST.TySkolemVar loc pol (Just knd) tv)
@@ -142,29 +148,3 @@ checkKind (RST.TyFlipPol pol ty) = do
   return (TST.TyFlipPol pol ty')
 
 
--- insert Type into state
-insertType :: TST.Typ pol -> KindM ()
-insertType ty = do
-  posTy <- gets posTypes
-  negTy <- gets negTypes
-  case TST.getPolarity ty of 
-   RST.PosRep -> modify (\s -> s { posTypes = ty:posTy })
-   RST.NegRep ->  modify (\s -> s { negTypes = ty:negTy })
-
--- check a list of kinds and insert them all into the environment
-checkKinds :: [RST.Typ pol] -> KindM ()
-checkKinds [] = return ()
-checkKinds (ty:tys) = do
-  ty' <- checkKind ty
-  insertType ty'
-  checkKinds tys
-
----------------------------------------------------------------------------------
--- Run Kind Inference
----------------------------------------------------------------------------------
-
-inferKindsTypes :: ([RST.Typ Pos],[RST.Typ Neg]) -> Map ModuleName Environment -> Either (NonEmpty Error) ([TST.Typ Pos], [TST.Typ Neg])
-inferKindsTypes typs env = do 
-  (_, posSt) <- runKindM (checkKinds (fst typs)) env initialState
-  (_, kindSt) <- runKindM (checkKinds (snd typs)) env posSt
-  Right (posTypes kindSt,negTypes kindSt)

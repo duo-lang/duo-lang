@@ -6,7 +6,6 @@ module TypeInference.GenerateConstraints.Terms
   ) where
 
 import Control.Monad.Reader
-import Data.Bifunctor (bimap)
 import Errors
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
@@ -20,6 +19,7 @@ import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Names
 import TypeInference.GenerateConstraints.Definition
+import TypeInference.GenerateConstraints.KindInference
 import TypeInference.Constraints
 import Utils
 import Lookup
@@ -111,7 +111,8 @@ genConstraintsTerm (Core.Xtor loc annot rep CST.Nominal xt subst) = do
   -- Generate fresh unification variables for type parameters
   (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
   -- Substitute these for the type parameters in the constructor signature
-  let sig_args' = TST.zonk TST.SkolemRep tyParamsMap (TST.sig_args (checkXtorSig xtorSig))
+  newxtor <- checkXtorSig xtorSig 
+  let sig_args' = TST.zonk TST.SkolemRep tyParamsMap (TST.sig_args newxtor)
   -- Then we generate constraints between the inferred types of the substitution
   -- and the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
@@ -173,8 +174,10 @@ genConstraintsTerm (Core.XCase loc annot rep CST.Nominal cases@(pmcase:_)) = do
                    posTypes <- RST.sig_args <$> lookupXtorSig loc xt PosRep
                    negTypes <- RST.sig_args <$> lookupXtorSig loc xt NegRep
                    -- Substitute fresh unification variables for type parameters
-                   let posTypes' = TST.zonk TST.SkolemRep tyParamsMap (checkLinearContext posTypes)
-                   let negTypes' = TST.zonk TST.SkolemRep tyParamsMap (checkLinearContext negTypes)
+                   linctxtPos <- checkLinearContext posTypes
+                   linctxtNeg <- checkLinearContext negTypes
+                   let posTypes' = TST.zonk TST.SkolemRep tyParamsMap linctxtPos
+                   let negTypes' = TST.zonk TST.SkolemRep tyParamsMap linctxtNeg 
                    -- We generate constraints for the command in the context extended
                    -- with the types from the signature.
                    cmdInferred <- withContext posTypes' (genConstraintsCommand cmdcase_cmd)
@@ -243,7 +246,8 @@ genConstraintsCommand (Core.Method loc mn cn subst) = do
     -- fresh type var and subsitution for type class variable(s)
   tyParamsMap <- createMethodSubst loc decl
   negTypes <- lookupMethodType loc mn decl NegRep
-  let negTypes' = TST.zonk TST.SkolemRep tyParamsMap (checkLinearContext negTypes)
+  ctxtNeg <- checkLinearContext negTypes
+  let negTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtNeg 
   -- infer arg types
   substInferred <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs substInferred
@@ -266,7 +270,8 @@ genConstraintsCommand (Core.PrimOp loc op subst) = do
   substInferred <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs substInferred
   let sig = primOps op 
-  _ <- genConstraintsCtxts substTypes (map checkPrdCnsType sig) (PrimOpArgsConstraint loc)
+  sigs <- mapM checkPrdCnsType sig
+  _ <- genConstraintsCtxts substTypes sigs (PrimOpArgsConstraint loc)
   pure (TST.PrimOp loc op substInferred)
   
 genConstraintsInstance :: Core.InstanceDeclaration -> GenM TST.InstanceDeclaration
@@ -276,16 +281,20 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
   -- We check that all implementations belong to the same type class.
   checkInstanceCoverage instancedecl_loc decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
   -- Generate fresh unification variables for type parameters
-  let instancetyp = Data.Bifunctor.bimap checkKind checkKind instancedecl_typ
-  let tyParamsMap = paramsMap (classdecl_kinds decl) [instancetyp] 
+  instancetyPos <- checkKind (fst instancedecl_typ)
+  instancetyNeg <- checkKind (snd instancedecl_typ)
+  let instancety = (instancetyPos, instancetyNeg)
+  let tyParamsMap = paramsMap (classdecl_kinds decl) [instancety] 
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
                    let mn :: MethodName = MkMethodName $ unXtorName xt
                    -- We lookup the types belonging to the xtor in the type declaration.
                    posTypes <- lookupMethodType instancecase_loc mn decl PosRep
                    negTypes <- lookupMethodType instancecase_loc mn decl NegRep
+                   ctxtPos <- checkLinearContext posTypes
+                   ctxtNeg <- checkLinearContext negTypes
                    -- Substitute fresh unification variables for type parameters
-                   let posTypes' = TST.zonk TST.SkolemRep tyParamsMap (checkLinearContext posTypes)
-                   let negTypes' = TST.zonk TST.SkolemRep tyParamsMap (checkLinearContext negTypes)
+                   let posTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtPos 
+                   let negTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtNeg 
                    -- We generate constraints for the command in the context extended
                    -- with the types from the signature.
                    cmdInferred <- withContext posTypes' (genConstraintsCommand instancecase_cmd)
@@ -297,7 +306,7 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
   pure TST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                  , instancedecl_doc = instancedecl_doc
                                  , instancedecl_name = instancedecl_name
-                                 , instancedecl_typ = instancetyp
+                                 , instancedecl_typ = instancety
                                  , instancedecl_cases = inferredCases
                                  }
 

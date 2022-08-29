@@ -7,8 +7,6 @@ import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.RST.Program qualified as RST
 import Dualize.Terms
-import TypeInference.GenerateConstraints.Definition (checkKind)
-import Translate.Embed
 
 flipDC :: CST.DataCodata -> CST.DataCodata
 flipDC CST.Data = CST.Codata 
@@ -28,7 +26,7 @@ dualXtorSig pol (RST.MkXtorSig xtor lctx) = RST.MkXtorSig (dualXtorName xtor) (d
 
 
 dualPrdCnsType :: PolarityRep pol -> RST.PrdCnsType pol -> RST.PrdCnsType pol
-dualPrdCnsType PosRep (RST.PrdCnsType PrdRep ty) = RST.PrdCnsType CnsRep (embedTSTType (dualType' PrdRep (checkKind ty)))
-dualPrdCnsType NegRep (RST.PrdCnsType PrdRep ty) = RST.PrdCnsType CnsRep (embedTSTType (dualType' CnsRep (checkKind ty)))
-dualPrdCnsType PosRep (RST.PrdCnsType CnsRep ty) = RST.PrdCnsType PrdRep (embedTSTType (dualType' CnsRep (checkKind ty)))
-dualPrdCnsType NegRep (RST.PrdCnsType CnsRep ty) = RST.PrdCnsType PrdRep (embedTSTType (dualType' PrdRep (checkKind ty)))
+dualPrdCnsType PosRep (RST.PrdCnsType PrdRep ty) = RST.PrdCnsType CnsRep (RST.TyFlipPol NegRep ty)
+dualPrdCnsType NegRep (RST.PrdCnsType PrdRep ty) = RST.PrdCnsType CnsRep (RST.TyFlipPol PosRep ty)
+dualPrdCnsType PosRep (RST.PrdCnsType CnsRep ty) = RST.PrdCnsType PrdRep (RST.TyFlipPol PosRep ty)
+dualPrdCnsType NegRep (RST.PrdCnsType CnsRep ty) = RST.PrdCnsType PrdRep (RST.TyFlipPol NegRep ty)

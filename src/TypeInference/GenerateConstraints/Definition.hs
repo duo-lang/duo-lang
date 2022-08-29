@@ -24,13 +24,7 @@ module TypeInference.GenerateConstraints.Definition
   , foo
   , fromMaybeVar
   , prdCnsToPol
-  , checkKind
-  , checkXtorSig
-  , checkPrdCnsType
   , checkCorrectness
-  , checkLinearContext
-  , checkVariantType
-  , checkTypeScheme
   , checkExhaustiveness
   , checkInstanceCoverage
   , translateXtorSigUpper
@@ -58,6 +52,7 @@ import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program as RST
 import TypeInference.Constraints
+import TypeInference.GenerateConstraints.KindInference
 import TypeTranslation qualified as TT
 import Utils
 
@@ -232,7 +227,7 @@ translateXtorSigUpper xts = do
   env <- asks fst
   case TT.translateXtorSigUpper env xts of
     Left err -> throwError err
-    Right xts' -> return (checkXtorSig xts')
+    Right xts' -> do checkXtorSig xts'
 
 -- | Recursively translate a nominal type to an upper bound refinement type
 translateTypeUpper :: RST.Typ Neg -> GenM (TST.Typ Neg)
@@ -240,7 +235,7 @@ translateTypeUpper ty = do
   env <- asks fst
   case TT.translateTypeUpper env ty of
     Left err -> throwError err
-    Right xts' -> return (checkKind xts')
+    Right xts' -> do checkKind xts'
 
 -- | Recursively translate types in xtor signature to lower bound refinement types
 translateXtorSigLower :: RST.XtorSig Pos -> GenM (TST.XtorSig Pos)
@@ -248,7 +243,7 @@ translateXtorSigLower xts = do
   env <- asks fst
   case TT.translateXtorSigLower env xts of
     Left err -> throwError err
-    Right xts' -> return (checkXtorSig xts')
+    Right xts' -> do checkXtorSig xts'
 
 -- | Recursively translate a nominal type to a lower bound refinement type
 translateTypeLower :: RST.Typ Pos -> GenM (TST.Typ Pos)
@@ -256,49 +251,7 @@ translateTypeLower ty = do
   env <- asks fst
   case TT.translateTypeLower env ty of
     Left err -> throwError err
-    Right xts' -> return (checkKind xts')
-
----------------------------------------------------------------------------------------------
--- Kinds
----------------------------------------------------------------------------------------------
-
-checkTypeScheme :: RST.TypeScheme pol -> TST.TypeScheme pol
-checkTypeScheme RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = TST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = checkKind ty}
-
-checkVariantType :: RST.VariantType pol -> TST.VariantType pol 
-checkVariantType (RST.CovariantType ty) = TST.CovariantType (checkKind ty)
-checkVariantType (RST.ContravariantType ty) = TST.ContravariantType (checkKind ty)
-
-checkPrdCnsType :: RST.PrdCnsType pol -> TST.PrdCnsType pol
-checkPrdCnsType (RST.PrdCnsType rep ty) = TST.PrdCnsType rep (checkKind ty)
-
-checkLinearContext :: RST.LinearContext pol -> TST.LinearContext pol
-checkLinearContext = map checkPrdCnsType
-
-checkXtorSig :: RST.XtorSig pol -> TST.XtorSig pol
-checkXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = TST.MkXtorSig {sig_name = nm, sig_args = checkLinearContext ctxt }
-
-checkKind :: RST.Typ pol -> TST.Typ pol 
-checkKind (RST.TySkolemVar loc pol tv) = TST.TySkolemVar loc pol Nothing tv
-checkKind (RST.TyUniVar loc pol tv) = TST.TyUniVar loc pol Nothing tv
-checkKind (RST.TyRecVar loc pol rv) = TST.TyRecVar loc pol Nothing rv
-checkKind (RST.TyData loc pol xtors) = TST.TyData loc pol Nothing (map checkXtorSig xtors)
-checkKind (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol Nothing (map checkXtorSig xtors)
-checkKind (RST.TyDataRefined loc pol tn xtors) = TST.TyDataRefined loc pol Nothing tn (map checkXtorSig xtors)
-checkKind (RST.TyCodataRefined loc pol tn xtors) = TST.TyCodataRefined loc pol Nothing tn (map checkXtorSig xtors)
-checkKind (RST.TyNominal loc pol tn vart) = TST.TyNominal loc pol Nothing tn (map checkVariantType vart)
-checkKind (RST.TySyn loc pol tn ty) = TST.TySyn loc pol tn (checkKind ty)
-checkKind (RST.TyBot loc) = TST.TyBot loc Nothing
-checkKind (RST.TyTop loc) = TST.TyTop loc Nothing
-checkKind (RST.TyUnion loc ty1 ty2) = TST.TyUnion loc Nothing (checkKind ty1) (checkKind ty2)
-checkKind (RST.TyInter loc ty1 ty2) = TST.TyInter loc Nothing (checkKind ty1) (checkKind ty2)
-checkKind (RST.TyRec loc pol rv ty) = TST.TyRec loc pol rv (checkKind ty)
-checkKind (RST.TyI64 loc pol) = TST.TyI64 loc pol
-checkKind (RST.TyF64 loc pol) = TST.TyF64 loc pol
-checkKind (RST.TyChar loc pol) = TST.TyChar loc pol
-checkKind (RST.TyString loc pol) = TST.TyString loc pol
-checkKind (RST.TyFlipPol pol ty) = TST.TyFlipPol pol (checkKind ty)
-
+    Right xts' -> do checkKind xts'
 
 ---------------------------------------------------------------------------------------------
 -- Other

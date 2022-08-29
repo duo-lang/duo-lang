@@ -15,7 +15,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Data.Bifunctor (bimap)
 import Driver.Definition
 import Driver.Environment
 import Driver.DepGraph
@@ -36,7 +35,8 @@ import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
-    ( runGenM,checkTypeScheme,checkKind )
+    ( runGenM )
+import TypeInference.GenerateConstraints.KindInference 
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
@@ -55,15 +55,15 @@ import Data.Maybe (catMaybes)
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
-           -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
+           -> Maybe (TST.TypeScheme pol) -- ^ Annotated type
            -> Loc -- ^ Location for the error message
            -> DriverM (TST.TopAnnot pol)
 checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
-  let isSubsumed = subsume rep tyInferred (checkTypeScheme tyAnnotated)
+  let isSubsumed = subsume rep tyInferred tyAnnotated
   case isSubsumed of
       (Left err) -> throwError (attachLoc loc <$> err)
-      (Right True) -> return (TST.Annotated (checkTypeScheme tyAnnotated))
+      (Right True) -> return (TST.Annotated tyAnnotated)
       (Right False) -> do
         let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
                                                             , " Annotated type: " <> ppPrint tyAnnotated
@@ -104,7 +104,8 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified pcdecl_annot pcdecl_loc
+  pcdecl <- checkMaybeTypeScheme pcdecl_annot 
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified pcdecl pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
@@ -165,8 +166,10 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  let instancetyp = Data.Bifunctor.bimap checkKind checkKind instancedecl_typ
-  let f env = env { instanceEnv = M.adjust (S.insert instancetyp) instancedecl_name (instanceEnv env)}
+  instancetyPos <- checkKind (fst instancedecl_typ)
+  instancetyNeg <- checkKind (snd instancedecl_typ)
+  let instancety = (instancetyPos, instancetyNeg)
+  let f env = env { instanceEnv = M.adjust (S.insert instancety) instancedecl_name (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 

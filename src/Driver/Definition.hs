@@ -2,6 +2,7 @@ module Driver.Definition where
 
 import Control.Monad.Except
 import Control.Monad.State
+import Control.Monad.Reader
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty ((:|)))
