@@ -6,6 +6,7 @@ module Lookup
   , lookupDataDecl
   , lookupTypeName
   , lookupXtorSig
+  , lookupXtorKind
   , lookupClassDecl
   , lookupMethodType
   , withTerm
