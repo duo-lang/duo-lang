@@ -6,8 +6,8 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Text qualified as T
-import System.FilePath ( (</>), (<.>))
-import System.Directory ( doesFileExist, makeAbsolute )
+import System.FilePath ( takeFileName, takeBaseName)
+import System.Directory ( makeAbsolute )
 
 
 import Driver.Environment ( Environment, emptyEnvironment )
@@ -20,7 +20,6 @@ import Syntax.TST.Program qualified as TST
 import Loc
 import Utils
 import Control.Monad.Writer
-import Data.Either (rights, lefts)
 import qualified Syntax.CST.Program as CST (Module(..))
 import qualified Data.Text.IO as T
 import Parser.Definition (runFileParser)
@@ -48,7 +47,7 @@ defaultInferenceOptions = InferenceOptions
   { infOptsVerbosity = Silent
   , infOptsPrintGraphs = False
   , infOptsSimplify = True
-  , infOptsLibPath = [".", "examples"]
+  , infOptsLibPath = ["examples"]
   }
 
 setDebugOpts :: InferenceOptions -> InferenceOptions
@@ -208,21 +207,14 @@ guardVerbose action = do
 -- try to find a filepath which corresponds to the given module name.
 findModule :: ModuleName -> Loc ->  DriverM FilePath
 findModule (MkModuleName mod) loc = do
+  let modString = T.unpack mod
   libpaths <- gets $ infOptsLibPath . drvOpts
-  fps <- forM libpaths $ \libpath -> do
-    let fp = libpath </> T.unpack mod <.> "duo"
-    let fp' = libpath </> T.unpack mod
-    exists <- liftIO $ doesFileExist fp
-    exists' <- liftIO $ doesFileExist fp'
-    let fpRes = if exists then Right fp else Left fp
-    let fpRes' = if exists' then Right fp' else Left fp'
-    return [fpRes, fpRes']
-  let fps' = concat fps
-  let hits = rights fps'
-  let misses = lefts fps'
-  case hits of
-    [] -> throwOtherError loc $ ["Could not locate library: " <> mod <> "\n" <> "Paths searched:"] <> fmap T.pack misses
-    (fp:_) -> liftIO $ makeAbsolute fp
+  duoFiles <- concat <$> forM libpaths (liftIO . listRecursiveDuoFiles)
+  let duoFilesMatched = filter (\fp -> takeFileName fp == modString || takeBaseName fp == modString) duoFiles
+  case duoFilesMatched of
+    [] -> throwOtherError loc $ ["Could not locate library: " <> mod, "Paths searched:"] <> (T.pack <$> duoFiles)
+    [fp] -> liftIO $ makeAbsolute fp
+    candidates -> throwOtherError loc $ ["Found more than one candidate for library: " <> mod, "Candidates:"] <> (T.pack <$> candidates)
       
 
 liftErr :: NonEmpty Error -> DriverM a
