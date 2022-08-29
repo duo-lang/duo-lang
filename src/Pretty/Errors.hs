@@ -20,7 +20,7 @@ import Errors
 import Pretty.Constraints ()
 import Pretty.Terms ()
 import Pretty.Pretty ( PrettyAnn(..), ppPrint )
-import Utils (Loc (Loc), HasLoc (getLoc))
+import Loc (Loc (Loc), HasLoc (getLoc))
 import Text.Megaparsec (SourcePos(..), unPos)
 import System.Directory (doesFileExist)
 import Syntax.CST.Types (PrdCns(..))

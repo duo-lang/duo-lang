@@ -22,7 +22,7 @@ import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
 import Data.Text qualified as T
 
-import Utils
+import Loc
 import Errors
 import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )

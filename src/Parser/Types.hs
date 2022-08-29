@@ -22,7 +22,7 @@ import Parser.Kinds
 import Parser.Lexer
 import Syntax.CST.Types
 import Syntax.CST.Names
-import Utils ( Loc(..) )
+import Loc ( Loc(..) )
 
 ---------------------------------------------------------------------------------
 -- Parsing of linear contexts

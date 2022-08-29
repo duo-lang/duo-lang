@@ -15,7 +15,8 @@ import Syntax.CST.Types
 import Syntax.RST.Types ( Polarity(..) )
 import Syntax.CST.Names
 import TypeAutomata.Definition
-import Utils ( defaultLoc, enumerate )
+import Loc ( defaultLoc )
+import Utils ( enumerate )
 
 -- | Check the invariants of the type automaton.
 lint :: MonadError (NonEmpty Error) m

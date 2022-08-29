@@ -17,6 +17,7 @@ import Pretty.Errors ( printLocatedReport )
 import Resolution.SymbolTable
 import Syntax.CST.Names ( ModuleName(MkModuleName) )
 import Syntax.TST.Program qualified as TST
+import Loc
 import Utils
 import Control.Monad.Writer
 import Data.Either (rights, lefts)

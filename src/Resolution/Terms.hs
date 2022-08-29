@@ -18,7 +18,7 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..), Arity, PrdCnsRep(..))
 import Syntax.CST.Names
-import Utils
+import Loc
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor

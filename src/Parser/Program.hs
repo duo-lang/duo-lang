@@ -23,7 +23,7 @@ import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CST.Names
-import Utils
+import Loc
 
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration

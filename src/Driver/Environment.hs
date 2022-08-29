@@ -11,7 +11,7 @@ import Syntax.TST.Types ( TypeScheme, Typ)
 import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Types( PrdCns(..) )
 import Syntax.CST.Kinds (MonoKind)
-import Utils ( Loc )
+import Loc ( Loc )
 
 ---------------------------------------------------------------------------------
 -- Environment

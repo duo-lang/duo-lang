@@ -29,7 +29,7 @@ import Pretty.Program ()
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
 import Syntax.CST.Names ( FreeVarName(..) )
 import Translate.Focusing ( isFocusedTerm, isFocusedCmd, focusPrdCnsDeclaration, focusCommandDeclaration)
-import Utils
+import Loc
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
