@@ -16,18 +16,30 @@ import Translate.Embed
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
 ---------------------------------------------------------------------------------
-
+  
 botSym :: Doc Annotation
 botSym = annKeyword "Bot"
+
+botSymUnicode :: Doc Annotation
+botSymUnicode = annKeyword "⊥"
 
 topSym :: Doc Annotation
 topSym = annKeyword "Top"
 
+topSymUnicode :: Doc Annotation
+topSymUnicode = annKeyword "⊤"
+
 unionSym :: Doc Annotation
 unionSym = annKeyword "\\/"
 
+unionSymUnicode :: Doc Annotation
+unionSymUnicode = "∨"
+
 interSym :: Doc Annotation
 interSym = annKeyword "/\\"
+
+interSymUnicode :: Doc Annotation
+interSymUnicode = annKeyword "∧"
 
 recSym :: Doc Annotation
 recSym = annKeyword "rec"
@@ -59,8 +71,8 @@ instance PrettyAnn TyOpName where
 
 instance PrettyAnn BinOp where
   prettyAnn (CustomOp op) = prettyAnn op
-  prettyAnn UnionOp = unionSym
-  prettyAnn InterOp = interSym
+  prettyAnn UnionOp = unionSymUnicode
+  prettyAnn InterOp = interSymUnicode
 
 instance PrettyAnn CST.DataCodata where
   prettyAnn CST.Data = annKeyword "data"
@@ -113,8 +125,8 @@ instance PrettyAnn (TST.Typ pol) where
 
 instance PrettyAnn CST.Typ where
   -- Top and Bottom lattice types
-  prettyAnn CST.TyTop {} = topSym
-  prettyAnn CST.TyBot {} = botSym
+  prettyAnn CST.TyTop {} = topSymUnicode
+  prettyAnn CST.TyBot {} = botSymUnicode
   -- Type Variables
   prettyAnn (CST.TyUniVar _ tv) = prettyAnn tv
   prettyAnn (CST.TySkolemVar _ tv) = prettyAnn tv
