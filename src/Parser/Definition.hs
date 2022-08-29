@@ -16,7 +16,7 @@ import Text.Megaparsec
 import Text.Megaparsec.Debug qualified
 
 import Errors
-import Utils
+import Loc ( Loc(..) )
 
 -------------------------------------------------------------------------------------------
 -- Definition of the Parsing Monad

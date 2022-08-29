@@ -4,6 +4,7 @@ module Main where
 import Data.Text qualified as T
 import Data.Version (showVersion)
 import GitHash (tGitInfoCwd, giHash, giBranch)
+import System.FilePath (dropFileName,takeBaseName,(</>), replaceFileName)
 
 import Options (Options(..), parseOptions)
 import Run (runRun)
@@ -21,7 +22,7 @@ main = do
     dispatch opts
 
 filepathToModuleName :: FilePath -> ModuleName
-filepathToModuleName = MkModuleName . T.pack . trimStr
+filepathToModuleName fp = MkModuleName . T.pack . trimStr . replaceFileName fp $ takeBaseName fp
 
 dispatch :: Options -> IO ()
 dispatch OptRepl                = runRepl

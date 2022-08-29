@@ -17,7 +17,7 @@ import Syntax.TST.Terms
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.RST.Terms qualified as RST
-import Utils
+import Loc
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Program (PrdCnsToPol)

@@ -31,7 +31,7 @@ import Resolution.SymbolTable
     ( SymbolTable(imports) )
 import Syntax.CST.Names ( ModuleName(..) )
 import Errors ( throwOtherError )
-import Utils ( defaultLoc )
+import Loc ( defaultLoc )
 
 -- | A dependency Graph which represents the structure of imports.
 data DepGraph = MkDepGraph { graph :: Gr ModuleName ()

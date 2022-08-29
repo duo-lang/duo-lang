@@ -39,7 +39,7 @@ import Parser.Definition ( runFileParser )
 import Parser.Program ( moduleP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
-import Utils
+import Loc
 
 ---------------------------------------------------------------------------------
 -- Static configuration of the LSP Server

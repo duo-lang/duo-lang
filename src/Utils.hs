@@ -1,44 +1,36 @@
-module Utils where
+module Utils
+  ( -- Helper functions
+    intersections
+  , enumerate
+  , trimStr
+  , trim
+  , indexMaybe
+  , mapAppend
+    -- Verbosity
+  , Verbosity(..)
+    -- Directory helper functions
+  , listRecursiveFiles
+  , listRecursiveDuoFiles
+  , isDuoFile
+  , analyzeDuoFilepath
+  ) where
 
+import Control.Monad (forM)
 import Data.Char (isSpace)
 import Data.Foldable (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Map (Map)
+import qualified Data.Map as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
-import Text.Megaparsec.Pos
-import Data.Map (Map)
-import qualified Data.Map as M
-
-----------------------------------------------------------------------------------
--- Source code locations
-----------------------------------------------------------------------------------
-
-data Loc = Loc !SourcePos !SourcePos
-  deriving (Eq, Ord)
-
-instance Show Loc where
-  show (Loc _s1 _s2) = "<loc>"
-
-defaultLoc :: Loc
-defaultLoc = Loc (SourcePos "DEFAULTFILELOC" (mkPos 1) (mkPos 1)) (SourcePos "DEFAULTFILELOC" (mkPos 1) (mkPos 1))
-
--- | A typeclass for things which can be mapped to a source code location.
-class HasLoc a where
-  getLoc :: a -> Loc
-
--- | A typeclass for things to which we want to attach a source code location.
-class AttachLoc a where
-  attachLoc :: Loc -> a -> a
+import System.Directory ( listDirectory, doesDirectoryExist)
+import System.FilePath ((</>), takeExtension, splitFileName, splitDirectories, dropExtension)
 
 ----------------------------------------------------------------------------------
 -- Helper Functions
 ----------------------------------------------------------------------------------
-
-allEq :: Eq a => [a] -> Bool
-allEq [] = True
-allEq (x:xs) = all (==x) xs
 
 intersections :: Ord a => NonEmpty (Set a) -> Set a
 intersections (s :| ss) = foldl' S.intersection s ss
@@ -68,3 +60,46 @@ mapAppend k a = M.alter (\case
                               Nothing -> Just a
                               Just b  -> Just $ a <> b)
                         k
+----------------------------------------------------------------------------------
+-- Directory helper functions
+----------------------------------------------------------------------------------
+
+-- | Given a filepath pointing to a directory, list all files which are recursively
+-- reachable from that directory.
+-- The output contains a list of only files, not directories.
+-- Special directories "." and ".." are not contained in the output.
+listRecursiveFiles :: FilePath -> IO [FilePath]
+listRecursiveFiles topdir = do
+  names <- listDirectory topdir
+  paths <- forM names $ \name -> do
+    let path = topdir </> name
+    isDirectory <- doesDirectoryExist path
+    if isDirectory
+      then listRecursiveFiles path
+      else pure [path]
+  pure (concat paths)
+
+
+listRecursiveDuoFiles :: FilePath -> IO [FilePath]
+listRecursiveDuoFiles fp = do
+  exists <- doesDirectoryExist fp
+  if exists
+  then do
+    files <- listRecursiveFiles fp
+    pure (filter isDuoFile files)
+  else pure []
+
+-- | Checks whether given filepath ends in ".duo"
+isDuoFile :: FilePath -> Bool
+isDuoFile fp = takeExtension fp == ".duo"
+
+
+-- | Analyzes a filepath to a .duo file. Only call on arguments for which 
+-- the `isDuoFile` function returns true.
+-- Examples:
+-- analyzeDuoFilepath "foo/bar/file.duo" = (["foo", "bar"],"file")
+-- analyzeDuoFilepath "file.duo" = ([], "file")
+analyzeDuoFilepath :: FilePath -> ([FilePath], String)
+analyzeDuoFilepath fp =
+  case splitFileName fp of
+    (path, file) -> (splitDirectories path, dropExtension file)

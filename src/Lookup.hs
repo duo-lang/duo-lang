@@ -6,6 +6,7 @@ module Lookup
   , lookupDataDecl
   , lookupTypeName
   , lookupXtorSig
+  , lookupXtorKind
   , lookupClassDecl
   , lookupMethodType
   , withTerm
@@ -31,7 +32,7 @@ import Syntax.RST.Types (PolarityRep(..), Polarity(..))
 import Syntax.CST.Types (PrdCnsRep(..))
 import Syntax.CST.Names
 import Syntax.CST.Kinds (MonoKind)
-import Utils
+import Loc ( Loc, defaultLoc )
 
 ---------------------------------------------------------------------------------
 -- We define functions which work for every Monad which implements:

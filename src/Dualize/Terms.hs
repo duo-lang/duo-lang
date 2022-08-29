@@ -13,7 +13,7 @@ import Syntax.CST.Kinds
 import Syntax.RST.Types (FlipPol, FlipPrdCns, PolarityRep(..), flipPolarityRep, flipPrdCns)
 import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Program (PrdCnsToPol)
-import Utils
+import Loc
 
 data DualizeError
     = DualPrim Loc String 

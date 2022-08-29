@@ -43,7 +43,7 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsTermRecursive,
       genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints)
-import Utils ( Loc, AttachLoc(attachLoc) )
+import Loc ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST

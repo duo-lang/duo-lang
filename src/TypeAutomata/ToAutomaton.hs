@@ -22,7 +22,8 @@ import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import TypeAutomata.Definition
-import Utils ( enumerate, defaultLoc )
+import Loc ( defaultLoc )
+import Utils ( enumerate )
 import Control.Monad
 
 --------------------------------------------------------------------------

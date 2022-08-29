@@ -14,7 +14,7 @@ import Pretty.Common ()
 import Pretty.Types ()
 import Resolution.SymbolTable
 import Syntax.CST.Names
-import Utils
+import Loc
 import Errors
 import Control.Monad.Writer
 import qualified Data.Set as S

@@ -17,7 +17,7 @@ import Parser.Definition
 import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Names
-import Utils
+import Loc
 
 --------------------------------------------------------------------------------------------
 -- Substitutions and implicit substitutions
