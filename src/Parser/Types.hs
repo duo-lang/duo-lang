@@ -185,18 +185,36 @@ tyParensP = do
   pure (TyParens (Loc startPos endPos) typ, endPos)
 
 tyTopP :: Parser (Typ, SourcePos)
-tyTopP = do
-  startPos <- getSourcePos
-  endPos <- keywordP KwTop
-  sc
-  pure (TyTop (Loc startPos endPos), endPos)
+tyTopP = tyTopASCII <|> tyTopUnicode
+  where
+    tyTopASCII :: Parser (Typ, SourcePos)
+    tyTopASCII = do
+      startPos <- getSourcePos
+      endPos <- keywordP KwTop
+      sc
+      pure (TyTop (Loc startPos endPos), endPos)
+    tyTopUnicode :: Parser (Typ, SourcePos)
+    tyTopUnicode = do
+      startPos <- getSourcePos
+      symbolP SymTopUnicode
+      endPos <- getSourcePos
+      sc
+      pure (TyTop (Loc startPos endPos), endPos)
 
 tyBotP :: Parser (Typ, SourcePos)
-tyBotP = do
-  startPos <- getSourcePos
-  endPos <- keywordP KwBot
-  sc
-  pure (TyBot (Loc startPos endPos), endPos)
+tyBotP = tyBotASCII <|> tyBotUnicode
+  where
+    tyBotASCII = do
+      startPos <- getSourcePos
+      endPos <- keywordP KwBot
+      sc
+      pure (TyBot (Loc startPos endPos), endPos)
+    tyBotUnicode = do
+      startPos <- getSourcePos
+      symbolP SymBotUnicode
+      endPos <- getSourcePos
+      sc
+      pure (TyBot (Loc startPos endPos), endPos)
 
 -- | Parse atomic types (i,e, without tyop chains)
 typAtomP :: Parser (Typ, SourcePos)
