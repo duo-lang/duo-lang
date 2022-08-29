@@ -14,10 +14,6 @@ import qualified Data.Map as M
 -- Helper Functions
 ----------------------------------------------------------------------------------
 
-allEq :: Eq a => [a] -> Bool
-allEq [] = True
-allEq (x:xs) = all (==x) xs
-
 intersections :: Ord a => NonEmpty (Set a) -> Set a
 intersections (s :| ss) = foldl' S.intersection s ss
 
