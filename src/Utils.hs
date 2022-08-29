@@ -1,14 +1,29 @@
-module Utils where
+module Utils
+  ( -- Helper functions
+    intersections
+  , enumerate
+  , trimStr
+  , trim
+  , indexMaybe
+  , mapAppend
+    -- Verbosity
+  , Verbosity(..)
+    -- Directory helper functions
+  , listRecursiveFiles
+  ) where
 
+import Control.Monad (forM)
 import Data.Char (isSpace)
 import Data.Foldable (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
+import Data.Map (Map)
+import qualified Data.Map as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
-import Data.Map (Map)
-import qualified Data.Map as M
+import System.Directory ( listDirectory, doesDirectoryExist)
+import System.FilePath ((</>))
 
 ----------------------------------------------------------------------------------
 -- Helper Functions
@@ -42,3 +57,24 @@ mapAppend k a = M.alter (\case
                               Nothing -> Just a
                               Just b  -> Just $ a <> b)
                         k
+----------------------------------------------------------------------------------
+-- Directory helper functions
+----------------------------------------------------------------------------------
+
+-- | Given a filepath pointing to a directory, list all files which are recursively
+-- reachable from that directory.
+-- The output contains a list of only files, not directories.
+-- Special directories "." and ".." are not contained in the output.
+listRecursiveFiles :: FilePath -> IO [FilePath]
+listRecursiveFiles topdir = do
+  names <- listDirectory topdir
+  paths <- forM names $ \name -> do
+    let path = topdir </> name
+    isDirectory <- doesDirectoryExist path
+    if isDirectory
+      then listRecursiveFiles path
+      else pure [path]
+  pure (concat paths)
+             
+    
+  
