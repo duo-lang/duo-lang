@@ -82,8 +82,12 @@ listRecursiveFiles topdir = do
 
 listRecursiveDuoFiles :: FilePath -> IO [FilePath]
 listRecursiveDuoFiles fp = do
-  files <- listRecursiveFiles fp
-  pure (filter isDuoFile files)
+  exists <- doesDirectoryExist fp
+  if exists
+  then do
+    files <- listRecursiveFiles fp
+    pure (filter isDuoFile files)
+  else pure []
 
 -- | Checks whether given filepath ends in ".duo"
 isDuoFile :: FilePath -> Bool

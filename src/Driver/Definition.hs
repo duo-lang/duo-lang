@@ -47,7 +47,7 @@ defaultInferenceOptions = InferenceOptions
   { infOptsVerbosity = Silent
   , infOptsPrintGraphs = False
   , infOptsSimplify = True
-  , infOptsLibPath = ["examples"]
+  , infOptsLibPath = [".", "examples"]
   }
 
 setDebugOpts :: InferenceOptions -> InferenceOptions
@@ -213,8 +213,7 @@ findModule (MkModuleName mod) loc = do
   let duoFilesMatched = filter (\fp -> takeFileName fp == modString || takeBaseName fp == modString) duoFiles
   case duoFilesMatched of
     [] -> throwOtherError loc $ ["Could not locate library: " <> mod, "Paths searched:"] <> (T.pack <$> duoFiles)
-    [fp] -> liftIO $ makeAbsolute fp
-    candidates -> throwOtherError loc $ ["Found more than one candidate for library: " <> mod, "Candidates:"] <> (T.pack <$> candidates)
+    (fp:_fps) -> liftIO $ makeAbsolute fp
       
 
 liftErr :: NonEmpty Error -> DriverM a
