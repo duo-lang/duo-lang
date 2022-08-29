@@ -47,7 +47,7 @@ defaultInferenceOptions = InferenceOptions
   { infOptsVerbosity = Silent
   , infOptsPrintGraphs = False
   , infOptsSimplify = True
-  , infOptsLibPath = [".", "examples"]
+  , infOptsLibPath = [".", "lib", "examples"]
   }
 
 setDebugOpts :: InferenceOptions -> InferenceOptions

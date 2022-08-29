@@ -93,15 +93,15 @@ main = do
     let checkedExamplesFiltered = filter (isRight . snd) checkedExamples
     checkedCounterExamples <- forM counterExamples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
     -- Create symbol tables for tests
-    peano_st <- getSymbolTable "examples/Peano.duo"
+    peano_st <- getSymbolTable "lib/Data/Peano.duo"
     let peano_st' = case peano_st of
                 Left _ -> error "Could not load Peano.duo"
                 Right peano_st' -> peano_st'
-    bool_st <- getSymbolTable "examples/Bool.duo"
+    bool_st <- getSymbolTable "lib/Data/Bool.duo"
     let bool_st' = case bool_st of
                 Left _ -> error "Could not load Bool.duo"
                 Right bool_st' -> bool_st'
-    fun_st <- getSymbolTable "examples/Function.duo"
+    fun_st <- getSymbolTable "lib/Codata/Function.duo"
     let fun_st' = case fun_st of
                 Left _ -> error "Could not load Function.duo"
                 Right fun_st' -> fun_st'
