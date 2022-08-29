@@ -23,6 +23,7 @@ import Parser.Lexer
 import Syntax.CST.Types
 import Syntax.CST.Names
 import Utils ( Loc(..) )
+import Control.Monad (void)
 
 ---------------------------------------------------------------------------------
 -- Parsing of linear contexts
@@ -261,11 +262,14 @@ typP = do
 -- Parsing of type schemes.
 ---------------------------------------------------------------------------------
 
+forallP :: Parser ()
+forallP = void (keywordP KwForall) <|> symbolP SymForallUnicode
+
 -- | Parse a type scheme
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
-  tvars' <- option [] (keywordP KwForall >> sc >> some (fst <$> (tvarP <* sc)) <* (symbolP SymDot >> sc))
+  tvars' <- option [] (forallP >> sc >> some (fst <$> (tvarP <* sc)) <* (symbolP SymDot >> sc))
   let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
   tConstraints <- option [] (constraintP `sepBy` (symbolP SymComma >> sc) <* (symbolP SymDoubleRightArrow >> sc))
   (monotype, endPos) <- typP

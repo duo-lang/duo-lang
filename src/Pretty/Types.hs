@@ -47,6 +47,9 @@ recSym = annKeyword "rec"
 forallSym :: Doc Annotation
 forallSym = annKeyword "forall"
 
+forallSymUnicode :: Doc Annotation
+forallSymUnicode = annKeyword "∀"
+
 pipeSym :: Doc Annotation
 pipeSym = prettyAnn ("|" :: String)
 
@@ -78,7 +81,7 @@ instance PrettyAnn CST.DataCodata where
   prettyAnn CST.Data = annKeyword "data"
   prettyAnn CST.Codata = annKeyword "codata"
 
----------------------------------------------------------------------------------
+--------------------------------------------------------------C-------------------
 -- Wrappers
 ---------------------------------------------------------------------------------
 
@@ -175,7 +178,7 @@ instance PrettyAnn CST.TypeScheme where
   prettyAnn CST.TypeScheme { ts_vars = [], ts_monotype } =
     prettyAnn ts_monotype
   prettyAnn CST.TypeScheme { ts_vars, ts_monotype } =
-    forallSym <+>
+    forallSymUnicode <+>
     sep (prettyAnn <$> ts_vars ) <>
     "." <+>
     prettyAnn ts_monotype
