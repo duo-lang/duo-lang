@@ -215,7 +215,11 @@ data DataDecl =
   , data_kind :: PolyKind
     -- ^ The kind of the type constructor.
   , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
-    -- The constructors/destructors of the declaration.
+    -- ^ The constructors/destructors of the declaration,
+    -- as written by the user.
+  , data_xtors_refined :: ([XtorSig Pos], [XtorSig Neg])
+    -- ^ The constructors/destructors of the declaration,
+    -- with recursive occurrences replaced by the refinement type.
   }
 
 deriving instance Show DataDecl

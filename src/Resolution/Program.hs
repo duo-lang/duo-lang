@@ -156,6 +156,7 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
                               , data_polarity = data_polarity
                               , data_kind = polyKind
                               , data_xtors = xtors
+                              , data_xtors_refined = ([],[]) -- FIXME
                               }
 
 ---------------------------------------------------------------------------------

@@ -125,12 +125,12 @@ lookupXtorSig :: EnvReader a m
 lookupXtorSig loc xtn PosRep = do
   decl <- lookupDataDecl loc xtn
   case find ( \RST.MkXtorSig{..} -> sig_name == xtn ) (fst (RST.data_xtors decl)) of
-    Just xts -> return xts
+    Just xts -> pure xts
     Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (RST.data_name decl))]
 lookupXtorSig loc xtn NegRep = do
   decl <- lookupDataDecl loc xtn
   case find ( \RST.MkXtorSig{..} -> sig_name == xtn ) (snd (RST.data_xtors decl)) of
-    Just xts -> return xts
+    Just xts -> pure xts
     Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (RST.data_name decl))]
 
 
@@ -141,8 +141,10 @@ lookupXtorSigUpper loc xt = do
   case decl of
     RST.NominalDecl { } -> do
       throwOtherError loc ["lookupXtorSigUpper: Expected refinement type but found nominal type."]
-    RST.RefinementDecl _loc' _m_dc _rtn _dc _pk _x1 -> do
-      throwOtherError loc ["lookupXtorSigUpper: Not implemented"]
+    RST.RefinementDecl { data_xtors_refined } -> do
+      case find ( \RST.MkXtorSig{..} -> sig_name == xt ) (snd data_xtors_refined) of
+        Nothing -> throwOtherError loc ["lookupXtorSigUpper: Constructor/Destructor " <> ppPrint xt <> " not found"]
+        Just sig -> pure sig
 
   
 
@@ -153,8 +155,10 @@ lookupXtorSigLower loc xt = do
   case decl of
     RST.NominalDecl {} -> do
       throwOtherError loc ["lookupXtorSigLower: Expected refinement type but found nominal type."]
-    RST.RefinementDecl _loc' _m_dc _rtn _dc _pk _x1 -> do
-      throwOtherError loc ["lookupXtorSigLower: Not implemented"]
+    RST.RefinementDecl { data_xtors_refined } -> do
+      case find ( \RST.MkXtorSig{..} -> sig_name == xt ) (fst data_xtors_refined) of
+        Nothing ->  throwOtherError loc ["lookupXtorSigLower: Constructor/Destructor " <> ppPrint xt <> " not found"]
+        Just sig -> pure sig
 
   
 
