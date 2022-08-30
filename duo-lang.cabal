@@ -75,7 +75,8 @@ common shared-lang-options
                      ImportQualifiedPost,
                      ViewPatterns,
                      MultiWayIf,
-                     PatternSynonyms
+                     PatternSynonyms,
+                     InstanceSigs
 
 common shared-ghc-opts
   ghc-options:
