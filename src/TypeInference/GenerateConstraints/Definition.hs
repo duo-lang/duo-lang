@@ -33,10 +33,7 @@ module TypeInference.GenerateConstraints.Definition
   , checkTypeScheme
   , checkExhaustiveness
   , checkInstanceCoverage
-  , translateXtorSigUpper
-  , translateTypeUpper
-  , translateXtorSigLower
-  , translateTypeLower) where
+  ) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -58,7 +55,6 @@ import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program as RST
 import TypeInference.Constraints
-import TypeTranslation qualified as TT
 import Loc ( Loc, defaultLoc )
 import Utils ( indexMaybe )
 
@@ -222,42 +218,6 @@ addConstraint c = modify foo
   where
     foo gs@GenerateState { constraintSet } = gs { constraintSet = bar constraintSet }
     bar cs@ConstraintSet { cs_constraints } = cs { cs_constraints = c:cs_constraints }
-
----------------------------------------------------------------------------------------------
--- Translate nominal types to structural refinement types
----------------------------------------------------------------------------------------------
-
--- | Recursively translate types in xtor signature to upper bound refinement types
-translateXtorSigUpper :: RST.XtorSig Neg -> GenM (TST.XtorSig Neg)
-translateXtorSigUpper xts = do
-  env <- asks fst
-  case TT.translateXtorSigUpper env xts of
-    Left err -> throwError err
-    Right xts' -> return (checkXtorSig xts')
-
--- | Recursively translate a nominal type to an upper bound refinement type
-translateTypeUpper :: RST.Typ Neg -> GenM (TST.Typ Neg)
-translateTypeUpper ty = do
-  env <- asks fst
-  case TT.translateTypeUpper env ty of
-    Left err -> throwError err
-    Right xts' -> return (checkKind xts')
-
--- | Recursively translate types in xtor signature to lower bound refinement types
-translateXtorSigLower :: RST.XtorSig Pos -> GenM (TST.XtorSig Pos)
-translateXtorSigLower xts = do
-  env <- asks fst
-  case TT.translateXtorSigLower env xts of
-    Left err -> throwError err
-    Right xts' -> return (checkXtorSig xts')
-
--- | Recursively translate a nominal type to a lower bound refinement type
-translateTypeLower :: RST.Typ Pos -> GenM (TST.Typ Pos)
-translateTypeLower ty = do
-  env <- asks fst
-  case TT.translateTypeLower env ty of
-    Left err -> throwError err
-    Right xts' -> return (checkKind xts')
 
 ---------------------------------------------------------------------------------------------
 -- Kinds
