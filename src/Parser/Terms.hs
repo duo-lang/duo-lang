@@ -23,23 +23,22 @@ import Loc
 -- Substitutions and implicit substitutions
 --------------------------------------------------------------------------------------------
 
-termOrStarP :: Parser (CST.TermOrStar, SourcePos)
+termOrStarP :: Parser CST.TermOrStar
 termOrStarP = starP <|> nonStarP
   where
     starP = do
       symbolP SymImplicit
-      pos <- getSourcePos
       sc
-      pure (CST.ToSStar, pos)
+      pure CST.ToSStar
     nonStarP = do
-      (tm, pos) <- term2P
+      (tm, _) <- term2P
       sc
-      pure (CST.ToSTerm tm, pos)
+      pure (CST.ToSTerm tm)
 
 substitutionIP :: Parser ([CST.TermOrStar], SourcePos)
 substitutionIP = do
      s <- optional $ do
-      (args,_) <- parensP ((fst <$> termOrStarP) `sepBy` (symbolP SymComma >> sc))
+      (args,_) <- parensP (termOrStarP `sepBy` (symbolP SymComma >> sc))
       pure args
      pos <- getSourcePos
      return (Data.Maybe.fromMaybe [] s,pos)
@@ -172,53 +171,53 @@ muAbstraction =  do
 -------------------------------------------------------------------------------------------
 
 -- | Parse an implicit argument pattern of the form: `*`
-patStarP :: Parser (CST.Pattern, SourcePos)
+patStarP :: Parser CST.Pattern
 patStarP = do
   startPos <- getSourcePos
   symbolP SymImplicit
   endPos <- getSourcePos
   sc
-  pure (CST.PatStar (Loc startPos endPos), endPos)
+  pure (CST.PatStar (Loc startPos endPos))
 
 -- | Parse a wildcard pattern of the form: `_`
-patWildcardP :: Parser (CST.Pattern, SourcePos)
+patWildcardP :: Parser CST.Pattern
 patWildcardP = do
   startPos <- getSourcePos
   symbolP SymWildcard
   endPos <- getSourcePos
   sc
-  pure (CST.PatWildcard (Loc startPos endPos), endPos)
+  pure (CST.PatWildcard (Loc startPos endPos))
 
 -- | Parse a variable pattern of the form: `x`
-patVariableP :: Parser (CST.Pattern, SourcePos)
+patVariableP :: Parser CST.Pattern
 patVariableP = do
   startPos <- getSourcePos
   (fv, endPos) <- freeVarNameP
   sc
-  pure (CST.PatVar (Loc startPos endPos) fv, endPos)
+  pure (CST.PatVar (Loc startPos endPos) fv)
 
 -- | Parses a list of patterns in parentheses, or nothing at all: `(pat_1,...,pat_n)`
 patternListP :: Parser ([CST.Pattern], SourcePos)
 patternListP = do
   s <- optional $ do
-    (args,_) <- parensP ((fst <$> patternP) `sepBy` (symbolP SymComma >> sc))
+    (args,_) <- parensP (patternP `sepBy` (symbolP SymComma >> sc))
     pure args
   endPos <- getSourcePos
   return (Data.Maybe.fromMaybe [] s, endPos)
 
 -- | Parse a xtor pattern of the form: `Xtor(pat_1,...,pat_n)` or `Xtor`
-patXtorP :: Parser (CST.Pattern, SourcePos)
+patXtorP :: Parser CST.Pattern
 patXtorP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
   (args,endPos) <- patternListP
   sc
-  pure (CST.PatXtor (Loc startPos endPos) xt args, endPos)
+  pure (CST.PatXtor (Loc startPos endPos) xt args)
 
 
 
 -- | Parses an arbitrary pattern
-patternP :: Parser (CST.Pattern, SourcePos)
+patternP :: Parser CST.Pattern
 patternP =
   patStarP <|>
   patWildcardP <|>
@@ -246,7 +245,7 @@ caseP = do
 caseRestP :: SourcePos -- ^ The source position of the start of the "case" keyword
           -> Parser (CST.Term, SourcePos)
 caseRestP startPos = do
-  (cases, endPos) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+  (cases, endPos) <- bracesP (termCaseP `sepBy` (symbolP SymComma >> sc))
   pure (CST.Case (Loc startPos endPos) cases, endPos)
 
 -- | Parses the second half of a "caseof" construct, i.e.
@@ -258,7 +257,7 @@ caseOfRestP startPos =  do
   (arg, _pos) <- term2P
   _ <- keywordP KwOf
   sc
-  (cases, endPos) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+  (cases, endPos) <- bracesP (termCaseP `sepBy` (symbolP SymComma >> sc))
   return (CST.CaseOf (Loc startPos endPos) arg cases, endPos)
 
 -- | Parses all constructs of the forms:
@@ -277,7 +276,7 @@ cocaseP = do
 cocaseRestP :: SourcePos -- ^ The source position of the start of the "cocase" keyword
             -> Parser (CST.Term, SourcePos)
 cocaseRestP startPos = do
-  (cases, endPos) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+  (cases, endPos) <- bracesP (termCaseP `sepBy` (symbolP SymComma >> sc))
   return (CST.Cocase (Loc startPos endPos) cases, endPos)
 
 -- | Parses the second half of a "caseof" construct, i.e.
@@ -289,20 +288,20 @@ cocaseOfRestP startPos =  do
   (arg, _pos) <- term2P
   _ <- keywordP KwOf
   sc
-  (cases, endPos) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+  (cases, endPos) <- bracesP (termCaseP `sepBy` (symbolP SymComma >> sc))
   return (CST.CocaseOf (Loc startPos endPos) arg cases, endPos)
 
-termCaseP :: Parser (CST.TermCase, SourcePos)
+termCaseP :: Parser CST.TermCase
 termCaseP =  do
   startPos <- getSourcePos
-  (pat,_) <- patternP
+  pat <- patternP
   symbolP SymDoubleRightArrow
   sc
   (t, endPos) <- term3P
-  let pmcase = CST.MkTermCase { tmcase_loc  = Loc startPos endPos
-                              , tmcase_pat = pat
-                              , tmcase_term  = t }
-  return (pmcase, endPos)
+  pure CST.MkTermCase { tmcase_loc  = Loc startPos endPos
+                      , tmcase_pat = pat
+                      , tmcase_term  = t
+                      }
 
 --------------------------------------------------------------------------------------------
 -- CST-Sugar
@@ -431,6 +430,6 @@ term3P = do
 -- Exported Parsers
 -------------------------------------------------------------------------------------------
 
-termP :: Parser (CST.Term, SourcePos)
-termP = term3P
+termP :: Parser CST.Term
+termP = fst <$> term3P
 
