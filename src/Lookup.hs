@@ -136,11 +136,27 @@ lookupXtorSig loc xtn NegRep = do
 
 lookupXtorSigUpper :: EnvReader a m
                    => Loc -> XtorName -> m (RST.XtorSig Neg)
-lookupXtorSigUpper loc _xt = throwOtherError loc ["lookupXtorSigUpper not implemented"]
+lookupXtorSigUpper loc xt = do
+  decl <- lookupDataDecl loc xt
+  case decl of
+    RST.NominalDecl { } -> do
+      throwOtherError loc ["lookupXtorSigUpper: Expected refinement type but found nominal type."]
+    RST.RefinementDecl _loc' _m_dc _rtn _dc _pk _x1 -> do
+      throwOtherError loc ["lookupXtorSigUpper: Not implemented"]
+
+  
 
 lookupXtorSigLower :: EnvReader a m
                    => Loc -> XtorName -> m (RST.XtorSig Pos)
-lookupXtorSigLower loc _xt = throwOtherError loc ["lookupXtorSigLower not implemented"]
+lookupXtorSigLower loc xt = do
+  decl <- lookupDataDecl loc xt
+  case decl of
+    RST.NominalDecl {} -> do
+      throwOtherError loc ["lookupXtorSigLower: Expected refinement type but found nominal type."]
+    RST.RefinementDecl _loc' _m_dc _rtn _dc _pk _x1 -> do
+      throwOtherError loc ["lookupXtorSigLower: Not implemented"]
+
+  
 
 -- | Find the class declaration for a classname.
 lookupClassDecl :: EnvReader a m
