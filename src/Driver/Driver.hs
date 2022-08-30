@@ -103,8 +103,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  let maybeAnnot = runKindReaderM (checkMaybeTypeScheme pcdecl_annot) env
-  let annot = case maybeAnnot of Left _ -> error "Could not check annotated typeScheme"; Right ann -> fst ann;
+  let annot = runKindReaderM (checkMaybeTypeScheme pcdecl_annot) env
   ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annot pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
@@ -166,8 +165,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  let instancety = runKindReaderM (checkInstDecl instancedecl_typ) env
-  let instty = case instancety of Left _ -> error "Could not check kind of instance declaration"; Right ann -> fst ann;
+  let instty = runKindReaderM (checkInstDecl instancedecl_typ) env
   let f env = env { instanceEnv = M.adjust (S.insert instty) instancedecl_name (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
