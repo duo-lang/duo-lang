@@ -48,25 +48,3 @@ def rec prd ex14sub : < Z> \/ < S(<Z>) >                                        
 
 def rec prd ex15    : forall t0. (t0 -> (rec r4.(t0 \/ < S( r4 ) >)))                := ex15;
 def rec prd ex15sub : (rec b. < Z , S( b ) > ) -> (rec c. < Z , S( c ) > )           := ex15;
-
- 
-
--- Subsumptions which shouldn't hold
-
-def rec prd ex16    : {}                                                                    := ex16;
-def rec prd ex16sub : <>                                                                    := ex16sub;
-
-def rec prd ex17    : { Ap(< True >,return < True >) }                                      := ex17;
-def rec prd ex17sub : forall a. { Ap(a,return a) }                                          := ex17sub;
-
-def rec prd ex18    : { Ap(< True >,return < True , False >) }                              := ex18;
-def rec prd ex18sub : { Ap(< True >,return < True >) }                                      := ex18sub;
-
-def rec prd ex19    : Nat                                                                   := ex19;
-def rec prd ex19sub : Bool                                                                  := ex19sub;
-
-def rec prd ex20    : { Ap(rec a. < Z, S( <S(a)> ) >, return (rec a.  <Z, S(< S(a) >)>) ) } := ex20;
-def rec prd ex20sub : { Ap(rec a.  <Z, S(a)>, return (rec a. < Z, S(a) >) ) }               := ex20sub;
-
-def rec prd ex21    : (rec b. < Z , S( b ) > ) -> (rec c. < Z , S( c ) > )                  := ex21;
-def rec prd ex21sub : forall t0. (t0 -> (rec r4.(t0 \/ < S( r4 ) >)))                       := ex21sub;
