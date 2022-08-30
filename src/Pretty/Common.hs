@@ -140,3 +140,11 @@ instance PrettyAnn PolyKind where
 
 prettyTParam :: (Variance, SkolemTVar, MonoKind) -> Doc Annotation
 prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> annSymbol ":" <+> prettyAnn k
+
+newtype Header a = Header { getHeader :: a }
+
+instance Pretty a => PrettyAnn (Header a) where
+  prettyAnn (Header h) = 
+    let eqs' = repeat '='
+        eqs  = pretty $ take 10 eqs'
+    in eqs <+> pretty h <+> eqs
