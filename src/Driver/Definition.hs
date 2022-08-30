@@ -28,6 +28,14 @@ import Parser.Parser (moduleP)
 import Data.Maybe ( fromMaybe )
 import TypeAutomata.Definition (Nubable(nub))
 
+----------------------------------------------------------------------------
+--Helper Monad for Kind Inference 
+----------------------------------------------------------------------------
+type KindReaderM a = (ReaderT (Map ModuleName Environment, ()) (StateT Int (Except (NonEmpty Error)))) a
+
+runKindReaderM :: KindReaderM a -> Map ModuleName Environment -> Either (NonEmpty Error) (a, Int)
+runKindReaderM m env = runExcept (runStateT (runReaderT m (env,())) 0)
+
 ------------------------------------------------------------------------------
 -- Typeinference Options
 ------------------------------------------------------------------------------

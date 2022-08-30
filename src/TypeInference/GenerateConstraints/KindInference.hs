@@ -45,6 +45,11 @@ getXtorKinds (fst:rst) = do
   knd' <- getXtorKinds rst
   if knd == knd' then return knd else error "Kinds of constructors do not match" 
 
+checkInstDecl :: KindReader a m => (RST.Typ RST.Pos, RST.Typ RST.Neg) -> m (TST.Typ RST.Pos, TST.Typ RST.Neg)
+checkInstDecl (ty1, ty2) = do 
+  ty1' <- checkKind ty1
+  ty2' <- checkKind ty2
+  return (ty1', ty2')
 
 checkMaybeTypeScheme :: KindReader a m => Maybe (RST.TypeScheme pol) -> m (Maybe (TST.TypeScheme pol))
 checkMaybeTypeScheme Nothing = return Nothing 

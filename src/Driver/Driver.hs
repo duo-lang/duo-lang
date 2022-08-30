@@ -44,7 +44,6 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints)
 import Utils ( Loc, AttachLoc(attachLoc) )
-import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program (prdCnsToPol)
@@ -104,8 +103,9 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  pcdecl <- checkMaybeTypeScheme pcdecl_annot 
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified pcdecl pcdecl_loc
+  let maybeAnnot = runKindReaderM (checkMaybeTypeScheme pcdecl_annot) env
+  let annot = case maybeAnnot of Left _ -> error "Could not check annotated typeScheme"; Right ann -> fst ann;
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annot pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
@@ -166,10 +166,9 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
       ppPrintIO constraints
       ppPrintIO solverResult
   -- Insert into environment
-  instancetyPos <- checkKind (fst instancedecl_typ)
-  instancetyNeg <- checkKind (snd instancedecl_typ)
-  let instancety = (instancetyPos, instancetyNeg)
-  let f env = env { instanceEnv = M.adjust (S.insert instancety) instancedecl_name (instanceEnv env)}
+  let instancety = runKindReaderM (checkInstDecl instancedecl_typ) env
+  let instty = case instancety of Left _ -> error "Could not check kind of instance declaration"; Right ann -> fst ann;
+  let f env = env { instanceEnv = M.adjust (S.insert instty) instancedecl_name (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 

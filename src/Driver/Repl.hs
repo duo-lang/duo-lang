@@ -21,7 +21,8 @@ import Driver.Definition
     ( DriverM,
       DriverState(drvEnv),
       getSymbolTables,
-      liftEitherErr )
+      liftEitherErr,
+      runKindReaderM)
 import Driver.Driver ( inferDecl, runCompilationModule )
 import Eval.Eval ( eval, evalSteps )
 import Parser.Definition ( runInteractiveParser )
@@ -42,7 +43,7 @@ import TypeAutomata.Subsume ( subsume )
 import Utils ( defaultLoc )
 import Resolution.Program (resolveDecl)
 import Resolution.Terms (resolveCommand)
-import TypeInference.GenerateConstraints.Definition (checkTypeScheme)
+import TypeInference.GenerateConstraints.KindInference (checkTypeScheme)
 
 
 
@@ -123,7 +124,12 @@ subsumeRepl txt = do
     sts <- getSymbolTables
     resolved_t1 <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveTypeScheme PosRep t1))
     resolved_t2 <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveTypeScheme PosRep t2))
-    isSubsumed <-  liftEitherErr (subsume PosRep (checkTypeScheme resolved_t1) (checkTypeScheme resolved_t2),[])
+    env <- gets drvEnv
+    let maybety1 = runKindReaderM (checkTypeScheme resolved_t1) env
+    let resolved_t1' = case maybety1 of Left _ -> error "Could not check annotated typeScheme"; Right res -> fst res;
+    let maybety2 = runKindReaderM (checkTypeScheme resolved_t2) env
+    let resolved_t2' = case maybety2 of Left _ -> error "Could not check annotated typeScheme"; Right res -> fst res;
+    isSubsumed <-  liftEitherErr (subsume PosRep resolved_t1' resolved_t2',[])
     liftIO $ putStrLn $ if isSubsumed
                         then "Subsumption holds"
                         else "Subsumption doesn't hold"
