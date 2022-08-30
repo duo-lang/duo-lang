@@ -21,6 +21,11 @@ getCompletionItems _ctx = return [ mkOperatorCompletion "Par" "⅋"
                                  , mkOperatorCompletion "Times" "⊗"
                                  , mkOperatorCompletion "Plus" "⊕"
                                  , mkOperatorCompletion "Fun" "→"
+                                 , mkOperatorCompletion "Forall" "∀"
+                                 , mkOperatorCompletion "Top" "⊤"
+                                 , mkOperatorCompletion "Bot" "⊥"
+                                 , mkOperatorCompletion "Union" "∨"
+                                 , mkOperatorCompletion "Inter" "∧"
                                  ] 
 
 mkOperatorCompletion :: Text -> Text -> CompletionItem

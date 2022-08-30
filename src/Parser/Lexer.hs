@@ -388,8 +388,6 @@ data Symbol where
   SymDoubleCoRightArrow :: Symbol
   SymSimpleRightArrow :: Symbol
   SymCommand          :: Symbol
-  SymUnion            :: Symbol
-  SymIntersection     :: Symbol
   SymSubtype          :: Symbol
   SymImplicit         :: Symbol
   SymWildcard         :: Symbol
@@ -397,6 +395,14 @@ data Symbol where
   SymMinus            :: Symbol
   SymHash             :: Symbol
   SymBacktick         :: Symbol
+  SymForallUnicode    :: Symbol
+  -- Lattice Types
+  SymTopUnicode       :: Symbol
+  SymBotUnicode       :: Symbol
+  SymUnion            :: Symbol
+  SymUnionUnicode     :: Symbol
+  SymInter            :: Symbol
+  SymInterUnicode     :: Symbol
   -- Parens Symbols
   SymParenLeft        :: Symbol
   SymParenRight       :: Symbol
@@ -423,8 +429,7 @@ instance Show Symbol where
   show SymDoubleCoRightArrow = "=<"
   show SymSimpleRightArrow = "->"
   show SymCommand          = ">>"
-  show SymUnion            = "\\/"
-  show SymIntersection     = "/\\"
+  
   show SymSubtype          = "<:"
   show SymImplicit         = "*"
   show SymWildcard         = "_"
@@ -432,6 +437,14 @@ instance Show Symbol where
   show SymMinus            = "-"
   show SymHash             = "#"
   show SymBacktick         = "`"
+  show SymForallUnicode    = "∀"
+  -- Lattice types
+  show SymTopUnicode       = "⊤"
+  show SymBotUnicode       = "⊥"
+  show SymUnion            = "\\/"
+  show SymUnionUnicode     = "∨"
+  show SymInter            = "/\\"
+  show SymInterUnicode     = "∧"
   -- Parens Symbols
   show SymParenLeft        = "("
   show SymParenRight       = ")"

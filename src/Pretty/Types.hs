@@ -16,24 +16,39 @@ import Translate.Embed
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
 ---------------------------------------------------------------------------------
-
+  
 botSym :: Doc Annotation
 botSym = annKeyword "Bot"
+
+botSymUnicode :: Doc Annotation
+botSymUnicode = annKeyword "⊥"
 
 topSym :: Doc Annotation
 topSym = annKeyword "Top"
 
+topSymUnicode :: Doc Annotation
+topSymUnicode = annKeyword "⊤"
+
 unionSym :: Doc Annotation
 unionSym = annKeyword "\\/"
 
+unionSymUnicode :: Doc Annotation
+unionSymUnicode = "∨"
+
 interSym :: Doc Annotation
 interSym = annKeyword "/\\"
+
+interSymUnicode :: Doc Annotation
+interSymUnicode = annKeyword "∧"
 
 recSym :: Doc Annotation
 recSym = annKeyword "rec"
 
 forallSym :: Doc Annotation
 forallSym = annKeyword "forall"
+
+forallSymUnicode :: Doc Annotation
+forallSymUnicode = annKeyword "∀"
 
 pipeSym :: Doc Annotation
 pipeSym = prettyAnn ("|" :: String)
@@ -59,14 +74,14 @@ instance PrettyAnn TyOpName where
 
 instance PrettyAnn BinOp where
   prettyAnn (CustomOp op) = prettyAnn op
-  prettyAnn UnionOp = unionSym
-  prettyAnn InterOp = interSym
+  prettyAnn UnionOp = unionSymUnicode
+  prettyAnn InterOp = interSymUnicode
 
 instance PrettyAnn CST.DataCodata where
   prettyAnn CST.Data = annKeyword "data"
   prettyAnn CST.Codata = annKeyword "codata"
 
----------------------------------------------------------------------------------
+--------------------------------------------------------------C-------------------
 -- Wrappers
 ---------------------------------------------------------------------------------
 
@@ -113,8 +128,8 @@ instance PrettyAnn (TST.Typ pol) where
 
 instance PrettyAnn CST.Typ where
   -- Top and Bottom lattice types
-  prettyAnn CST.TyTop {} = topSym
-  prettyAnn CST.TyBot {} = botSym
+  prettyAnn CST.TyTop {} = topSymUnicode
+  prettyAnn CST.TyBot {} = botSymUnicode
   -- Type Variables
   prettyAnn (CST.TyUniVar _ tv) = prettyAnn tv
   prettyAnn (CST.TySkolemVar _ tv) = prettyAnn tv
@@ -163,7 +178,7 @@ instance PrettyAnn CST.TypeScheme where
   prettyAnn CST.TypeScheme { ts_vars = [], ts_monotype } =
     prettyAnn ts_monotype
   prettyAnn CST.TypeScheme { ts_vars, ts_monotype } =
-    forallSym <+>
+    forallSymUnicode <+>
     sep (prettyAnn <$> ts_vars ) <>
     "." <+>
     prettyAnn ts_monotype
