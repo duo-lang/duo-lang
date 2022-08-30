@@ -18,12 +18,25 @@ dualPolyKind :: PolyKind -> PolyKind
 dualPolyKind pk = pk 
 
 dualDataDecl :: RST.DataDecl -> RST.DataDecl
-dualDataDecl (RST.NominalDecl loc doc rntn dc pk (sigsPos,sigsNeg)) =
-    RST.NominalDecl loc doc (dualRnTypeName rntn)  (flipDC dc) (dualPolyKind pk) (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg )
-dualDataDecl (RST.RefinementDecl loc doc rntn dc pk (sigsPos,sigsNeg) (sigsPosRefined, sigsNegRefined)) =
-    RST.RefinementDecl loc doc (dualRnTypeName rntn)  (flipDC dc) (dualPolyKind pk) (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg ) (dualXtorSig PosRep <$> sigsPosRefined,dualXtorSig NegRep <$> sigsNegRefined )
+dualDataDecl RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors = (sigsPos,sigsNeg) } =
+    RST.NominalDecl { data_loc = data_loc
+                    , data_doc = data_doc
+                    , data_name = dualRnTypeName data_name
+                    , data_polarity = flipDC data_polarity
+                    , data_kind = dualPolyKind data_kind
+                    , data_xtors = (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg )
+                    }
+dualDataDecl RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors = (sigsPos,sigsNeg), data_xtors_refined = (sigsPosRefined, sigsNegRefined) } =
+    RST.RefinementDecl { data_loc = data_loc
+                       , data_doc = data_doc
+                       , data_name = dualRnTypeName data_name
+                       , data_polarity = flipDC data_polarity
+                       , data_kind = dualPolyKind data_kind
+                       , data_xtors = (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg)
+                       , data_xtors_refined = (dualXtorSig PosRep <$> sigsPosRefined,dualXtorSig NegRep <$> sigsNegRefined )
+                       }
 
-dualXtorSig ::  PolarityRep pol -> RST.XtorSig pol -> RST.XtorSig pol 
+dualXtorSig ::  PolarityRep pol -> RST.XtorSig pol -> RST.XtorSig pol
 dualXtorSig pol (RST.MkXtorSig xtor lctx) = RST.MkXtorSig (dualXtorName xtor) (dualPrdCnsType pol <$> lctx)
 
 
