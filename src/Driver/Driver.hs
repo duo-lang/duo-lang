@@ -52,6 +52,7 @@ import Syntax.RST.Program (prdCnsToPol)
 import Sugar.Desugar (desugarModule)
 import qualified Data.Set as S
 import Data.Maybe (catMaybes)
+import Pretty.Common (Header(..))
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
@@ -88,6 +89,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
         CST.Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
         CST.NonRecursive -> genConstraintsTerm pcdecl_term
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
+  guardVerbose $ ppPrintIO (Header (unFreeVarName pcdecl_name))
   guardVerbose $ ppPrintIO constraintSet
   -- 2. Solve the constraints.
   solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet env
