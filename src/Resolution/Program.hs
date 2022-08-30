@@ -149,15 +149,38 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
 
           h :: ResolveReader -> ResolveReader
           h r = r { rr_modules = f $ rr_modules r }
-      xtors <- local h (resolveXtors data_xtors)
+      (xtorsPos, xtorsNeg) <- local h (resolveXtors data_xtors)
+      -- Compute the resolved typename
+      NominalResult rtn _ _ _ <- lookupTypeConstructor data_loc data_name
+      -- Compute the lower and upper types.
+      (posRefinementType, negRefinementType) <- computeRefinementType data_polarity rtn (xtorsPos, xtorsNeg)
+      -- Compute the refined xtor sigs
+      let xtorsRefinedPos = RST.replaceNominal posRefinementType negRefinementType rtn <$> xtorsPos
+      let xtorsRefinedNeg = RST.replaceNominal posRefinementType negRefinementType rtn <$> xtorsNeg
       pure RST.RefinementDecl { data_loc = data_loc
                               , data_doc = data_doc
                               , data_name = data_name'
                               , data_polarity = data_polarity
                               , data_kind = polyKind
-                              , data_xtors = xtors
-                              , data_xtors_refined = ([],[]) -- FIXME
+                              , data_xtors = (xtorsPos, xtorsNeg)
+                              , data_xtors_refined = (xtorsRefinedPos,xtorsRefinedNeg)
                               }
+
+computeRefinementType :: CST.DataCodata -> RnTypeName -> ([RST.XtorSig Pos], [RST.XtorSig Neg]) -> ResolverM (RST.Typ Pos, RST.Typ Neg)
+computeRefinementType dc tn (xtorsPos, xtorsNeg) = do
+  let recVar = MkRecTVar "alpha"
+  let recVarPos = RST.TyRecVar defaultLoc PosRep recVar
+  let recVarNeg = RST.TyRecVar defaultLoc NegRep recVar
+  -- posXtors and negXtors are the xtors where the recursive occurrences of the type have been replaced by alpha.
+  let posXtors :: [RST.XtorSig Pos] = RST.replaceNominal recVarPos recVarNeg tn <$> xtorsPos
+  let negXtors :: [RST.XtorSig Neg] = RST.replaceNominal recVarPos recVarNeg tn <$> xtorsNeg
+  let posRefType :: RST.Typ Pos = case dc of
+                   CST.Data   -> RST.TyRec defaultLoc PosRep recVar (RST.TyDataRefined   defaultLoc PosRep tn posXtors)
+                   CST.Codata -> RST.TyRec defaultLoc PosRep recVar (RST.TyCodataRefined defaultLoc PosRep tn negXtors)
+  let negRefType :: RST.Typ Neg = case dc of
+                   CST.Data   -> RST.TyRec defaultLoc NegRep recVar (RST.TyDataRefined defaultLoc NegRep tn   negXtors)
+                   CST.Codata -> RST.TyRec defaultLoc NegRep recVar (RST.TyCodataRefined defaultLoc NegRep tn posXtors)
+  pure (posRefType, negRefType)
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declarations
