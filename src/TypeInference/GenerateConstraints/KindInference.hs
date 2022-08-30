@@ -8,6 +8,8 @@ import Syntax.CST.Names
 import Lookup
 import Errors
 import Driver.Environment
+import Utils
+import Pretty.Pretty
 
 
 import Control.Monad.Reader
@@ -37,13 +39,16 @@ getKindM f err = asks fst >>= \env -> go (M.toList env)
 --------------------------------------------------------------------------------------------
 -- Types
 --------------------------------------------------------------------------------------------
-getXtorKinds :: KindReader a m => [RST.XtorSig pol] -> m (Maybe MonoKind)
-getXtorKinds [] = return Nothing
-getXtorKinds (fst:rst) = do
+getXtorKinds :: KindReader a m => Loc -> [RST.XtorSig pol] -> m (Maybe MonoKind)
+getXtorKinds _ [] = return Nothing
+getXtorKinds loc (fst:rst) = do
   let nm = RST.sig_name fst
   knd <- Just <$> lookupXtorKind nm
-  knd' <- getXtorKinds rst
-  if knd == knd' then return knd else error "Kinds of constructors do not match" 
+  knd' <- getXtorKinds loc rst
+  if knd == knd' then
+    return knd 
+  else 
+    throwSolverError loc ["Kinds ", ppPrint knd , " and ", ppPrint knd', "of constructors do not match"]
 
 checkInstDecl :: KindReader a m => (RST.Typ RST.Pos, RST.Typ RST.Neg) -> m (TST.Typ RST.Pos, TST.Typ RST.Neg)
 checkInstDecl (ty1, ty2) = do 
@@ -93,12 +98,12 @@ checkKind (RST.TyRecVar loc pol rv) = do
   return (TST.TyRecVar loc pol (Just knd) rv)
 
 checkKind (RST.TyData loc pol xtors) = do 
-  knd <- getXtorKinds xtors 
+  knd <- getXtorKinds loc xtors 
   xtors' <- mapM checkXtorSig xtors
   return (TST.TyData loc pol knd xtors')
 
 checkKind (RST.TyCodata loc pol xtors) = do 
-  knd <- getXtorKinds xtors
+  knd <- getXtorKinds loc xtors
   xtors' <- mapM checkXtorSig xtors
   return (TST.TyCodata loc pol knd xtors')
 
