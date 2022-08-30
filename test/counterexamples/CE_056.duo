@@ -1,0 +1,10 @@
+-- Regression test for #359
+-- We do not allow refinement types which refer to other nominal types.
+
+data Nat { Z, S(Nat) };
+
+refinement codata Point {
+  X(return Nat),
+  Y(return Nat),
+  Clone(return Point)
+}; 
