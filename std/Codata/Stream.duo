@@ -1,9 +1,9 @@
 
 import Function;
-import LinearLogic;
 import Peano;
 import Bool;
 import List;
+import Tensor;
 
 -- | The type of infinite Streams
 codata Stream : (+a : CBV) -> CBV {

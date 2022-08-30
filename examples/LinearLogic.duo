@@ -1,131 +1,13 @@
 import Function;
 import Cofunction;
---------------------------------------------------------------------------------------------
--- Disjunction and its unit as a data type.
---
--- Disjunction, if defined as a datatype, consists of two constructors representing the two
--- alternative ways that  a OR b can be proved. This type corresponds to the "Either" type in
--- Haskell or the "Result" type in Rust.
---------------------------------------------------------------------------------------------
-
--- | Disjunction as a data type.
-data Plus : (+a : CBV, +b : CBV) -> CBV {
-    Left(a),
-    Right(b)
-}; 
-
-type operator ⊕ leftassoc at 3 := Plus;
-
--- | The empty type as a data type.
-data Void {};
-
--- TODO: Allow this to typecheck.
--- def prd absurd : Void -> Bot :=
---  \x => case x of {};
-
--- | Curried version of the Left constructor.
-def prd left : forall a. a -> Plus(a,Bot) :=
-  \x => Left(x);
-
--- | Curried version of the Right constructor.
-def prd right : forall a. a -> Plus(Bot,a) :=
-  \x => Right(x);
-
--- Deconstruct Plus by providing two functions.
-def prd plusElim : forall a b c. (a -> c) -> (b -> c) -> Plus(a,b) -> c :=
-  \f g e => case e of { Left(x) => f x
-                      , Right(y) => g y
-                      };
+import Par;
+import With;
+import Plus;
+import Tensor;
+import NegationN;
+import NegationP;
 
 
---------------------------------------------------------------------------------------------
--- Conjunction and its unit as a data type.
---
--- Conjunction, if defined as a datatype, is a type defined by the pairing constructor
--- which takes both elements of the pair.
---------------------------------------------------------------------------------------------
-
--- | Conjunction as a data type.
-data Tensor : (+a : CBV, +b : CBV) -> CBV {
-    MkTensor(a, b)
-};
-
-type operator ⊗ leftassoc at 5 := Tensor;
-
--- | The singleton type as a data type.
-data Unit { MkUnit };
-
--- | First projection on Tensor.
-def prd fst : forall a. Tensor(a,Top) -> a :=
-  \p => case p of { MkTensor(x,y) => x};
-
--- | Second projection on Tensor
-def prd snd : forall a. Tensor(Top,a) -> a :=
-  \p => case p of { MkTensor(x,y) => y};
-
---------------------------------------------------------------------------------------------
--- Conjunction and its unit as a codata type.
---
--- Conjunction is defined as a codata type by specifying two destructors, the projection
--- on the first and second element.
---------------------------------------------------------------------------------------------
-
--- | Conjunction defined as a codata type.
-codata With : (+a : CBV, +b : CBV) -> CBN {
-    Proj1(return a),
-    Proj2(return b)
-};
-
-type operator & leftassoc at 5 := With;
-
--- | The singleton type defined as a codata type.
-codata UnitN {};
-
---def cns in1 : forall a b. a -> a & b := 
---  cocase {Ap(x,k) => };
-
--- TODO: Allow this to typecheck
--- def prd mkUnitN : UnitN :=
---   cocase {};
-
--- Curried pairing operation defined for With.
-def prd pair : forall a b. a -> b -> a & b :=
-  \x y => cocase { Proj1(*) => x
-                 , Proj2(*) => y
-                 };
-
--- | Curried projection on the first element.
-def prd proj1 : forall a. a & Top -> a :=
-  \x => x.Proj1(*);
-
--- | Curried projection on the second element.
-def prd proj2 : forall a. Top & a -> a :=
-  \x => x.Proj2(*);
-
---------------------------------------------------------------------------------------------
--- Disjunction and its unit as a codata type.
---
---
---------------------------------------------------------------------------------------------
-
-
--- | Disjunction as a codata type.
-codata Par : (+a : CBV, +b : CBV) -> CBN {
-    MkPar(return a, return b)
-};
-
--- | The empty type as a codata type.
-codata VoidN : CBV { MkVoidN };
-
-type operator ⅋ leftassoc at 3 := Par;
-
--- | Injection into the right element of Par.
-def prd unit : forall a. a -> Bot ⅋ a :=
-  \x => cocase { MkPar(k_err,*) => x };
-
--- | Injection into the left element of Par.
-def prd throw : forall a. a -> a ⅋ Bot :=
-  \x => cocase { MkPar(*,k_res) => x };
 
 --------------------------------------------------------------------------------------------
 -- Negation as a data type
@@ -133,23 +15,13 @@ def prd throw : forall a. a -> a ⅋ Bot :=
 --
 --------------------------------------------------------------------------------------------
 
--- positive negation
--- not sure whether a should be CBV or CBN...
-data Notp : (-a : CBV) -> CBV {
-  MkNotp(return a)
-}; 
-
 def prd handle1 : forall a b. a ⅋ b -> Notp(a) -> b := 
   \f e => mu x. e >> case { MkNotp(k2) => f >> MkPar(k2,x)}; 
 
 def prd handle2 : forall a b. a ⅋ b -> Notp(b) -> a := 
   \f e => mu x. e >> case { MkNotp(k2) => f >> MkPar(x,k2)}; 
 
--- negative negation
 
-codata Notn: (-a : CBN) -> CBN {
-  MkNotn(a)
-};
 
 -- De Morgan Dualities
 

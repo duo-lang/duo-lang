@@ -4,7 +4,8 @@ import List;
 import Peano;
 import Prelude;
 import Cofunction;
-import LinearLogic;
+import Unit;
+import Par;
 
 -- a backtracking parser combinator library
 
