@@ -52,7 +52,7 @@ prdCnsDeclarationP doc startPos pc = do
     annot <- annotP
     symbolP SymColoneq
     sc
-    (tm,_) <- termP
+    tm <- termP
     symbolP SymSemi
     endPos <- getSourcePos
     sc
@@ -76,7 +76,7 @@ cmdDeclarationP doc startPos = do
       symbolP SymColoneq
       sc
       pure v
-    (cmd,_) <- termP
+    cmd <- termP
     symbolP SymSemi
     endPos <- getSourcePos
     sc
@@ -308,7 +308,7 @@ instanceDeclarationP doc = do
   recoverDeclaration $ do
     className  <- fst <$> (classNameP <* sc)
     typ        <- fst <$> typP
-    (cases, _) <- bracesP ((fst <$> termCaseP) `sepBy` (symbolP SymComma >> sc))
+    (cases, _) <- bracesP (termCaseP `sepBy` (symbolP SymComma >> sc))
     sc
     symbolP SymSemi
     endPos <- getSourcePos
