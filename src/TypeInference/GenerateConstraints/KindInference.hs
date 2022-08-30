@@ -8,7 +8,7 @@ import Syntax.CST.Names
 import Lookup
 import Errors
 import Driver.Environment
-import Utils
+import Loc
 import Pretty.Pretty
 
 

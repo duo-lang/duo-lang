@@ -54,7 +54,8 @@ import Syntax.RST.Program as RST
 import TypeInference.Constraints
 import TypeInference.GenerateConstraints.KindInference
 import TypeTranslation qualified as TT
-import Utils
+import Loc ( Loc, defaultLoc )
+import Utils ( indexMaybe )
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:

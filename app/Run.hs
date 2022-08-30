@@ -13,7 +13,7 @@ import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Sugar.Desugar (desugarEnvironment)
 import Translate.Focusing (focusEnvironment)
-import Utils ( defaultLoc )
+import Loc ( defaultLoc )
 import Options (DebugFlags(..))
 import Pretty.Errors (printLocatedReport)
 

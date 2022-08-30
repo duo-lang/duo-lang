@@ -29,7 +29,7 @@ import Syntax.CST.Terms qualified as CST
 import Sugar.TST
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Types (PolarityRep(..))
-import Utils (Loc)
+import Loc (Loc)
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
 

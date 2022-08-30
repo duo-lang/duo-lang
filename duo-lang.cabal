@@ -110,6 +110,7 @@ library
       Eval.Eval
       Eval.Primitives
       Lookup
+      Loc
       Parser.Common
       Parser.Definition
       Parser.Kinds
@@ -228,7 +229,6 @@ test-suite duo-lang-test
   other-modules:
       Spec.Focusing
     , Spec.TypeInferenceExamples
-    , Spec.Subsumption
     , Spec.LocallyClosed
     , Spec.Prettyprinter
     , Paths_duo_lang

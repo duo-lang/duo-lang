@@ -11,7 +11,7 @@ import Syntax.CST.Kinds
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
 
-import Utils
+import Loc
 
 ------------------------------------------------------------------------------
 -- CovContraList

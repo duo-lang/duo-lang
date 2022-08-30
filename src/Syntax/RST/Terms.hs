@@ -23,7 +23,7 @@ module Syntax.RST.Terms
 import Data.List (elemIndex)
 import Data.Maybe (fromJust, isJust)
 
-import Utils ( Loc )
+import Loc ( Loc )
 import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.CST.Terms qualified as CST

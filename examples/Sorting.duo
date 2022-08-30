@@ -2,8 +2,10 @@ import Function;
 import Bool;
 import List;
 import Peano;
-import LinearLogic;
 import Prelude;
+import Void;
+import Tensor;
+import NegationP;
 
 data Ordering {
     LT,

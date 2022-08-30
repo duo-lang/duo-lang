@@ -1,7 +1,7 @@
 module Syntax.CST.Terms where
 
 import Syntax.CST.Names ( FreeVarName, XtorName, PrimName )
-import Utils ( HasLoc(..), Loc )
+import Loc ( HasLoc(..), Loc )
 
 --------------------------------------------------------------------------------------------
 -- Substitutions 

@@ -5,7 +5,6 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Either (isRight)
 import Data.List (sort)
 import Data.Text.IO qualified as T
-import System.Directory (listDirectory)
 import System.Environment (withArgs)
 import Test.Hspec
 import Test.Hspec.Runner
@@ -19,13 +18,12 @@ import Parser.Program (moduleP)
 import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified
-import Spec.Subsumption qualified
 import Spec.Prettyprinter qualified
 import Spec.Focusing qualified
-import Syntax.CST.Names
 import Syntax.CST.Program qualified as CST
 import Syntax.TST.Program qualified as TST
 import Options.Applicative
+import Utils (listRecursiveDuoFiles)
 
 data Options where
   OptEmpty  :: Options
@@ -42,16 +40,17 @@ filterP = some (argument str (metavar "FILES..." <> help "Specify files which sh
 
 getAvailableCounterExamples :: IO [FilePath]
 getAvailableCounterExamples = do
-  examples <- listDirectory "test/counterexamples/"
-  pure  $ sort (("test/counterexamples/" ++) <$> filter (\s -> head s /= '.') examples)
+  examples <- listRecursiveDuoFiles "test/counterexamples/"
+  pure  $ sort (filter (\s -> head s /= '.') examples)
 
 excluded :: [FilePath]
 excluded = ["fix.duo"]
 
 getAvailableExamples :: IO [FilePath]
 getAvailableExamples = do
-  examples <- listDirectory "examples/"
-  return (("examples/" ++) <$> filter (\s -> head s /= '.' && notElem s excluded) examples)
+  examples <- listRecursiveDuoFiles "examples/"
+  examples' <- listRecursiveDuoFiles "std/"
+  return (filter (\s -> head s /= '.' && notElem s excluded) (examples <> examples'))
 
 getParsedDeclarations :: FilePath -> IO (Either (NonEmpty Error) CST.Module)
 getParsedDeclarations fp = do
@@ -93,25 +92,9 @@ main = do
     let checkedExamplesFiltered = filter (isRight . snd) checkedExamples
     checkedCounterExamples <- forM counterExamples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
     -- Create symbol tables for tests
-    peano_st <- getSymbolTable "examples/Peano.duo"
-    let peano_st' = case peano_st of
-                Left _ -> error "Could not load Peano.duo"
-                Right peano_st' -> peano_st'
-    bool_st <- getSymbolTable "examples/Bool.duo"
-    let bool_st' = case bool_st of
-                Left _ -> error "Could not load Bool.duo"
-                Right bool_st' -> bool_st'
-    fun_st <- getSymbolTable "examples/Function.duo"
-    let fun_st' = case fun_st of
-                Left _ -> error "Could not load Function.duo"
-                Right fun_st' -> fun_st'
-    let symboltables = [ (MkModuleName "Peano", peano_st')
-                       , (MkModuleName "Bool", bool_st')
-                       , (MkModuleName "Fun", fun_st')]
     -- Run the testsuite
     withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
       describe "All examples are locally closed" (Spec.LocallyClosed.spec checkedExamples)
       describe "ExampleSpec" (Spec.TypeInferenceExamples.spec parsedCounterExamples checkedCounterExamples)
-      describe "Subsumption works" (Spec.Subsumption.spec symboltables)
       describe "Prettyprinted work again" (Spec.Prettyprinter.spec parsedExamples checkedExamplesFiltered)
       describe "Focusing works" (Spec.Focusing.spec checkedExamplesFiltered)

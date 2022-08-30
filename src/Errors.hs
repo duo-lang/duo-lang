@@ -10,7 +10,7 @@ import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
 import Syntax.CST.Types (PrdCns)
 import Syntax.RST.Types
-import Utils
+import Loc
 import TypeInference.Constraints (ConstraintInfo)
 
 ----------------------------------------------------------------------------------

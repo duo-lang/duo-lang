@@ -40,7 +40,7 @@ import Syntax.TST.Program qualified as TST
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.Core.Program qualified as Core
 import TypeAutomata.Subsume ( subsume )
-import Utils ( defaultLoc )
+import Loc ( defaultLoc )
 import Resolution.Program (resolveDecl)
 import Resolution.Terms (resolveCommand)
 import TypeInference.GenerateConstraints.KindInference (checkTypeScheme)

@@ -21,7 +21,7 @@ import Syntax.CST.Kinds
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CST.Terms
-import Utils
+import Loc ( Loc )
 
 ---------------------------------------------------------------------------------
 -- Binary Type Operators

@@ -15,7 +15,7 @@ import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.Core.Annot
 import Syntax.TST.Terms
-import Utils
+import Loc
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Terms qualified as CST
