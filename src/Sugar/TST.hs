@@ -27,7 +27,7 @@ import Syntax.TST.Terms
 import Syntax.CST.Names
 import Syntax.Core.Annot
 import Syntax.CST.Kinds
-import Utils
+import Loc
 import Syntax.TST.Types
 import Syntax.RST.Types (flipPrdCns)
 import Syntax.RST.Program (PrdCnsToPol)

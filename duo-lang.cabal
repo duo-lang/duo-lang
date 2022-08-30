@@ -110,6 +110,7 @@ library
       Eval.Eval
       Eval.Primitives
       Lookup
+      Loc
       Parser.Common
       Parser.Definition
       Parser.Kinds

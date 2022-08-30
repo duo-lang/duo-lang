@@ -17,7 +17,7 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Names
-import Utils ( Loc, HasLoc(getLoc))
+import Loc ( Loc, HasLoc(getLoc))
 
 ---------------------------------------------------------------------------------
 -- Resolved Pattern

@@ -9,7 +9,8 @@ import Syntax.CST.Kinds
 import Pretty.TypeAutomata ()
 import TypeAutomata.Definition
 import TypeAutomata.BicliqueDecomp
-import Utils
+import Utils ( enumerate )
+import Loc ( defaultLoc )
 
 import Control.Monad.Except
 import Control.Monad.Reader

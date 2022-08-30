@@ -22,7 +22,7 @@ module Sugar.Core(
 import Syntax.Core.Terms
 import Syntax.Core.Annot
 import Syntax.CST.Names
-import Utils
+import Loc
 import Syntax.TST.Terms (ShiftDirection(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))

@@ -33,7 +33,7 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Terms qualified as RST
-import Utils
+import Loc
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
 import Syntax.CST.Names
     ( BinOp(InterOp, CustomOp, UnionOp),

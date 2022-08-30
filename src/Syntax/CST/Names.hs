@@ -2,7 +2,7 @@ module Syntax.CST.Names where
 
 import Data.Text (Text)
 
-import Utils
+import Loc ( Loc, defaultLoc )
 
 ---------------------------------------------------------------------------------
 -- Names

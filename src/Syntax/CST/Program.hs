@@ -18,7 +18,7 @@ import Syntax.CST.Names
       XtorName )
 import Syntax.CST.Kinds
     ( EvaluationOrder, MonoKind, PolyKind, Variance )
-import Utils ( HasLoc(..), Loc )
+import Loc ( HasLoc(..), Loc )
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declaration

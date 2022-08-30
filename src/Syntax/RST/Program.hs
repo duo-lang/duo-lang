@@ -19,7 +19,7 @@ import Syntax.CST.Kinds
     ( EvaluationOrder, MonoKind, PolyKind, Variance )
 import Syntax.CST.Types ( DataCodata, PrdCns(..), PrdCnsRep(..) )
 
-import Utils ( Loc )
+import Loc ( Loc )
 import Syntax.CST.Program qualified as CST
 
 ---------------------------------------------------------------------------------

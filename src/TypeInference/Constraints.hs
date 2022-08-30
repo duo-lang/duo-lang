@@ -6,7 +6,7 @@ import Syntax.TST.Types
 import Syntax.CST.Names
 import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Kinds
-import Utils ( Loc )
+import Loc ( Loc )
 
 
 ------------------------------------------------------------------------------

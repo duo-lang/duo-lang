@@ -4,7 +4,7 @@ import Syntax.CST.Names
     ( BinOp, ClassName, SkolemTVar, TypeName, UniTVar, XtorName )
 
 import Data.List.NonEmpty (NonEmpty)
-import Utils ( Loc, HasLoc(..))
+import Loc ( Loc, HasLoc(..))
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer
