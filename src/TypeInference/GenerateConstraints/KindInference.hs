@@ -1,5 +1,6 @@
 module TypeInference.GenerateConstraints.KindInference where
 
+import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST
 import Syntax.TST.Types (getKind)
@@ -43,12 +44,23 @@ getXtorKinds :: KindReader a m => Loc -> [RST.XtorSig pol] -> m (Maybe MonoKind)
 getXtorKinds _ [] = return Nothing
 getXtorKinds loc (fst:rst) = do
   let nm = RST.sig_name fst
-  knd <- Just <$> lookupXtorKind nm
+  decl <- lookupDataDecl loc nm
+  knd <- getKindDecl decl 
   knd' <- getXtorKinds loc rst
   if knd == knd' then
     return knd 
   else 
     throwSolverError loc ["Kinds ", ppPrint knd , " and ", ppPrint knd', "of constructors do not match"]
+
+getTyNameKind :: KindReader a m => Loc -> RnTypeName -> m (Maybe MonoKind)
+getTyNameKind loc tyn = do
+  decl <- lookupTypeName loc tyn
+  getKindDecl decl
+  
+getKindDecl :: KindReader a m => RST.DataDecl -> m (Maybe MonoKind)
+getKindDecl decl = do
+  let polyknd = RST.data_kind decl
+  return (Just (CBox (returnKind polyknd)))
 
 checkInstDecl :: KindReader a m => (RST.Typ RST.Pos, RST.Typ RST.Neg) -> m (TST.Typ RST.Pos, TST.Typ RST.Neg)
 checkInstDecl (ty1, ty2) = do 
@@ -107,17 +119,19 @@ checkKind (RST.TyCodata loc pol xtors) = do
   xtors' <- mapM checkXtorSig xtors
   return (TST.TyCodata loc pol knd xtors')
 
--- TODO
-checkKind (RST.TyDataRefined loc pol tn xtors) = do
+checkKind (RST.TyDataRefined loc pol tyn xtors) = do 
   xtors' <- mapM checkXtorSig xtors
-  return (TST.TyDataRefined loc pol Nothing tn xtors')
-checkKind (RST.TyCodataRefined loc pol tn xtors) = do 
+  knd <- getTyNameKind loc tyn
+  return (TST.TyDataRefined loc pol knd tyn xtors')
+checkKind (RST.TyCodataRefined loc pol tyn xtors) = do
   xtors' <- mapM checkXtorSig xtors
-  return (TST.TyCodataRefined loc pol Nothing tn xtors')
-checkKind (RST.TyNominal loc pol tn vart) = do
-  vart' <- mapM checkVariantType vart
-  return (TST.TyNominal loc pol Nothing tn vart')
----
+  knd <- getTyNameKind loc tyn
+  return (TST.TyCodataRefined loc pol knd tyn xtors')
+
+checkKind (RST.TyNominal loc pol tyn vartys) = do
+  vartys' <- mapM checkVariantType vartys
+  knd <- getTyNameKind loc tyn
+  return (TST.TyNominal loc pol knd tyn vartys')
 
 checkKind (RST.TySyn loc pol tn ty) = do 
   ty' <- checkKind ty 
