@@ -1,0 +1,67 @@
+import Function;
+import Peano;
+import Bool;
+
+-- Subsumptions which should hold
+
+def prd ex01    : forall a. { Ap(a,return a) }                                   := \x => x;
+def prd ex01sub : { Ap(< True >,return < True >) }                               := \x => True;
+
+def prd ex02    : forall a. { Ap(a,return a) }                                   := \x => x;
+def prd ex02sub : { Ap(< True >,return < True >) }                               := \x => x;
+
+def prd ex03    : { Ap(< True >,return < True >) }                               := \x => x; 
+def prd ex03sub : { Ap(< True >,return < True >) }                               := \x => x;
+
+def prd ex04    : forall a. { Ap(< True >,return < True >) }                     := \x => x;
+def prd ex04sub : { Ap(< True >,return < True >) }                               := \x => x;
+
+def prd ex05    : { Ap(< True >,return < True >) }                               := \x => x;
+def prd ex05sub : forall a. { Ap(< True >,return < True >) }                     := \x => x;
+
+def prd ex06    : { Ap(< True , False >,return < True >) }                       := \x => True;
+def prd ex06sub : { Ap(< True >,return < True , False >) }                       := \x => x;
+
+def prd ex07    : { Ap( Nat , return { Ap( Nat , return Bool ) } ) }             := \x => x;
+def prd ex07sub : { Ap( Nat , return { Ap( Nat , return Bool ) } ) }             := \x => x;
+
+def prd ex08    : Nat                                                            := Z;
+def prd ex08sub : Nat                                                            := Z;
+
+def prd ex09    : { Ap(Nat,return Bool) }                                        := \x => True;
+def prd ex09sub : { Ap(Nat,return Bool) }                                        := \x => True;
+
+def prd ex10    : rec a.  <Z, S(< S(a) >)>                                       := S(S(Z));
+def prd ex10sub : rec a. <Z, S(a)>                                               := S(Z);
+
+def prd ex11    : { Ap(rec a. < Z, S(a) >, return (rec a.  <Z, S(< S(a) >)>) ) } := \x => S(x);
+def prd ex11sub : { Ap(rec a.  <Z, S(< S(a) >)>, return (rec a. < Z, S(a) >) ) } := \x => S(x);
+
+def prd ex12    : Nat                                                            := Z;
+def prd ex12sub : Nat \/ Nat                                                     := Z;
+
+def prd ex13    : rec a. < Z, S(a) >                                             := Z;
+def prd ex13sub : rec a. < Z > \/ < S(a) >                                       := Z;
+
+def prd ex14    : < S(<Z>) >                                                     := S(Z);
+def prd ex14sub : < Z> \/ < S(<Z>) >                                             := S(Z);
+
+def prd ex15    : forall t0. (t0 -> (rec r4.(t0 \/ < S( r4 ) >)))                := \x => S(Z);
+def prd ex15sub : (rec b. < Z , S( b ) > ) -> (rec c. < Z , S( c ) > )           := \x => S(Z);
+
+ 
+
+-- Subsumptions which shouldn't hold
+
+-- def prd ex16    : {}                                                                    := ();
+-- def prd ex16sub : <>                                                                    := ();
+def prd ex17    : { Ap(< True >,return < True >) }                                      := \x => x;
+def prd ex17sub : forall a. { Ap(a,return a) }                                          := \x => x;
+def prd ex18    : { Ap(< True >,return < True , False >) }                              := \x => x;
+def prd ex18sub : { Ap(< True >,return < True >) }                                      := \x => x;
+def prd ex19    : Nat                                                                   := Z;
+def prd ex19sub : Bool                                                                  := True;
+def prd ex20    : { Ap(rec a. < Z, S( <S(a)> ) >, return (rec a.  <Z, S(< S(a) >)>) ) } := \x => x;
+def prd ex20sub : { Ap(rec a.  <Z, S(a)>, return (rec a. < Z, S(a) >) ) }               := \x => x;
+def prd ex21    : (rec b. < Z , S( b ) > ) -> (rec c. < Z , S( c ) > )                  := \x => x;
+def prd ex21sub : forall t0. (t0 -> (rec r4.(t0 \/ < S( r4 ) >)))                       := \x => S(Z);
