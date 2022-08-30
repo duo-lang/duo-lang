@@ -51,7 +51,8 @@ excluded = ["fix.duo"]
 getAvailableExamples :: IO [FilePath]
 getAvailableExamples = do
   examples <- listRecursiveDuoFiles "examples/"
-  return (filter (\s -> head s /= '.' && notElem s excluded) examples)
+  examples' <- listRecursiveDuoFiles "std/"
+  return (filter (\s -> head s /= '.' && notElem s excluded) (examples <> examples'))
 
 getParsedDeclarations :: FilePath -> IO (Either (NonEmpty Error) CST.Module)
 getParsedDeclarations fp = do
@@ -97,9 +98,9 @@ main = do
     let peano_st' = case peano_st of
                 Left _ -> error "Could not load Peano.duo"
                 Right peano_st' -> peano_st'
-    bool_st <- getSymbolTable "examples/Bool.duo"
+    bool_st <- getSymbolTable "std/Data/Bool.duo"
     let bool_st' = case bool_st of
-                Left _ -> error "Could not load Bool.duo"
+                Left _ -> error "Could not load Bstaool.duo"
                 Right bool_st' -> bool_st'
     fun_st <- getSymbolTable "examples/Function.duo"
     let fun_st' = case fun_st of
