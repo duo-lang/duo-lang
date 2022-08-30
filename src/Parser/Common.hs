@@ -76,22 +76,14 @@ tyOpNameP = try $ do
   return (MkTyOpName name, pos)
 
 tyBinOpP :: Parser (BinOp, SourcePos)
-tyBinOpP = try (interOpASCII <|> interOpUnicode <|> unionOpASCII <|> unionOpUnicode <|> customOp)
+tyBinOpP = try (interOp <|> unionOp <|> customOp)
   where
-    interOpASCII  = do
-      symbolP SymInter
+    interOp = do
+      symbolP SymInter <|> symbolP SymInterUnicode
       pos <- getSourcePos
       pure (InterOp, pos)
-    interOpUnicode = do
-      symbolP SymInterUnicode
-      pos <- getSourcePos
-      pure (InterOp, pos)
-    unionOpASCII  = do
-      symbolP SymUnion
-      pos <- getSourcePos
-      pure (UnionOp, pos)
-    unionOpUnicode = do
-      symbolP SymUnionUnicode
+    unionOp = do
+      symbolP SymUnion <|> symbolP SymUnionUnicode
       pos <- getSourcePos
       pure (UnionOp, pos)
     customOp = do
