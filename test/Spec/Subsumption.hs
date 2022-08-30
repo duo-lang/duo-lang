@@ -13,7 +13,8 @@ import Resolution.Types
 import Syntax.CST.Names
 import Syntax.RST.Types (PolarityRep(..))
 import TypeAutomata.Subsume (subsume)
-import TypeInference.GenerateConstraints.Definition (checkTypeScheme)
+import TypeInference.GenerateConstraints.KindInference (checkTypeScheme)
+import Driver.Definition
 
 subsumptionCheckPos :: [(ModuleName, SymbolTable)] -> Bool -> Text -> Text -> Spec
 subsumptionCheckPos env bspec s1 s2 = do
@@ -30,7 +31,11 @@ subsumptionCheckPos env bspec s1 s2 = do
           (Left _err, _) -> expectationFailure "Could not lower left example"
           (_, Left _err) -> expectationFailure "Could not lower right example"
           (Right r1, Right r2) -> do
-            case subsume PosRep (checkTypeScheme r1) (checkTypeScheme r2) of
+            let mayber1' = runKindReaderM (checkTypeScheme r1) M.empty
+            let r1' = case mayber1' of Left _ -> error "Could not check left typeScheme"; Right res -> fst res; 
+            let mayber2' = runKindReaderM (checkTypeScheme r2) M.empty
+            let r2' = case mayber2' of Left _ -> error "Could not check left typeScheme"; Right res -> fst res; 
+            case subsume PosRep r1' r2' of
               Right b -> b `shouldBe` bspec
               Left err -> expectationFailure (show err)
             
