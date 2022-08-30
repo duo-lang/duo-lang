@@ -12,6 +12,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
+import Data.Text qualified as T
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
@@ -22,8 +23,20 @@ import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import TypeAutomata.Definition
-import Loc ( defaultLoc )
+    ( TypeAutEps,
+      TypeAut'(..),
+      TypeGrEps,
+      TypeAutCore(..),
+      FlowEdge,
+      EdgeLabelEpsilon,
+      EdgeLabel(..),
+      NodeLabel(..),
+      XtorLabel(..),
+      emptyNodeLabel, 
+      singleNodeLabel,
+      PrimitiveType(..))
 import Utils ( enumerate )
+import Loc ( defaultLoc )
 import Control.Monad
 
 --------------------------------------------------------------------------
@@ -56,7 +69,15 @@ createNodes :: [SkolemTVar] -> [(SkolemTVar, (Node, NodeLabel), (Node, NodeLabel
 createNodes tvars = createNode <$> createPairs tvars
   where
     createNode :: (SkolemTVar, Node, Node) -> (SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos), (negNode, emptyNodeLabel Neg), (negNode, posNode))
+    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos (createKVar tv PosRep)), (negNode, emptyNodeLabel Neg (createKVar tv NegRep)), (negNode, posNode))
+    
+    createKVar :: SkolemTVar -> PolarityRep pol -> MonoKind
+    createKVar sv pol = KindVar (MkKVar (T.pack ("k" <> T.unpack (unSkolemTVar sv) <>  polToString pol)))
+
+    polToString :: PolarityRep pol -> String
+    polToString pol = case pol of
+      PosRep -> "Pos"
+      NegRep -> "Neg"
 
     createPairs :: [SkolemTVar] -> [(SkolemTVar,Node,Node)]
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
@@ -71,9 +92,7 @@ initialize tvars =
               , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
               }
     lookupEnv = LookupEnv { tSkolemVarEnv = M.fromList [(tv, (posNode,negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
-        ,tRecVarEnv = M.empty
-                          }
-  in
+        ,tRecVarEnv = M.empty } in
     (initAut, lookupEnv)
 
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
@@ -98,7 +117,6 @@ insertNode node nodelabel = modifyGraph (G.insNode (node, nodelabel))
 
 insertEdges :: [(Node,Node,EdgeLabelEpsilon)] -> TTA ()
 insertEdges edges = modifyGraph (G.insEdges edges)
-
 newNodeM :: TTA Node
 newNodeM = do
   graph <- gets ta_gr
@@ -175,10 +193,10 @@ lookupTRecVar NegRep tv = do
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 
-insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> [XtorSig pol] -> TTA Node
-insertXtors dc pol mtn xtors = do
+insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> [XtorSig pol] -> MonoKind -> TTA Node
+insertXtors dc pol mtn xtors mk = do
   newNode <- newNodeM
-  insertNode newNode (singleNodeLabel pol dc mtn (S.fromList (sigToLabel <$> xtors)))
+  insertNode newNode (singleNodeLabel pol dc mk mtn  (S.fromList (sigToLabel <$> xtors)))
   forM_ xtors $ \(MkXtorSig xt ctxt) -> do
     forM_ (enumerate ctxt) $ \(i, pcType) -> do
       node <- insertPCType pcType
@@ -204,24 +222,24 @@ insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert 
                                                             , "should not appear at this point in the program."
                                                             ]
 insertType (TyRecVar _ rep _ tv) = lookupTRecVar rep tv
-insertType (TyTop _ _) = do
+insertType (TyTop _ knd) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Neg)
+  insertNode newNode (emptyNodeLabel Neg knd)
   pure newNode
-insertType (TyBot _ _) = do
+insertType (TyBot _ knd) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Pos)
+  insertNode newNode (emptyNodeLabel Pos knd)
   pure newNode
-insertType (TyUnion _ _ ty1 ty2) = do
+insertType (TyUnion _ mk ty1 ty2) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Pos)
   ty1' <- insertType ty1
   ty2' <- insertType ty2
+  insertNode newNode (emptyNodeLabel Pos mk)
   insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
   pure newNode
-insertType (TyInter _ _ ty1 ty2) = do
+insertType (TyInter _ mk ty1 ty2) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Neg)
+  insertNode newNode (emptyNodeLabel Neg mk)
   ty1' <- insertType ty1
   ty2' <- insertType ty2
   insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
@@ -229,21 +247,22 @@ insertType (TyInter _ _ ty1 ty2) = do
 insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel pol)
   let extendEnv PosRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Just newNode, Nothing) tRecVars
       extendEnv NegRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Nothing, Just newNode) tRecVars
   n <- local (extendEnv rep) (insertType ty)
+  insertNode newNode (emptyNodeLabel pol (getKind ty)) 
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData _ polrep _ xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors
-insertType (TyCodata _ polrep _ xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing xtors
-insertType (TyDataRefined _ polrep _ mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) xtors
-insertType (TyCodataRefined _ polrep _ mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) xtors
+-- for now, only default values CBV and CBN are used, later these types will all have type annotations
+insertType (TyData _ polrep mk xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors mk
+insertType (TyCodata _ polrep mk xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing xtors mk
+insertType (TyDataRefined _ polrep mk mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) xtors mk
+insertType (TyCodataRefined _ polrep mk mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) xtors mk
 insertType (TySyn _ _ _ ty) = insertType ty
-insertType (TyNominal _ rep _ tn args) = do
+insertType (TyNominal _ rep mk tn args) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol) { nl_nominal = S.singleton (tn, toVariance <$> args) })
+  insertNode newNode ((emptyNodeLabel pol mk) { nl_nominal = S.singleton (tn, toVariance <$> args) })
   argNodes <- forM args insertVariantType
   insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate argNodes)
   return newNode

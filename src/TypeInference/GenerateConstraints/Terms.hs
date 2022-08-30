@@ -19,6 +19,7 @@ import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Names
 import Syntax.CST.Kinds
+import Translate.Embed
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.GenerateConstraints.KindInference
 import TypeInference.Constraints
@@ -97,8 +98,14 @@ genConstraintsTerm (Core.Xtor loc annot rep CST.Structural xt subst) = do
   inferredSubst <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs inferredSubst
   case rep of
-    PrdRep -> return $ TST.Xtor loc annot rep (TST.TyData   defaultLoc PosRep Nothing [TST.MkXtorSig xt substTypes]) CST.Structural xt inferredSubst
-    CnsRep -> return $ TST.Xtor loc annot rep (TST.TyCodata defaultLoc NegRep Nothing [TST.MkXtorSig xt substTypes]) CST.Structural xt inferredSubst
+    PrdRep -> do
+      let rstty = RST.TyData defaultLoc PosRep [RST.MkXtorSig xt (embedTSTPrdCnsType <$> substTypes)]
+      tstty <- checkKind rstty
+      return $ TST.Xtor loc annot rep tstty CST.Structural xt inferredSubst
+    CnsRep -> do 
+      let rstty = RST.TyCodata defaultLoc NegRep [RST.MkXtorSig xt (embedTSTPrdCnsType <$> substTypes)]
+      tstty <- checkKind rstty
+      return $ TST.Xtor loc annot rep tstty CST.Structural xt inferredSubst
 --
 -- Nominal Xtors
 --
@@ -151,10 +158,17 @@ genConstraintsTerm (Core.XCase loc annot rep CST.Structural cases) = do
                       cmdInferred <- withContext uvarsPos (genConstraintsCommand cmdcase_cmd)
                       -- Return the negative unification variables in the returned type.
                       return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
+  let xtors = snd <$> inferredCases
   case rep of
     -- The return type is a structural type consisting of a XtorSig for each case.
-    PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodata defaultLoc PosRep Nothing (snd <$> inferredCases)) CST.Structural (fst <$> inferredCases)
-    CnsRep -> return $ TST.XCase loc annot rep (TST.TyData   defaultLoc NegRep Nothing (snd <$> inferredCases)) CST.Structural (fst <$> inferredCases)
+    PrdRep -> do 
+      let rstty = RST.TyCodata defaultLoc PosRep (embedTSTXtorSig <$> xtors)
+      tstty <- checkKind rstty
+      return $ TST.XCase loc annot rep tstty CST.Structural (fst <$> inferredCases)
+    CnsRep -> do
+      let rstty = RST.TyData defaultLoc NegRep (embedTSTXtorSig <$> xtors)
+      tstty <- checkKind rstty
+      return $ TST.XCase loc annot rep tstty CST.Structural (fst <$> inferredCases)
 --
 -- Nominal pattern and copattern matches
 --
@@ -264,7 +278,7 @@ genConstraintsCommand (Core.Print loc prd cmd) = do
   pure (TST.Print loc prd' cmd')
 genConstraintsCommand (Core.Read loc cns) = do
   cns' <- genConstraintsTerm cns
-  addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep (Just (CBox CBV)) peanoNm []) (TST.getTypeTerm cns'))
+  addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep (CBox CBV) peanoNm []) (TST.getTypeTerm cns'))
   return (TST.Read loc cns')
 genConstraintsCommand (Core.Apply loc annot t1 t2) = do
   t1' <- genConstraintsTerm t1

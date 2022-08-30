@@ -65,7 +65,8 @@ import Utils ( indexMaybe )
 ---------------------------------------------------------------------------------------------
 
 data GenerateState = GenerateState
-  { varCount :: Int
+  { uVarCount :: Int
+  , kVarCount :: Int
   , constraintSet :: ConstraintSet
   }
 
@@ -73,7 +74,7 @@ initialConstraintSet :: ConstraintSet
 initialConstraintSet = ConstraintSet { cs_constraints = [], cs_uvars = [] ,cs_kvars = []}
 
 initialState :: GenerateState
-initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSet }
+initialState = GenerateState { uVarCount = 0, kVarCount = 0, constraintSet = initialConstraintSet }
 
 ---------------------------------------------------------------------------------------------
 -- GenerateReader:
@@ -107,14 +108,16 @@ runGenM loc env m = case runWriter (runExceptT (runStateT (runReaderT  (getGenM 
 
 freshTVar :: UVarProvenance -> GenM (TST.Typ Pos, TST.Typ Neg)
 freshTVar uvp = do
-  var <- gets varCount
-  let tvar = MkUniTVar ("u" <> T.pack (show var))
+  uVarC <- gets uVarCount
+  kVarC <- gets kVarCount
+  let tvar = MkUniTVar ("u" <> T.pack (show uVarC))
+  let kVar = MkKVar ("k" <> T.pack (show kVarC))
   -- We need to increment the counter:
-  modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
+  modify (\gs@GenerateState{} -> gs { uVarCount = uVarC + 1, kVarCount = kVarC + 1 })
   -- We also need to add the uvar to the constraintset.
-  modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
-            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
-  return (TST.TyUniVar defaultLoc PosRep Nothing tvar, TST.TyUniVar defaultLoc NegRep Nothing tvar)
+  modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars,cs_kvars } } ->
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)], cs_kvars = cs_kvars ++ [kVar] } })
+  return (TST.TyUniVar defaultLoc PosRep (KindVar kVar) tvar, TST.TyUniVar defaultLoc NegRep (KindVar kVar) tvar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
 freshTVars [] = return ([],[])

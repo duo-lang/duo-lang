@@ -24,24 +24,28 @@ import Data.Map qualified as M
 --------------------------------------------------------------------------------------------
 type KindReader a m = (MonadError (NonEmpty Error) m, MonadReader (M.Map ModuleName Environment, a) m)
 
-getKindM :: forall a m res. KindReader a m 
-         => (Environment -> Maybe res)
-         -> Error
-         -> m (ModuleName, res)
-getKindM f err = asks fst >>= \env -> go (M.toList env)
-  where
-    go :: [(ModuleName, Environment)] -> m (ModuleName, res)
-    go [] = throwError (err NE.:| [])
-    go ((mn,env):envs) = 
-      case f env of 
-        Just res -> pure (mn,res)
-        Nothing -> go envs
+--getKindM :: forall a m res. KindReader a m 
+--         => (Environment -> Maybe res)
+--         -> Error
+--         -> m (ModuleName, res)
+--getKindM f err = asks fst >>= \env -> go (M.toList env)
+--  where
+--    go :: [(ModuleName, Environment)] -> m (ModuleName, res)
+--    go [] = throwError (err NE.:| [])
+--    go ((mn,env):envs) = 
+--     case f env of 
+--        Just res -> pure (mn,res)
+--        Nothing -> go envs
 
 --------------------------------------------------------------------------------------------
 -- Types
 --------------------------------------------------------------------------------------------
-getXtorKinds :: KindReader a m => Loc -> [RST.XtorSig pol] -> m (Maybe MonoKind)
-getXtorKinds _ [] = return Nothing
+getXtorKinds :: KindReader a m => Loc -> [RST.XtorSig pol] -> m MonoKind
+getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
+getXtorKinds loc [xtor] = do 
+  let nm = RST.sig_name xtor
+  decl <- lookupDataDecl loc nm
+  getKindDecl decl
 getXtorKinds loc (fst:rst) = do
   let nm = RST.sig_name fst
   decl <- lookupDataDecl loc nm
@@ -52,15 +56,15 @@ getXtorKinds loc (fst:rst) = do
   else 
     throwSolverError loc ["Kinds ", ppPrint knd , " and ", ppPrint knd', "of constructors do not match"]
 
-getTyNameKind :: KindReader a m => Loc -> RnTypeName -> m (Maybe MonoKind)
+getTyNameKind :: KindReader a m => Loc -> RnTypeName -> m MonoKind
 getTyNameKind loc tyn = do
   decl <- lookupTypeName loc tyn
   getKindDecl decl
   
-getKindDecl :: KindReader a m => RST.DataDecl -> m (Maybe MonoKind)
+getKindDecl :: KindReader a m => RST.DataDecl -> m MonoKind
 getKindDecl decl = do
   let polyknd = RST.data_kind decl
-  return (Just (CBox (returnKind polyknd)))
+  return (CBox (returnKind polyknd))
 
 checkInstDecl :: KindReader a m => (RST.Typ RST.Pos, RST.Typ RST.Neg) -> m (TST.Typ RST.Pos, TST.Typ RST.Neg)
 checkInstDecl (ty1, ty2) = do 
@@ -99,15 +103,15 @@ checkXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = do
 checkKind :: KindReader a m => RST.Typ pol -> m (TST.Typ pol)
 checkKind (RST.TySkolemVar loc pol tv) = do
   let knd = KindVar (MkKVar (unSkolemTVar tv))
-  return (TST.TySkolemVar loc pol (Just knd) tv)
+  return (TST.TySkolemVar loc pol knd tv)
 
 checkKind (RST.TyUniVar loc pol tv) = do 
   let knd = KindVar (MkKVar (unUniTVar tv))
-  return (TST.TyUniVar loc pol (Just knd) tv)
+  return (TST.TyUniVar loc pol knd tv)
 
 checkKind (RST.TyRecVar loc pol rv) = do
   let knd = KindVar (MkKVar (unRecTVar rv))
-  return (TST.TyRecVar loc pol (Just knd) rv)
+  return (TST.TyRecVar loc pol knd rv)
 
 checkKind (RST.TyData loc pol xtors) = do 
   knd <- getXtorKinds loc xtors 
@@ -137,8 +141,8 @@ checkKind (RST.TySyn loc pol tn ty) = do
   ty' <- checkKind ty 
   return (TST.TySyn loc pol tn ty')
 
-checkKind (RST.TyBot loc) = return (TST.TyBot loc (Just topbotVar))
-checkKind (RST.TyTop loc) = return (TST.TyTop loc (Just topbotVar))
+checkKind (RST.TyBot loc) = return (TST.TyBot loc topbotVar)
+checkKind (RST.TyTop loc) = return (TST.TyTop loc topbotVar)
 
 checkKind (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- checkKind ty1
