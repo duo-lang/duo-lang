@@ -71,7 +71,7 @@ initialize tvars =
               , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
               }
     lookupEnv = LookupEnv { tSkolemVarEnv = M.fromList [(tv, (posNode,negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
-        ,tRecVarEnv = M.empty
+                          , tRecVarEnv = M.empty
                           }
   in
     (initAut, lookupEnv)
