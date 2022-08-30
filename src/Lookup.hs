@@ -6,6 +6,8 @@ module Lookup
   , lookupDataDecl
   , lookupTypeName
   , lookupXtorSig
+  , lookupXtorSigLower
+  , lookupXtorSigUpper
   , lookupXtorKind
   , lookupClassDecl
   , lookupMethodType
@@ -130,6 +132,15 @@ lookupXtorSig loc xtn NegRep = do
   case find ( \RST.MkXtorSig{..} -> sig_name == xtn ) (snd (RST.data_xtors decl)) of
     Just xts -> return xts
     Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (RST.data_name decl))]
+
+
+lookupXtorSigUpper :: EnvReader a m
+                   => Loc -> XtorName -> m (RST.XtorSig Neg)
+lookupXtorSigUpper loc _xt = throwOtherError loc ["lookupXtorSigUpper not implemented"]
+
+lookupXtorSigLower :: EnvReader a m
+                   => Loc -> XtorName -> m (RST.XtorSig Pos)
+lookupXtorSigLower loc _xt = throwOtherError loc ["lookupXtorSigLower not implemented"]
 
 -- | Find the class declaration for a classname.
 lookupClassDecl :: EnvReader a m
