@@ -1,0 +1,16 @@
+import Function;
+
+-- | Conjunction as a data type.
+data Tensor : (+a : CBV, +b : CBV) -> CBV {
+    MkTensor(a, b)
+};
+
+type operator ⊗ leftassoc at 5 := Tensor;
+
+-- | First projection on Tensor.
+def prd fst : forall a. Tensor(a,Top) -> a :=
+  \p => case p of { MkTensor(x,y) => x};
+
+-- | Second projection on Tensor
+def prd snd : forall a. Tensor(Top,a) -> a :=
+  \p => case p of { MkTensor(x,y) => y};

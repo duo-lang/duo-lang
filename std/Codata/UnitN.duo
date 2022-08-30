@@ -1,0 +1,6 @@
+-- | The singleton type defined as a codata type.
+codata UnitN {};
+
+-- TODO: Allow this to typecheck
+-- def prd mkUnitN : UnitN :=
+--   cocase {};
