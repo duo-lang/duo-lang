@@ -6,6 +6,7 @@ import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
 import System.Console.ANSI
+import Data.String (fromString)
 
 ---------------------------------------------------------------------------------
 -- Annotations
@@ -173,3 +174,19 @@ angles' = mkParen True (prettyAnn ("<" :: String))(prettyAnn (">" :: String))
 
 braces' :: Doc Annotation -> [Doc Annotation] -> Doc Annotation
 braces' = mkParen True (prettyAnn ("{" :: String))(prettyAnn ("}" :: String))
+
+
+headerWidth :: Int
+headerWidth = 60
+
+headerise :: forall ann. String -> String -> String -> Doc ann
+headerise tb lr header = vsep [tbLine, headerLine, tbLine]
+  where
+    hdLen      = length header
+    tbLine     = fromString $ take headerWidth $ concat $ repeat tb
+    lrTotLen   = (headerWidth - hdLen) - 2
+    lrReps     = concat $ repeat lr
+    lLine      = fromString           $ take (lrTotLen `quot` 2)                    lrReps
+    rLine      = fromString $ reverse $ take (lrTotLen `quot` 2 + lrTotLen `mod` 2) lrReps
+    headerLine = lLine <+> fromString header <+> rLine
+

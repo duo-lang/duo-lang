@@ -143,8 +143,5 @@ prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> annSymbol ":" <+> pret
 
 newtype Header a = Header { getHeader :: a }
 
-instance Pretty a => PrettyAnn (Header a) where
-  prettyAnn (Header h) = 
-    let eqs' = repeat '='
-        eqs  = pretty $ take 10 eqs'
-    in eqs <+> pretty h <+> eqs
+instance PrettyAnn (Header String) where
+  prettyAnn (Header h) = headerise "=" "=" h
