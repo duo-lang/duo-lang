@@ -89,8 +89,12 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
         CST.Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
         CST.NonRecursive -> genConstraintsTerm pcdecl_term
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
-  guardVerbose $ ppPrintIO (Header (T.unpack (unFreeVarName pcdecl_name)))
-  guardVerbose $ ppPrintIO constraintSet
+  guardVerbose $ do
+    ppPrintIO (Header (T.unpack (unFreeVarName pcdecl_name)))
+    ppPrintIO ("" :: T.Text)
+    ppPrintIO pcdecl_term
+    ppPrintIO ("" :: T.Text)
+    ppPrintIO constraintSet
   -- 2. Solve the constraints.
   solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet env
   guardVerbose $ ppPrintIO solverResult
