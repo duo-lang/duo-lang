@@ -141,13 +141,13 @@ unifyKinds (CBox cc1) (CBox cc2) =
   if cc1 == cc2
     then return ()
     else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
-unifyKinds (KindVar kv) (KindVar kv') = do
+unifyKinds (KindVar kv1) (KindVar kv2) = do
   sets <- getKVars
-  let k1 = lookupKVar kv sets
-  let k2 = lookupKVar kv' sets
-  case (fst k1,fst k2) of 
-    (_, Nothing) -> putKVars $ M.insert (fst k1) (S.insert kv' (snd k1)) (M.insert (fst k2) (S.delete kv' (snd k2)) sets)
-    (Nothing, _) -> putKVars $ M.insert (fst k2) (S.insert kv' (snd k2)) (M.insert (fst k1) (S.delete kv (snd k1)) sets)
+  let (mmk1, kvs1) = lookupKVar kv1 sets
+  let (mmk2, kvs2) = lookupKVar kv2 sets
+  case (mmk1,mmk2) of 
+    (_, Nothing) -> putKVars $ M.insert mmk1 (S.insert kv2 kvs1) (M.insert mmk2 (S.delete kv2 kvs2) sets)
+    (Nothing, _) -> putKVars $ M.insert mmk2 (S.insert kv1 kvs2) (M.insert mmk1 (S.delete kv1 kvs1) sets)
     (Just mk1, Just mk2) | mk1 == mk2 -> putKVars sets 
                          | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint mk1 <> " and " <> ppPrint mk2]
 unifyKinds (KindVar kv) kind = do 
@@ -344,6 +344,6 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
 solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NonEmpty Error) SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) env = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
-  kvarSolution <- Right $ computeKVarSolution ErrorUnresolved (sst_kvars solverState)
+  let kvarSolution = computeKVarSolution ErrorUnresolved (sst_kvars solverState)
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution
