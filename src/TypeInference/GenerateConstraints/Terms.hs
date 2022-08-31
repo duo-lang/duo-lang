@@ -283,8 +283,10 @@ genConstraintsCommand (Core.Read loc cns) = do
 genConstraintsCommand (Core.Apply loc annot t1 t2) = do
   t1' <- genConstraintsTerm t1
   t2' <- genConstraintsTerm t2
-  addConstraint (SubType (CommandConstraint loc) (TST.getTypeTerm t1') (TST.getTypeTerm t2'))
-  pure (TST.Apply loc annot Nothing t1' t2')
+  let ty1 = TST.getTypeTerm t1'
+  let ty2 = TST.getTypeTerm t2'
+  addConstraint (SubType (CommandConstraint loc) ty1 ty2)
+  pure (TST.Apply loc annot (TST.getKind ty1) t1' t2')
 genConstraintsCommand (Core.PrimOp loc op subst) = do
   substInferred <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs substInferred

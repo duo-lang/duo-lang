@@ -11,7 +11,7 @@ import Errors (throwEvalError)
 import Loc
 
 applyPrdToCns :: Term Prd -> Term Cns -> EvalM (Maybe Command)
-applyPrdToCns x k = pure $ Just $ Apply defaultLoc ApplyAnnotOrig (Just $ CBox CBV) x k
+applyPrdToCns x k = pure $ Just $ Apply defaultLoc ApplyAnnotOrig (CBox CBV) x k
 
 evalPrimOp :: PrimitiveOp -> Substitution -> EvalM (Maybe Command)
 -- I64
