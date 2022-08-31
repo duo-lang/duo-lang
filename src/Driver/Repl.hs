@@ -94,7 +94,7 @@ data EvalSteps = Steps | NoSteps
 
 runCmd :: Text -> EvalSteps ->  DriverM ()
 runCmd txt steps = do
-    (parsedCommand, _) <- runInteractiveParser termP txt
+    parsedCommand <- runInteractiveParser termP txt
     sts <- getSymbolTables
     resolvedDecl <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveCommand parsedCommand))
     let cmdDecl = Core.MkCommandDeclaration defaultLoc Nothing (MkFreeVarName "main") (desugarCmd resolvedDecl)
