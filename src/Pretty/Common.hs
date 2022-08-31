@@ -1,5 +1,6 @@
 module Pretty.Common where
 
+import Data.Text (Text)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Prettyprinter
@@ -139,5 +140,5 @@ prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> annSymbol ":" <+> pret
 
 newtype Header a = Header { getHeader :: a }
 
-instance PrettyAnn (Header String) where
+instance PrettyAnn (Header Text) where
   prettyAnn (Header h) = headerise "=" "=" h
