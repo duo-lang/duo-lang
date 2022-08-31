@@ -17,6 +17,9 @@ import Control.Monad.Reader
 import Control.Monad.Except
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as M
+import Data.Text qualified as T
+
+import Debug.Trace
 
 --------------------------------------------------------------------------------------------
 -- Kind Inference Monad 
@@ -132,21 +135,18 @@ checkKind (RST.TyTop loc) = return (TST.TyTop loc topbotVar)
 checkKind (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- checkKind ty1
   ty2' <- checkKind ty2
-  let knd = getKind ty1'
-  --if knd == getKind ty2' then
+  -- not an optimal name for the kvar, but it should always be unique
+  let knd = KindVar (MkKVar (T.pack ("kvUnion" <> show ty1 <> "\\/" <> show ty2)))
   return (TST.TyUnion loc knd ty1' ty2')
-  --else
-  --error ("Union of types " <> show ty1 <> " and " <> show ty2 <> " with different kinds")
-
+  
 checkKind (RST.TyInter loc ty1 ty2) = do
   ty1' <- checkKind ty1
   ty2' <- checkKind ty2
-  let knd = getKind ty1'
-  --if knd == getKind ty2' then
+  -- not an optimal name for the kvar, but it should always be unique
+  let knd = KindVar (MkKVar (T.pack ("kvInter" <> show ty1 <> "/\\" <> show ty2)))
+  trace (show knd) $ pure ()
   return (TST.TyInter loc knd ty1' ty2')
-  --else
-   -- error ("Intersection of types " <> show ty1 <> " and " <> show ty2 <> " with different kinds")
-
+  
 checkKind (RST.TyRec loc pol rv ty) = do
   ty' <- checkKind ty
   return (TST.TyRec loc pol rv ty')
