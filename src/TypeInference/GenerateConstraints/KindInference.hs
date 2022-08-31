@@ -3,7 +3,6 @@ module TypeInference.GenerateConstraints.KindInference where
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST
-import Syntax.TST.Types (getKind)
 import Syntax.CST.Kinds
 import Syntax.CST.Names 
 import Lookup
@@ -18,8 +17,6 @@ import Control.Monad.Except
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as M
 import Data.Text qualified as T
-
-import Debug.Trace
 
 --------------------------------------------------------------------------------------------
 -- Kind Inference Monad 
@@ -144,7 +141,6 @@ checkKind (RST.TyInter loc ty1 ty2) = do
   ty2' <- checkKind ty2
   -- not an optimal name for the kvar, but it should always be unique
   let knd = KindVar (MkKVar (T.pack ("kvInter" <> show ty1 <> "/\\" <> show ty2)))
-  trace (show knd) $ pure ()
   return (TST.TyInter loc knd ty1' ty2')
   
 checkKind (RST.TyRec loc pol rv ty) = do
