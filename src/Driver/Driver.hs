@@ -149,8 +149,12 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   -- Solve the constraints
   solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env
   guardVerbose $ do
-      ppPrintIO constraints
-      ppPrintIO solverResult
+    ppPrintIO (Header (T.unpack (unFreeVarName cmddecl_name)))
+    ppPrintIO ("" :: T.Text)
+    ppPrintIO cmddecl_cmd
+    ppPrintIO ("" :: T.Text)
+    ppPrintIO constraints
+    ppPrintIO solverResult
   -- Insert into environment
   let f env = env { cmdEnv = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
   modifyEnvironment mn f
