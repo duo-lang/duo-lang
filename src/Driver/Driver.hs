@@ -53,6 +53,7 @@ import Sugar.Desugar (desugarModule)
 import qualified Data.Set as S
 import Data.Maybe (catMaybes)
 import Pretty.Common (Header(..))
+import Pretty.Program ()
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
@@ -90,7 +91,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
         CST.NonRecursive -> genConstraintsTerm pcdecl_term
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
   guardVerbose $ do
-    ppPrintIO (Header (T.unpack (unFreeVarName pcdecl_name)))
+    ppPrintIO (Header (unFreeVarName pcdecl_name))
     ppPrintIO ("" :: T.Text)
     ppPrintIO pcdecl_term
     ppPrintIO ("" :: T.Text)
@@ -149,7 +150,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   -- Solve the constraints
   solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env
   guardVerbose $ do
-    ppPrintIO (Header (T.unpack (unFreeVarName cmddecl_name)))
+    ppPrintIO (Header (unFreeVarName cmddecl_name))
     ppPrintIO ("" :: T.Text)
     ppPrintIO cmddecl_cmd
     ppPrintIO ("" :: T.Text)
@@ -174,8 +175,12 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   -- Solve the constraints
   solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
   guardVerbose $ do
-      ppPrintIO constraints
-      ppPrintIO solverResult
+    ppPrintIO (Header  $ unClassName instancedecl_name <> ppPrint (fst instancedecl_typ))
+    ppPrintIO ("" :: T.Text)
+    ppPrintIO (Core.InstanceDecl decl)
+    ppPrintIO ("" :: T.Text)
+    ppPrintIO constraints
+    ppPrintIO solverResult
   -- Insert into environment
   instty <- runKindReaderM (checkInstDecl instancedecl_typ) env
   let f env = env { instanceEnv = M.adjust (S.insert instty) instancedecl_name (instanceEnv env)}

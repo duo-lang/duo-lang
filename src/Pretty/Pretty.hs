@@ -6,7 +6,6 @@ import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
 import System.Console.ANSI
-import Data.String (fromString)
 
 ---------------------------------------------------------------------------------
 -- Annotations
@@ -179,14 +178,14 @@ braces' = mkParen True (prettyAnn ("{" :: String))(prettyAnn ("}" :: String))
 headerWidth :: Int
 headerWidth = 60
 
-headerise :: forall ann. String -> String -> String -> Doc ann
+headerise :: forall ann. Text -> Text -> Text -> Doc ann
 headerise tb lr header = vsep [tbLine, headerLine, tbLine]
   where
-    hdLen      = length header
-    tbLine     = fromString $ take headerWidth $ concat $ repeat tb
+    hdLen      = T.length header
+    tbLine     = pretty $ T.take headerWidth $ T.concat $ repeat tb
     lrTotLen   = (headerWidth - hdLen) - 2
-    lrReps     = concat $ repeat lr
-    lLine      = fromString           $ take (lrTotLen `quot` 2)                    lrReps
-    rLine      = fromString $ reverse $ take (lrTotLen `quot` 2 + lrTotLen `mod` 2) lrReps
-    headerLine = lLine <+> fromString header <+> rLine
+    lrReps     = T.concat $ repeat lr
+    lLine      =             T.take (lrTotLen `quot` 2)                    lrReps
+    rLine      = T.reverse $ T.take (lrTotLen `quot` 2 + lrTotLen `mod` 2) lrReps
+    headerLine = pretty lLine <+> pretty header <+> pretty rLine
 
