@@ -9,6 +9,7 @@ import Syntax.RST.Program qualified as RST
 import Dualize.Terms
 import TypeInference.GenerateConstraints.Definition (checkKind)
 import Translate.Embed
+import Syntax.RST.Program (DataDecl(data_refinement_lower))
 
 flipDC :: CST.DataCodata -> CST.DataCodata
 flipDC CST.Data = CST.Codata 
@@ -26,11 +27,21 @@ dualDataDecl RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, dat
                     , data_kind = dualPolyKind data_kind
                     , data_xtors = (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg )
                     }
-dualDataDecl RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors = (sigsPos,sigsNeg), data_xtors_refined = (sigsPosRefined, sigsNegRefined) } =
+dualDataDecl RST.RefinementDecl { data_loc
+                                , data_doc
+                                , data_name
+                                , data_polarity
+                                , data_refinement_lower
+                                , data_refinement_upper
+                                , data_kind
+                                , data_xtors = (sigsPos,sigsNeg)
+                                , data_xtors_refined = (sigsPosRefined, sigsNegRefined) } =
     RST.RefinementDecl { data_loc = data_loc
                        , data_doc = data_doc
                        , data_name = dualRnTypeName data_name
                        , data_polarity = flipDC data_polarity
+                       , data_refinement_lower = embedTSTType (dualType NegRep (checkKind data_refinement_upper))
+                       , data_refinement_upper = embedTSTType (dualType PosRep (checkKind data_refinement_lower))
                        , data_kind = dualPolyKind data_kind
                        , data_xtors = (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg)
                        , data_xtors_refined = (dualXtorSig PosRep <$> sigsPosRefined,dualXtorSig NegRep <$> sigsNegRefined )

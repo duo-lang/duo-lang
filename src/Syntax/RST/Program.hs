@@ -212,6 +212,10 @@ data DataDecl =
     -- ^ The name of the type. E.g. "List".
   , data_polarity :: DataCodata
     -- ^ Whether a data or codata type is declared.
+  , data_refinement_lower :: Typ Pos
+    -- ^ The lower bound of the refinement type. E.g. `< Nat | >`
+  , data_refinement_upper :: Typ Neg
+    -- ^ The upper bound of the refinement type. E.g. `mu alpha. < Nat | Z, S(alpha) >`
   , data_kind :: PolyKind
     -- ^ The kind of the type constructor.
   , data_xtors :: ([XtorSig Pos], [XtorSig Neg])

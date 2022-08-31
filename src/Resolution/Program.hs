@@ -161,6 +161,8 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
                               , data_doc = data_doc
                               , data_name = data_name'
                               , data_polarity = data_polarity
+                              , data_refinement_lower = posRefinementType
+                              , data_refinement_upper = negRefinementType
                               , data_kind = polyKind
                               , data_xtors = (xtorsPos, xtorsNeg)
                               , data_xtors_refined = (xtorsRefinedPos,xtorsRefinedNeg)
