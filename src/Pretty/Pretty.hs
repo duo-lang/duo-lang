@@ -182,10 +182,9 @@ headerise :: forall ann. Text -> Text -> Text -> Doc ann
 headerise tb lr header = vsep [tbLine, headerLine, tbLine]
   where
     hdLen      = T.length header
-    tbLine     = pretty $ T.take headerWidth $ T.concat $ repeat tb
+    tbLine     = pretty $ T.concat (replicate headerWidth tb)
     lrTotLen   = (headerWidth - hdLen) - 2
-    lrReps     = T.concat $ repeat lr
-    lLine      =             T.take (lrTotLen `quot` 2)                    lrReps
-    rLine      = T.reverse $ T.take (lrTotLen `quot` 2 + lrTotLen `mod` 2) lrReps
+    lLine      =             T.concat (replicate (lrTotLen `quot` 2)                    lr)
+    rLine      = T.reverse $ T.concat (replicate (lrTotLen `quot` 2 + lrTotLen `mod` 2) lr)
     headerLine = pretty lLine <+> pretty header <+> pretty rLine
 
