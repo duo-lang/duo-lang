@@ -1,4 +1,3 @@
-import LinearLogic;
 import Peano;
 import Bool;
 import Function;

@@ -22,7 +22,8 @@ import Parser.Kinds
 import Parser.Lexer
 import Syntax.CST.Types
 import Syntax.CST.Names
-import Utils ( Loc(..) )
+import Loc ( Loc(..) )
+import Control.Monad (void)
 
 ---------------------------------------------------------------------------------
 -- Parsing of linear contexts
@@ -184,19 +185,35 @@ tyParensP = do
   sc
   pure (TyParens (Loc startPos endPos) typ, endPos)
 
+tyTopKwP :: Parser SourcePos
+tyTopKwP = kwASCII <|> kwUnicode
+  where 
+    kwASCII = keywordP KwTop
+    kwUnicode = do
+        symbolP SymTopUnicode
+        getSourcePos
+
 tyTopP :: Parser (Typ, SourcePos)
 tyTopP = do
-  startPos <- getSourcePos
-  endPos <- keywordP KwTop
-  sc
-  pure (TyTop (Loc startPos endPos), endPos)
+      startPos <- getSourcePos
+      endPos <- tyTopKwP
+      sc
+      pure (TyTop (Loc startPos endPos), endPos)
+
+tyBotKwP :: Parser SourcePos
+tyBotKwP = kwASCII <|> kwUnicode
+  where 
+    kwASCII = keywordP KwBot
+    kwUnicode = do
+        symbolP SymBotUnicode
+        getSourcePos
 
 tyBotP :: Parser (Typ, SourcePos)
 tyBotP = do
-  startPos <- getSourcePos
-  endPos <- keywordP KwBot
-  sc
-  pure (TyBot (Loc startPos endPos), endPos)
+      startPos <- getSourcePos
+      endPos <- tyBotKwP
+      sc
+      pure (TyBot (Loc startPos endPos), endPos)
 
 -- | Parse atomic types (i,e, without tyop chains)
 typAtomP :: Parser (Typ, SourcePos)
@@ -243,11 +260,14 @@ typP = do
 -- Parsing of type schemes.
 ---------------------------------------------------------------------------------
 
+forallP :: Parser ()
+forallP = void (keywordP KwForall) <|> symbolP SymForallUnicode
+
 -- | Parse a type scheme
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
-  tvars' <- option [] (keywordP KwForall >> sc >> some (fst <$> (tvarP <* sc)) <* (symbolP SymDot >> sc))
+  tvars' <- option [] (forallP >> sc >> some (fst <$> (tvarP <* sc)) <* (symbolP SymDot >> sc))
   let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
   tConstraints <- option [] (constraintP `sepBy` (symbolP SymComma >> sc) <* (symbolP SymDoubleRightArrow >> sc))
   (monotype, endPos) <- typP

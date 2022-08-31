@@ -26,7 +26,7 @@ import Syntax.CST.Names
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCnsRep(..))
-import Utils
+import Loc
 
 ---------------------------------------------------------------------------------------------
 -- TranslationState:

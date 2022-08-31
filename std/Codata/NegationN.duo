@@ -1,0 +1,5 @@
+-- negative negation
+
+codata Notn: (-a : CBN) -> CBN {
+  MkNotn(a)
+};

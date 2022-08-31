@@ -1,7 +1,8 @@
 import Function;
-import LinearLogic;
 import List;
 import Bool;
+import Unit;
+import Par;
 
 def rec prd filterHelper := \p l => case l of {
     Nil => cocase {

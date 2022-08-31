@@ -22,7 +22,8 @@ import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import TypeAutomata.Definition
-import Utils ( enumerate, defaultLoc )
+import Loc ( defaultLoc )
+import Utils ( enumerate )
 import Control.Monad
 
 --------------------------------------------------------------------------
@@ -70,7 +71,7 @@ initialize tvars =
               , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
               }
     lookupEnv = LookupEnv { tSkolemVarEnv = M.fromList [(tv, (posNode,negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
-        ,tRecVarEnv = M.empty
+                          , tRecVarEnv = M.empty
                           }
   in
     (initAut, lookupEnv)

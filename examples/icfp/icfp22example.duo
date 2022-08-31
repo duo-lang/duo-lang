@@ -1,5 +1,7 @@
 import Function;
-import LinearLogic;
+import With;
+import Unit;
+import Plus;
 
 -- example from Fig. 3 from "Introduction and Elimination, Left and Right"
 def prd right : forall a. (Unit & a) & a -> Plus(Unit,Plus(Plus(a,Unit),Unit))  := 

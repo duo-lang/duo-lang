@@ -15,7 +15,7 @@ import Syntax.Core.Annot
 import Syntax.TST.Terms
 import Eval.Definition
 import Eval.Primitives
-import Utils
+import Loc
 
 ---------------------------------------------------------------------------------
 -- Terms

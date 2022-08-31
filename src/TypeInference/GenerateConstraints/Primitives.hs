@@ -9,7 +9,7 @@ import Syntax.RST.Types
       , Polarity(..)
       , PolarityRep(..)
       )
-import Utils ( defaultLoc )
+import Loc ( defaultLoc )
 
 
 i64PrimBinOp :: LinearContext Neg

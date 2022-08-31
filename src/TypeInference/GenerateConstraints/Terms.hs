@@ -21,7 +21,7 @@ import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Names
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.Constraints
-import Utils
+import Loc
 import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))

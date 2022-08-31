@@ -39,7 +39,7 @@ import Syntax.TST.Program qualified as TST
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.Core.Program qualified as Core
 import TypeAutomata.Subsume ( subsume )
-import Utils ( defaultLoc )
+import Loc ( defaultLoc )
 import Resolution.Program (resolveDecl)
 import Resolution.Terms (resolveCommand)
 import TypeInference.GenerateConstraints.Definition (checkTypeScheme)
@@ -93,7 +93,7 @@ data EvalSteps = Steps | NoSteps
 
 runCmd :: Text -> EvalSteps ->  DriverM ()
 runCmd txt steps = do
-    (parsedCommand, _) <- runInteractiveParser termP txt
+    parsedCommand <- runInteractiveParser termP txt
     sts <- getSymbolTables
     resolvedDecl <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveCommand parsedCommand))
     let cmdDecl = Core.MkCommandDeclaration defaultLoc Nothing (MkFreeVarName "main") (desugarCmd resolvedDecl)

@@ -19,7 +19,7 @@ import Syntax.CST.Types
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Kinds
 import Syntax.CST.Names
-import Utils (Loc(..), defaultLoc)
+import Loc (Loc(..), defaultLoc)
 import Control.Monad.Reader (asks, MonadReader (local))
 
 ---------------------------------------------------------------------------------

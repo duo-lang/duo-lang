@@ -1,0 +1,23 @@
+import Function;
+
+-- | Conjunction defined as a codata type.
+codata With : (+a : CBV, +b : CBV) -> CBN {
+    Proj1(return a),
+    Proj2(return b)
+};
+
+type operator & leftassoc at 5 := With;
+
+-- | Curried projection on the first element.
+def prd proj1 : forall a. a & Top -> a :=
+  \x => x.Proj1(*);
+
+-- | Curried projection on the second element.
+def prd proj2 : forall a. Top & a -> a :=
+  \x => x.Proj2(*);
+
+-- Curried pairing operation defined for With.
+def prd pair : forall a b. a -> b -> a & b :=
+  \x y => cocase { Proj1(*) => x
+                 , Proj2(*) => y
+                 };

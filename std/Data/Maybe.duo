@@ -1,0 +1,32 @@
+import Function;
+import Bool;
+
+-- | The Maybe type encapsulates optional values.
+data Maybe : (+a : CBV) -> CBV {
+  Nothing,
+  Just(a)
+};
+
+def prd maybe : forall a b. b -> (a -> b) -> Maybe(a) -> b :=
+  \x f m => case m of {
+    Nothing => x,
+    Just(y) => f y
+  };
+
+def prd isJust : Maybe(Top) -> Bool :=
+  \m => case m of {
+    Nothing => False,
+    Just(y) => True
+ };
+
+ def prd isNothing : Maybe(Top) -> Bool :=
+  \m => case m of {
+    Nothing => True,
+    Just(y) => False
+  };
+
+def prd fromMaybe : forall a. a -> Maybe(a) -> a :=
+  \x m => case m of {
+    Nothing => x,
+    Just(y) => y
+  };

@@ -59,7 +59,8 @@ import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program as RST
 import TypeInference.Constraints
 import TypeTranslation qualified as TT
-import Utils
+import Loc ( Loc, defaultLoc )
+import Utils ( indexMaybe )
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:

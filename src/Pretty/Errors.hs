@@ -20,7 +20,7 @@ import Errors
 import Pretty.Constraints ()
 import Pretty.Terms ()
 import Pretty.Pretty ( PrettyAnn(..), ppPrint )
-import Utils (Loc (Loc), HasLoc (getLoc))
+import Loc (Loc (Loc), HasLoc (getLoc))
 import Text.Megaparsec (SourcePos(..), unPos)
 import System.Directory (doesFileExist)
 import Syntax.CST.Types (PrdCns(..))
@@ -32,17 +32,29 @@ import Syntax.CST.Types (PrdCns(..))
 
 instance PrettyAnn ResolutionError where
   prettyAnn (MissingVarsInTypeScheme loc) =
-    prettyAnn loc <+> "Missing declaration of type variable"
+    vsep [ prettyAnn loc
+         , "Missing declaration of type variable."
+         ]
   prettyAnn (TopInPosPolarity loc) =
-    prettyAnn loc <+> "Cannot use `Top` in positive polarity"
-  prettyAnn (BotInNegPolarity loc) = 
-    prettyAnn loc <+> "Cannot use `Bot` in negative polarity"
+    vsep [ prettyAnn loc
+         , "Cannot use `Top` in positive polarity."
+         ]
+  prettyAnn (BotInNegPolarity loc) =
+    vsep [ prettyAnn loc
+         , "Cannot use `Bot` in negative polarity."
+         ]
   prettyAnn (IntersectionInPosPolarity loc) =
-    prettyAnn loc <+> "Cannot use `/\\` in positive polarity"
+    vsep [ prettyAnn loc
+         , "Cannot use `/\\` in positive polarity"
+         ]
   prettyAnn (UnionInNegPolarity loc) = 
-    prettyAnn loc <+> "Cannot use `\\/` in negative polarity"
+    vsep [ prettyAnn loc
+         , "Cannot use `\\/` in negative polarity"
+         ]
   prettyAnn (UnknownOperator loc op) =
-    prettyAnn loc <+> "Undefined type operator `" <> pretty op <> "`"
+    vsep [ prettyAnn loc
+         , "Undefined type operator `" <> pretty op <> "`"
+         ]
   prettyAnn (XtorArityMismatch loc xt ar1 ar2) =
     vsep [ prettyAnn loc
          , "Arity mismatch:"
@@ -64,9 +76,13 @@ instance PrettyAnn ResolutionError where
          , "  Used Arity:" <+> pretty ar1
          ]
   prettyAnn (CmdExpected loc t) =
-    prettyAnn loc <+> "Command expected: " <+> pretty t
+    vsep [ prettyAnn loc
+         , "Command expected: " <+> pretty t
+         ]
   prettyAnn (InvalidStar loc t) =
-    prettyAnn loc <+> "Invalid Star: " <+> pretty t
+    vsep [ prettyAnn loc
+         , "Invalid Star: " <+> pretty t
+         ]
 
 instance PrettyAnn ConstraintGenerationError where
   prettyAnn (BoundVariableOutOfBounds loc rep (i,j)) =
@@ -129,23 +145,33 @@ instance PrettyAnn ConstraintGenerationError where
 
 instance PrettyAnn ConstraintSolverError where
   prettyAnn (SomeConstraintSolverError loc msg) =
-    prettyAnn loc <> "Constraint solver error:" <+> pretty msg
+    vsep [ prettyAnn loc
+         , "Constraint solver error:" <+> pretty msg
+         ]
 
 instance PrettyAnn TypeAutomatonError where
   prettyAnn (SomeTypeAutomatonError loc msg) =
-    prettyAnn loc <> "Type automaton error:" <+> pretty msg
+    vsep [ prettyAnn loc
+         , "Type automaton error:" <+> pretty msg
+         ]
 
 instance PrettyAnn EvalError where
   prettyAnn (SomeEvalError loc msg) =
-    prettyAnn loc <> "Evaluation error:" <+> pretty msg
+    vsep [ prettyAnn loc
+         , "Evaluation error:" <+> pretty msg
+         ]
 
 instance PrettyAnn OtherError where
   prettyAnn (SomeOtherError loc msg) =
-    prettyAnn loc <> "Other error:" <+> pretty msg
+    vsep [ prettyAnn loc
+         , "Other error:" <+> pretty msg
+         ]
 
 instance PrettyAnn ParserError where
   prettyAnn (SomeParserError loc msg) =
-    prettyAnn loc <> "Parser error:" <+> pretty msg
+    vsep [ prettyAnn loc
+         , "Parser error:" <+> pretty msg
+         ]
 
 instance PrettyAnn Error where
   prettyAnn (ErrConstraintGeneration err)   = prettyAnn err

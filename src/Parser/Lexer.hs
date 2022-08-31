@@ -151,7 +151,7 @@ floatP = do
 -- Does not parse trailing whitespace.
 lowerCaseIdL :: Parser (Text, SourcePos)
 lowerCaseIdL = do
-  name <- T.cons <$> lowerChar <*> (T.pack <$> many alphaNumChar)
+  name <- T.cons <$> lowerChar <*> (T.pack <$> many (alphaNumChar <|> char '_'))
   checkReserved name
   pos <- getSourcePos
   pure (name, pos)
@@ -160,7 +160,7 @@ lowerCaseIdL = do
 -- Does not parse trailing whitespace.
 upperCaseIdL :: Parser (Text, SourcePos)
 upperCaseIdL = do
-  name <- T.cons <$> upperChar <*> (T.pack <$> many alphaNumChar)
+  name <- T.cons <$> upperChar <*> (T.pack <$> many (alphaNumChar <|> char '_'))
   checkReserved name
   pos <- getSourcePos
   pure (name, pos)
@@ -169,7 +169,7 @@ upperCaseIdL = do
 -- Does not parse trailing whitespace.
 allCaseIdL :: Parser (Text, SourcePos)
 allCaseIdL = do
-  name <- T.pack <$> many alphaNumChar
+  name <- T.cons <$> alphaNumChar <*> (T.pack <$> many (alphaNumChar <|> char '_'))
   checkReserved name
   pos <- getSourcePos
   pure (name, pos)
@@ -179,7 +179,7 @@ allCaseIdL = do
 -------------------------------------------------------------------------------------------
 
 operatorP :: Parser (Text, SourcePos)
-operatorP = funOperator <|> otherOperator
+operatorP = backtickOperator <|> funOperator <|> otherOperator
   where
     -- We have to treat the function arrow specially, since we want to allow it
     -- as an operator, but it is also a reserved symbol.
@@ -192,6 +192,12 @@ operatorP = funOperator <|> otherOperator
       checkReservedOp name
       pos <- getSourcePos
       pure (name, pos)
+    backtickOperator = do
+      symbolP SymBacktick
+      name <- T.pack <$> many alphaNumChar
+      symbolP SymBacktick
+      pos <- getSourcePos
+      pure ("`" <> name <> "`", pos)
 
 ---
 
@@ -382,14 +388,21 @@ data Symbol where
   SymDoubleCoRightArrow :: Symbol
   SymSimpleRightArrow :: Symbol
   SymCommand          :: Symbol
-  SymUnion            :: Symbol
-  SymIntersection     :: Symbol
   SymSubtype          :: Symbol
   SymImplicit         :: Symbol
   SymWildcard         :: Symbol
   SymPlus             :: Symbol
   SymMinus            :: Symbol
   SymHash             :: Symbol
+  SymBacktick         :: Symbol
+  SymForallUnicode    :: Symbol
+  -- Lattice Types
+  SymTopUnicode       :: Symbol
+  SymBotUnicode       :: Symbol
+  SymUnion            :: Symbol
+  SymUnionUnicode     :: Symbol
+  SymInter            :: Symbol
+  SymInterUnicode     :: Symbol
   -- Parens Symbols
   SymParenLeft        :: Symbol
   SymParenRight       :: Symbol
@@ -416,14 +429,22 @@ instance Show Symbol where
   show SymDoubleCoRightArrow = "=<"
   show SymSimpleRightArrow = "->"
   show SymCommand          = ">>"
-  show SymUnion            = "\\/"
-  show SymIntersection     = "/\\"
+  
   show SymSubtype          = "<:"
   show SymImplicit         = "*"
   show SymWildcard         = "_"
   show SymPlus             = "+"
   show SymMinus            = "-"
   show SymHash             = "#"
+  show SymBacktick         = "`"
+  show SymForallUnicode    = "∀"
+  -- Lattice types
+  show SymTopUnicode       = "⊤"
+  show SymBotUnicode       = "⊥"
+  show SymUnion            = "\\/"
+  show SymUnionUnicode     = "∨"
+  show SymInter            = "/\\"
+  show SymInterUnicode     = "∧"
   -- Parens Symbols
   show SymParenLeft        = "("
   show SymParenRight       = ")"

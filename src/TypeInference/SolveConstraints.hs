@@ -22,7 +22,7 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
-import Utils ( defaultLoc )
+import Loc ( defaultLoc )
 import Syntax.CST.Names
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.CST.Kinds

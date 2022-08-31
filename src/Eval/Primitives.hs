@@ -8,7 +8,7 @@ import Syntax.CST.Types (PrdCns(..))
 
 import Eval.Definition
 import Errors (throwEvalError)
-import Utils
+import Loc
 
 applyPrdToCns :: Term Prd -> Term Cns -> EvalM (Maybe Command)
 applyPrdToCns x k = pure $ Just $ Apply defaultLoc ApplyAnnotOrig (Just $ CBox CBV) x k

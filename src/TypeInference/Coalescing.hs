@@ -12,7 +12,7 @@ import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..),Polarity(..))
 import Syntax.CST.Names
 import TypeInference.Constraints
-import Utils
+import Loc ( defaultLoc )
 
 ---------------------------------------------------------------------------------
 -- Coalescing

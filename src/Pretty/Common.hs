@@ -24,7 +24,7 @@ import Syntax.CST.Names
 import Syntax.CST.Types (Arity, PrdCns(..))      
 import Syntax.CST.Kinds
     ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..))
-import Utils ( Loc(..) )
+import Loc ( Loc(..) )
 
 
 instance PrettyAnn a => PrettyAnn (NonEmpty a) where

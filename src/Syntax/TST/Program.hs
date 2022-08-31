@@ -8,7 +8,7 @@ import Syntax.TST.Types ( TopAnnot, Typ )
 import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Names ( ClassName, DocComment, FreeVarName, ModuleName )
-import Utils ( Loc )
+import Loc ( Loc )
 
 
 ---------------------------------------------------------------------------------
