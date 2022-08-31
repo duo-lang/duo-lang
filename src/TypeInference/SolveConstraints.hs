@@ -27,6 +27,8 @@ import Syntax.CST.Names
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.CST.Kinds
 
+import Debug.Trace
+
 ------------------------------------------------------------------------------
 -- Constraint solver monad
 ------------------------------------------------------------------------------
@@ -104,7 +106,7 @@ lookupKVar :: KVar -> Map (Maybe MonoKind) (Set KVar) -> (Maybe MonoKind, Set KV
 lookupKVar kv mp = case M.toList (M.filter (\x -> kv `elem` x) mp) of 
   [] -> error "kind variable not found"
   [(mk,set)] -> (mk,set)
-  _ -> error ("multiple kinds for kind variable" <> show kv)
+  ls -> error ("multiple kinds for kind variable" <> show kv <> show ls)
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
@@ -146,15 +148,34 @@ unifyKinds (KindVar kv1) (KindVar kv2) = do
   let (mmk1, kvs1) = lookupKVar kv1 sets
   let (mmk2, kvs2) = lookupKVar kv2 sets
   case (mmk1,mmk2) of 
-    (_, Nothing) -> putKVars $ M.insert mmk1 (S.insert kv2 kvs1) (M.insert mmk2 (S.delete kv2 kvs2) sets)
-    (Nothing, _) -> putKVars $ M.insert mmk2 (S.insert kv1 kvs2) (M.insert mmk1 (S.delete kv1 kvs1) sets)
+    (_, Nothing) -> do
+      -- remove second kvar from Nothing set 
+      let setsRem = M.insert Nothing (S.delete kv2 kvs2) sets
+      -- insert second kvar into first kind set
+      let setsIns = M.insert mmk1 (S.insert kv2 kvs1) setsRem
+      -- save modified sets
+      putKVars setsIns 
+    (Nothing, _) -> do
+      -- remove first kvar from Nothing set
+      let setsRem = M.insert Nothing (S.delete kv1 kvs1) sets
+      -- insert first kvar into second kind set
+      let setsIns = M.insert mmk2 (S.insert kv1 kvs2) setsRem
+      -- save modified sets
+      putKVars setsIns 
     (Just mk1, Just mk2) | mk1 == mk2 -> putKVars sets 
                          | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint mk1 <> " and " <> ppPrint mk2]
 unifyKinds (KindVar kv) kind = do 
   sets <- getKVars
-  let boundKind = lookupKVar kv sets
+  let boundKind = lookupKVar kv sets 
   case fst boundKind of 
-    Nothing -> putKVars (M.insert (Just kind) (S.insert kv (M.findWithDefault S.empty (Just kind) sets)) (M.insert Nothing (S.insert kv (snd boundKind)) sets)) 
+    Nothing -> do
+      let kindSet = M.findWithDefault S.empty (Just kind) sets
+      -- Remove kind variable from nothing
+      let setsRem = M.insert Nothing (S.delete kv (snd boundKind)) sets
+      -- insert Kind variable into new kind
+      let setsIns = M.insert (Just kind) (S.insert kv kindSet) setsRem
+      -- save modified sets
+      putKVars setsIns 
     Just kind2 -> 
       if kind==kind2 
         then return ()
