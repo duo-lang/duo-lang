@@ -30,12 +30,10 @@ getXtorKinds :: KindReader a m => Loc -> [RST.XtorSig pol] -> m MonoKind
 getXtorKinds loc [] = return (CBox CBV)--throwSolverError loc ["Can't find kinds of empty List of Xtors"]
 getXtorKinds loc [xtor] = do 
   let nm = RST.sig_name xtor
-  decl <- lookupDataDecl loc nm
-  getKindDecl decl
+  lookupXtorKind nm
 getXtorKinds loc (fst:rst) = do
   let nm = RST.sig_name fst
-  decl <- lookupDataDecl loc nm
-  knd <- getKindDecl decl 
+  knd <- lookupXtorKind nm
   knd' <- getXtorKinds loc rst
   if knd == knd' then
     return knd 
