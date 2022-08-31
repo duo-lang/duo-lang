@@ -1,5 +1,6 @@
 module Pretty.Common where
 
+import Data.Text (Text)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Prettyprinter
@@ -136,3 +137,8 @@ instance PrettyAnn PolyKind where
 
 prettyTParam :: (Variance, SkolemTVar, MonoKind) -> Doc Annotation
 prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> annSymbol ":" <+> prettyAnn k
+
+newtype Header a = Header { getHeader :: a }
+
+instance PrettyAnn (Header Text) where
+  prettyAnn (Header h) = headerise "=" "=" h
