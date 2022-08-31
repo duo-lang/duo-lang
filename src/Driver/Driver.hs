@@ -173,7 +173,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   -- Solve the constraints
   solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
   guardVerbose $ do
-    ppPrintIO (Header  $ unClassName instancedecl_name <> ppPrint (fst instancedecl_typ))
+    ppPrintIO (Header  $ unClassName instancedecl_name <> " " <> ppPrint (fst instancedecl_typ))
     ppPrintIO ("" :: T.Text)
     ppPrintIO (Core.InstanceDecl decl)
     ppPrintIO ("" :: T.Text)
