@@ -51,6 +51,8 @@ import Sugar.Desugar (desugarModule)
 import qualified Data.Set as S
 import Data.Maybe (catMaybes)
 
+import Debug.Trace
+
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
@@ -64,6 +66,7 @@ checkAnnot rep tyInferred (Just tyAnnotated) loc = do
       (Left err) -> throwError (attachLoc loc <$> err)
       (Right True) -> return (TST.Annotated tyAnnotated)
       (Right False) -> do
+        trace (ppPrintString tyAnnotated) $ pure ()
         let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
                                                             , " Annotated type: " <> ppPrint tyAnnotated
                                                             , " Inferred type:  " <> ppPrint tyInferred

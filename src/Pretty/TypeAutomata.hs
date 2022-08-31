@@ -32,10 +32,9 @@ instance PrettyAnn PrimitiveType where
 
 instance PrettyAnn NodeLabel where
   prettyAnn (MkPrimitiveNodeLabel _ tp) = prettyAnn tp
-  prettyAnn (MkNodeLabel _ maybeDat maybeCodat kind tns refDat refCodat) =
+  prettyAnn (MkNodeLabel _ maybeDat maybeCodat tns refDat refCodat) =
     intercalateX ";" (catMaybes [printDat <$> maybeDat
                                 , printCodat <$> maybeCodat
-                                , Just (prettyAnn kind)
                                 , printNominal tns
                                 , printRefDat refDat
                                 , printRefCodat refCodat])

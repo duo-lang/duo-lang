@@ -15,7 +15,6 @@ import Pretty.Pretty
 
 import Control.Monad.Reader
 import Control.Monad.Except
-import Data.List.NonEmpty qualified as NE
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as M
 
@@ -24,24 +23,11 @@ import Data.Map qualified as M
 --------------------------------------------------------------------------------------------
 type KindReader a m = (MonadError (NonEmpty Error) m, MonadReader (M.Map ModuleName Environment, a) m)
 
---getKindM :: forall a m res. KindReader a m 
---         => (Environment -> Maybe res)
---         -> Error
---         -> m (ModuleName, res)
---getKindM f err = asks fst >>= \env -> go (M.toList env)
---  where
---    go :: [(ModuleName, Environment)] -> m (ModuleName, res)
---    go [] = throwError (err NE.:| [])
---    go ((mn,env):envs) = 
---     case f env of 
---        Just res -> pure (mn,res)
---        Nothing -> go envs
-
 --------------------------------------------------------------------------------------------
 -- Types
 --------------------------------------------------------------------------------------------
 getXtorKinds :: KindReader a m => Loc -> [RST.XtorSig pol] -> m MonoKind
-getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
+getXtorKinds loc [] = return (CBox CBV)--throwSolverError loc ["Can't find kinds of empty List of Xtors"]
 getXtorKinds loc [xtor] = do 
   let nm = RST.sig_name xtor
   decl <- lookupDataDecl loc nm
@@ -127,6 +113,7 @@ checkKind (RST.TyDataRefined loc pol tyn xtors) = do
   xtors' <- mapM checkXtorSig xtors
   knd <- getTyNameKind loc tyn
   return (TST.TyDataRefined loc pol knd tyn xtors')
+
 checkKind (RST.TyCodataRefined loc pol tyn xtors) = do
   xtors' <- mapM checkXtorSig xtors
   knd <- getTyNameKind loc tyn
@@ -148,19 +135,19 @@ checkKind (RST.TyUnion loc ty1 ty2) = do
   ty1' <- checkKind ty1
   ty2' <- checkKind ty2
   let knd = getKind ty1'
-  if knd == getKind ty2' then
-    return (TST.TyUnion loc knd ty1' ty2')
-  else
-    error ("Union of types " <> show ty1 <> " and " <> show ty2 <> " with different kinds")
+  --if knd == getKind ty2' then
+  return (TST.TyUnion loc knd ty1' ty2')
+  --else
+  --error ("Union of types " <> show ty1 <> " and " <> show ty2 <> " with different kinds")
 
 checkKind (RST.TyInter loc ty1 ty2) = do
   ty1' <- checkKind ty1
   ty2' <- checkKind ty2
   let knd = getKind ty1'
-  if knd == getKind ty2' then
-    return (TST.TyInter loc knd ty1' ty2')
-  else
-    error ("Intersection of types " <> show ty1 <> " and " <> show ty2 <> " with different kinds")
+  --if knd == getKind ty2' then
+  return (TST.TyInter loc knd ty1' ty2')
+  --else
+   -- error ("Intersection of types " <> show ty1 <> " and " <> show ty2 <> " with different kinds")
 
 checkKind (RST.TyRec loc pol rv ty) = do
   ty' <- checkKind ty
