@@ -1,4 +1,4 @@
-module Pretty.Common where
+module Pretty.Names where
 
 import Data.Text (Text)
 import Data.List.NonEmpty (NonEmpty)

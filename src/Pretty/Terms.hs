@@ -2,7 +2,7 @@ module Pretty.Terms where
 
 import Prettyprinter
 
-import Pretty.Common ()
+import Pretty.Names ()
 import Pretty.Pretty
 import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Terms qualified as RST

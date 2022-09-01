@@ -16,7 +16,7 @@ import LSP.MegaparsecToLSP
 import System.Log.Logger ( debugM )
 
 import Pretty.Pretty ( ppPrint )
-import Pretty.Common ()
+import Pretty.Names ()
 import Pretty.Types ()
 import Pretty.Terms ()
 import Syntax.CST.Names

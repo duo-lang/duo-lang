@@ -23,7 +23,7 @@ import Data.Map qualified as M
 import Driver.Environment (Environment(..), emptyEnvironment)
 import Errors
 import Pretty.Pretty
-import Pretty.Common ()
+import Pretty.Names ()
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program qualified as RST

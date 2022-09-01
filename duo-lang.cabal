@@ -120,7 +120,7 @@ library
       Parser.Terms
       Parser.Types
       Pretty.Pretty
-      Pretty.Common
+      Pretty.Names
       Pretty.Constraints
       Pretty.Terms
       Pretty.Types

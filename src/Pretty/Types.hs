@@ -4,7 +4,7 @@ import Data.List (intersperse)
 import Data.List.NonEmpty qualified as NE
 import Prettyprinter
 
-import Pretty.Common ()
+import Pretty.Names ()
 import Pretty.Pretty
 import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types qualified as CST

@@ -10,7 +10,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 
 import Pretty.Pretty
-import Pretty.Common ()
+import Pretty.Names ()
 import Pretty.Types ()
 import Resolution.SymbolTable
 import Syntax.CST.Names

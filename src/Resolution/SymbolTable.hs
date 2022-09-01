@@ -14,7 +14,7 @@ import Data.Map qualified as M
 
 import Errors
 import Pretty.Pretty
-import Pretty.Common ()
+import Pretty.Names ()
 import Pretty.Types ()
 
 import Syntax.CST.Names

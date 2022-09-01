@@ -10,7 +10,7 @@ import Data.Text.Lazy (pack)
 import Prettyprinter
 
 import Pretty.Pretty (ppPrintString, PrettyAnn(..), intercalateX)
-import Pretty.Common
+import Pretty.Names
 import Pretty.Types (pipeSym)
 import TypeAutomata.Definition
 import Syntax.CST.Types (PrdCns(..))

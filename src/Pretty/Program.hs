@@ -8,7 +8,7 @@ import Driver.Environment
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
-import Pretty.Common
+import Pretty.Names
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..))

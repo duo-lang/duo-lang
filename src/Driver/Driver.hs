@@ -51,7 +51,7 @@ import Syntax.RST.Program (prdCnsToPol)
 import Sugar.Desugar (desugarModule)
 import qualified Data.Set as S
 import Data.Maybe (catMaybes)
-import Pretty.Common (Header(..))
+import Pretty.Names (Header(..))
 import Pretty.Program ()
 
 
