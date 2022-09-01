@@ -12,6 +12,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Data.Maybe (fromMaybe)
 
 import Driver.Environment (Environment)
@@ -100,11 +101,11 @@ addLowerBound uv ty = do
 addTypeClassConstraint :: UniTVar -> ClassName -> SolverM ()
 addTypeClassConstraint uv cn = modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs lbs (cn:classes) kind) uv
 
-lookupKVar :: KVar -> Map (Maybe MonoKind) (Set KVar) -> (Maybe MonoKind, Set KVar)
+lookupKVar :: KVar -> Map (Maybe MonoKind) (Set KVar) -> SolverM (Maybe MonoKind, Set KVar)
 lookupKVar kv mp = case M.toList (M.filter (\x -> kv `elem` x) mp) of 
-  [] -> error "kind variable not found"
-  [(mk,set)] -> (mk,set)
-  _ -> error ("multiple kinds for kind variable" <> show kv)
+  [] -> throwSolverError defaultLoc ["Kind variable not found."]
+  [(mk,set)] -> pure (mk,set)
+  _ -> throwSolverError defaultLoc ["Multiple kinds for kind variable" <> T.pack (show kv)]
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
@@ -143,8 +144,8 @@ unifyKinds (CBox cc1) (CBox cc2) =
     else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
 unifyKinds (KindVar kv1) (KindVar kv2) = do
   sets <- getKVars
-  let (mmk1, kvs1) = lookupKVar kv1 sets
-  let (mmk2, kvs2) = lookupKVar kv2 sets
+  (mmk1, kvs1) <- lookupKVar kv1 sets
+  (mmk2, kvs2) <- lookupKVar kv2 sets
   case (mmk1,mmk2) of 
     (_, Nothing) -> putKVars $ M.insert mmk1 (S.insert kv2 kvs1) (M.insert mmk2 (S.delete kv2 kvs2) sets)
     (Nothing, _) -> putKVars $ M.insert mmk2 (S.insert kv1 kvs2) (M.insert mmk1 (S.delete kv1 kvs1) sets)
@@ -152,7 +153,7 @@ unifyKinds (KindVar kv1) (KindVar kv2) = do
                          | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint mk1 <> " and " <> ppPrint mk2]
 unifyKinds (KindVar kv) kind = do 
   sets <- getKVars
-  let boundKind = lookupKVar kv sets
+  boundKind <- lookupKVar kv sets
   case fst boundKind of 
     Nothing -> putKVars (M.insert (Just kind) (S.insert kv (M.findWithDefault S.empty (Just kind) sets)) (M.insert Nothing (S.insert kv (snd boundKind)) sets)) 
     Just kind2 -> 
