@@ -4,7 +4,7 @@ module Main where
 import Data.Text qualified as T
 import Data.Version (showVersion)
 import GitHash (tGitInfoCwd, giHash, giBranch)
-import System.FilePath (dropFileName,takeBaseName,(</>), replaceFileName)
+import System.FilePath (takeBaseName, replaceFileName)
 
 import Options (Options(..), parseOptions)
 import Run (runRun)

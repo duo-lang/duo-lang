@@ -228,7 +228,6 @@ test-suite duo-lang-test
   other-modules:
       Spec.Focusing
     , Spec.TypeInferenceExamples
-    , Spec.Subsumption
     , Spec.LocallyClosed
     , Spec.Prettyprinter
     , Paths_duo_lang

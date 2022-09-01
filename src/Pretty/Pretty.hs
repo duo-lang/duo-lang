@@ -173,3 +173,18 @@ angles' = mkParen True (prettyAnn ("<" :: String))(prettyAnn (">" :: String))
 
 braces' :: Doc Annotation -> [Doc Annotation] -> Doc Annotation
 braces' = mkParen True (prettyAnn ("{" :: String))(prettyAnn ("}" :: String))
+
+
+headerWidth :: Int
+headerWidth = 60
+
+headerise :: forall ann. Text -> Text -> Text -> Doc ann
+headerise tb lr header = vsep [tbLine, headerLine, tbLine]
+  where
+    hdLen      = T.length header
+    tbLine     = pretty $ T.concat (replicate headerWidth tb)
+    lrTotLen   = (headerWidth - hdLen) - 2
+    lLine      =             T.concat (replicate (lrTotLen `quot` 2)                    lr)
+    rLine      = T.reverse $ T.concat (replicate (lrTotLen `quot` 2 + lrTotLen `mod` 2) lr)
+    headerLine = pretty lLine <+> pretty header <+> pretty rLine
+
