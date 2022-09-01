@@ -18,13 +18,23 @@ import Loc ( defaultLoc )
 -- Coalescing
 ---------------------------------------------------------------------------------
 
-data CoalesceState  = CoalesceState  { s_var_counter :: Int, s_recursive :: Map (UniTVar, Polarity) RecTVar }
-data CoalesceReader = CoalesceReader { r_result :: SolverResult, r_inProcess :: Set (UniTVar, Polarity) }
+data CoalesceState  = CoalesceState 
+  { s_var_counter :: Int
+  , s_recursive :: Map (UniTVar, Polarity) RecTVar
+  , s_uni_to_skolem :: Map UniTVar SkolemTVar
+  }
+data CoalesceReader = CoalesceReader
+  { r_result :: SolverResult
+  , r_inProcess :: Set (UniTVar, Polarity)
+  }
 
 type CoalesceM  a = ReaderT CoalesceReader (State CoalesceState) a
 
 runCoalesceM :: SolverResult ->  CoalesceM a -> a
-runCoalesceM res m = evalState (runReaderT m (CoalesceReader res S.empty)) (CoalesceState 0 M.empty)
+runCoalesceM res m = evalState (runReaderT m initialReader) initialState
+  where
+    initialState  = CoalesceState 0 M.empty M.empty
+    initialReader = CoalesceReader res S.empty
 
 freshRecVar :: CoalesceM RecTVar
 freshRecVar = do
@@ -37,6 +47,16 @@ freshSkolemVar = do
     i <- gets s_var_counter
     modify (\s -> s { s_var_counter = i+1 } )
     return (MkSkolemTVar (T.pack $ "s" ++ show i)) -- Use "s" so that they don't clash.
+
+getSkolemVar :: UniTVar -> CoalesceM SkolemTVar
+getSkolemVar uv = do
+  uts <- gets s_uni_to_skolem
+  case M.lookup uv uts of
+    Nothing -> do
+      sv <- freshSkolemVar
+      modify $ \s -> s { s_uni_to_skolem =  M.insert uv sv uts }
+      return sv
+    Just sv -> return sv
 
 inProcess :: (UniTVar, Polarity) -> CoalesceM Bool
 inProcess ptv = do
@@ -87,7 +107,7 @@ coalesceType (TyUniVar _ PosRep _ tv) = do
             recVarMap <- gets s_recursive
             case M.lookup (tv, Pos) recVarMap of
                 Nothing     -> do
-                    newName <- freshSkolemVar
+                    newName <- getSkolemVar tv
                     return $                                            mkUnion defaultLoc Nothing (TySkolemVar defaultLoc PosRep Nothing newName : lbs')
                 Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc Nothing (TyRecVar defaultLoc PosRep Nothing recVar  : lbs'))
 coalesceType (TyUniVar _ NegRep _ tv) = do
@@ -103,7 +123,7 @@ coalesceType (TyUniVar _ NegRep _ tv) = do
             recVarMap <- gets s_recursive
             case M.lookup (tv, Neg) recVarMap of
                 Nothing     -> do
-                    newName <- freshSkolemVar
+                    newName <- getSkolemVar tv
                     return $                                            mkInter defaultLoc Nothing (TySkolemVar defaultLoc NegRep Nothing newName : ubs')
                 Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc Nothing (TyRecVar defaultLoc NegRep Nothing recVar  : ubs'))
 coalesceType (TyData loc rep mk xtors) = do
