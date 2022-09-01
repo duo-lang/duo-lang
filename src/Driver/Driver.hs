@@ -182,8 +182,8 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
     ppPrintIO constraints
     ppPrintIO solverResult
   -- Insert into environment
-  instty <- runKindReaderM (checkInstDecl instancedecl_typ) env
-  let f env = env { instanceEnv = M.adjust (S.insert instty) instancedecl_name (instanceEnv env)}
+  let instty' = TST.instancedecl_typ instanceInferred
+  let f env = env { instanceEnv = M.adjust (S.insert instty') instancedecl_name (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 
