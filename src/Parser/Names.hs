@@ -1,4 +1,4 @@
-module Parser.Common
+module Parser.Names
   ( -- Names
     freeVarNameP
   , tvarP

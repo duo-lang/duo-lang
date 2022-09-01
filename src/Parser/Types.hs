@@ -16,7 +16,7 @@ module Parser.Types
 import Text.Megaparsec hiding (State)
 import Data.List.NonEmpty (NonEmpty((:|)))
 
-import Parser.Common
+import Parser.Names
 import Parser.Definition
 import Parser.Kinds
 import Parser.Lexer

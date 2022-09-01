@@ -10,7 +10,7 @@ import Text.Megaparsec
 
 import Parser.Definition
 import Parser.Lexer
-import Parser.Common
+import Parser.Names
 import Syntax.CST.Kinds
 import Syntax.CST.Names
 

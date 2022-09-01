@@ -111,7 +111,7 @@ library
       Eval.Primitives
       Lookup
       Loc
-      Parser.Common
+      Parser.Names
       Parser.Definition
       Parser.Kinds
       Parser.Lexer

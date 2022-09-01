@@ -14,7 +14,7 @@ import System.FilePath (takeBaseName)
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char (eol)
 
-import Parser.Common
+import Parser.Names
 import Parser.Definition
 import Parser.Kinds
 import Parser.Lexer

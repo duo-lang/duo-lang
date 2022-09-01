@@ -12,7 +12,7 @@ import Text.Megaparsec
       sepBy,
       some,
       MonadParsec(try, notFollowedBy) )
-import Parser.Common
+import Parser.Names
 import Parser.Definition
 import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
