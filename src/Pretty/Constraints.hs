@@ -171,6 +171,7 @@ prettyKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+
 instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
   prettyAnn uvsubst = vsep
     [ headerise "-" " " "Bisubstitution (UniTVar)"
+    , "" 
     , "Unification Variables: "
     , vsep $ intersperse "" (prettyBisubst <$> M.toList (fst (TST.bisubst_map uvsubst)))
     , ""
