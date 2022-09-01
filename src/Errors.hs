@@ -8,7 +8,7 @@ import Data.Text qualified as T
 
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
-import Syntax.RST.Names ( RnTypeName )
+import Syntax.RST.Names ( RnTypeName, Index )
 import Syntax.CST.Types (PrdCns)
 import Syntax.RST.Types
 import Loc

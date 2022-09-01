@@ -25,3 +25,10 @@ peanoNm = MkRnTypeName { rnTnLoc    = defaultLoc
                        , rnTnModule = CST.MkModuleName "Peano"
                        , rnTnName   = CST.MkTypeName "Nat"
                        }
+
+---------------------------------------------------------------------------------
+-- de Bruijn indices
+---------------------------------------------------------------------------------
+
+-- | Two-level de Bruijn indices.
+type Index = (Int, Int)

@@ -26,8 +26,9 @@ import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.TST.Terms (ShiftDirection(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
+import Syntax.RST.Names (Index)
 import Syntax.CST.Names
-    ( ClassName, FreeVarName, Index, MethodName, XtorName )
+    ( ClassName, FreeVarName, MethodName, XtorName )
 
 ---------------------------------------------------------------------------------
 -- Variable representation

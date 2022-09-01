@@ -25,9 +25,10 @@ import Data.Maybe (fromJust, isJust)
 
 import Loc ( Loc )
 import Syntax.CST.Names
-    ( ClassName, FreeVarName, Index, MethodName, XtorName )
+    ( ClassName, FreeVarName, MethodName, XtorName )
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..) )
+import Syntax.RST.Names ( Index )
 
 ---------------------------------------------------------------------------------
 -- Variable representation

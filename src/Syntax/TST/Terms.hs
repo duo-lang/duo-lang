@@ -25,7 +25,8 @@ import Data.Text qualified as T
 import Loc
 import Errors
 import Syntax.CST.Names
-    ( ClassName, FreeVarName, Index, MethodName, XtorName )
+    ( ClassName, FreeVarName, MethodName, XtorName )
+import Syntax.RST.Names
 import Syntax.Core.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
 import Syntax.CST.Kinds ( MonoKind )

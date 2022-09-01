@@ -107,10 +107,3 @@ data Associativity where
 
 newtype Precedence = MkPrecedence Int
   deriving (Eq, Show, Ord)
-
----------------------------------------------------------------------------------
--- de Bruijn indices
----------------------------------------------------------------------------------
-
--- | Two-level de Bruijn indices.
-type Index = (Int, Int)
