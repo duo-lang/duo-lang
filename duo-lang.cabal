@@ -167,7 +167,7 @@ library
       TypeInference.GenerateConstraints.Definition
       TypeInference.GenerateConstraints.Primitives
       TypeInference.GenerateConstraints.Terms
-      TypeInference.GenerateConstraints.KindInference
+      TypeInference.GenerateConstraints.Kinds
       TypeInference.SolveConstraints
       TypeInference.Constraints
       TypeTranslation

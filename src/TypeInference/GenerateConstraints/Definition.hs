@@ -52,7 +52,7 @@ import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program as RST
 import TypeInference.Constraints
-import TypeInference.GenerateConstraints.KindInference
+import TypeInference.GenerateConstraints.Kinds
 import TypeTranslation qualified as TT
 import Loc ( Loc, defaultLoc )
 import Utils ( indexMaybe )

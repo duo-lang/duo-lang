@@ -1,4 +1,4 @@
-module TypeInference.GenerateConstraints.KindInference where
+module TypeInference.GenerateConstraints.Kinds where
 
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
