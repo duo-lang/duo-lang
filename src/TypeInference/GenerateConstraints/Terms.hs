@@ -278,7 +278,9 @@ genConstraintsCommand (Core.Print loc prd cmd) = do
   pure (TST.Print loc prd' cmd')
 genConstraintsCommand (Core.Read loc cns) = do
   cns' <- genConstraintsTerm cns
-  addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep (CBox CBV) peanoNm []) (TST.getTypeTerm cns'))
+  peanoDecl <- lookupTypeName loc peanoNm
+  let peanoKnd = CBox (returnKind (RST.data_kind peanoDecl))
+  addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm []) (TST.getTypeTerm cns'))
   return (TST.Read loc cns')
 genConstraintsCommand (Core.Apply loc annot t1 t2) = do
   t1' <- genConstraintsTerm t1
