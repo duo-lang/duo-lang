@@ -163,18 +163,20 @@ unifyKinds (KindVar kv) kind = do
 unifyKinds kind (KindVar kv) = unifyKinds (KindVar kv) kind
 unifyKinds _ _ = throwSolverError defaultLoc ["Not implemented"]
 
-computeKVarSolution :: KindPolicy -> Map (Maybe MonoKind) (Set KVar) -> Map KVar MonoKind
-computeKVarSolution kp sets = M.fromList (flatten (map (swapKeys kp) (M.toList sets)))
+computeKVarSolution :: KindPolicy -> Map (Maybe MonoKind) (Set KVar) -> Either (NonEmpty Error) (Map KVar MonoKind)
+computeKVarSolution kp sets = do
+  x <- mapM (swapKeys kp) (M.toList sets)
+  pure $ M.fromList (concat x)
    where 
-     swapKeys :: KindPolicy -> (Maybe MonoKind, Set KVar) -> [(KVar, MonoKind)]
-     swapKeys kp (mk, set) = map (\kv -> (kv,fromMaybe (defaultFromPolicy kp) mk)) (S.toList set)
-     flatten :: [[(KVar, MonoKind)]] -> [(KVar, MonoKind)]
-     flatten [] = [] 
-     flatten (ls:rs) = ls++flatten rs
-     defaultFromPolicy :: KindPolicy -> MonoKind
-     defaultFromPolicy DefaultCBV = CBox CBV
-     defaultFromPolicy DefaultCBN = CBox CBN
-     defaultFromPolicy ErrorUnresolved = error "Not all Kind Variables could be resolved"
+     swapKeys :: KindPolicy -> (Maybe MonoKind, Set KVar) -> Either (NonEmpty Error) [(KVar, MonoKind)]
+     swapKeys kp (mk, set) = do
+      let f kv = defaultFromPolicy kp >>= \def -> pure (kv,fromMaybe def mk)
+      mapM f (S.toList set)
+     
+     defaultFromPolicy :: KindPolicy -> Either (NonEmpty Error) MonoKind
+     defaultFromPolicy DefaultCBV = pure (CBox CBV)
+     defaultFromPolicy DefaultCBN = pure (CBox CBN)
+     defaultFromPolicy ErrorUnresolved = throwSolverError defaultLoc ["Not all Kind Variables could be resolved"]
 
 
 
@@ -345,6 +347,6 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
 solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NonEmpty Error) SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) env = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
-  let kvarSolution = computeKVarSolution ErrorUnresolved (sst_kvars solverState)
+  kvarSolution <- computeKVarSolution ErrorUnresolved (sst_kvars solverState)
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution
