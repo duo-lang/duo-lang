@@ -33,10 +33,10 @@ import TypeAutomata.Definition (Nubable(nub))
 --------------------------------------------------------------------------------
 type KindReaderM a = (ReaderT (Map ModuleName Environment, ()) (StateT Int (Except (NonEmpty Error)))) a
 
-runKindReaderM :: KindReaderM a -> Map ModuleName Environment -> a
+runKindReaderM :: MonadError (NonEmpty Error) m => KindReaderM a -> Map ModuleName Environment -> m a
 runKindReaderM m env = case runExcept (runStateT (runReaderT m (env,())) 0) of 
-  Left err -> error (show err)
-  Right res -> fst res
+  Left err -> throwError err
+  Right res -> return $ fst res
 
 ------------------------------------------------------------------------------
 -- Typeinference Options

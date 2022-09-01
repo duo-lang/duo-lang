@@ -125,8 +125,8 @@ subsumeRepl txt = do
     resolved_t1 <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveTypeScheme PosRep t1))
     resolved_t2 <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveTypeScheme PosRep t2))
     env <- gets drvEnv
-    let resolved_t1' = runKindReaderM (checkTypeScheme resolved_t1) env
-    let resolved_t2' = runKindReaderM (checkTypeScheme resolved_t2) env
+    resolved_t1' <- runKindReaderM (checkTypeScheme resolved_t1) env
+    resolved_t2' <- runKindReaderM (checkTypeScheme resolved_t2) env
     isSubsumed <-  liftEitherErr (subsume PosRep resolved_t1' resolved_t2',[])
     liftIO $ putStrLn $ if isSubsumed
                         then "Subsumption holds"

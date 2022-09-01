@@ -27,7 +27,7 @@ type KindReader a m = (MonadError (NonEmpty Error) m, MonadReader (M.Map ModuleN
 -- Types
 --------------------------------------------------------------------------------------------
 getXtorKinds :: KindReader a m => Loc -> [RST.XtorSig pol] -> m MonoKind
-getXtorKinds loc [] = return (CBox CBV)--throwSolverError loc ["Can't find kinds of empty List of Xtors"]
+getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
 getXtorKinds loc [xtor] = do 
   let nm = RST.sig_name xtor
   lookupXtorKind nm
