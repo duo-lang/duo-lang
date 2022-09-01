@@ -204,11 +204,11 @@ insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert 
                                                             , "should not appear at this point in the program."
                                                             ]
 insertType (TyRecVar _ rep _ tv) = lookupTRecVar rep tv
-insertType (TyTop _) = do
+insertType (TyTop _ _) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Neg)
   pure newNode
-insertType (TyBot _) = do
+insertType (TyBot _ _) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Pos)
   pure newNode
@@ -235,10 +235,10 @@ insertType (TyRec _ rep rv ty) = do
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData _ polrep xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors
-insertType (TyCodata _ polrep xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing xtors
-insertType (TyDataRefined _ polrep mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) xtors
-insertType (TyCodataRefined _ polrep mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) xtors
+insertType (TyData _ polrep _ xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors
+insertType (TyCodata _ polrep _ xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing xtors
+insertType (TyDataRefined _ polrep _ mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) xtors
+insertType (TyCodataRefined _ polrep _ mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) xtors
 insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyNominal _ rep _ tn args) = do
   let pol = polarityRepToPol rep
