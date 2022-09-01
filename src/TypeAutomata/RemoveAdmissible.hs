@@ -131,14 +131,14 @@ isMemoised fe = do
   m <- gets memo
   guard $ fe `S.member` m
 
-isNotBlacklisted :: FlowEdge -> AdmissableM ()
-isNotBlacklisted fe = do
+isBlacklisted :: FlowEdge -> AdmissableM ()
+isBlacklisted fe = do
   b <- gets blacklist
-  guard $ not $ fe `S.member` b
+  guard $ fe `S.member` b
 
 subtypeData :: TypeAutCore EdgeLabelNormal -> FlowEdge -> AdmissableM ()
 subtypeData aut@TypeAutCore{ ta_gr } (i,j) = do
-  (MkNodeLabel Neg (Just dat1) _ _  _ _) <- liftAM $ lab ta_gr i
+  (MkNodeLabel Neg (Just dat1) _ _ _ _) <- liftAM $ lab ta_gr i
   (MkNodeLabel Pos (Just dat2) _ _ _ _) <- liftAM $ lab ta_gr j
   -- Check that all constructors in dat1 are also in dat2.
   forM_ (S.toList dat1) $ \xt -> guard (xt `S.member` dat2)
@@ -174,8 +174,8 @@ subtypeNominal TypeAutCore{ ta_gr } (i,j) = do
 
 admissableM :: TypeAutCore EdgeLabelNormal -> FlowEdge -> AdmissableM ()
 admissableM aut@TypeAutCore{} e =
-  isNotBlacklisted e <|>
   isMemoised e <|>
+  isBlacklisted e <|>
     do  insertFE e
         subtypeData aut e <|>
           subtypeCodata aut e <|>
@@ -187,7 +187,7 @@ removeAdmissableFlowEdges aut@TypeAut{ ta_core = tac@TypeAutCore {..}} =
   aut { ta_core = tac { ta_flowEdges = ta_flowEdges_filtered }}
     where
       ta_flowEdges_filtered :: [FlowEdge]
-      ta_flowEdges_filtered = filter (`S.member` admissable) ta_flowEdges
+      ta_flowEdges_filtered = filter (not . flip S.member admissable) ta_flowEdges
 
       admissable :: S.Set FlowEdge
       admissable = memo $ snd $ execAdmissable $ mapM (admissableM tac) ta_flowEdges
