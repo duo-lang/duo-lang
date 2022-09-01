@@ -11,8 +11,6 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Sugar.Core qualified as Core
 
-import Translate.Reparse ()
-
 embedCmdCase :: Core.CmdCase -> RST.CmdCase
 embedCmdCase Core.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
     RST.MkCmdCase { cmdcase_loc = cmdcase_loc

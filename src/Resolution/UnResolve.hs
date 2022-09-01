@@ -1,4 +1,4 @@
-module Translate.Reparse
+module Resolution.UnResolve
   ( reparseTerm
   , reparsePCTerm
   , reparseCommand
