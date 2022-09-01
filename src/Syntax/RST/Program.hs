@@ -1,6 +1,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 module Syntax.RST.Program where
 
+import Syntax.RST.Names ( RnTypeName )
 import Syntax.RST.Terms( Command, Term, InstanceCase )
 import Syntax.RST.Types ( TypeScheme, Typ, MethodSig, XtorSig, Polarity(..), PolarityRep(..))
 import Syntax.CST.Names
@@ -9,7 +10,6 @@ import Syntax.CST.Names
       DocComment,
       FreeVarName,
       Precedence,
-      RnTypeName,
       SkolemTVar,
       TyOpName,
       TypeName,

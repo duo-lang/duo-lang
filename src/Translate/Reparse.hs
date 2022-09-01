@@ -34,13 +34,13 @@ import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Loc
+import Syntax.RST.Names ( RnTypeName(MkRnTypeName, rnTnName) )
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
 import Syntax.CST.Names
     ( BinOp(InterOp, CustomOp, UnionOp),
       FreeVarName(MkFreeVarName),
       MethodName(unMethodName),
       RecTVar(MkRecTVar),
-      RnTypeName(MkRnTypeName, rnTnName),
       SkolemTVar(MkSkolemTVar),
       PrimName(..),
       printName,

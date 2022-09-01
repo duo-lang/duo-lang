@@ -16,11 +16,13 @@ import Errors
 import Pretty.Pretty
 import Pretty.Common ()
 import Pretty.Types ()
+
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CST.Terms
+import Syntax.RST.Names
 import Loc ( Loc )
 
 ---------------------------------------------------------------------------------

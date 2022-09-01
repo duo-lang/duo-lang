@@ -4,6 +4,7 @@ import Data.Map (Map)
 
 import Syntax.TST.Types
 import Syntax.CST.Names
+import Syntax.RST.Names ( RnTypeName )
 import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Kinds
 import Loc ( Loc )

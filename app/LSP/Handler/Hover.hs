@@ -31,6 +31,7 @@ import Syntax.TST.Types qualified as TST
 import Syntax.RST.Types (PolarityRep(..))
 import Loc (Loc)
 import Syntax.RST.Program qualified as RST
+import Syntax.RST.Names
 import Syntax.CST.Program qualified as CST
 
 ---------------------------------------------------------------------------------

@@ -7,7 +7,8 @@ import Data.Kind ( Type )
 import Syntax.CST.Kinds ( Variance(..) )
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
-    ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
+    ( MethodName, RecTVar, SkolemTVar, UniTVar, XtorName )
+import Syntax.RST.Names ( RnTypeName )
 import Loc ( Loc, defaultLoc )
 
 ------------------------------------------------------------------------------

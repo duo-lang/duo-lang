@@ -17,12 +17,12 @@ import Syntax.CST.Names
       PrimName(..),
       Precedence(..),
       RecTVar(MkRecTVar),
-      RnTypeName(MkRnTypeName, rnTnName),
       SkolemTVar(MkSkolemTVar),
       TypeName(MkTypeName),
       UniTVar(MkUniTVar),
       XtorName(MkXtorName) )
-import Syntax.CST.Types (Arity, PrdCns(..))      
+import Syntax.RST.Names ( RnTypeName(MkRnTypeName, rnTnName) )
+import Syntax.CST.Types (Arity, PrdCns(..))
 import Syntax.CST.Kinds
     ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..))
 import Loc ( Loc(..) )
@@ -83,6 +83,7 @@ instance PrettyAnn TypeName where
 
 instance PrettyAnn RnTypeName where
   prettyAnn MkRnTypeName { rnTnName } = prettyAnn rnTnName
+
 
 instance PrettyAnn Precedence where
   prettyAnn (MkPrecedence i) = pretty i

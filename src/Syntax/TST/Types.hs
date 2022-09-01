@@ -6,10 +6,11 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe (fromMaybe)
 import Data.Kind ( Type )
+import Syntax.RST.Names ( RnTypeName )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), FlipPol ,PrdCnsFlip)
 import Syntax.CST.Kinds
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
-import Syntax.CST.Names ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
+import Syntax.CST.Names ( MethodName, RecTVar, SkolemTVar, UniTVar, XtorName )
 
 import Loc
 

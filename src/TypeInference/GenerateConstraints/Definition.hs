@@ -50,6 +50,7 @@ import Data.Text qualified as T
 import Driver.Environment
 import Errors
 import Lookup
+import Syntax.RST.Names ( RnTypeName )
 import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names

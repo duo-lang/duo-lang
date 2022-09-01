@@ -11,6 +11,7 @@ import Errors
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
+import Syntax.RST.Names ( peanoNm )
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Types qualified as TST

@@ -28,6 +28,7 @@ import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
+import Syntax.RST.Names ( RnTypeName(rnTnName) )
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))
 import Syntax.CST.Types (PrdCnsRep(..))
 import Syntax.CST.Names
