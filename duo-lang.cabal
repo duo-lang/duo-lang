@@ -166,7 +166,6 @@ library
       TypeAutomata.ToAutomaton
       TypeInference.Coalescing
       TypeInference.GenerateConstraints.Definition
-      TypeInference.GenerateConstraints.Helpers
       TypeInference.GenerateConstraints.Primitives
       TypeInference.GenerateConstraints.Terms
       TypeInference.GenerateConstraints.Kinds
