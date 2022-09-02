@@ -75,7 +75,8 @@ common shared-lang-options
                      ImportQualifiedPost,
                      ViewPatterns,
                      MultiWayIf,
-                     PatternSynonyms
+                     PatternSynonyms,
+                     InstanceSigs
 
 common shared-ghc-opts
   ghc-options:
@@ -171,7 +172,6 @@ library
       TypeInference.GenerateConstraints.Kinds
       TypeInference.SolveConstraints
       TypeInference.Constraints
-      TypeTranslation
       Translate.Focusing
       Translate.Reparse
       Translate.Embed

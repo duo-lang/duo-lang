@@ -27,13 +27,14 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map ( Map )
 
 import Driver.Environment
-import Loc
 import Errors
 import Lookup
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
 import TypeInference.Constraints
 import Syntax.RST.Types (Polarity(..))
+import Loc ( Loc )
+import Utils ( indexMaybe )
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
