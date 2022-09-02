@@ -21,6 +21,7 @@ import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Translate.Embed
 import TypeInference.GenerateConstraints.Definition
+import TypeInference.GenerateConstraints.Helpers
 import TypeInference.GenerateConstraints.Kinds
 import TypeInference.Constraints
 import Loc

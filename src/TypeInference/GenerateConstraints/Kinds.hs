@@ -11,9 +11,9 @@ import Driver.Environment
 import Loc
 import Pretty.Pretty
 
-
 import Control.Monad.Reader
 import Control.Monad.Except
+import Control.Monad.State
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as M
 import Data.Text qualified as T
@@ -21,7 +21,7 @@ import Data.Text qualified as T
 --------------------------------------------------------------------------------------------
 -- Kind Inference Monad 
 --------------------------------------------------------------------------------------------
-type KindReader a m = (MonadError (NonEmpty Error) m, MonadReader (M.Map ModuleName Environment, a) m)
+type KindReader a m = (MonadError (NonEmpty Error) m, MonadReader (M.Map ModuleName Environment, a) m) -- , MonadState GenerateState m)
 
 --------------------------------------------------------------------------------------------
 -- Types
