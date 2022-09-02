@@ -27,14 +27,15 @@ import Parser.Definition (runFileParser)
 import Parser.Parser (moduleP)
 import Data.Maybe ( fromMaybe )
 import TypeAutomata.Definition (Nubable(nub))
+import TypeInference.GenerateConstraints.Definition (GenerateState, initialState)
 
 ----------------------------------------------------------------------------
 --Helper Monad for Kind Inference 
 --------------------------------------------------------------------------------
-type KindReaderM a = (ReaderT (Map ModuleName Environment, ()) (StateT Int (Except (NonEmpty Error)))) a
+type KindReaderM a = (ReaderT (Map ModuleName Environment, ()) (StateT GenerateState (Except (NonEmpty Error)))) a
 
 runKindReaderM :: MonadError (NonEmpty Error) m => KindReaderM a -> Map ModuleName Environment -> m a
-runKindReaderM m env = case runExcept (runStateT (runReaderT m (env,())) 0) of 
+runKindReaderM m env = case runExcept (runStateT (runReaderT m (env,())) initialState) of 
   Left err -> throwError err
   Right res -> return $ fst res
 

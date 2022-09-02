@@ -10,6 +10,7 @@ import Errors
 import Driver.Environment
 import Loc
 import Pretty.Pretty
+import TypeInference.GenerateConstraints.Definition
 
 import Control.Monad.Reader
 import Control.Monad.Except
@@ -21,7 +22,7 @@ import Data.Text qualified as T
 --------------------------------------------------------------------------------------------
 -- Kind Inference Monad 
 --------------------------------------------------------------------------------------------
-type KindReader a m = (MonadError (NonEmpty Error) m, MonadReader (M.Map ModuleName Environment, a) m) -- , MonadState GenerateState m)
+type KindReader a m = (MonadError (NonEmpty Error) m, MonadReader (M.Map ModuleName Environment, a) m, MonadState GenerateState m)
 
 --------------------------------------------------------------------------------------------
 -- Types

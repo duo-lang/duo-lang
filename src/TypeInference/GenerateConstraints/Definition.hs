@@ -15,7 +15,8 @@ module TypeInference.GenerateConstraints.Definition
     -- Other
   , PrdCnsToPol
   , prdCnsToPol
-  , GenerateState(..))
+  , GenerateState(..)
+  , initialState)
 where
 
 import Control.Monad.Except
@@ -24,8 +25,6 @@ import Control.Monad.State
 import Control.Monad.Writer
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map ( Map )
-import Data.Map qualified as M
-import Data.Text qualified as T
 
 import Driver.Environment
 import Loc
