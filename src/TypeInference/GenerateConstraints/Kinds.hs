@@ -25,7 +25,7 @@ import Data.Text qualified as T
 type KindReader a m = (MonadError (NonEmpty Error) m, MonadReader (M.Map ModuleName Environment, a) m, MonadState GenerateState m)
 
 --------------------------------------------------------------------------------------------
--- Types
+-- Helpers
 --------------------------------------------------------------------------------------------
 getXtorKinds :: KindReader a m => Loc -> [RST.XtorSig pol] -> m MonoKind
 getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
@@ -50,6 +50,16 @@ getKindDecl :: KindReader a m => RST.DataDecl -> m MonoKind
 getKindDecl decl = do
   let polyknd = RST.data_kind decl
   return (CBox (returnKind polyknd))
+
+newKVar :: KindReader a m => m KVar
+newKVar = do
+  kvCnt <- gets kVarCount
+  modify (\gs@GenerateState{} -> gs { kVarCount = kvCnt + 1 })
+  return (MkKVar (T.pack ("kv" <> show kvCnt)))
+
+--------------------------------------------------------------------------------------------
+-- checking Kinds
+--------------------------------------------------------------------------------------------
 
 checkInstDecl :: KindReader a m => (RST.Typ RST.Pos, RST.Typ RST.Neg) -> m (TST.Typ RST.Pos, TST.Typ RST.Neg)
 checkInstDecl (ty1, ty2) = do 
@@ -87,16 +97,16 @@ checkXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = do
 
 checkKind :: KindReader a m => RST.Typ pol -> m (TST.Typ pol)
 checkKind (RST.TySkolemVar loc pol tv) = do
-  let knd = KindVar (MkKVar (unSkolemTVar tv))
-  return (TST.TySkolemVar loc pol knd tv)
+  kv <- newKVar
+  return (TST.TySkolemVar loc pol (KindVar kv) tv)
 
 checkKind (RST.TyUniVar loc pol tv) = do 
-  let knd = KindVar (MkKVar (unUniTVar tv))
-  return (TST.TyUniVar loc pol knd tv)
+  kv <- newKVar 
+  return (TST.TyUniVar loc pol (KindVar kv) tv)
 
 checkKind (RST.TyRecVar loc pol rv) = do
-  let knd = KindVar (MkKVar (unRecTVar rv))
-  return (TST.TyRecVar loc pol knd rv)
+  kv <- newKVar 
+  return (TST.TyRecVar loc pol (KindVar kv) rv)
 
 checkKind (RST.TyData loc pol xtors) = do 
   knd <- getXtorKinds loc xtors 
@@ -133,16 +143,14 @@ checkKind (RST.TyTop loc) = return (TST.TyTop loc topbotVar)
 checkKind (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- checkKind ty1
   ty2' <- checkKind ty2
-  -- not an optimal name for the kvar, but it should always be unique
-  let knd = KindVar (MkKVar (T.pack ("kvUnion" <> show ty1 <> "\\/" <> show ty2)))
-  return (TST.TyUnion loc knd ty1' ty2')
+  kv <- newKVar 
+  return (TST.TyUnion loc (KindVar kv) ty1' ty2')
   
 checkKind (RST.TyInter loc ty1 ty2) = do
   ty1' <- checkKind ty1
   ty2' <- checkKind ty2
-  -- not an optimal name for the kvar, but it should always be unique
-  let knd = KindVar (MkKVar (T.pack ("kvInter" <> show ty1 <> "/\\" <> show ty2)))
-  return (TST.TyInter loc knd ty1' ty2')
+  kv <- newKVar 
+  return (TST.TyInter loc (KindVar kv) ty1' ty2')
   
 checkKind (RST.TyRec loc pol rv ty) = do
   ty' <- checkKind ty
