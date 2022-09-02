@@ -236,7 +236,6 @@ instance ToHoverMap PrdCnsTerm where
   toHoverMap (CnsTerm tm) = toHoverMap tm
 
 applyToHoverMap :: Range -> MonoKind -> HoverMap
---applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "Kind not inferred" rng)]
 applyToHoverMap rng cc = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
 instance ToHoverMap TST.Command where

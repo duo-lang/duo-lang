@@ -36,8 +36,6 @@ evalTermOnce (Jump _ fv) = do
   return (Just cmd)
 evalTermOnce Method {} = return Nothing
   -- throwEvalError defaultLoc ["Eval for type class methods not implemented yet."]
---evalTermOnce (Apply _ _ Nothing _ _) =
---  throwEvalError defaultLoc ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
 evalTermOnce (Apply _ _ kind prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ op args) = evalPrimOp op args
 
