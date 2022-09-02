@@ -247,5 +247,6 @@ Benchmark duo-lang-bench
   hs-source-dirs:
       bench
   build-depends:
-      duo-lang
+      duo-lang,
+      criterion
 
