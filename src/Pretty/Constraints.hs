@@ -11,6 +11,7 @@ import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Names
 import TypeInference.Constraints
+import Syntax.CST.Kinds
 import Translate.Embed
 
 ---------------------------------------------------------------------------------
@@ -48,6 +49,8 @@ instance PrettyAnn UVarProvenance where
   prettyAnn (TypeClassInstance cn tv) = parens ("Instantiation for type variable"  <+> prettyAnn tv <+> "of type class" <+> prettyAnn cn)
 
 instance PrettyAnn (Constraint ConstraintInfo) where
+  prettyAnn (KindEq ann k1 k2) = 
+    prettyAnn k1 <+> "~" <+> prettyAnn k2 <+> prettyAnn ann
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
   prettyAnn (TypeClassPos ann cn typ) =
@@ -59,13 +62,13 @@ printUVar :: (UniTVar, UVarProvenance) -> Doc Annotation
 printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
-  prettyAnn ConstraintSet { cs_constraints, cs_uvars } = vsep
-    [ "---------------------------------------------------------"
-    , "                    Generated Constraints"
-    , "---------------------------------------------------------"
+  prettyAnn ConstraintSet { cs_constraints, cs_uvars, cs_kvars } = vsep
+    [ headerise "-" " " "Generated Constraints"
     , ""
     , "Generated unification variables:"
     , nest 3 (line' <> vsep (printUVar <$> cs_uvars))
+    , ""
+    , nest 3 (line' <> vsep (prettyAnn <$> cs_kvars))
     , ""
     , "Generated constraints:"
     , nest 3 (line' <> vsep (prettyAnn <$> cs_constraints))
@@ -122,9 +125,8 @@ instance PrettyAnn VariableState where
     printTSTLowerBounds lbs <> line <> printTSTUpperBounds ubs <> line <> printTypeClassConstraints cns
 instance PrettyAnn SolverResult where
   prettyAnn MkSolverResult { tvarSolution } = vsep
-    [ "---------------------------------------------------------"
-    , "                   Solved Constraints"
-    , "---------------------------------------------------------"
+    
+    [ headerise "-" " " "Solved Constraints"
     , ""
     , vsep $ intersperse "" (solvedConstraintsToDoc <$> M.toList tvarSolution)
     , ""
@@ -163,29 +165,30 @@ prettySkolBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyA
                                                     ]
                                              ]
 
+prettyKindSubst :: (KVar, MonoKind) -> Doc Annotation
+prettyKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
+
 instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
   prettyAnn uvsubst = vsep
-    [ "---------------------------------------------------------"
-    , "                 Bisubstitution (UniTVar)                "
-    , "---------------------------------------------------------"
+    [ headerise "-" " " "Bisubstitution (UniTVar)"
+    , "" 
+    , "Unification Variables: "
+    , vsep $ intersperse "" (prettyBisubst <$> M.toList (fst (TST.bisubst_map uvsubst)))
     , ""
-    , vsep $ intersperse "" (prettyBisubst <$> M.toList (TST.bisubst_map uvsubst))
+    , "Kind Variables: "
+    , vsep $ intersperse "" (prettyKindSubst <$> M.toList (snd (TST.bisubst_map uvsubst)))
     ]
 
 instance PrettyAnn (TST.Bisubstitution TST.SkolemVT) where
   prettyAnn skolvsubst = vsep 
-    [ "---------------------------------------------------------"
-    , "                 Bisubstitution (SkolemTVar)             "
-    , "---------------------------------------------------------"
+    [ headerise "-" " " "Bisubstitution (SkolemTVar)"
     , ""
     , vsep $ intersperse "" (prettySkolBisubst <$> M.toList (TST.bisubst_map skolvsubst))
     ]
 
 instance PrettyAnn (TST.Bisubstitution TST.RecVT) where
   prettyAnn recvsubst = vsep
-    [ "---------------------------------------------------------"
-    , "                 Bisubstitution (RecTVar)                "
-    , "---------------------------------------------------------"
+    [ headerise "-" " " "Bisubstitution (RecTVar)"
     , ""
     , vsep $ intersperse "" (prettyRecBisubst <$> M.toList (TST.bisubst_map recvsubst))
     ]

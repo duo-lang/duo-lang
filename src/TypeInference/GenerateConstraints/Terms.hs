@@ -96,8 +96,8 @@ genConstraintsTerm (Core.Xtor loc annot rep CST.Structural xt subst) = do
   inferredSubst <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs inferredSubst
   case rep of
-    PrdRep -> return $ TST.Xtor loc annot rep (TST.TyData   defaultLoc PosRep [TST.MkXtorSig xt substTypes]) CST.Structural xt inferredSubst
-    CnsRep -> return $ TST.Xtor loc annot rep (TST.TyCodata defaultLoc NegRep [TST.MkXtorSig xt substTypes]) CST.Structural xt inferredSubst
+    PrdRep -> return $ TST.Xtor loc annot rep (TST.TyData   defaultLoc PosRep Nothing [TST.MkXtorSig xt substTypes]) CST.Structural xt inferredSubst
+    CnsRep -> return $ TST.Xtor loc annot rep (TST.TyCodata defaultLoc NegRep Nothing [TST.MkXtorSig xt substTypes]) CST.Structural xt inferredSubst
 --
 -- Nominal Xtors
 --
@@ -133,8 +133,8 @@ genConstraintsTerm (Core.Xtor loc annot rep CST.Refinement xt subst) = do
   -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes (TST.sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   case rep of
-    PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep (RST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
-    CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep (RST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
+    PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep Nothing (RST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
+    CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep Nothing (RST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
 --
 -- Structural pattern and copattern matches:
 --
@@ -149,8 +149,8 @@ genConstraintsTerm (Core.XCase loc annot rep CST.Structural cases) = do
                       return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
   case rep of
     -- The return type is a structural type consisting of a XtorSig for each case.
-    PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodata defaultLoc PosRep (snd <$> inferredCases)) CST.Structural (fst <$> inferredCases)
-    CnsRep -> return $ TST.XCase loc annot rep (TST.TyData   defaultLoc NegRep (snd <$> inferredCases)) CST.Structural (fst <$> inferredCases)
+    PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodata defaultLoc PosRep Nothing (snd <$> inferredCases)) CST.Structural (fst <$> inferredCases)
+    CnsRep -> return $ TST.XCase loc annot rep (TST.TyData   defaultLoc NegRep Nothing (snd <$> inferredCases)) CST.Structural (fst <$> inferredCases)
 --
 -- Nominal pattern and copattern matches
 --
@@ -211,8 +211,8 @@ genConstraintsTerm (Core.XCase loc annot rep CST.Refinement cases@(pmcase:_)) = 
                        -- and greatest type translation.
                        return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
   case rep of
-    PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep (RST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
-    CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep (RST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
+    PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep Nothing (RST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
+    CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep Nothing (RST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
 --
 -- Mu and TildeMu abstractions:
 --

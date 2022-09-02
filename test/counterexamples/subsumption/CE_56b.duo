@@ -1,0 +1,9 @@
+import Function;
+import Bool;
+import Peano;
+
+-- Subsumptions which shouldn't hold
+
+def rec prd ex17    : { Ap(< True >,return < True >) }                                      := ex17;
+def rec prd ex17sub : forall a. { Ap(a,return a) }                                          := ex17;
+

@@ -44,7 +44,7 @@ dualCmd :: Command -> Either DualizeError Command
 dualCmd (Apply _ annot kind prd cns) = do
     t1 <- dualTerm CnsRep cns
     t2 <- dualTerm PrdRep prd
-    return $ Apply defaultLoc (dualApplyAnnot annot) (dualMonoKind <$> kind) t1 t2
+    return $ Apply defaultLoc (dualApplyAnnot annot) (dualMonoKind kind) t1 t2
 dualCmd (Print loc _ _) = Left $ DualPrint loc "Cannot dualize Print command"
 dualCmd (Read loc _)  = Left $ DualRead loc "Cannot dualize Read command"
 dualCmd (Jump _ fv)  = return $ Jump defaultLoc (dualFVName fv)
@@ -125,29 +125,29 @@ dualType' PrdRep t = dualType PosRep t
 dualType' CnsRep t = dualType NegRep t
 
 dualType :: PolarityRep pol -> Typ pol -> Typ (FlipPol pol)
-dualType pol (TyUniVar _loc _ kind x) = TyUniVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
-dualType pol (TySkolemVar _loc _ kind x) = TySkolemVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
-dualType pol (TyRecVar _loc _ kind x) = TyRecVar defaultLoc (flipPolarityRep pol) (dualMonoKind <$> kind) x
-dualType pol (TyNominal _ _ kind tn vtys) = TyNominal defaultLoc  (flipPolarityRep pol) (dualMonoKind <$> kind) (dualRnTypeName tn) (dualVariantType pol <$> vtys)
+dualType pol (TyUniVar _loc _ kind x) = TyUniVar defaultLoc (flipPolarityRep pol) (dualMonoKind kind) x
+dualType pol (TySkolemVar _loc _ kind x) = TySkolemVar defaultLoc (flipPolarityRep pol) (dualMonoKind kind) x
+dualType pol (TyRecVar _loc _ kind x) = TyRecVar defaultLoc (flipPolarityRep pol) (dualMonoKind kind) x
+dualType pol (TyNominal _ _ kind tn vtys) = TyNominal defaultLoc  (flipPolarityRep pol) (dualMonoKind kind) (dualRnTypeName tn) (dualVariantType pol <$> vtys)
 dualType pol (TyI64 loc _ ) = TyI64 loc (flipPolarityRep pol)
 dualType pol (TyF64 loc _ ) = TyF64 loc (flipPolarityRep pol)
 dualType pol (TyChar loc _ ) = TyChar loc (flipPolarityRep pol)
 dualType pol (TyString loc _ ) = TyString loc (flipPolarityRep pol)
 -- @BinderDavid please check
-dualType _ (TyBot loc) = TyTop loc
-dualType _ (TyTop loc) = TyBot loc
+dualType _ (TyBot loc mk) = TyTop loc mk
+dualType _ (TyTop loc mk) = TyBot loc mk
 dualType pol (TyUnion loc mk t1 t2) = TyInter loc mk (dualType pol t1) (dualType pol t2)
 dualType pol (TyInter loc mk t1 t2) = TyUnion loc mk (dualType pol t1) (dualType pol t2)
 dualType pol (TyRec loc p x t) = TyRec loc (flipPolarityRep p) x (dualType pol t)
 dualType pol (TySyn loc _ rn ty) = TySyn loc (flipPolarityRep pol) (dualRnTypeName rn) (dualType pol ty)
-dualType PosRep (TyData loc _ xtors) = TyCodata loc NegRep  xtors
-dualType NegRep (TyData loc _ xtors) = TyCodata loc PosRep  xtors
-dualType PosRep (TyCodata loc _ xtors) = TyData loc NegRep  xtors
-dualType NegRep (TyCodata loc _ xtors) = TyData loc PosRep  xtors
-dualType PosRep (TyDataRefined loc _ rn xtors) = TyCodataRefined loc NegRep  (dualRnTypeName rn) xtors
-dualType NegRep (TyDataRefined loc _ rn xtors) = TyCodataRefined loc PosRep  (dualRnTypeName rn) xtors
-dualType PosRep (TyCodataRefined loc _ rn xtors) = TyDataRefined loc NegRep  (dualRnTypeName rn) xtors
-dualType NegRep (TyCodataRefined loc _ rn xtors) = TyDataRefined loc PosRep  (dualRnTypeName rn) xtors
+dualType PosRep (TyData loc _ mk xtors) = TyCodata loc NegRep (dualMonoKind mk) xtors 
+dualType NegRep (TyData loc _ mk xtors) = TyCodata loc PosRep (dualMonoKind mk) xtors 
+dualType PosRep (TyCodata loc _ mk xtors) = TyData loc NegRep  (dualMonoKind mk) xtors
+dualType NegRep (TyCodata loc _ mk xtors) = TyData loc PosRep  (dualMonoKind mk) xtors 
+dualType PosRep (TyDataRefined loc _ mk rn xtors) = TyCodataRefined loc NegRep  (dualMonoKind mk) (dualRnTypeName rn) xtors
+dualType NegRep (TyDataRefined loc _ mk rn xtors) = TyCodataRefined loc PosRep  mk(dualRnTypeName rn) xtors
+dualType PosRep (TyCodataRefined loc _ mk rn xtors) = TyDataRefined loc NegRep  (dualMonoKind mk) (dualRnTypeName rn) xtors
+dualType NegRep (TyCodataRefined loc _ mk rn xtors) = TyDataRefined loc PosRep  (dualMonoKind mk) (dualRnTypeName rn) xtors
 dualType _ (TyFlipPol _ ty) = ty
 
 dualVariantType :: PolarityRep pol -> VariantType pol -> VariantType (FlipPol pol)
@@ -168,7 +168,7 @@ dualTypeName :: TypeName -> TypeName
 dualTypeName (MkTypeName (T.stripPrefix "Co" -> Just n)) | T.length n > 0 = MkTypeName n
 dualTypeName (MkTypeName tn) = MkTypeName $ T.pack "Co" `T.append` tn
 
-dualMonoKind :: MonoKind -> MonoKind
+dualMonoKind :: Maybe MonoKind -> Maybe MonoKind
 dualMonoKind mk = mk
 
 dualTypeScheme :: PolarityRep pol ->TypeScheme pol -> TypeScheme (FlipPol pol)

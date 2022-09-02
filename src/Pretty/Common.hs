@@ -1,5 +1,6 @@
 module Pretty.Common where
 
+import Data.Text (Text)
 import Data.List.NonEmpty (NonEmpty)
 import Data.List.NonEmpty qualified as NE
 import Prettyprinter
@@ -23,7 +24,7 @@ import Syntax.CST.Names
       XtorName(MkXtorName) )
 import Syntax.CST.Types (Arity, PrdCns(..))      
 import Syntax.CST.Kinds
-    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..) )
+    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..))
 import Loc ( Loc(..) )
 
 
@@ -117,10 +118,14 @@ instance PrettyAnn EvaluationOrder where
 
 instance PrettyAnn MonoKind where
   prettyAnn (CBox eo)  = prettyAnn eo
-  prettyAnn I64Rep = "I64Rep"
   prettyAnn F64Rep = "F64Rep"
+  prettyAnn I64Rep = "I64Rep"
   prettyAnn CharRep = "CharRep"
   prettyAnn StringRep = "StringRep"
+  prettyAnn (KindVar kv) = prettyAnn kv
+
+instance PrettyAnn KVar where
+  prettyAnn (MkKVar kv) = prettyAnn kv
 
 instance PrettyAnn Variance where
   prettyAnn Covariant     = annSymbol "+"
@@ -136,3 +141,8 @@ instance PrettyAnn PolyKind where
 
 prettyTParam :: (Variance, SkolemTVar, MonoKind) -> Doc Annotation
 prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> annSymbol ":" <+> prettyAnn k
+
+newtype Header a = Header { getHeader :: a }
+
+instance PrettyAnn (Header Text) where
+  prettyAnn (Header h) = headerise "=" "=" h

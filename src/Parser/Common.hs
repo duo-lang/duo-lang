@@ -78,12 +78,12 @@ tyOpNameP = try $ do
 tyBinOpP :: Parser (BinOp, SourcePos)
 tyBinOpP = try (interOp <|> unionOp <|> customOp)
   where
-    interOp  = do
-      symbolP SymIntersection
+    interOp = do
+      symbolP SymInter <|> symbolP SymInterUnicode
       pos <- getSourcePos
       pure (InterOp, pos)
-    unionOp  = do
-      symbolP SymUnion
+    unionOp = do
+      symbolP SymUnion <|> symbolP SymUnionUnicode
       pos <- getSourcePos
       pure (UnionOp, pos)
     customOp = do
