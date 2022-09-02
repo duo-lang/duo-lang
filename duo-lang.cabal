@@ -235,4 +235,18 @@ test-suite duo-lang-test
       test
   build-depends:
       duo-lang
+  
+Benchmark duo-lang-bench
+  import: shared-build-depends
+  import: app-build-depends
+  import: shared-lang-options
+  import: shared-ghc-opts
+  import: shared-rts-opts
+  type: exitcode-stdio-1.0
+  main-is: BenchRunner.hs
+  hs-source-dirs:
+      bench
+  build-depends:
+      duo-lang,
+      criterion
 
