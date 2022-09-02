@@ -100,7 +100,10 @@ instance Alternative AdmissableM where
   (AdmissableM l) <|> (AdmissableM r) = AdmissableM $ do
     (ml, s') <- runState l <$> get
     case ml of
-      Nothing -> return (evalState r s')
+      Nothing -> do
+          let (mr, s'') = runState r s'
+          put s''
+          return mr
       (Just a) -> return $ Just a
   empty = AdmissableM $ pure Nothing
 
