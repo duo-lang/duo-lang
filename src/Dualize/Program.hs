@@ -9,7 +9,7 @@ import Syntax.RST.Program qualified as RST
 import Dualize.Terms
 import TypeInference.GenerateConstraints.Definition (checkKind)
 import Translate.Embed
-import Syntax.RST.Program (DataDecl(data_refinement_lower))
+
 
 flipDC :: CST.DataCodata -> CST.DataCodata
 flipDC CST.Data = CST.Codata 
@@ -31,8 +31,8 @@ dualDataDecl RST.RefinementDecl { data_loc
                                 , data_doc
                                 , data_name
                                 , data_polarity
-                                , data_refinement_lower
-                                , data_refinement_upper
+                                , data_refinement_empty = (refinementEmptyPos, refinementEmptyNeg)
+                                , data_refinement_full = (refinementFullPos, refinementFullNeg)
                                 , data_kind
                                 , data_xtors = (sigsPos,sigsNeg)
                                 , data_xtors_refined = (sigsPosRefined, sigsNegRefined) } =
@@ -40,8 +40,10 @@ dualDataDecl RST.RefinementDecl { data_loc
                        , data_doc = data_doc
                        , data_name = dualRnTypeName data_name
                        , data_polarity = flipDC data_polarity
-                       , data_refinement_lower = embedTSTType (dualType NegRep (checkKind data_refinement_upper))
-                       , data_refinement_upper = embedTSTType (dualType PosRep (checkKind data_refinement_lower))
+                       , data_refinement_empty = ( embedTSTType (dualType NegRep (checkKind refinementEmptyNeg))
+                                                 , embedTSTType (dualType PosRep (checkKind refinementEmptyPos)))
+                       , data_refinement_full = ( embedTSTType (dualType NegRep (checkKind refinementFullNeg))
+                                                , embedTSTType (dualType PosRep (checkKind refinementFullPos)))
                        , data_kind = dualPolyKind data_kind
                        , data_xtors = (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg)
                        , data_xtors_refined = (dualXtorSig PosRep <$> sigsPosRefined,dualXtorSig NegRep <$> sigsNegRefined )

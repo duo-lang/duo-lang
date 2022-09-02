@@ -451,11 +451,11 @@ instance ToHoverMap RST.DataDecl where
   toHoverMap RST.NominalDecl { data_loc, data_polarity } = mkHoverMap data_loc msg
     where
       msg = T.unlines [ "#### Nominal " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" ]
-  toHoverMap RST.RefinementDecl { data_loc, data_polarity, data_refinement_upper, data_refinement_lower } = mkHoverMap data_loc msg
+  toHoverMap RST.RefinementDecl { data_loc, data_polarity, data_refinement_empty, data_refinement_full } = mkHoverMap data_loc msg
     where
       msg = T.unlines [ "#### Refinement " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" 
-                      , " - Refined type (upper): " <> ppPrint data_refinement_upper
-                      , " - Refined type (lower): " <> ppPrint data_refinement_lower
+                      , " - Empty refinement type: " <> ppPrint (fst data_refinement_empty)
+                      , " - Full refinement type: " <> ppPrint (fst data_refinement_full)
                       ]
       
 instance ToHoverMap RST.StructuralXtorDeclaration where
