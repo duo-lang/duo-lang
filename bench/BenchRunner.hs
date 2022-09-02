@@ -10,13 +10,8 @@ import Driver.Driver (inferProgramIO)
 import Errors
 import Parser.Definition (runFileParser)
 import Parser.Program (moduleP)
-import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Syntax.CST.Program qualified as CST
 import Syntax.TST.Program qualified as TST
-import Options.Applicative
-import Utils (listRecursiveDuoFiles)
-
-
 import Utils ( listRecursiveDuoFiles )
 
 excluded :: [FilePath]
