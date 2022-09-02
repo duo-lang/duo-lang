@@ -187,6 +187,56 @@ getPolarity (TyString _ rep)               = rep
 getPolarity (TyFlipPol rep _)           = rep
 
 
+------------------------------------------------------------------------------
+-- Replace a nominal type by a given type
+--
+-- These functions are used in the computation of refinement types:
+-- We have to replace the user-written nominal type `Nat` by the refinement
+-- type `rec alpha. < Nat | Z, S(alpha) >`, for example.
+-- Similarly, we have to replace the constructor `S(Nat)` by the constructor
+-- `S(rec alpha. < Nat | Z, S(alpha) >)` when we look up constructor signatures.
+------------------------------------------------------------------------------
+
+class ReplaceNominal a where
+  replaceNominal :: Typ Pos -> Typ Neg -> RnTypeName -> a -> a
+
+instance ReplaceNominal (Typ pol) where
+  replaceNominal :: forall pol. Typ Pos -> Typ Neg -> RnTypeName -> Typ pol -> Typ pol
+  replaceNominal _ _ _ ty@TySkolemVar{}                  = ty
+  replaceNominal _ _ _ ty@TyUniVar{}                     = ty
+  replaceNominal _ _ _ ty@TyRecVar{}                     = ty
+  replaceNominal p n t (TyData loc rep args)             = TyData loc rep (replaceNominal p n t <$> args)
+  replaceNominal p n t (TyCodata loc rep args)           = TyCodata loc rep (replaceNominal p n t <$> args)
+  replaceNominal p n t (TyDataRefined loc rep tn args)   = TyDataRefined loc rep tn (replaceNominal p n t <$> args)
+  replaceNominal p n t (TyCodataRefined loc rep tn args) = TyCodataRefined loc rep tn (replaceNominal p n t <$> args)
+  replaceNominal p n t (TyNominal loc rep t' args)       = if t == t'
+                                                           then case rep of { PosRep -> p; NegRep -> n }
+                                                           else TyNominal loc rep t' (replaceNominal p n t <$> args)
+  replaceNominal p n t (TySyn loc rep tn ty)             = TySyn loc rep tn (replaceNominal p n t ty)
+  replaceNominal _ _ _ ty@TyTop {}                       = ty
+  replaceNominal _ _ _ ty@TyBot {}                       = ty
+  replaceNominal p n t (TyUnion loc t1 t2)               = TyUnion loc (replaceNominal p n t t1) (replaceNominal p n t t2)
+  replaceNominal p n t (TyInter loc t1 t2)               = TyInter loc (replaceNominal p n t t1) (replaceNominal p n t t2)
+  replaceNominal p n t (TyRec loc rep var ty)            = TyRec loc rep var (replaceNominal p n t ty)
+  replaceNominal _ _ _ ty@TyI64 {}                       = ty
+  replaceNominal _ _ _ ty@TyF64 {}                       = ty
+  replaceNominal _ _ _ ty@TyChar {}                      = ty
+  replaceNominal _ _ _ ty@TyString {}                    = ty
+  replaceNominal p n t (TyFlipPol rep ty)                = TyFlipPol rep (replaceNominal p n t ty)
+
+instance ReplaceNominal (XtorSig pol) where
+  replaceNominal :: forall pol. Typ Pos -> Typ Neg -> RnTypeName -> XtorSig pol -> XtorSig pol
+  replaceNominal p n t MkXtorSig { sig_name, sig_args } =
+    MkXtorSig { sig_name = sig_name, sig_args = replaceNominal p n t <$> sig_args }
+
+instance ReplaceNominal (PrdCnsType pol) where
+  replaceNominal :: forall pol. Typ Pos -> Typ Neg -> RnTypeName -> PrdCnsType pol -> PrdCnsType pol
+  replaceNominal p n t (PrdCnsType rep ty) = PrdCnsType rep (replaceNominal p n t ty)
+
+instance ReplaceNominal (VariantType pol) where
+  replaceNominal :: forall pol. Typ Pos -> Typ Neg -> RnTypeName -> VariantType pol -> VariantType pol
+  replaceNominal p n t (CovariantType ty)     = CovariantType (replaceNominal p n t ty)
+  replaceNominal p n t (ContravariantType ty) = ContravariantType (replaceNominal p n t ty)
 
 ------------------------------------------------------------------------------
 -- Type Schemes

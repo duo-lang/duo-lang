@@ -6,6 +6,8 @@ module Lookup
   , lookupDataDecl
   , lookupTypeName
   , lookupXtorSig
+  , lookupXtorSigLower
+  , lookupXtorSigUpper
   , lookupXtorKind
   , lookupClassDecl
   , lookupMethodType
@@ -123,13 +125,42 @@ lookupXtorSig :: EnvReader a m
 lookupXtorSig loc xtn PosRep = do
   decl <- lookupDataDecl loc xtn
   case find ( \RST.MkXtorSig{..} -> sig_name == xtn ) (fst (RST.data_xtors decl)) of
-    Just xts -> return xts
+    Just xts -> pure xts
     Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (RST.data_name decl))]
 lookupXtorSig loc xtn NegRep = do
   decl <- lookupDataDecl loc xtn
   case find ( \RST.MkXtorSig{..} -> sig_name == xtn ) (snd (RST.data_xtors decl)) of
-    Just xts -> return xts
+    Just xts -> pure xts
     Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (RST.data_name decl))]
+
+
+lookupXtorSigUpper :: EnvReader a m
+                   => Loc -> XtorName -> m (RST.XtorSig Neg)
+lookupXtorSigUpper loc xt = do
+  decl <- lookupDataDecl loc xt
+  case decl of
+    RST.NominalDecl { } -> do
+      throwOtherError loc ["lookupXtorSigUpper: Expected refinement type but found nominal type."]
+    RST.RefinementDecl { data_xtors_refined } -> do
+      case find ( \RST.MkXtorSig{..} -> sig_name == xt ) (snd data_xtors_refined) of
+        Nothing -> throwOtherError loc ["lookupXtorSigUpper: Constructor/Destructor " <> ppPrint xt <> " not found"]
+        Just sig -> pure sig
+
+  
+
+lookupXtorSigLower :: EnvReader a m
+                   => Loc -> XtorName -> m (RST.XtorSig Pos)
+lookupXtorSigLower loc xt = do
+  decl <- lookupDataDecl loc xt
+  case decl of
+    RST.NominalDecl {} -> do
+      throwOtherError loc ["lookupXtorSigLower: Expected refinement type but found nominal type."]
+    RST.RefinementDecl { data_xtors_refined } -> do
+      case find ( \RST.MkXtorSig{..} -> sig_name == xt ) (fst data_xtors_refined) of
+        Nothing ->  throwOtherError loc ["lookupXtorSigLower: Constructor/Destructor " <> ppPrint xt <> " not found"]
+        Just sig -> pure sig
+
+  
 
 -- | Find the class declaration for a classname.
 lookupClassDecl :: EnvReader a m

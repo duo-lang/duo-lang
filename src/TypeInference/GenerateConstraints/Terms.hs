@@ -128,7 +128,7 @@ genConstraintsTerm (Core.Xtor loc annot rep CST.Refinement xt subst) = do
   -- Secondly we look up the argument types of the xtor in the type declaration.
   -- Since we infer refinement types, we have to look up the translated xtorSig.
   decl <- lookupDataDecl loc xt
-  xtorSigUpper <- translateXtorSigUpper =<< lookupXtorSig loc xt NegRep
+  xtorSigUpper <- checkXtorSig <$> lookupXtorSigUpper loc xt
   -- Then we generate constraints between the inferred types of the substitution
   -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes (TST.sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
@@ -203,8 +203,8 @@ genConstraintsTerm (Core.XCase loc annot rep CST.Refinement cases@(pmcase:_)) = 
                        -- We have to bound the unification variables with the lower and upper bounds generated
                        -- from the information in the type declaration. These lower and upper bounds correspond
                        -- to the least and greatest type translation.
-                       lowerBound <- TST.sig_args <$> (translateXtorSigLower =<< lookupXtorSig loc xt PosRep)
-                       upperBound <- TST.sig_args <$> (translateXtorSigUpper =<< lookupXtorSig loc xt NegRep)
+                       lowerBound <- TST.sig_args . checkXtorSig <$> lookupXtorSigLower loc xt
+                       upperBound <- TST.sig_args . checkXtorSig <$> lookupXtorSigUpper loc xt
                        genConstraintsCtxts lowerBound uvarsNeg (PatternMatchConstraint loc)
                        genConstraintsCtxts uvarsPos upperBound (PatternMatchConstraint loc)
                        -- For the type, we return the unification variables which are now bounded by the least
