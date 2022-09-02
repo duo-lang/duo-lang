@@ -157,7 +157,8 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
       -- Compute the full refinement of the data/codata type. E.g. mu a. < Nat | Z, S(a) >
       (fullRefinementPos, fullRefinementNeg) <- computeFullRefinementType data_polarity rtn (xtorsPos, xtorsNeg)
       -- Compute the refined xtor sigs
-      let xtorsRefinedPos = RST.replaceNominal fullRefinementPos fullRefinementNeg rtn <$> xtorsPos
+      let xtorsRefinedPos = RST.replaceNominal emptyRefinementPos emptyRefinementNeg rtn <$> xtorsPos
+      -- The negative ones are called by `getXtorSigsUpper` which are used as upper bounds to Xtors!
       let xtorsRefinedNeg = RST.replaceNominal fullRefinementPos fullRefinementNeg rtn <$> xtorsNeg
       pure RST.RefinementDecl { data_loc = data_loc
                               , data_doc = data_doc
