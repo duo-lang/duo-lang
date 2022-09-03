@@ -105,8 +105,14 @@ annotateKind (RST.TyUniVar loc pol tv) = do
   return (TST.TyUniVar loc pol (KindVar kv) tv)
 
 annotateKind (RST.TyRecVar loc pol rv) = do
-  kv <- newKVar 
-  return (TST.TyRecVar loc pol (KindVar kv) rv)
+  rvMap <- gets usedRecVars
+  case M.lookup rv rvMap of 
+    Nothing -> do
+      kv <- newKVar 
+      let newM = M.insert rv (KindVar kv) rvMap
+      modify (\gs@GenerateState{} -> gs { usedRecVars = newM })
+      return (TST.TyRecVar loc pol (KindVar kv) rv)
+    Just mk -> return (TST.TyRecVar loc pol mk rv)
 
 annotateKind (RST.TyData loc pol xtors) = do 
   knd <- getXtorKinds loc xtors 
@@ -137,13 +143,9 @@ annotateKind (RST.TySyn loc pol tn ty) = do
   ty' <- annotateKind ty 
   return (TST.TySyn loc pol tn ty')
 
-annotateKind (RST.TyBot loc) = do 
-  kv <- newKVar 
-  return (TST.TyBot loc (KindVar kv))
+annotateKind (RST.TyBot loc) = do TST.TyBot loc . KindVar <$> newKVar
 
-annotateKind (RST.TyTop loc) = do 
-  kv <- newKVar 
-  return (TST.TyTop loc (KindVar kv))
+annotateKind (RST.TyTop loc) = do TST.TyTop loc . KindVar <$> newKVar
 
 annotateKind (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- annotateKind ty1

@@ -65,6 +65,7 @@ data GenerateState = GenerateState
   { uVarCount :: Int
   , kVarCount :: Int
   , constraintSet :: ConstraintSet
+  , usedRecVars :: M.Map RecTVar MonoKind
   }
 
 initialConstraintSet :: ConstraintSet
@@ -75,7 +76,7 @@ initialConstraintSet =
                 }
 
 initialState :: GenerateState
-initialState = GenerateState { uVarCount = 0, constraintSet = initialConstraintSet, kVarCount = 0}
+initialState = GenerateState { uVarCount = 0, constraintSet = initialConstraintSet, kVarCount = 0, usedRecVars = M.empty}
 
 ---------------------------------------------------------------------------------------------
 -- GenerateReader:
