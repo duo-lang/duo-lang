@@ -30,20 +30,22 @@ getXtorKinds loc (fst:rst) = do
   let nm = RST.sig_name fst
   knd <- lookupXtorKind nm
   knd' <- getXtorKinds loc rst
-  if knd == knd' then
-    return knd 
-  else 
-    throwSolverError loc ["Kinds ", ppPrint knd , " and ", ppPrint knd', "of constructors do not match"]
+  addConstraint $ KindEq (ReadConstraint loc) knd knd'
+  return knd
 
 getTyNameKind ::  Loc -> RnTypeName -> GenM MonoKind
 getTyNameKind loc tyn = do
   decl <- lookupTypeName loc tyn
-  getKindDecl decl
+  getKindDecl loc decl
   
-getKindDecl ::  RST.DataDecl -> GenM MonoKind
-getKindDecl decl = do
+getKindDecl ::  Loc -> RST.DataDecl -> GenM MonoKind
+getKindDecl loc decl = do
   let polyknd = RST.data_kind decl
-  return (CBox (returnKind polyknd))
+  let retknd = CBox (returnKind polyknd)
+  let argknds = map (\(_,_,x) -> x) (kindArgs polyknd)
+  let constrs = map (KindEq (ReadConstraint loc) retknd) argknds
+  mapM_ addConstraint constrs
+  return retknd
 
 newKVar :: GenM KVar
 newKVar = do
