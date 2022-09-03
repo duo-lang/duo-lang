@@ -1,0 +1,10 @@
+-- Fun cannot have CBV->CBV->CBN
+codata Fun : (-a : CBV, +b : CBV) -> CBN {
+    Ap(a,return b)
+};
+
+type operator -> rightassoc at 0 := Fun;
+
+-- | The polymorphic identity function
+def prd id : forall a. a -> a :=
+  \x => x;
