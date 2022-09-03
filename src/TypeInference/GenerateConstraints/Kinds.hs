@@ -137,8 +137,13 @@ annotateKind (RST.TySyn loc pol tn ty) = do
   ty' <- annotateKind ty 
   return (TST.TySyn loc pol tn ty')
 
-annotateKind (RST.TyBot loc) = return (TST.TyBot loc topbotVar)
-annotateKind (RST.TyTop loc) = return (TST.TyTop loc topbotVar)
+annotateKind (RST.TyBot loc) = do 
+  kv <- newKVar 
+  return (TST.TyBot loc (KindVar kv))
+
+annotateKind (RST.TyTop loc) = do 
+  kv <- newKVar 
+  return (TST.TyTop loc (KindVar kv))
 
 annotateKind (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- annotateKind ty1

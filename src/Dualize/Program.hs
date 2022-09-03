@@ -9,10 +9,7 @@ import Syntax.RST.Program qualified as RST
 import Syntax.TST.Types qualified as TST
 import Dualize.Terms
 import Translate.Embed
-import TypeInference.GenerateConstraints.Kinds
-import Driver.Definition
 
-import Data.Map qualified as M 
 
 flipDC :: CST.DataCodata -> CST.DataCodata
 flipDC CST.Data = CST.Codata 

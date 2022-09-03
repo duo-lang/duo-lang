@@ -49,9 +49,6 @@ data MonoKind
   | StringRep
   deriving (Show, Eq, Ord)
 
-topbotVar :: MonoKind
-topbotVar = KindVar (MkKVar (pack "TopBot"))
-
 ------------------------------------------------------------------------------
 -- Kinds
 ------------------------------------------------------------------------------
