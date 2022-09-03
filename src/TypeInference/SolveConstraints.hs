@@ -181,9 +181,15 @@ unifyKinds (KindVar kv) kind = do
     Just kind2 -> 
       if kind==kind2 
         then return ()
-        else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint kind <> " and " <> ppPrint kind2]
+        else throwSolverError defaultLoc ["Cannot unify incompatible kinds: ",ppPrint kind," and ",ppPrint kind2]
 unifyKinds kind (KindVar kv) = unifyKinds (KindVar kv) kind
-unifyKinds _ _ = throwSolverError defaultLoc ["Not implemented"]
+unifyKinds I64Rep I64Rep = return ()
+unifyKinds F64Rep F64Rep = return ()
+unifyKinds CharRep CharRep = return ()
+unifyKinds StringRep StringRep = return ()
+
+
+unifyKinds k1 k2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: ", ppPrint k1, " and ", ppPrint k2]
 
 computeKVarSolution :: KindPolicy -> Map (Maybe MonoKind) (Set KVar) -> Either (NonEmpty Error) (Map KVar MonoKind)
 computeKVarSolution kp sets = do
