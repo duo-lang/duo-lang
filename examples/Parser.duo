@@ -17,7 +17,7 @@ data ParseResult : CBV {
 -- a success continuation of type ParseResult and a failure continuation.
 -- the ParseResult contains the remaining input and, crucially, 
 -- another "backtracking" continuation
-codata Parser :  CBN {
+codata Parser :  CBV {
     Parse(List(Nat),return ParseResult,return Unit)
 }; 
 

@@ -1,7 +1,7 @@
 import Function;
 
 -- | Conjunction defined as a codata type.
-codata With : (+a : CBV, +b : CBV) -> CBN {
+codata With : (+a : CBV, +b : CBV) -> CBV {
     Proj1(return a),
     Proj2(return b)
 };

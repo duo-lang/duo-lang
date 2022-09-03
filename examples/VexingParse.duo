@@ -9,7 +9,7 @@
 
 import Peano;
 
-codata List2 : (+a : CBV) -> CBN {
+codata List2 : (+a : CBV) -> CBV {
     Nth(Nat, return a),
     Length(return Nat)
 };
