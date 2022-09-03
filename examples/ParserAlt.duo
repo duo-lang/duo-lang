@@ -12,7 +12,7 @@ import Par;
 -- Alternative version: Formulate parser using fancy
 -- cofunction and par types:
 
-codata Parser :  CBN {
+codata Parser :  CBV {
     Parse(List(Nat), return (Unit ⅋ (Unit -< List(Nat) )) )
 }; 
 
