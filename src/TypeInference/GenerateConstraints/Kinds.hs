@@ -3,12 +3,14 @@ module TypeInference.GenerateConstraints.Kinds where
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST
+import Syntax.TST.Types (getKind)
 import Syntax.CST.Kinds
 import Syntax.CST.Names 
 import Lookup
 import Errors
 import Loc
 import Pretty.Pretty
+import TypeInference.Constraints
 import TypeInference.GenerateConstraints.Definition
 
 import Control.Monad.State
@@ -155,12 +157,16 @@ annotateKind (RST.TyUnion loc ty1 ty2) = do
   ty1' <- annotateKind ty1
   ty2' <- annotateKind ty2
   kv <- newKVar 
+  addConstraint $ KindEq (ReadConstraint loc) (KindVar kv) (getKind ty2')
+  addConstraint $ KindEq (ReadConstraint loc) (KindVar kv) (getKind ty1')
   return (TST.TyUnion loc (KindVar kv) ty1' ty2')
   
 annotateKind (RST.TyInter loc ty1 ty2) = do
   ty1' <- annotateKind ty1
   ty2' <- annotateKind ty2
   kv <- newKVar 
+  addConstraint $ KindEq (ReadConstraint loc) (KindVar kv) (getKind ty2')
+  addConstraint $ KindEq (ReadConstraint loc) (KindVar kv) (getKind ty1')
   return (TST.TyInter loc (KindVar kv) ty1' ty2')
   
 annotateKind (RST.TyRec loc pol rv ty) = do
