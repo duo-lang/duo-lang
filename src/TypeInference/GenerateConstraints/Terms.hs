@@ -309,9 +309,7 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
   -- We check that all implementations belong to the same type class.
   checkInstanceCoverage instancedecl_loc decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
   -- Generate fresh unification variables for type parameters
-  instancetyPos <- checkKind (fst instancedecl_typ)
-  instancetyNeg <- checkKind (snd instancedecl_typ)
-  let instancety = (instancetyPos, instancetyNeg)
+  instancety <- checkInstDecl instancedecl_typ
   let tyParamsMap = paramsMap (classdecl_kinds decl) [instancety] 
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
                    let mn :: MethodName = MkMethodName $ unXtorName xt
