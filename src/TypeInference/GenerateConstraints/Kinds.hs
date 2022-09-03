@@ -7,27 +7,19 @@ import Syntax.CST.Kinds
 import Syntax.CST.Names 
 import Lookup
 import Errors
-import Driver.Environment
 import Loc
 import Pretty.Pretty
 import TypeInference.GenerateConstraints.Definition
 
-import Control.Monad.Reader
-import Control.Monad.Except
 import Control.Monad.State
-import Data.List.NonEmpty (NonEmpty)
 import Data.Map qualified as M
 import Data.Text qualified as T
 
---------------------------------------------------------------------------------------------
--- Kind Inference Monad 
---------------------------------------------------------------------------------------------
-type KindReader m = (MonadError (NonEmpty Error) m, MonadReader (M.Map ModuleName Environment, GenerateReader) m, MonadState GenerateState m)
 
 --------------------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------------------
-getXtorKinds :: KindReader m => Loc -> [RST.XtorSig pol] -> m MonoKind
+getXtorKinds :: Loc -> [RST.XtorSig pol] -> GenM MonoKind
 getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
 getXtorKinds _ [xtor] = do 
   let nm = RST.sig_name xtor
@@ -41,17 +33,17 @@ getXtorKinds loc (fst:rst) = do
   else 
     throwSolverError loc ["Kinds ", ppPrint knd , " and ", ppPrint knd', "of constructors do not match"]
 
-getTyNameKind :: KindReader m => Loc -> RnTypeName -> m MonoKind
+getTyNameKind ::  Loc -> RnTypeName -> GenM MonoKind
 getTyNameKind loc tyn = do
   decl <- lookupTypeName loc tyn
   getKindDecl decl
   
-getKindDecl :: KindReader m => RST.DataDecl -> m MonoKind
+getKindDecl ::  RST.DataDecl -> GenM MonoKind
 getKindDecl decl = do
   let polyknd = RST.data_kind decl
   return (CBox (returnKind polyknd))
 
-newKVar :: KindReader  m => m KVar
+newKVar :: GenM KVar
 newKVar = do
   kvCnt <- gets kVarCount
   modify (\gs@GenerateState{} -> gs { kVarCount = kvCnt + 1 })
@@ -61,41 +53,41 @@ newKVar = do
 -- checking Kinds
 --------------------------------------------------------------------------------------------
 
-annotateInstDecl :: KindReader m => (RST.Typ RST.Pos, RST.Typ RST.Neg) -> m (TST.Typ RST.Pos, TST.Typ RST.Neg)
+annotateInstDecl ::  (RST.Typ RST.Pos, RST.Typ RST.Neg) -> GenM (TST.Typ RST.Pos, TST.Typ RST.Neg)
 annotateInstDecl (ty1, ty2) = do 
   ty1' <- annotateKind ty1
   ty2' <- annotateKind ty2
   return (ty1', ty2')
 
-annotateMaybeTypeScheme :: KindReader m => Maybe (RST.TypeScheme pol) -> m (Maybe (TST.TypeScheme pol))
+annotateMaybeTypeScheme ::  Maybe (RST.TypeScheme pol) -> GenM (Maybe (TST.TypeScheme pol))
 annotateMaybeTypeScheme Nothing = return Nothing 
 annotateMaybeTypeScheme (Just ty) = do
   ty' <- annotateTypeScheme ty 
   return (Just ty')
 
-annotateTypeScheme :: KindReader m => RST.TypeScheme pol -> m (TST.TypeScheme pol)
+annotateTypeScheme ::  RST.TypeScheme pol -> GenM (TST.TypeScheme pol)
 annotateTypeScheme RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = do
   ty' <- annotateKind ty
   return TST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty'}
 
-annotateVariantType :: KindReader m => RST.VariantType pol -> m (TST.VariantType pol)
+annotateVariantType ::  RST.VariantType pol -> GenM (TST.VariantType pol)
 annotateVariantType (RST.CovariantType ty) = TST.CovariantType <$> annotateKind ty
 annotateVariantType (RST.ContravariantType ty) = TST.ContravariantType <$> annotateKind ty
 
-annotatePrdCnsType :: KindReader m => RST.PrdCnsType pol -> m (TST.PrdCnsType pol)
+annotatePrdCnsType ::  RST.PrdCnsType pol -> GenM (TST.PrdCnsType pol)
 annotatePrdCnsType (RST.PrdCnsType rep ty) = do 
   ty' <- annotateKind ty
   return (TST.PrdCnsType rep ty')
 
-annotateLinearContext :: KindReader m => RST.LinearContext pol -> m (TST.LinearContext pol)
+annotateLinearContext ::  RST.LinearContext pol -> GenM (TST.LinearContext pol)
 annotateLinearContext = mapM annotatePrdCnsType
 
-annotateXtorSig :: KindReader m => RST.XtorSig pol -> m (TST.XtorSig pol)
+annotateXtorSig ::  RST.XtorSig pol -> GenM (TST.XtorSig pol)
 annotateXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = do 
   ctxt' <- annotateLinearContext ctxt 
   return (TST.MkXtorSig {sig_name = nm, sig_args = ctxt' })
 
-annotateKind :: KindReader m => RST.Typ pol -> m (TST.Typ pol)
+annotateKind ::  RST.Typ pol -> GenM (TST.Typ pol)
 annotateKind (RST.TySkolemVar loc pol tv) = do
   kv <- newKVar
   return (TST.TySkolemVar loc pol (KindVar kv) tv)

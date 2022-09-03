@@ -2,7 +2,6 @@ module Driver.Definition where
 
 import Control.Monad.Except
 import Control.Monad.State
-import Control.Monad.Reader
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty ((:|)))
@@ -27,17 +26,6 @@ import Parser.Definition (runFileParser)
 import Parser.Parser (moduleP)
 import Data.Maybe ( fromMaybe )
 import TypeAutomata.Definition (Nubable(nub))
-import TypeInference.GenerateConstraints.Definition (GenerateState, initialState, GenerateReader, initialReader)
-
-----------------------------------------------------------------------------
---Helper Monad for Kind Inference 
---------------------------------------------------------------------------------
-type KindReaderM a = (ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (Except (NonEmpty Error)))) a
-
-runKindReaderM :: MonadError (NonEmpty Error) m => Loc -> KindReaderM a -> Map ModuleName Environment -> m a
-runKindReaderM loc m env = case runExcept (runStateT (runReaderT m (initialReader loc env)) initialState) of 
-  Left err -> throwError err
-  Right res -> return $ fst res
 
 ------------------------------------------------------------------------------
 -- Typeinference Options
