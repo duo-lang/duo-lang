@@ -1,7 +1,7 @@
 import Function;
 
 -- | Disjunction as a codata type.
-codata Par : (+a : CBV, +b : CBV) -> CBN {
+codata Par : (+a : CBV, +b : CBV) -> CBV {
     MkPar(return a, return b)
 };
 

@@ -3,7 +3,6 @@ import Bool;
 import List;
 
 -- The type of Binary trees
--- unsure if CBV or CBN
 data BinTree : (+a : CBV) -> CBV{
 	Leaf,
 	Branch(BinTree(a),a,BinTree(a))
