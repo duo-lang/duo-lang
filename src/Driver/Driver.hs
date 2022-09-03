@@ -112,7 +112,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  annot <- runKindReaderM (checkMaybeTypeScheme pcdecl_annot) env
+  annot <- runKindReaderM pcdecl_loc (annotateMaybeTypeScheme pcdecl_annot) env
   ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annot pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of

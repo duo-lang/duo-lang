@@ -29,7 +29,8 @@ module TypeInference.GenerateConstraints.Definition
   , checkInstanceCoverage
   , GenerateState(..)
   , initialState
-  ) where
+  , initialReader
+) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
