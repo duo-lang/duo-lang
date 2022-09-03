@@ -89,12 +89,24 @@ annotateXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = do
 
 annotateKind ::  RST.Typ pol -> GenM (TST.Typ pol)
 annotateKind (RST.TySkolemVar loc pol tv) = do
-  kv <- newKVar
-  return (TST.TySkolemVar loc pol (KindVar kv) tv)
+  skMap <- gets usedSkolemVars
+  case M.lookup tv skMap of 
+    Nothing -> do
+      kv <- newKVar
+      let newM = M.insert tv (KindVar kv) skMap
+      modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
+      return (TST.TySkolemVar loc pol (KindVar kv) tv)
+    Just mk -> return (TST.TySkolemVar loc pol mk tv)
 
 annotateKind (RST.TyUniVar loc pol tv) = do 
-  kv <- newKVar 
-  return (TST.TyUniVar loc pol (KindVar kv) tv)
+  uniMap <- gets usedUniVars
+  case M.lookup tv uniMap of 
+    Nothing -> do
+      kv <- newKVar
+      let newM = M.insert tv (KindVar kv) uniMap
+      modify (\gs@GenerateState{} -> gs { usedUniVars = newM })
+      return (TST.TyUniVar loc pol (KindVar kv) tv)
+    Just mk -> return (TST.TyUniVar loc pol mk tv)
 
 annotateKind (RST.TyRecVar loc pol rv) = do
   rvMap <- gets usedRecVars

@@ -66,6 +66,8 @@ data GenerateState = GenerateState
   , kVarCount :: Int
   , constraintSet :: ConstraintSet
   , usedRecVars :: M.Map RecTVar MonoKind
+  , usedSkolemVars :: M.Map SkolemTVar MonoKind
+  , usedUniVars :: M.Map UniTVar MonoKind
   }
 
 initialConstraintSet :: ConstraintSet
@@ -76,7 +78,13 @@ initialConstraintSet =
                 }
 
 initialState :: GenerateState
-initialState = GenerateState { uVarCount = 0, constraintSet = initialConstraintSet, kVarCount = 0, usedRecVars = M.empty}
+initialState = GenerateState {   uVarCount = 0
+                               , constraintSet = initialConstraintSet
+                               , kVarCount = 0
+                               , usedRecVars = M.empty
+                               , usedSkolemVars = M.empty
+                               , usedUniVars = M.empty
+                        }
 
 ---------------------------------------------------------------------------------------------
 -- GenerateReader:
@@ -111,14 +119,15 @@ freshTVar :: UVarProvenance -> GenM (TST.Typ Pos, TST.Typ Neg)
 freshTVar uvp = do
   uVarC <- gets uVarCount
   kVarC <- gets kVarCount
-  let tvar = MkUniTVar ("u" <> T.pack (show uVarC))
+  uniVMap <- gets usedUniVars
+  let tVar = MkUniTVar ("u" <> T.pack (show uVarC))
   let kVar = MkKVar ("k" <> T.pack (show kVarC))
   -- We need to increment the counter:
-  modify (\gs@GenerateState{} -> gs { uVarCount = uVarC + 1, kVarCount = kVarC + 1 })
+  modify (\gs@GenerateState{} -> gs { uVarCount = uVarC + 1, kVarCount = kVarC + 1, usedUniVars = M.insert tVar (KindVar kVar) uniVMap })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars,cs_kvars } } ->
-            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)], cs_kvars = cs_kvars ++ [kVar] } })
-  return (TST.TyUniVar defaultLoc PosRep (KindVar kVar) tvar, TST.TyUniVar defaultLoc NegRep (KindVar kVar) tvar)
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tVar, uvp)], cs_kvars = cs_kvars ++ [kVar] } })
+  return (TST.TyUniVar defaultLoc PosRep (KindVar kVar) tVar, TST.TyUniVar defaultLoc NegRep (KindVar kVar) tVar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
 freshTVars [] = return ([],[])
