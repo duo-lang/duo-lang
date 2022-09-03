@@ -36,8 +36,6 @@ evalTermOnce (Jump _ fv) = do
   return (Just cmd)
 evalTermOnce Method {} = return Nothing
   -- throwEvalError defaultLoc ["Eval for type class methods not implemented yet."]
---evalTermOnce (Apply _ _ Nothing _ _) =
---  throwEvalError defaultLoc ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
 evalTermOnce (Apply _ _ kind prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ op args) = evalPrimOp op args
 
@@ -52,11 +50,11 @@ evalApplyOnce kind prd (FreeVar _ CnsRep _ fv) = do
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce _ prd@(Xtor _ _ PrdRep _ _ xt args) cns@(XCase _ _ CnsRep _ _ cases) = do
   (MkCmdCase _ (XtorPat _ _ argTypes) cmd') <- lookupMatchCase xt cases
-  checkArgs (Apply defaultLoc ApplyAnnotOrig (CBox CBV) prd cns) argTypes args
+  checkArgs (Apply defaultLoc ApplyAnnotOrig (error "evalApplyOnce: This Kind should never be used") prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
 evalApplyOnce _ prd@(XCase _ _ PrdRep _ _  cases) cns@(Xtor _ _ CnsRep _ _ xt args) = do
   (MkCmdCase _ (XtorPat _ _ argTypes) cmd') <- lookupMatchCase xt cases
-  checkArgs (Apply defaultLoc ApplyAnnotOrig (CBox CBV) prd cns) argTypes args
+  checkArgs (Apply defaultLoc ApplyAnnotOrig (error "evalApplyOnce: This Kind should never be used") prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
 evalApplyOnce (CBox CBV) (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =

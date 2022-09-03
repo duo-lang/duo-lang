@@ -27,10 +27,10 @@ module TypeInference.GenerateConstraints.Definition
   , checkCorrectness
   , checkExhaustiveness
   , checkInstanceCoverage
-  , translateXtorSigUpper
-  , translateTypeUpper
-  , translateXtorSigLower
-  , translateTypeLower) where
+  , GenerateState(..)
+  , initialState
+  , initialReader
+) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -52,8 +52,6 @@ import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program as RST
 import TypeInference.Constraints
-import TypeInference.GenerateConstraints.KindInference
-import TypeTranslation qualified as TT
 import Loc ( Loc, defaultLoc )
 import Utils ( indexMaybe )
 
@@ -63,18 +61,30 @@ import Utils ( indexMaybe )
 -- We use varCount for generating fresh type variables.
 -- We collect all generated unification variables and constraints in a ConstraintSet.
 ---------------------------------------------------------------------------------------------
-
 data GenerateState = GenerateState
   { uVarCount :: Int
   , kVarCount :: Int
   , constraintSet :: ConstraintSet
+  , usedRecVars :: M.Map RecTVar MonoKind
+  , usedSkolemVars :: M.Map SkolemTVar MonoKind
+  , usedUniVars :: M.Map UniTVar MonoKind
   }
 
 initialConstraintSet :: ConstraintSet
-initialConstraintSet = ConstraintSet { cs_constraints = [], cs_uvars = [] ,cs_kvars = []}
+initialConstraintSet =
+  ConstraintSet { cs_constraints = []
+                , cs_uvars = []
+                , cs_kvars = []
+                }
 
 initialState :: GenerateState
-initialState = GenerateState { uVarCount = 0, kVarCount = 0, constraintSet = initialConstraintSet }
+initialState = GenerateState {   uVarCount = 0
+                               , constraintSet = initialConstraintSet
+                               , kVarCount = 0
+                               , usedRecVars = M.empty
+                               , usedSkolemVars = M.empty
+                               , usedUniVars = M.empty
+                        }
 
 ---------------------------------------------------------------------------------------------
 -- GenerateReader:
@@ -105,19 +115,19 @@ runGenM loc env m = case runWriter (runExceptT (runStateT (runReaderT  (getGenM 
 ---------------------------------------------------------------------------------------------
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
-
 freshTVar :: UVarProvenance -> GenM (TST.Typ Pos, TST.Typ Neg)
 freshTVar uvp = do
   uVarC <- gets uVarCount
   kVarC <- gets kVarCount
-  let tvar = MkUniTVar ("u" <> T.pack (show uVarC))
+  uniVMap <- gets usedUniVars
+  let tVar = MkUniTVar ("u" <> T.pack (show uVarC))
   let kVar = MkKVar ("k" <> T.pack (show kVarC))
   -- We need to increment the counter:
-  modify (\gs@GenerateState{} -> gs { uVarCount = uVarC + 1, kVarCount = kVarC + 1 })
+  modify (\gs@GenerateState{} -> gs { uVarCount = uVarC + 1, kVarCount = kVarC + 1, usedUniVars = M.insert tVar (KindVar kVar) uniVMap })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars,cs_kvars } } ->
-            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)], cs_kvars = cs_kvars ++ [kVar] } })
-  return (TST.TyUniVar defaultLoc PosRep (KindVar kVar) tvar, TST.TyUniVar defaultLoc NegRep (KindVar kVar) tvar)
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tVar, uvp)], cs_kvars = cs_kvars ++ [kVar] } })
+  return (TST.TyUniVar defaultLoc PosRep (KindVar kVar) tVar, TST.TyUniVar defaultLoc NegRep (KindVar kVar) tVar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
 freshTVars [] = return ([],[])
@@ -221,41 +231,6 @@ addConstraint c = modify foo
     foo gs@GenerateState { constraintSet } = gs { constraintSet = bar constraintSet }
     bar cs@ConstraintSet { cs_constraints } = cs { cs_constraints = c:cs_constraints }
 
----------------------------------------------------------------------------------------------
--- Translate nominal types to structural refinement types
----------------------------------------------------------------------------------------------
-
--- | Recursively translate types in xtor signature to upper bound refinement types
-translateXtorSigUpper :: RST.XtorSig Neg -> GenM (TST.XtorSig Neg)
-translateXtorSigUpper xts = do
-  env <- asks fst
-  case TT.translateXtorSigUpper env xts of
-    Left err -> throwError err
-    Right xts' -> do checkXtorSig xts'
-
--- | Recursively translate a nominal type to an upper bound refinement type
-translateTypeUpper :: RST.Typ Neg -> GenM (TST.Typ Neg)
-translateTypeUpper ty = do
-  env <- asks fst
-  case TT.translateTypeUpper env ty of
-    Left err -> throwError err
-    Right xts' -> do checkKind xts'
-
--- | Recursively translate types in xtor signature to lower bound refinement types
-translateXtorSigLower :: RST.XtorSig Pos -> GenM (TST.XtorSig Pos)
-translateXtorSigLower xts = do
-  env <- asks fst
-  case TT.translateXtorSigLower env xts of
-    Left err -> throwError err
-    Right xts' -> do checkXtorSig xts'
-
--- | Recursively translate a nominal type to a lower bound refinement type
-translateTypeLower :: RST.Typ Pos -> GenM (TST.Typ Pos)
-translateTypeLower ty = do
-  env <- asks fst
-  case TT.translateTypeLower env ty of
-    Left err -> throwError err
-    Right xts' -> do checkKind xts'
 
 ---------------------------------------------------------------------------------------------
 -- Other

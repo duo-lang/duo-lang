@@ -117,12 +117,12 @@ deriving instance Ord (Typ pol)
 deriving instance Show (Typ pol)
 
 mkUnion :: Loc -> MonoKind -> [Typ Pos] -> Typ Pos
-mkUnion loc _   []     = TyBot loc topbotVar
+mkUnion loc mk   []     = TyBot loc mk
 mkUnion _   _   [t]    = t
 mkUnion loc knd (t:ts) = TyUnion loc knd t (mkUnion loc knd ts)
 
 mkInter :: Loc -> MonoKind -> [Typ Neg] -> Typ Neg
-mkInter loc _   []     = TyTop loc topbotVar
+mkInter loc mk   []     = TyTop loc mk
 mkInter _   _   [t]    = t
 mkInter loc knd (t:ts) = TyInter loc knd t (mkInter loc knd ts)
 

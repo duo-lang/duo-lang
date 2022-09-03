@@ -38,7 +38,7 @@ import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
     ( runGenM )
-import TypeInference.GenerateConstraints.KindInference 
+import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
@@ -52,6 +52,8 @@ import Syntax.RST.Program (prdCnsToPol)
 import Sugar.Desugar (desugarModule)
 import qualified Data.Set as S
 import Data.Maybe (catMaybes)
+import Pretty.Common (Header(..))
+import Pretty.Program ()
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
@@ -88,7 +90,12 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
         CST.Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
         CST.NonRecursive -> genConstraintsTerm pcdecl_term
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
-  guardVerbose $ ppPrintIO constraintSet
+  guardVerbose $ do
+    ppPrintIO (Header (unFreeVarName pcdecl_name))
+    ppPrintIO ("" :: T.Text)
+    ppPrintIO pcdecl_term
+    ppPrintIO ("" :: T.Text)
+    ppPrintIO constraintSet
   -- 2. Solve the constraints.
   solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet env
   guardVerbose $ ppPrintIO solverResult
@@ -105,8 +112,8 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  let annot = runKindReaderM (checkMaybeTypeScheme pcdecl_annot) env
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annot pcdecl_loc
+  annot <- liftEitherErrLoc pcdecl_loc (fst $ runGenM pcdecl_loc env (annotateMaybeTypeScheme pcdecl_annot) )
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified (fst annot) pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
@@ -143,8 +150,12 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   -- Solve the constraints
   solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env
   guardVerbose $ do
-      ppPrintIO constraints
-      ppPrintIO solverResult
+    ppPrintIO (Header (unFreeVarName cmddecl_name))
+    ppPrintIO ("" :: T.Text)
+    ppPrintIO cmddecl_cmd
+    ppPrintIO ("" :: T.Text)
+    ppPrintIO constraints
+    ppPrintIO solverResult
   -- Insert into environment
   let f env = env { cmdEnv = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
   modifyEnvironment mn f
@@ -164,11 +175,15 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   -- Solve the constraints
   solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
   guardVerbose $ do
-      ppPrintIO constraints
-      ppPrintIO solverResult
+    ppPrintIO (Header  $ unClassName instancedecl_name <> " " <> ppPrint (fst instancedecl_typ))
+    ppPrintIO ("" :: T.Text)
+    ppPrintIO (Core.InstanceDecl decl)
+    ppPrintIO ("" :: T.Text)
+    ppPrintIO constraints
+    ppPrintIO solverResult
   -- Insert into environment
-  let instty = runKindReaderM (checkInstDecl instancedecl_typ) env
-  let f env = env { instanceEnv = M.adjust (S.insert instty) instancedecl_name (instanceEnv env)}
+  let instty' = TST.instancedecl_typ instanceInferred
+  let f env = env { instanceEnv = M.adjust (S.insert instty') instancedecl_name (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 

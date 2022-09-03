@@ -236,7 +236,6 @@ instance ToHoverMap PrdCnsTerm where
   toHoverMap (CnsTerm tm) = toHoverMap tm
 
 applyToHoverMap :: Range -> MonoKind -> HoverMap
---applyToHoverMap rng Nothing   = M.fromList [(rng, mkHover "Kind not inferred" rng)]
 applyToHoverMap rng cc = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
 instance ToHoverMap TST.Command where
@@ -451,9 +450,12 @@ instance ToHoverMap RST.DataDecl where
   toHoverMap RST.NominalDecl { data_loc, data_polarity } = mkHoverMap data_loc msg
     where
       msg = T.unlines [ "#### Nominal " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" ]
-  toHoverMap RST.RefinementDecl { data_loc, data_polarity } = mkHoverMap data_loc msg
+  toHoverMap RST.RefinementDecl { data_loc, data_polarity, data_refinement_empty, data_refinement_full } = mkHoverMap data_loc msg
     where
-      msg = T.unlines [ "#### Refinement " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" ]
+      msg = T.unlines [ "#### Refinement " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" 
+                      , " - Empty refinement type: " <> ppPrint (fst data_refinement_empty)
+                      , " - Full refinement type: " <> ppPrint (fst data_refinement_full)
+                      ]
       
 instance ToHoverMap RST.StructuralXtorDeclaration where
   toHoverMap RST.MkStructuralXtorDeclaration { strxtordecl_loc, strxtordecl_xdata } = mkHoverMap strxtordecl_loc msg
