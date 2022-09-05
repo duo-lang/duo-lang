@@ -34,6 +34,7 @@ data ConstraintInfo
   | IntersectionUnionSubConstraint
   | RecTypeSubConstraint
   | NominalSubConstraint
+  | KindConstraint
   deriving (Show)
 
 

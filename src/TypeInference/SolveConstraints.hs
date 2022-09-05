@@ -12,10 +12,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.Text qualified as T
 import Data.Maybe (fromMaybe)
-
-import Debug.Trace
 
 import Driver.Environment (Environment)
 import Errors

@@ -19,6 +19,21 @@ import Data.Text qualified as T
 --------------------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------------------
+genArgConstrs :: [TST.PrdCnsType pol] -> GenM () 
+genArgConstrs [] = return ()
+genArgConstrs [_] = return  ()
+genArgConstrs (fst:snd:rst) = do 
+  addConstraint $ KindEq KindConstraint (getKind fst) (getKind snd)
+  genArgConstrs (snd:rst)
+
+genPolyKindConstrs :: [MonoKind] -> GenM () 
+genPolyKindConstrs [] = return ()
+genPolyKindConstrs [_] = return  ()
+genPolyKindConstrs (fst:snd:rst) = do 
+  addConstraint $ KindEq KindConstraint fst snd
+  genPolyKindConstrs (snd:rst)
+
+
 getXtorKinds :: Loc -> [RST.XtorSig pol] -> GenM MonoKind
 getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
 getXtorKinds _ [xtor] = do 
@@ -41,9 +56,11 @@ getKindDecl loc decl = do
   let polyknd = RST.data_kind decl
   let retknd = CBox (returnKind polyknd)
   let argknds = map (\(_,_,x) -> x) (kindArgs polyknd)
+  genPolyKindConstrs argknds
   let constrs = map (KindEq (ReadConstraint loc) retknd) argknds
   mapM_ addConstraint constrs
   return retknd
+
 
 newKVar :: GenM KVar
 newKVar = do
@@ -88,14 +105,9 @@ annotateLinearContext ::  RST.LinearContext pol -> GenM (TST.LinearContext pol)
 annotateLinearContext ctxt = do
   ctxt' <- mapM annotatePrdCnsType ctxt
   let knds = map getKind ctxt'
-  let constrs = genArgConstrs knds 
-  mapM_ addConstraint constrs
+  genPolyKindConstrs knds 
   return ctxt'
-  where 
-    genArgConstrs [] = []
-    genArgConstrs [_] = []
-    genArgConstrs (fst:snd:rst) = KindEq (ReadConstraint defaultLoc) fst snd:genArgConstrs (snd:rst)
-
+  
 annotateXtorSig ::  RST.XtorSig pol -> GenM (TST.XtorSig pol)
 annotateXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = do 
   ctxt' <- annotateLinearContext ctxt 

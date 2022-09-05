@@ -1,3 +1,4 @@
 import Function;
 
+-- App has kind CBV -> CBV 
 def prd i64tof64 : #I64 -> #F64 := \x => 1.0#F64;
