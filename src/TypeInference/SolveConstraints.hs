@@ -15,6 +15,8 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Maybe (fromMaybe)
 
+import Debug.Trace
+
 import Driver.Environment (Environment)
 import Errors
 import Syntax.TST.Types 
@@ -106,9 +108,9 @@ lookupKVar :: KVar -> SolverM (Maybe MonoKind, Set KVar)
 lookupKVar kv = do 
   mp <- gets sst_kvars
   case M.toList (M.filter (\x -> kv `elem` x) mp) of 
-    [] -> throwSolverError defaultLoc ["Kind variable not found."]
+    [] -> throwSolverError defaultLoc ["Kind variable "<> ppPrint kv<> " not found."]
     [(mk,set)] -> pure (mk,set)
-    _ -> throwSolverError defaultLoc ["Multiple kinds for kind variable" <> T.pack (show kv)]
+    _ -> throwSolverError defaultLoc ["Multiple kinds for kind variable" <> ppPrint kv]
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm

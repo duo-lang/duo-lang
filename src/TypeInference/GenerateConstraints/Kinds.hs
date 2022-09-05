@@ -9,14 +9,12 @@ import Syntax.CST.Names
 import Lookup
 import Errors
 import Loc
-import Pretty.Pretty
 import TypeInference.Constraints
 import TypeInference.GenerateConstraints.Definition
 
 import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
-
 
 --------------------------------------------------------------------------------------------
 -- Helpers
@@ -50,8 +48,11 @@ getKindDecl loc decl = do
 newKVar :: GenM KVar
 newKVar = do
   kvCnt <- gets kVarCount
+  let kVar = MkKVar (T.pack ("kv" <> show kvCnt))
   modify (\gs@GenerateState{} -> gs { kVarCount = kvCnt + 1 })
-  return (MkKVar (T.pack ("kv" <> show kvCnt)))
+  modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_kvars } } ->
+            gs { constraintSet = cs {cs_kvars = cs_kvars ++ [kVar] } })
+  return kVar 
 
 --------------------------------------------------------------------------------------------
 -- checking Kinds
@@ -84,7 +85,16 @@ annotatePrdCnsType (RST.PrdCnsType rep ty) = do
   return (TST.PrdCnsType rep ty')
 
 annotateLinearContext ::  RST.LinearContext pol -> GenM (TST.LinearContext pol)
-annotateLinearContext = mapM annotatePrdCnsType
+annotateLinearContext ctxt = do
+  ctxt' <- mapM annotatePrdCnsType ctxt
+  let knds = map getKind ctxt'
+  let constrs = genArgConstrs knds 
+  mapM_ addConstraint constrs
+  return ctxt'
+  where 
+    genArgConstrs [] = []
+    genArgConstrs [_] = []
+    genArgConstrs (fst:snd:rst) = KindEq (ReadConstraint defaultLoc) fst snd:genArgConstrs (snd:rst)
 
 annotateXtorSig ::  RST.XtorSig pol -> GenM (TST.XtorSig pol)
 annotateXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = do 
