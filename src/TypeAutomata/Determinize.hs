@@ -78,7 +78,7 @@ combineNodeLabels [] = error "No Labels to combine"
 combineNodeLabels [fstLabel@MkNodeLabel{}] = fstLabel
 combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
   case rs_merged of
-    (MkPrimitiveNodeLabel _ _) -> error "Tried to combine primitive type and algebraic type"
+    pr@MkPrimitiveNodeLabel{} -> error ("Tried to combine primitive type" <> show pr <> " and algebraic type " <> show fstLabel)
     combLabel@MkNodeLabel{} ->
       if nl_pol combLabel == pol then
         MkNodeLabel {
@@ -107,7 +107,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
 combineNodeLabels [fstLabel@MkPrimitiveNodeLabel{}] = fstLabel
 combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) =
   case rs_merged of
-    MkNodeLabel{} -> error "Tried to combine primitive type and algebraic type"
+    nl@MkNodeLabel{} -> error ("Tried to combine primitive type" <> show fstLabel <> " and algebraic type" <> show nl)
     combLabel@MkPrimitiveNodeLabel{} ->
       if pl_pol combLabel == pol then
         if pl_prim combLabel == primT then
