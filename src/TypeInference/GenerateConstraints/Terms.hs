@@ -127,6 +127,7 @@ genConstraintsTerm (Core.Xtor loc annot rep CST.Nominal xt subst) = do
   -- and the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   knd <- getKindDecl loc decl
+  forM_ sig_args' (addConstraint . KindEq KindConstraint knd . TST.getKind )
   case rep of
     PrdRep -> return (TST.Xtor loc annot rep (TST.TyNominal defaultLoc PosRep knd (RST.data_name decl) args) CST.Nominal xt substInferred)
     CnsRep -> return (TST.Xtor loc annot rep (TST.TyNominal defaultLoc NegRep knd (RST.data_name decl) args) CST.Nominal xt substInferred)
@@ -146,6 +147,7 @@ genConstraintsTerm (Core.Xtor loc annot rep CST.Refinement xt subst) = do
   -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes (TST.sig_args xtorSigUpper') (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   knd <- getKindDecl loc decl
+  forM_ substTypes (addConstraint . KindEq KindConstraint knd . TST.getKind )
   case rep of
     PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep knd (RST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
     CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep knd (RST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
@@ -203,6 +205,7 @@ genConstraintsTerm (Core.XCase loc annot rep CST.Nominal cases@(pmcase:_)) = do
                    cmdInferred <- withContext posTypes' (genConstraintsCommand cmdcase_cmd)
                    return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc' xt args) cmdInferred, TST.MkXtorSig xt negTypes'))
   knd <- getKindDecl loc decl
+  forM_ args (addConstraint . KindEq KindConstraint knd . TST.getKind )
   case rep of
     PrdRep -> return $ TST.XCase loc annot rep (TST.TyNominal defaultLoc PosRep knd (RST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
     CnsRep -> return $ TST.XCase loc annot rep (TST.TyNominal defaultLoc NegRep knd (RST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
@@ -239,6 +242,7 @@ genConstraintsTerm (Core.XCase loc annot rep CST.Refinement cases@(pmcase:_)) = 
                        -- and greatest type translation.
                        return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
   knd <- getKindDecl loc decl
+  forM_ (TST.sig_args . snd <$> inferredCases) (mapM_ (addConstraint . KindEq KindConstraint knd . TST.getKind ))
   case rep of
     PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep knd (RST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
     CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep knd (RST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)

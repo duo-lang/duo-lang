@@ -218,6 +218,8 @@ lookupContext loc rep idx@(i,j) = do
 instantiateTypeScheme :: FreeVarName -> Loc -> TST.TypeScheme pol -> GenM (TST.Typ pol)
 instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do
   freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
+  forM_ freshVars (\(_,ty) -> addConstraint (KindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ fst ty)))
+  forM_ freshVars (\(_,ty) -> addConstraint (KindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ snd ty)))
   pure $ TST.zonk TST.SkolemRep (TST.MkBisubstitution (M.fromList freshVars)) ts_monotype
 
 ---------------------------------------------------------------------------------------------

@@ -175,6 +175,10 @@ instance GetKind (Typ pol) where
 instance GetKind (PrdCnsType pol) where 
   getKind (PrdCnsType _ ty) = getKind ty
 
+instance GetKind (VariantType pol) where 
+  getKind (CovariantType ty) = getKind ty 
+  getKind (ContravariantType ty) = getKind ty
+
 ------------------------------------------------------------------------------
 -- Type Schemes
 ------------------------------------------------------------------------------
