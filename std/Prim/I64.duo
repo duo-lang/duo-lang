@@ -1,69 +1,69 @@
-import Function;
-
---------------------------------------------------------------------------------------------
--- Boxed 64-Bit signed integers
---
--- This module provides boxed representations of 64-Bit signed integers.
--- The data type `I64` represents a boxed version of the unboxed primitive type `#I64`, which
--- it wraps. I.e. `I64` and `#I64` are differentiated by their respective kind:
---
---  `#I64` has kind `#I64Rep`
---  `I64`  has kind `CBV`
---
--- The basic idea behind this choice of representation of boxed primitives has been described
--- by Simon Peyton Jones and John Launchbury in:
---  - (1998) "Unboxed Values as First Class Citizens in a Non-Strict Functional Language"
---     Proceedings of the 5th ACM conference on Functional Programming
---
--- This module also provides boxed versions of the primitive operations on `#I64` values.
---------------------------------------------------------------------------------------------
-
--- | Boxed 64-Bit signed Integers.
-data I64 {
-    MkI64(#I64)
-};
-
-def prd i1 : #I64 := 1#I64;
-def prd i2 : I64 := MkI64(i1);
-
---| def cns i3 : #I64 := mu i. ExitSuccess;
-
--- | Addition of two 64-Bit signed integers.
-def prd add : I64 -> I64 -> I64 := \x => \y =>
-    case x of {
-        MkI64(x) => case y of {
-            MkI64(y) => mu k. #I64Add(x, y,mu z. MkI64(z) >> k)
-        }
-    };
-
--- | Subtraction of two 64-Bit signed integers.
-def prd sub : I64 -> I64 -> I64 := \x => \y =>
-    case x of {
-        MkI64(x) => case y of {
-            MkI64(y) => mu k. #I64Sub(x, y,mu z. MkI64(z) >> k)
-        }
-    };
-
--- | Multiplication of two 64-Bit signed integers.
-def prd mul : I64 -> I64 -> I64 := \x => \y =>
-    case x of {
-        MkI64(x) => case y of {
-            MkI64(y) => mu k. #I64Mul(x, y,mu z. MkI64(z) >> k)
-        }
-    };
-
--- | Division of two 64-Bit signed integers.
-def prd div : I64 -> I64 -> I64 := \x => \y =>
-    case x of {
-        MkI64(x) => case y of {
-            MkI64(y) => mu k. #I64Div(x, y,mu z. MkI64(z) >> k)
-        }
-    };
-
--- | Modulo of two 64-Bit signed integers.
-def prd mod : I64 -> I64 -> I64 := \x => \y =>
-    case x of {
-        MkI64(x) => case y of {
-            MkI64(y) => mu k. #I64Mod(x, y,mu z. MkI64(z) >> k)
-        }
-    };
+-- import Function;
+-- 
+-- --------------------------------------------------------------------------------------------
+-- -- Boxed 64-Bit signed integers
+-- --
+-- -- This module provides boxed representations of 64-Bit signed integers.
+-- -- The data type `I64` represents a boxed version of the unboxed primitive type `#I64`, which
+-- -- it wraps. I.e. `I64` and `#I64` are differentiated by their respective kind:
+-- --
+-- --  `#I64` has kind `#I64Rep`
+-- --  `I64`  has kind `CBV`
+-- --
+-- -- The basic idea behind this choice of representation of boxed primitives has been described
+-- -- by Simon Peyton Jones and John Launchbury in:
+-- --  - (1998) "Unboxed Values as First Class Citizens in a Non-Strict Functional Language"
+-- --     Proceedings of the 5th ACM conference on Functional Programming
+-- --
+-- -- This module also provides boxed versions of the primitive operations on `#I64` values.
+-- --------------------------------------------------------------------------------------------
+-- 
+-- -- | Boxed 64-Bit signed Integers.
+-- data I64 {
+--     MkI64(#I64)
+-- };
+-- 
+-- def prd i1 : #I64 := 1#I64;
+-- def prd i2 : I64 := MkI64(i1);
+-- 
+-- --| def cns i3 : #I64 := mu i. ExitSuccess;
+-- 
+-- -- | Addition of two 64-Bit signed integers.
+-- def prd add : I64 -> I64 -> I64 := \x => \y =>
+--     case x of {
+--         MkI64(x) => case y of {
+--             MkI64(y) => mu k. #I64Add(x, y,mu z. MkI64(z) >> k)
+--         }
+--     };
+-- 
+-- -- | Subtraction of two 64-Bit signed integers.
+-- def prd sub : I64 -> I64 -> I64 := \x => \y =>
+--     case x of {
+--         MkI64(x) => case y of {
+--             MkI64(y) => mu k. #I64Sub(x, y,mu z. MkI64(z) >> k)
+--         }
+--     };
+-- 
+-- -- | Multiplication of two 64-Bit signed integers.
+-- def prd mul : I64 -> I64 -> I64 := \x => \y =>
+--     case x of {
+--         MkI64(x) => case y of {
+--             MkI64(y) => mu k. #I64Mul(x, y,mu z. MkI64(z) >> k)
+--         }
+--     };
+-- 
+-- -- | Division of two 64-Bit signed integers.
+-- def prd div : I64 -> I64 -> I64 := \x => \y =>
+--     case x of {
+--         MkI64(x) => case y of {
+--             MkI64(y) => mu k. #I64Div(x, y,mu z. MkI64(z) >> k)
+--         }
+--     };
+-- 
+-- -- | Modulo of two 64-Bit signed integers.
+-- def prd mod : I64 -> I64 -> I64 := \x => \y =>
+--     case x of {
+--         MkI64(x) => case y of {
+--             MkI64(y) => mu k. #I64Mod(x, y,mu z. MkI64(z) >> k)
+--         }
+--     };

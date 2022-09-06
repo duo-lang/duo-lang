@@ -1,50 +1,50 @@
-import Bool;
-
---------------------------------------------------------------------------------------------
--- Boxed 64-Bit strings
---
--- This module provides boxed representations of 64-Bit strings.
--- The data type `String` represents a boxed version of the unboxed primitive type `#String`, which
--- it wraps. I.e. `String` and `#String` are differentiated by their respective kind:
---
---  `#String` has kind `#StringRep`
---  `String`  has kind `CBV`
---
--- The basic idea behind this choice of representation of boxed primitives has been described
--- by Simon Peyton Jones and John Launchbury in:
---  - (1998) "Unboxed Values as First Class Citizens in a Non-Strict Functional Language"
---     Proceedings of the 5th ACM conference on Functional Programming
---
--- This module also provides boxed versions of the primitive operations on `#String` values.
---------------------------------------------------------------------------------------------
-
--- | Boxed 64-Bit chars.
-data Char {
-    MkChar(#Char)
-};
-
--- | Boxed 64-Bit strings.
-data String {
-    MkString(#String)
-};
-
-def prd hello : #String := "Hello, world";
-def prd helloBoxed : String := MkString(hello);
-
---  def prd hello2 : #String := mu k. Prepend#Char('!',"", mu x. Append#String(hello,x,k));
-
-def prd append : String -> String -> String :=
-  \s => \t => case s of {
-    MkString(s) => case t of {
-      MkString(t) => mu k. #StringAppend(s,t, mu z. MkString(z) >> k)
-    }
-  };
-
-def prd prepend : Char -> String -> String :=
-  \c => \s => case c of {
-    MkChar(c) => case s of {
-      MkString(s) => mu k. #CharPrepend(c,s, mu z. MkString(z) >> k)
-    }
-  };
-
-def prd hello3 : String := mu k. #CharPrepend('!',"", mu x. #StringAppend(hello,x,mu z. MkString(z) >> k));
+-- import Bool;
+-- 
+-- --------------------------------------------------------------------------------------------
+-- -- Boxed 64-Bit strings
+-- --
+-- -- This module provides boxed representations of 64-Bit strings.
+-- -- The data type `String` represents a boxed version of the unboxed primitive type `#String`, which
+-- -- it wraps. I.e. `String` and `#String` are differentiated by their respective kind:
+-- --
+-- --  `#String` has kind `#StringRep`
+-- --  `String`  has kind `CBV`
+-- --
+-- -- The basic idea behind this choice of representation of boxed primitives has been described
+-- -- by Simon Peyton Jones and John Launchbury in:
+-- --  - (1998) "Unboxed Values as First Class Citizens in a Non-Strict Functional Language"
+-- --     Proceedings of the 5th ACM conference on Functional Programming
+-- --
+-- -- This module also provides boxed versions of the primitive operations on `#String` values.
+-- --------------------------------------------------------------------------------------------
+-- 
+-- -- | Boxed 64-Bit chars.
+-- data Char {
+--     MkChar(#Char)
+-- };
+-- 
+-- -- | Boxed 64-Bit strings.
+-- data String {
+--     MkString(#String)
+-- };
+-- 
+-- def prd hello : #String := "Hello, world";
+-- def prd helloBoxed : String := MkString(hello);
+-- 
+-- --  def prd hello2 : #String := mu k. Prepend#Char('!',"", mu x. Append#String(hello,x,k));
+-- 
+-- def prd append : String -> String -> String :=
+--   \s => \t => case s of {
+--     MkString(s) => case t of {
+--       MkString(t) => mu k. #StringAppend(s,t, mu z. MkString(z) >> k)
+--     }
+--   };
+-- 
+-- def prd prepend : Char -> String -> String :=
+--   \c => \s => case c of {
+--     MkChar(c) => case s of {
+--       MkString(s) => mu k. #CharPrepend(c,s, mu z. MkString(z) >> k)
+--     }
+--   };
+-- 
+-- def prd hello3 : String := mu k. #CharPrepend('!',"", mu x. #StringAppend(hello,x,mu z. MkString(z) >> k));

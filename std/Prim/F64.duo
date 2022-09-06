@@ -1,71 +1,71 @@
-import Function;
-import Bool;
-
---------------------------------------------------------------------------------------------
--- Boxed 64-Bit floating point numbers
---
--- This module provides boxed representations of 64-Bit floating point numbers.
--- The data type `F64` represents a boxed version of the unboxed primitive type `#F64`, which
--- it wraps. I.e. `F64` and `#F64` are differentiated by their respective kind:
---
---  `#F64` has kind `#F64Rep`
---  `F64`  has kind `CBV`
---
--- The basic idea behind this choice of representation of boxed primitives has been described
--- by Simon Peyton Jones and John Launchbury in:
---  - (1998) "Unboxed Values as First Class Citizens in a Non-Strict Functional Language"
---     Proceedings of the 5th ACM conference on Functional Programming
---
--- This module also provides boxed versions of the primitive operations on `#F64` values.
---------------------------------------------------------------------------------------------
-
--- | Boxed 64-Bit floating point numbers.
-data F64 {
-    MkF64(#F64)
-};
-
-def prd f1 : #F64 := 1.0#F64;
-def prd f2 : F64 := MkF64(f1);
-
---| def cns f3 : #F64 := mu f. ExitSuccess;
-
---| Addition of two 64-Bit floating point numbers.
-def prd addf : F64 -> F64 -> F64 := \x => \y =>
-    case x of {
-        MkF64(x) => case y of {
-           MkF64(y) => mu k. #F64Add(x, y,mu z. MkF64(z) >> k)
-       }
-   };
-
---| Subtraction of two 64-Bit floating point numbers.
-def prd subf : F64 -> F64 -> F64 := \x => \y =>
-   case x of {
-       MkF64(x) => case y of {
-           MkF64(y) => mu k. #F64Sub(x, y,mu z. MkF64(z) >> k)
-       }
-   };
-
---| Multiplication of two 64-Bit floating point numbers.
-def prd mulf : F64 -> F64 -> F64 := \x => \y =>
-  case x of {
-  MkF64(x) => case y of {
-           MkF64(y) => mu k. #F64Mul(x, y,mu z. MkF64(z) >> k)
-       }
-   };
-
---| Division of two 64-Bit floating point numbers.
-def prd divf : F64 -> F64 -> F64 := \x => \y =>
-   case x of {
-        MkF64(x) => case y of {
-           MkF64(y) => mu k. #F64Div(x, y,mu z. MkF64(z) >> k)
-       }
-   };
-
---| this does not work yet, kind inference is needed first
---|def prd ite : forall a. Bool -> a -> #F64 -> a \/ F64 := \b => \x => \y =>
---|case b of {
---|   True => x,
---|   False => mu k. Add#F64(y, 1.0#F64, mu z. MkF64(z) >> k)
---| };
-
-
+-- import Function;
+-- import Bool;
+-- 
+-- --------------------------------------------------------------------------------------------
+-- -- Boxed 64-Bit floating point numbers
+-- --
+-- -- This module provides boxed representations of 64-Bit floating point numbers.
+-- -- The data type `F64` represents a boxed version of the unboxed primitive type `#F64`, which
+-- -- it wraps. I.e. `F64` and `#F64` are differentiated by their respective kind:
+-- --
+-- --  `#F64` has kind `#F64Rep`
+-- --  `F64`  has kind `CBV`
+-- --
+-- -- The basic idea behind this choice of representation of boxed primitives has been described
+-- -- by Simon Peyton Jones and John Launchbury in:
+-- --  - (1998) "Unboxed Values as First Class Citizens in a Non-Strict Functional Language"
+-- --     Proceedings of the 5th ACM conference on Functional Programming
+-- --
+-- -- This module also provides boxed versions of the primitive operations on `#F64` values.
+-- --------------------------------------------------------------------------------------------
+-- 
+-- -- | Boxed 64-Bit floating point numbers.
+-- data F64 {
+--     MkF64(#F64)
+-- };
+-- 
+-- def prd f1 : #F64 := 1.0#F64;
+-- def prd f2 : F64 := MkF64(f1);
+-- 
+-- --| def cns f3 : #F64 := mu f. ExitSuccess;
+-- 
+-- --| Addition of two 64-Bit floating point numbers.
+-- def prd addf : F64 -> F64 -> F64 := \x => \y =>
+--     case x of {
+--         MkF64(x) => case y of {
+--            MkF64(y) => mu k. #F64Add(x, y,mu z. MkF64(z) >> k)
+--        }
+--    };
+-- 
+-- --| Subtraction of two 64-Bit floating point numbers.
+-- def prd subf : F64 -> F64 -> F64 := \x => \y =>
+--    case x of {
+--        MkF64(x) => case y of {
+--            MkF64(y) => mu k. #F64Sub(x, y,mu z. MkF64(z) >> k)
+--        }
+--    };
+-- 
+-- --| Multiplication of two 64-Bit floating point numbers.
+-- def prd mulf : F64 -> F64 -> F64 := \x => \y =>
+--   case x of {
+--   MkF64(x) => case y of {
+--            MkF64(y) => mu k. #F64Mul(x, y,mu z. MkF64(z) >> k)
+--        }
+--    };
+-- 
+-- --| Division of two 64-Bit floating point numbers.
+-- def prd divf : F64 -> F64 -> F64 := \x => \y =>
+--    case x of {
+--         MkF64(x) => case y of {
+--            MkF64(y) => mu k. #F64Div(x, y,mu z. MkF64(z) >> k)
+--        }
+--    };
+-- 
+-- --| this does not work yet, kind inference is needed first
+-- --|def prd ite : forall a. Bool -> a -> #F64 -> a \/ F64 := \b => \x => \y =>
+-- --|case b of {
+-- --|   True => x,
+-- --|   False => mu k. Add#F64(y, 1.0#F64, mu z. MkF64(z) >> k)
+-- --| };
+-- 
+-- 
