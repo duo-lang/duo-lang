@@ -22,16 +22,10 @@ import Data.Text qualified as T
 
 getXtorKinds :: Loc -> [RST.XtorSig pol] -> GenM MonoKind
 getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
-getXtorKinds _ [xtor] = do 
-  let nm = RST.sig_name xtor
-  lookupXtorKind nm
-getXtorKinds loc (fst:rst) = do
-  let nm = RST.sig_name fst
-  knd <- lookupXtorKind nm
-  knd' <- getXtorKinds loc rst
-  -- Structural Xtors have to have the same kinds, so the kind of the type is well defined
-  addConstraint $ KindEq KindConstraint knd knd'
-  return knd
+getXtorKinds _ (xtor:_) = do 
+  let nm = RST.sig_name xtor 
+  (mk, _) <- lookupXtorKind nm
+  return mk
 
 getTyNameKind ::  Loc -> RnTypeName -> GenM MonoKind
 getTyNameKind loc tyn = do
@@ -81,10 +75,8 @@ annotatePrdCnsType (RST.PrdCnsType rep ty) = do
   return (TST.PrdCnsType rep ty')
 
 annotateLinearContext ::  RST.LinearContext pol -> GenM (TST.LinearContext pol)
-annotateLinearContext ctxt = do
-  ctxt' <- mapM annotatePrdCnsType ctxt
-  let knds = map getKind ctxt'
-  return ctxt'
+annotateLinearContext ctxt = do mapM annotatePrdCnsType ctxt
+
   
 annotateXtorSig ::  RST.XtorSig pol -> GenM (TST.XtorSig pol)
 annotateXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = do 
@@ -123,13 +115,13 @@ annotateKind (RST.TyRecVar loc pol rv) = do
     Just mk -> return (TST.TyRecVar loc pol mk rv)
 
 annotateKind (RST.TyData loc pol xtors) = do 
-  knd <- getXtorKinds loc xtors 
   xtors' <- mapM annotateXtorSig xtors
+  knd <- getXtorKinds loc xtors
   return (TST.TyData loc pol knd xtors')
 
 annotateKind (RST.TyCodata loc pol xtors) = do 
-  knd <- getXtorKinds loc xtors
   xtors' <- mapM annotateXtorSig xtors
+  knd <- getXtorKinds loc xtors
   return (TST.TyCodata loc pol knd xtors')
 
 annotateKind (RST.TyDataRefined loc pol tyn xtors) = do 

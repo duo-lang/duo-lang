@@ -219,26 +219,18 @@ inferDecl mn (Core.CmdDecl decl) = do
 --
 inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
-  let f env = env { declEnv = (RST.data_loc decl,decl) : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
+  let f env = env { declEnv = (RST.data_loc decl,decl) : declEnv env}
   modifyEnvironment mn f 
-  pure (TST.DataDecl decl)
-  where 
-    insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
-    insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do
-      let names = map RST.sig_name (fst xtors) ++ map RST.sig_name (snd xtors)
-      let mk = CBox (returnKind knd)
-      foldr (`M.insert`mk) mp names
-    insertKinds RST.RefinementDecl{data_kind = knd, data_xtors = xtors} mp = do
-      let names = map RST.sig_name (fst xtors) ++ map RST.sig_name (snd xtors)
-      let mk = CBox (returnKind knd)
-      foldr (`M.insert`mk) mp names
- 
+  pure (TST.DataDecl decl) 
 --
 -- XtorDecl
 --
 inferDecl _mn (Core.XtorDecl decl) = do
-  -- check constructor kinds 
-  let f env = env { kindEnv = M.insert (RST.strxtordecl_name decl) (CBox (RST.strxtordecl_evalOrder decl)) (kindEnv env)}
+  -- check constructor kinds
+  let retKnd = CBox $ RST.strxtordecl_evalOrder decl
+  let xtornm = RST.strxtordecl_name decl
+  let argKnds = map snd (RST.strxtordecl_arity decl)
+  let f env = env { kindEnv = M.insert xtornm (retKnd, argKnds) (kindEnv env)}
   modifyEnvironment _mn f
   pure (TST.XtorDecl decl)
 --
