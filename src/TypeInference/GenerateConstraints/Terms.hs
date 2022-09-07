@@ -292,7 +292,6 @@ genConstraintsCommand (Core.Read loc cns) = do
   peanoDecl <- lookupTypeName loc peanoNm
   let peanoKnd = CBox (returnKind (RST.data_kind peanoDecl))
   let ty = TST.getTypeTerm cns'
-  addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep (CBox CBV) peanoNm []) ty)
   addConstraint $ KindEq KindConstraint (CBox CBV) (TST.getKind ty) 
   addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm []) ty)
   return (TST.Read loc cns')
