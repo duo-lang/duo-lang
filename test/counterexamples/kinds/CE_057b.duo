@@ -1,4 +1,3 @@
-import Function;
+import List;
 
--- App has kind CBV -> CBV 
-def prd i64tof64 : #I64 -> #F64 := \x => 1.0#F64;
+def prd f1 : List(#F64) := Nil;

@@ -1,0 +1,13 @@
+-- functions of kind CBN can't be composed
+codata Fun : (-a : CBV, +b : CBV) -> CBV {
+    Ap(a,return b)
+};
+
+def prd fixLazy := cocase { Ap(f,k) =>
+                 cocase { Ap(x,k) => x >>
+                   Ap(x,mu xx. f >> Ap(xx,k)) } >>
+                      Ap(cocase { Ap(x,k) => x >>
+                        Ap(x,mu xx. f >> Ap(xx,k)) },k)};
+
+def prd omega :=
+  mu k.fixLazy >> Ap(id,k) ;
