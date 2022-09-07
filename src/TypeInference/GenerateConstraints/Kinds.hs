@@ -19,20 +19,6 @@ import Data.Text qualified as T
 --------------------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------------------
-genArgConstrs :: [TST.PrdCnsType pol] -> GenM () 
-genArgConstrs [] = return ()
-genArgConstrs [_] = return  ()
-genArgConstrs (fst:snd:rst) = do 
-  addConstraint $ KindEq KindConstraint (getKind fst) (getKind snd)
-  genArgConstrs (snd:rst)
-
-genPolyKindConstrs :: [MonoKind] -> GenM () 
-genPolyKindConstrs [] = return ()
-genPolyKindConstrs [_] = return  ()
-genPolyKindConstrs (fst:snd:rst) = do 
-  addConstraint $ KindEq KindConstraint fst snd
-  genPolyKindConstrs (snd:rst)
-
 
 getXtorKinds :: Loc -> [RST.XtorSig pol] -> GenM MonoKind
 getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
@@ -43,24 +29,17 @@ getXtorKinds loc (fst:rst) = do
   let nm = RST.sig_name fst
   knd <- lookupXtorKind nm
   knd' <- getXtorKinds loc rst
-  addConstraint $ KindEq (ReadConstraint loc) knd knd'
+  -- Structural Xtors have to have the same kinds, so the kind of the type is well defined
+  addConstraint $ KindEq KindConstraint knd knd'
   return knd
 
 getTyNameKind ::  Loc -> RnTypeName -> GenM MonoKind
 getTyNameKind loc tyn = do
   decl <- lookupTypeName loc tyn
-  getKindDecl loc decl
-  
-getKindDecl ::  Loc -> RST.DataDecl -> GenM MonoKind
-getKindDecl loc decl = do
-  let polyknd = RST.data_kind decl
-  let retknd = CBox (returnKind polyknd)
-  let argknds = map (\(_,_,x) -> x) (kindArgs polyknd)
-  genPolyKindConstrs argknds
-  let constrs = map (KindEq (ReadConstraint loc) retknd) argknds
-  mapM_ addConstraint constrs
-  return retknd
+  getKindDecl decl
 
+getKindDecl :: RST.DataDecl -> GenM MonoKind 
+getKindDecl = return . CBox . returnKind . RST.data_kind
 
 newKVar :: GenM KVar
 newKVar = do
@@ -105,7 +84,6 @@ annotateLinearContext ::  RST.LinearContext pol -> GenM (TST.LinearContext pol)
 annotateLinearContext ctxt = do
   ctxt' <- mapM annotatePrdCnsType ctxt
   let knds = map getKind ctxt'
-  genPolyKindConstrs knds 
   return ctxt'
   
 annotateXtorSig ::  RST.XtorSig pol -> GenM (TST.XtorSig pol)
@@ -181,14 +159,16 @@ annotateKind (RST.TyUnion loc ty1 ty2) = do
   ty1' <- annotateKind ty1
   ty2' <- annotateKind ty2
   kv <- newKVar 
-  addConstraint $ KindEq (ReadConstraint loc) (KindVar kv) (getKind ty2')
-  addConstraint $ KindEq (ReadConstraint loc) (KindVar kv) (getKind ty1')
+  -- Union Type needs to have the same kind as its arguments
+  addConstraint $ KindEq KindConstraint (KindVar kv) (getKind ty2')
+  addConstraint $ KindEq KindConstraint (KindVar kv) (getKind ty1')
   return (TST.TyUnion loc (KindVar kv) ty1' ty2')
   
 annotateKind (RST.TyInter loc ty1 ty2) = do
   ty1' <- annotateKind ty1
   ty2' <- annotateKind ty2
   kv <- newKVar 
+  -- Intersection Type needs to have the same kind as its arguments
   addConstraint $ KindEq (ReadConstraint loc) (KindVar kv) (getKind ty2')
   addConstraint $ KindEq (ReadConstraint loc) (KindVar kv) (getKind ty1')
   return (TST.TyInter loc (KindVar kv) ty1' ty2')
