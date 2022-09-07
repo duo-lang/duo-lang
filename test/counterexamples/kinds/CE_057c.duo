@@ -1,0 +1,3 @@
+import PeanoStructural;
+
+def prd x := S(1.0#F64);
