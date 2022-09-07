@@ -124,7 +124,7 @@ instance PrettyAnn (RST.Typ pol) where
   prettyAnn typ = prettyAnn (embedType typ)
 
 instance PrettyAnn (TST.Typ pol) where
-  prettyAnn typ = prettyAnn (embedTSTType typ)
+  prettyAnn typ = prettyAnn (embedTSTType typ) <> " : " <> prettyAnn (TST.getKind typ)
 
 instance PrettyAnn CST.Typ where
   -- Top and Bottom lattice types
