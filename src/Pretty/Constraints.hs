@@ -68,7 +68,7 @@ instance PrettyAnn ConstraintSet where
     [ headerise "-" " " "Generated Constraints"
     , ""
     , "Generated unification variables:"
-    , nest 3 (line' <> vsep (printUVar <$> cs_uvars))
+    , nest 3 (line' <> vsep (printUVar <$> map (\(x,y,_) -> (x,y)) cs_uvars))
     , ""
     , nest 3 (line' <> vsep (prettyAnn <$> cs_kvars))
     , ""

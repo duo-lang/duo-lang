@@ -58,7 +58,7 @@ data UVarProvenance
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInfo]
-                                   , cs_uvars :: [(UniTVar, UVarProvenance)]
+                                   , cs_uvars :: [(UniTVar, UVarProvenance, KVar)]
                                    , cs_kvars :: [KVar]
                                    }
 

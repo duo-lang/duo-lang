@@ -126,7 +126,7 @@ freshTVar uvp = do
   modify (\gs@GenerateState{} -> gs { uVarCount = uVarC + 1, kVarCount = kVarC + 1, usedUniVars = M.insert tVar (KindVar kVar) uniVMap })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars,cs_kvars } } ->
-            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tVar, uvp)], cs_kvars = cs_kvars ++ [kVar] } })
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tVar, uvp,kVar)], cs_kvars = cs_kvars ++ [kVar] } })
   return (TST.TyUniVar defaultLoc PosRep (KindVar kVar) tVar, TST.TyUniVar defaultLoc NegRep (KindVar kVar) tVar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
