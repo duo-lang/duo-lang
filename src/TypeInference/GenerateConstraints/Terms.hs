@@ -48,10 +48,12 @@ genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = do
 genConstraintsCtxts [] [] _ = return ()
 genConstraintsCtxts ((TST.PrdCnsType PrdRep ty1) : rest1) (TST.PrdCnsType PrdRep ty2 : rest2) info = do
   addConstraint $ SubType info ty1 ty2
+  -- subtypes need the same kind
   addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2) 
   genConstraintsCtxts rest1 rest2 info
 genConstraintsCtxts ((TST.PrdCnsType CnsRep ty1) : rest1) (TST.PrdCnsType CnsRep ty2 : rest2) info = do
   addConstraint $ SubType info ty2 ty1
+  -- subtypes need the same kind
   addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2) 
   genConstraintsCtxts rest1 rest2 info
 genConstraintsCtxts (TST.PrdCnsType PrdRep _:_) (TST.PrdCnsType CnsRep _:_) info = do
@@ -127,7 +129,6 @@ genConstraintsTerm (Core.Xtor loc annot rep CST.Nominal xt subst) = do
   -- and the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   knd <- getKindDecl decl
-  forM_ sig_args' (addConstraint . KindEq KindConstraint knd . TST.getKind )
   case rep of
     PrdRep -> return (TST.Xtor loc annot rep (TST.TyNominal defaultLoc PosRep knd (RST.data_name decl) args) CST.Nominal xt substInferred)
     CnsRep -> return (TST.Xtor loc annot rep (TST.TyNominal defaultLoc NegRep knd (RST.data_name decl) args) CST.Nominal xt substInferred)
@@ -147,7 +148,6 @@ genConstraintsTerm (Core.Xtor loc annot rep CST.Refinement xt subst) = do
   -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
   genConstraintsCtxts substTypes (TST.sig_args xtorSigUpper') (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
   knd <- getKindDecl decl
-  forM_ substTypes (addConstraint . KindEq KindConstraint knd . TST.getKind )
   case rep of
     PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep knd (RST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
     CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep knd (RST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
@@ -205,7 +205,6 @@ genConstraintsTerm (Core.XCase loc annot rep CST.Nominal cases@(pmcase:_)) = do
                    cmdInferred <- withContext posTypes' (genConstraintsCommand cmdcase_cmd)
                    return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc' xt args) cmdInferred, TST.MkXtorSig xt negTypes'))
   knd <- getKindDecl decl
-  forM_ args (addConstraint . KindEq KindConstraint knd . TST.getKind )
   case rep of
     PrdRep -> return $ TST.XCase loc annot rep (TST.TyNominal defaultLoc PosRep knd (RST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
     CnsRep -> return $ TST.XCase loc annot rep (TST.TyNominal defaultLoc NegRep knd (RST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
@@ -242,7 +241,6 @@ genConstraintsTerm (Core.XCase loc annot rep CST.Refinement cases@(pmcase:_)) = 
                        -- and greatest type translation.
                        return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
   knd <- getKindDecl decl
-  forM_ (TST.sig_args . snd <$> inferredCases) (mapM_ (addConstraint . KindEq KindConstraint knd . TST.getKind ))
   case rep of
     PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep knd (RST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
     CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep knd (RST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
@@ -292,8 +290,9 @@ genConstraintsCommand (Core.Read loc cns) = do
   peanoDecl <- lookupTypeName loc peanoNm
   let peanoKnd = CBox (returnKind (RST.data_kind peanoDecl))
   let ty = TST.getTypeTerm cns'
-  addConstraint $ KindEq KindConstraint (CBox CBV) (TST.getKind ty) 
   addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm []) ty)
+  -- subtypes need the same kind
+  addConstraint $ KindEq KindConstraint (CBox CBV) (TST.getKind ty) 
   return (TST.Read loc cns')
 genConstraintsCommand (Core.Apply loc annot t1 t2) = do
   t1' <- genConstraintsTerm t1
@@ -301,6 +300,7 @@ genConstraintsCommand (Core.Apply loc annot t1 t2) = do
   let ty1 = TST.getTypeTerm t1'
   let ty2 = TST.getTypeTerm t2'
   addConstraint (SubType (CommandConstraint loc) ty1 ty2)
+  --subtypes need the same kind
   addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2) 
   pure (TST.Apply loc annot (TST.getKind ty1) t1' t2')
 genConstraintsCommand (Core.PrimOp loc op subst) = do
@@ -360,6 +360,7 @@ genConstraintsTermRecursive mn loc fv PrdRep tm = do
   tm <- withTerm mn PrdRep fv (TST.FreeVar loc PrdRep x fv) loc (TST.TypeScheme loc [] x) (genConstraintsTerm tm)
   let ty = TST.getTypeTerm tm
   addConstraint (SubType RecursionConstraint ty y)
+  -- subtypes need the same kind
   addConstraint $ KindEq KindConstraint (TST.getKind ty) (TST.getKind y) 
   return tm
 genConstraintsTermRecursive mn loc fv CnsRep tm = do
@@ -367,5 +368,6 @@ genConstraintsTermRecursive mn loc fv CnsRep tm = do
   tm <- withTerm mn CnsRep fv (TST.FreeVar loc CnsRep y fv) loc (TST.TypeScheme loc [] y) (genConstraintsTerm tm)
   let ty = TST.getTypeTerm tm
   addConstraint (SubType RecursionConstraint x ty)
+  --subtypes need the same kind
   addConstraint $ KindEq KindConstraint (TST.getKind x) (TST.getKind ty)
   return tm
