@@ -90,7 +90,7 @@ putKVars x = modify (\s -> s { sst_kvars = x })
 
 addUpperBound :: UniTVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
-  modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState (ty:ubs) lbs classes kind)uv
+  modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState (ty:ubs) lbs classes kind) uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
@@ -127,6 +127,12 @@ solve (cs:css) = do
       (KindEq _ k1 k2) -> do 
         unifyKinds k1 k2 
         solve css
+      (SubType _ (TyUniVar _ PosRep _ uvl) tvu@(TyUniVar _ NegRep _ uvu)) ->
+        if uvl == uvu 
+        then solve css
+        else do
+          newCss <- addUpperBound uvl tvu
+          solve (newCss ++ css)
       (SubType _ (TyUniVar _ PosRep _ uv) ub) -> do
         newCss <- addUpperBound uv ub
         solve (newCss ++ css)
@@ -140,6 +146,7 @@ solve (cs:css) = do
       _ -> do
         subCss <- subConstraints cs
         solve (subCss ++ css))
+
 ------------------------------------------------------------------------------
 -- Kind Inference
 ------------------------------------------------------------------------------
