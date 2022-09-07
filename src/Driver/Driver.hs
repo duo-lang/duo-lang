@@ -218,25 +218,11 @@ inferDecl mn (Core.CmdDecl decl) = do
 -- DataDecl
 --
 inferDecl mn (Core.DataDecl decl) = do
-  -- check argument and return kinds
-  let polyknd = RST.data_kind decl
-  let retknd = CBox $ returnKind polyknd
-  let argknds = map (\(_,_,x) -> x) (kindArgs polyknd)
-  if checkKinds retknd argknds then do
   -- Insert into environment
-    let f env = env { declEnv = (RST.data_loc decl,decl) : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
-    modifyEnvironment mn f 
-    pure (TST.DataDecl decl)
-  else 
-    throwOtherError (RST.data_loc decl) 
-      ["Data Declaration " <> ppPrint (RST.data_name decl) <> " has mismatching constructor kinds:",
-       "Argument kinds: " <> ppPrint argknds <> " Return Kind: " <> ppPrint retknd
-      ]
-
+  let f env = env { declEnv = (RST.data_loc decl,decl) : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
+  modifyEnvironment mn f 
+  pure (TST.DataDecl decl)
   where 
-    checkKinds :: MonoKind -> [MonoKind] -> Bool
-    checkKinds _ [] = True
-    checkKinds retknd (fst:rst) = retknd == fst && checkKinds retknd rst 
     insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
     insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do
       let names = map RST.sig_name (fst xtors) ++ map RST.sig_name (snd xtors)
@@ -252,23 +238,9 @@ inferDecl mn (Core.DataDecl decl) = do
 --
 inferDecl _mn (Core.XtorDecl decl) = do
   -- check constructor kinds 
-  let loc = RST.strxtordecl_loc decl
-  let nm = RST.strxtordecl_name decl
-  let argknds = map snd (RST.strxtordecl_arity decl)
-  let retknd = CBox $ RST.strxtordecl_evalOrder decl
-  if checkKinds retknd argknds then do 
-    let f env = env { kindEnv = M.insert (RST.strxtordecl_name decl) (CBox (RST.strxtordecl_evalOrder decl)) (kindEnv env)}
-    modifyEnvironment _mn f
-    pure (TST.XtorDecl decl)
-  else 
-    throwOtherError loc [
-      "Structural Constructor" <> ppPrint nm <> " has mismatching constructor kinds",
-      "Argument kinds: " <> ppPrint argknds <> " Return Kind: " <> ppPrint retknd
-      ]
-  where 
-    checkKinds :: MonoKind -> [MonoKind] -> Bool
-    checkKinds _ [] = True
-    checkKinds retknd (fst:rst) = retknd == fst && checkKinds retknd rst
+  let f env = env { kindEnv = M.insert (RST.strxtordecl_name decl) (CBox (RST.strxtordecl_evalOrder decl)) (kindEnv env)}
+  modifyEnvironment _mn f
+  pure (TST.XtorDecl decl)
 --
 -- ImportDecl
 --
