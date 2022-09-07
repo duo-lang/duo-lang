@@ -7,20 +7,20 @@
 --|
 --| Shifts in the style of Levy
 --|
---| data LShiftCBN :  (+a : CBV) -> CBN {
---| Val(a)
---| };
---|
---| codata LShiftCBV : (+a : CBN) -> CBV {
---|  Enter(return a)
---| };
---|
+data LShiftCBN :  (+a : CBV) -> CBN {
+ Val(a)
+};
+
+codata LShiftCBV : (+a : CBN) -> CBV {
+ Enter(return a)
+};
+
 --| Shifts in the style of Zeilberger
---|
---| codata ZShiftCBN : (+a : CBV) -> CBN {
---|  Eval(return a)
---| };
---| 
---| data ZShiftCBV : (+a : CBN) -> CBV {
---|  Box(a)
---| };
+
+codata ZShiftCBN : (+a : CBV) -> CBN {
+ Eval(return a)
+};
+
+data ZShiftCBV : (+a : CBN) -> CBV {
+ Box(a)
+};
