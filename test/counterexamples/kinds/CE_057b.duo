@@ -1,3 +1,3 @@
-import List;
+import List; 
 
-def prd f1 : List(#F64) := Nil;
+def prd f1 := Cons(1.0#F64, Nil);

@@ -17,16 +17,17 @@ import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
 
+
 --------------------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------------------
 -- generates the constraints between kinds of xtor arguments and used arguments
-genArgConstrs :: Loc -> XtorName -> [TST.PrdCnsType pol] -> [MonoKind] -> GenM () 
+genArgConstrs :: TST.GetKind a =>  Loc -> XtorName -> [MonoKind] -> [a] -> GenM () 
 genArgConstrs _ _ [] [] = return () 
-genArgConstrs loc xtornm (_:_) [] = throwOtherError loc ["Too many arguments for constructor" <> ppPrint xtornm]
-genArgConstrs loc xtornm [] (_:_) = throwOtherError loc ["Too few arguments for constructor" <> ppPrint xtornm]
+genArgConstrs loc xtornm (_:_) [] = throwOtherError loc ["Too few arguments for constructor " <> ppPrint xtornm]
+genArgConstrs loc xtornm [] (_:_) = throwOtherError loc ["Too many arguments for constructor " <> ppPrint xtornm]
 genArgConstrs loc xtornm (fst:rst) (fst':rst') = do 
-  addConstraint (KindEq KindConstraint (getKind fst) fst')
+  addConstraint (KindEq KindConstraint (getKind fst') fst)
   genArgConstrs loc xtornm rst rst'
 
 getXtorKinds :: Loc -> [TST.XtorSig pol] -> GenM MonoKind
@@ -34,21 +35,24 @@ getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of X
 getXtorKinds loc [xtor] = do
   let nm = TST.sig_name xtor
   (mk, args) <- lookupXtorKind nm 
-  genArgConstrs loc nm (TST.sig_args xtor) args
+  genArgConstrs loc nm args (TST.sig_args xtor)
   return mk
 getXtorKinds loc (xtor:xtors) = do 
   let nm = TST.sig_name xtor 
   (mk, args) <- lookupXtorKind nm
   mk' <- getXtorKinds loc xtors
-  genArgConstrs loc nm (TST.sig_args xtor) args
+  genArgConstrs loc nm args (TST.sig_args xtor)
   -- all constructors of a structural type need to have the same return kind
   addConstraint (KindEq KindConstraint mk mk')
   return mk
 
-getTyNameKind ::  Loc -> RnTypeName -> GenM MonoKind
+-- returns returnkind and list of argument kinds
+getTyNameKind ::  Loc -> RnTypeName -> GenM (MonoKind,[MonoKind])
 getTyNameKind loc tyn = do
   decl <- lookupTypeName loc tyn
-  getKindDecl decl
+  let polyKnd = RST.data_kind decl
+  let argKnds = map (\(_,_,x) -> x) (kindArgs polyKnd)
+  return (CBox (returnKind polyKnd), argKnds)
 
 getKindDecl :: RST.DataDecl -> GenM MonoKind 
 getKindDecl = return . CBox . returnKind . RST.data_kind
@@ -144,26 +148,40 @@ annotateKind (RST.TyCodata loc pol xtors) = do
 
 annotateKind (RST.TyDataRefined loc pol tyn xtors) = do 
   xtors' <- mapM annotateXtorSig xtors
-  knd <- getTyNameKind loc tyn
+  (knd,argknds) <- getTyNameKind loc tyn
+  -- make sure all applied constructor arguments match defined constructor arguments 
+  forM_ xtors' (\x -> genArgConstrs loc (TST.sig_name x) argknds (TST.sig_args x)) 
   return (TST.TyDataRefined loc pol knd tyn xtors')
 
 annotateKind (RST.TyCodataRefined loc pol tyn xtors) = do
   xtors' <- mapM annotateXtorSig xtors
-  knd <- getTyNameKind loc tyn
+  (knd, argknds) <- getTyNameKind loc tyn
+  -- make sure all applied constructor arguments match defined constructor arguments 
+  forM_ xtors' (\x -> genArgConstrs loc (TST.sig_name x) argknds (TST.sig_args x)) 
   return (TST.TyCodataRefined loc pol knd tyn xtors')
 
 annotateKind (RST.TyNominal loc pol tyn vartys) = do
   vartys' <- mapM annotateVariantType vartys
-  knd <- getTyNameKind loc tyn
+  (knd,argknds) <- getTyNameKind loc tyn
+  -- make sure all applied constructor arguments match defined constructor arguments 
+  checkVartyKinds loc vartys' argknds 
   return (TST.TyNominal loc pol knd tyn vartys')
+  where 
+    checkVartyKinds :: Loc -> [TST.VariantType pol] -> [MonoKind] -> GenM() 
+    checkVartyKinds _ [] [] = return ()
+    checkVartyKinds loc (_:_) [] = throwOtherError loc ["Too many arguments for nominal type " <> ppPrint tyn]
+    checkVartyKinds loc [] (_:_) = throwOtherError loc ["Too few arguments for nominal type " <> ppPrint tyn]
+    checkVartyKinds loc (fst:rst) (fst':rst') = do 
+      addConstraint (KindEq KindConstraint (getKind fst) fst')
+      checkVartyKinds loc rst rst'
 
 annotateKind (RST.TySyn loc pol tn ty) = do 
   ty' <- annotateKind ty 
   return (TST.TySyn loc pol tn ty')
 
-annotateKind (RST.TyBot loc) = TST.TyBot loc . KindVar <$> newKVar
+annotateKind (RST.TyBot loc) = do TST.TyBot loc . KindVar <$> newKVar
 
-annotateKind (RST.TyTop loc) = TST.TyTop loc . KindVar <$> newKVar
+annotateKind (RST.TyTop loc) = do TST.TyTop loc . KindVar <$> newKVar
 
 annotateKind (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- annotateKind ty1
@@ -179,8 +197,8 @@ annotateKind (RST.TyInter loc ty1 ty2) = do
   ty2' <- annotateKind ty2
   kv <- newKVar 
   -- Intersection Type needs to have the same kind as its arguments
-  addConstraint $ KindEq (ReadConstraint loc) (KindVar kv) (getKind ty2')
-  addConstraint $ KindEq (ReadConstraint loc) (KindVar kv) (getKind ty1')
+  addConstraint $ KindEq KindConstraint (KindVar kv) (getKind ty2')
+  addConstraint $ KindEq KindConstraint (KindVar kv) (getKind ty1')
   return (TST.TyInter loc (KindVar kv) ty1' ty2')
   
 annotateKind (RST.TyRec loc pol rv ty) = do

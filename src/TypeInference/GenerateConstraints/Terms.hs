@@ -5,6 +5,7 @@ module TypeInference.GenerateConstraints.Terms
   , genConstraintsInstance
   ) where
 
+
 import Control.Monad.Reader
 import Errors
 import Syntax.CST.Terms qualified as CST
@@ -120,8 +121,11 @@ genConstraintsTerm (Core.Xtor loc annot rep CST.Nominal xt subst) = do
   -- Secondly we look up the argument types of the xtor in the type declaration.
   decl <- lookupDataDecl loc xt
   xtorSig <- lookupXtorSig loc xt NegRep
+  xtorSig' <- annotateXtorSig xtorSig
   -- Generate fresh unification variables for type parameters
   (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
+  -- kinds of declared and used arguments need to be the same
+  genArgConstrs loc xt  (map TST.getKind substTypes) (TST.sig_args xtorSig')
   -- Substitute these for the type parameters in the constructor signature
   newxtor <- annotateXtorSig xtorSig 
   let sig_args' = TST.zonk TST.SkolemRep tyParamsMap (TST.sig_args newxtor)
