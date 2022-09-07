@@ -60,16 +60,17 @@ instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (TypeClassNeg ann cn typ) =
     prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
 
-printUVar :: (UniTVar, UVarProvenance) -> Doc Annotation
-printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
+printUVar :: (UniTVar, UVarProvenance,KVar) -> Doc Annotation
+printUVar (tv,prov,kv) = prettyAnn tv <> ":" <> prettyAnn kv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
   prettyAnn ConstraintSet { cs_constraints, cs_uvars, cs_kvars } = vsep
     [ headerise "-" " " "Generated Constraints"
     , ""
     , "Generated unification variables:"
-    , nest 3 (line' <> vsep (printUVar <$> map (\(x,y,_) -> (x,y)) cs_uvars))
+    , nest 3 (line' <> vsep (printUVar <$> cs_uvars))
     , ""
+    , "Generated Kind Variables: "
     , nest 3 (line' <> vsep (prettyAnn <$> cs_kvars))
     , ""
     , "Generated constraints:"
