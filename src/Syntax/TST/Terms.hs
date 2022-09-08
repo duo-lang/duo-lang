@@ -183,7 +183,7 @@ data Command where
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  Apply  :: Loc -> ApplyAnnot -> Maybe MonoKind -> Term Prd -> Term Cns -> Command
+  Apply  :: Loc -> ApplyAnnot -> MonoKind -> Term Prd -> Term Cns -> Command
   Print  :: Loc -> Term Prd -> Command -> Command
   Read   :: Loc -> Term Cns -> Command
   Jump   :: Loc -> FreeVarName -> Command

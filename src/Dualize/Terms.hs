@@ -168,7 +168,7 @@ dualTypeName :: TypeName -> TypeName
 dualTypeName (MkTypeName (T.stripPrefix "Co" -> Just n)) | T.length n > 0 = MkTypeName n
 dualTypeName (MkTypeName tn) = MkTypeName $ T.pack "Co" `T.append` tn
 
-dualMonoKind :: Maybe MonoKind -> Maybe MonoKind
+dualMonoKind :: MonoKind -> MonoKind
 dualMonoKind mk = mk
 
 dualTypeScheme :: PolarityRep pol ->TypeScheme pol -> TypeScheme (FlipPol pol)

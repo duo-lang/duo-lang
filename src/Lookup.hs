@@ -185,7 +185,7 @@ lookupMethodType loc mn RST.MkClassDeclaration { classdecl_name, classdecl_metho
 lookupXtorKind :: EnvReader a m
              => XtorName -> m MonoKind
 lookupXtorKind xtorn = do
-  let err = ErrOther $ SomeOtherError defaultLoc ("No Kind for XTor" <> ppPrint xtorn)
+  let err = ErrOther $ SomeOtherError defaultLoc ("No Kind for XTor " <> ppPrint xtorn)
   let f env = M.lookup xtorn (kindEnv env)
   snd <$> findFirstM f err
 

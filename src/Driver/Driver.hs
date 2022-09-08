@@ -8,6 +8,7 @@ module Driver.Driver
   , runCompilationModule
   ) where
 
+
 import Control.Monad.State
 import Control.Monad.Except
 import Data.List.NonEmpty ( NonEmpty ((:|)) )
@@ -15,7 +16,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Data.Bifunctor (bimap)
 import Driver.Definition
 import Driver.Environment
 import Driver.DepGraph
@@ -25,10 +25,11 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind(CBox))
+import Syntax.CST.Kinds (MonoKind(CBox),PolyKind(..))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
+import Syntax.RST.Types qualified as RST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Syntax.Core.Program as Core
@@ -36,7 +37,8 @@ import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
-    ( runGenM,checkTypeScheme,checkKind )
+    ( runGenM )
+import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
     ( genConstraintsTerm,
       genConstraintsCommand,
@@ -44,7 +46,6 @@ import TypeInference.GenerateConstraints.Terms
       genConstraintsInstance )
 import TypeInference.SolveConstraints (solveConstraints)
 import Loc ( Loc, AttachLoc(attachLoc) )
-import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program (prdCnsToPol)
@@ -54,19 +55,19 @@ import Data.Maybe (catMaybes)
 import Pretty.Common (Header(..))
 import Pretty.Program ()
 
-
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
-           -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
+           -> Maybe (TST.TypeScheme pol) -- ^ Annotated type
            -> Loc -- ^ Location for the error message
            -> DriverM (TST.TopAnnot pol)
 checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
-  let isSubsumed = subsume rep tyInferred (checkTypeScheme tyAnnotated)
+  let isSubsumed = subsume rep tyInferred tyAnnotated
   case isSubsumed of
       (Left err) -> throwError (attachLoc loc <$> err)
-      (Right True) -> return (TST.Annotated (checkTypeScheme tyAnnotated))
+      (Right True) -> return (TST.Annotated tyAnnotated)
       (Right False) -> do
+
         let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
                                                             , " Annotated type: " <> ppPrint tyAnnotated
                                                             , " Inferred type:  " <> ppPrint tyInferred
@@ -111,7 +112,8 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified pcdecl_annot pcdecl_loc
+  annot <- liftEitherErrLoc pcdecl_loc (fst $ runGenM pcdecl_loc env (annotateMaybeTypeScheme pcdecl_annot) )
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified (fst annot) pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
@@ -180,8 +182,8 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
     ppPrintIO constraints
     ppPrintIO solverResult
   -- Insert into environment
-  let instancetyp = Data.Bifunctor.bimap checkKind checkKind instancedecl_typ
-  let f env = env { instanceEnv = M.adjust (S.insert instancetyp) instancedecl_name (instanceEnv env)}
+  let instty' = TST.instancedecl_typ instanceInferred
+  let f env = env { instanceEnv = M.adjust (S.insert instty') instancedecl_name (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 
@@ -203,25 +205,40 @@ inferDecl :: ModuleName
 --
 inferDecl mn (Core.PrdCnsDecl pcrep decl) = do
   decl' <- inferPrdCnsDeclaration mn decl
+
   pure (TST.PrdCnsDecl pcrep decl')
 --
 -- CmdDecl
 --
 inferDecl mn (Core.CmdDecl decl) = do
   decl' <- inferCommandDeclaration mn decl
+
   pure (TST.CmdDecl decl')
 --
 -- DataDecl
 --
 inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
-  let f env = env { declEnv = (RST.data_loc decl,decl) : declEnv env }
+  let f env = env { declEnv = (RST.data_loc decl,decl) : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
+
   modifyEnvironment mn f
   pure (TST.DataDecl decl)
+  where 
+    insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
+    insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do
+      let names = map RST.sig_name (fst xtors)
+      let mk = CBox (returnKind knd)
+      foldr (`M.insert`mk) mp names
+    insertKinds RST.RefinementDecl{data_kind = knd, data_xtors = xtors} mp = do
+      let names = map RST.sig_name (fst xtors)
+      let mk = CBox (returnKind knd)
+      foldr (`M.insert`mk) mp names
+ 
 --
 -- XtorDecl
 --
 inferDecl _mn (Core.XtorDecl decl) = do
+
   let f env = env { kindEnv = M.insert (RST.strxtordecl_name decl) (CBox (RST.strxtordecl_evalOrder decl)) (kindEnv env)}
   modifyEnvironment _mn f
   pure (TST.XtorDecl decl)
@@ -229,6 +246,7 @@ inferDecl _mn (Core.XtorDecl decl) = do
 -- ImportDecl
 --
 inferDecl _mn (Core.ImportDecl decl) = do
+
   pure (TST.ImportDecl decl)
 --
 -- SetDecl
@@ -239,22 +257,26 @@ inferDecl _mn (Core.SetDecl CST.MkSetDeclaration { setdecl_option, setdecl_loc }
 -- TyOpDecl
 --
 inferDecl _mn (Core.TyOpDecl decl) = do
+
   pure (TST.TyOpDecl decl)
 --
 -- TySynDecl
 --
 inferDecl _mn (Core.TySynDecl decl) = do
+
   pure (TST.TySynDecl decl)
 --
 -- ClassDecl
 --
 inferDecl mn (Core.ClassDecl decl) = do
+
   decl' <- inferClassDeclaration mn decl
   pure (TST.ClassDecl decl')
 --
 -- InstanceDecl
 --
 inferDecl mn (Core.InstanceDecl decl) = do
+
   decl' <- inferInstanceDeclaration mn decl
   pure (TST.InstanceDecl decl')
 

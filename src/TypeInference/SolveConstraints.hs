@@ -40,7 +40,7 @@ data SolverState = SolverState
 
 createInitState :: ConstraintSet -> SolverState
 createInitState (ConstraintSet _ uvs kuvs) =
-  SolverState { sst_bounds = M.fromList [(fst uv,emptyVarState (error "createInitState: No Kind info available")) | uv <- uvs]
+  SolverState { sst_bounds =  M.fromList [(fst uv,emptyVarState (KindVar (MkKVar "TODO"))) | uv <- uvs]
               , sst_cache = S.empty
               , sst_kvars = M.singleton Nothing (S.fromList kuvs)
               }
@@ -347,13 +347,13 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
   let bisubst = (MkBisubstitution (M.empty, m) :: Bisubstitution UniVT)
   let zonkedlbs = zonk UniRep bisubst <$> lbs
   let zonkedubs = zonk UniRep bisubst <$> ubs
-  let zonkedKind = zonkKind bisubst (Just k)
-  VariableState zonkedlbs zonkedubs tc (Data.Maybe.fromMaybe (CBox CBV) zonkedKind)
+  let zonkedKind = zonkKind bisubst k
+  VariableState zonkedlbs zonkedubs tc zonkedKind
 
 -- | Creates the variable states that results from solving constraints.
 solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NonEmpty Error) SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) env = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
-  kvarSolution <- computeKVarSolution ErrorUnresolved (sst_kvars solverState)
+  kvarSolution <- computeKVarSolution DefaultCBV (sst_kvars solverState)
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution

@@ -13,7 +13,7 @@ import Data.Tuple (swap)
 import Syntax.CST.Types ( DataCodata(Codata, Data), PrdCns(..))
 import Syntax.RST.Types (Polarity(..))
 import TypeAutomata.Definition
-import Control.Monad.State.Strict (MonadState (get, put), modify, gets, State, runState, evalState)
+import Control.Monad.State.Strict (MonadState (get, put), modify, gets, State, runState)
 import GHC.Base (Alternative)
 import qualified GHC.Base as A (empty)
 import Data.Bifunctor (first)

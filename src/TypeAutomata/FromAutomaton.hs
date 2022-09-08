@@ -27,6 +27,11 @@ import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
 import Data.List.NonEmpty (NonEmpty)
 
+-- default kind
+-- will be changed to actual kind later, once type automatat have been adjuste
+defaultKind :: MonoKind 
+defaultKind = CBox CBV
+
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
 genFlowGraph :: TypeAutCore a -> FlowGraph
 genFlowGraph TypeAutCore{..} = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j) <- ta_flowEdges]
@@ -80,7 +85,7 @@ checkCache i = do
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks tvMap
-  return (TySkolemVar defaultLoc rep Nothing <$> S.toList (fromJust $ M.lookup i tvMap))
+  return (TySkolemVar defaultLoc rep defaultKind <$> S.toList (fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
@@ -107,13 +112,13 @@ argNodesToArgTypes argNodes rep = do
       (Prd, ns) -> do
          typs <- forM ns (nodeToType rep)
          pure $ PrdCnsType PrdRep $ case rep of
-                                       PosRep -> mkUnion defaultLoc Nothing typs
-                                       NegRep -> mkInter defaultLoc Nothing typs
+                                       PosRep -> mkUnion defaultLoc defaultKind typs
+                                       NegRep -> mkInter defaultLoc defaultKind typs
       (Cns, ns) -> do
          typs <- forM ns (nodeToType (flipPolarityRep rep))
          pure $ PrdCnsType CnsRep $ case rep of
-                                       PosRep -> mkInter defaultLoc Nothing typs
-                                       NegRep -> mkUnion defaultLoc Nothing typs
+                                       PosRep -> mkInter defaultLoc defaultKind typs
+                                       NegRep -> mkUnion defaultLoc defaultKind typs
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToType rep i = do
@@ -121,7 +126,7 @@ nodeToType rep i = do
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   if inCache
-    then pure (TyRecVar defaultLoc rep Nothing (MkRecTVar ("r" <> T.pack (show i))))
+    then pure (TyRecVar defaultLoc rep defaultKind (MkRecTVar ("r" <> T.pack (show i))))
     else nodeToTypeNoCache rep i
 
 -- | Should only be called if node is not in cache.
@@ -152,7 +157,7 @@ nodeToTypeNoCache rep i  = do
               let nodes = computeArgNodes outs CST.Data xt
               argTypes <- argNodesToArgTypes nodes rep
               return (MkXtorSig (labelName xt) argTypes)
-            return [TyData defaultLoc rep Nothing sig]
+            return [TyData defaultLoc rep defaultKind sig]
         -- Creating codata types
         codatL <- case maybeCodat of
           Nothing -> return []
@@ -161,7 +166,7 @@ nodeToTypeNoCache rep i  = do
               let nodes = computeArgNodes outs CST.Codata xt
               argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
               return (MkXtorSig (labelName xt) argTypes)
-            return [TyCodata defaultLoc rep Nothing sig]
+            return [TyCodata defaultLoc rep defaultKind sig]
         -- Creating ref data types
         refDatL <- do
           forM refDatTypes $ \(tn,xtors) -> do
@@ -169,7 +174,7 @@ nodeToTypeNoCache rep i  = do
               let nodes = computeArgNodes outs CST.Data xt
               argTypes <- argNodesToArgTypes nodes rep
               return (MkXtorSig (labelName xt) argTypes)
-            return $ TyDataRefined defaultLoc rep Nothing tn sig
+            return $ TyDataRefined defaultLoc rep defaultKind tn sig
         -- Creating ref codata types
         refCodatL <- do
           forM refCodatTypes $ \(tn,xtors) -> do
@@ -177,7 +182,7 @@ nodeToTypeNoCache rep i  = do
               let nodes = computeArgNodes outs CST.Codata xt
               argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
               return (MkXtorSig (labelName xt) argTypes)
-            return $ TyCodataRefined defaultLoc rep Nothing tn sig
+            return $ TyCodataRefined defaultLoc rep defaultKind tn sig
         -- Creating Nominal types
         let adjEdges = lsuc gr i
         let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
@@ -190,12 +195,12 @@ nodeToTypeNoCache rep i  = do
               let f (node, Covariant) = CovariantType <$> nodeToType rep node
                   f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
               args <- sequence (f <$> argNodes)
-              pure $ TyNominal defaultLoc rep Nothing tn args
+              pure $ TyNominal defaultLoc rep defaultKind tn args
     
         let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
         return $ case rep of
-          PosRep -> mkUnion defaultLoc Nothing typs
-          NegRep -> mkInter defaultLoc Nothing typs
+          PosRep -> mkUnion defaultLoc defaultKind typs
+          NegRep -> mkInter defaultLoc defaultKind typs
 
       -- If the graph is cyclic, make a recursive type
       if i `elem` dfs (suc gr i) gr

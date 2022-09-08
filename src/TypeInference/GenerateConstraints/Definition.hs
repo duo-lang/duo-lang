@@ -24,16 +24,13 @@ module TypeInference.GenerateConstraints.Definition
   , foo
   , fromMaybeVar
   , prdCnsToPol
-  , checkKind
-  , checkXtorSig
-  , checkPrdCnsType
   , checkCorrectness
-  , checkLinearContext
-  , checkVariantType
-  , checkTypeScheme
   , checkExhaustiveness
   , checkInstanceCoverage
-  ) where
+  , GenerateState(..)
+  , initialState
+  , initialReader
+) where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -64,10 +61,13 @@ import Utils ( indexMaybe )
 -- We use varCount for generating fresh type variables.
 -- We collect all generated unification variables and constraints in a ConstraintSet.
 ---------------------------------------------------------------------------------------------
-
 data GenerateState = GenerateState
-  { varCount :: Int
+  { uVarCount :: Int
+  , kVarCount :: Int
   , constraintSet :: ConstraintSet
+  , usedRecVars :: M.Map RecTVar MonoKind
+  , usedSkolemVars :: M.Map SkolemTVar MonoKind
+  , usedUniVars :: M.Map UniTVar MonoKind
   }
 
 initialConstraintSet :: ConstraintSet
@@ -78,7 +78,13 @@ initialConstraintSet =
                 }
 
 initialState :: GenerateState
-initialState = GenerateState { varCount = 0, constraintSet = initialConstraintSet }
+initialState = GenerateState {   uVarCount = 0
+                               , constraintSet = initialConstraintSet
+                               , kVarCount = 0
+                               , usedRecVars = M.empty
+                               , usedSkolemVars = M.empty
+                               , usedUniVars = M.empty
+                        }
 
 ---------------------------------------------------------------------------------------------
 -- GenerateReader:
@@ -109,17 +115,19 @@ runGenM loc env m = case runWriter (runExceptT (runStateT (runReaderT  (getGenM 
 ---------------------------------------------------------------------------------------------
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
-
 freshTVar :: UVarProvenance -> GenM (TST.Typ Pos, TST.Typ Neg)
 freshTVar uvp = do
-  var <- gets varCount
-  let tvar = MkUniTVar ("u" <> T.pack (show var))
+  uVarC <- gets uVarCount
+  kVarC <- gets kVarCount
+  uniVMap <- gets usedUniVars
+  let tVar = MkUniTVar ("u" <> T.pack (show uVarC))
+  let kVar = MkKVar ("k" <> T.pack (show kVarC))
   -- We need to increment the counter:
-  modify (\gs@GenerateState{} -> gs { varCount = var + 1 })
+  modify (\gs@GenerateState{} -> gs { uVarCount = uVarC + 1, kVarCount = kVarC + 1, usedUniVars = M.insert tVar (KindVar kVar) uniVMap })
   -- We also need to add the uvar to the constraintset.
-  modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars } } ->
-            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tvar, uvp)] } })
-  return (TST.TyUniVar defaultLoc PosRep Nothing tvar, TST.TyUniVar defaultLoc NegRep Nothing tvar)
+  modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars,cs_kvars } } ->
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tVar, uvp)], cs_kvars = cs_kvars ++ [kVar] } })
+  return (TST.TyUniVar defaultLoc PosRep (KindVar kVar) tVar, TST.TyUniVar defaultLoc NegRep (KindVar kVar) tVar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
 freshTVars [] = return ([],[])
@@ -222,47 +230,6 @@ addConstraint c = modify foo
   where
     foo gs@GenerateState { constraintSet } = gs { constraintSet = bar constraintSet }
     bar cs@ConstraintSet { cs_constraints } = cs { cs_constraints = c:cs_constraints }
-
----------------------------------------------------------------------------------------------
--- Kinds
----------------------------------------------------------------------------------------------
-
-checkTypeScheme :: RST.TypeScheme pol -> TST.TypeScheme pol
-checkTypeScheme RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = TST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = checkKind ty}
-
-checkVariantType :: RST.VariantType pol -> TST.VariantType pol 
-checkVariantType (RST.CovariantType ty) = TST.CovariantType (checkKind ty)
-checkVariantType (RST.ContravariantType ty) = TST.ContravariantType (checkKind ty)
-
-checkPrdCnsType :: RST.PrdCnsType pol -> TST.PrdCnsType pol
-checkPrdCnsType (RST.PrdCnsType rep ty) = TST.PrdCnsType rep (checkKind ty)
-
-checkLinearContext :: RST.LinearContext pol -> TST.LinearContext pol
-checkLinearContext = map checkPrdCnsType
-
-checkXtorSig :: RST.XtorSig pol -> TST.XtorSig pol
-checkXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = TST.MkXtorSig {sig_name = nm, sig_args = checkLinearContext ctxt }
-
-checkKind :: RST.Typ pol -> TST.Typ pol 
-checkKind (RST.TySkolemVar loc pol tv) = TST.TySkolemVar loc pol Nothing tv
-checkKind (RST.TyUniVar loc pol tv) = TST.TyUniVar loc pol Nothing tv
-checkKind (RST.TyRecVar loc pol rv) = TST.TyRecVar loc pol Nothing rv
-checkKind (RST.TyData loc pol xtors) = TST.TyData loc pol Nothing (map checkXtorSig xtors)
-checkKind (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol Nothing (map checkXtorSig xtors)
-checkKind (RST.TyDataRefined loc pol tn xtors) = TST.TyDataRefined loc pol Nothing tn (map checkXtorSig xtors)
-checkKind (RST.TyCodataRefined loc pol tn xtors) = TST.TyCodataRefined loc pol Nothing tn (map checkXtorSig xtors)
-checkKind (RST.TyNominal loc pol tn vart) = TST.TyNominal loc pol Nothing tn (map checkVariantType vart)
-checkKind (RST.TySyn loc pol tn ty) = TST.TySyn loc pol tn (checkKind ty)
-checkKind (RST.TyBot loc) = TST.TyBot loc Nothing
-checkKind (RST.TyTop loc) = TST.TyTop loc Nothing
-checkKind (RST.TyUnion loc ty1 ty2) = TST.TyUnion loc Nothing (checkKind ty1) (checkKind ty2)
-checkKind (RST.TyInter loc ty1 ty2) = TST.TyInter loc Nothing (checkKind ty1) (checkKind ty2)
-checkKind (RST.TyRec loc pol rv ty) = TST.TyRec loc pol rv (checkKind ty)
-checkKind (RST.TyI64 loc pol) = TST.TyI64 loc pol
-checkKind (RST.TyF64 loc pol) = TST.TyF64 loc pol
-checkKind (RST.TyChar loc pol) = TST.TyChar loc pol
-checkKind (RST.TyString loc pol) = TST.TyString loc pol
-checkKind (RST.TyFlipPol pol ty) = TST.TyFlipPol pol (checkKind ty)
 
 
 ---------------------------------------------------------------------------------------------

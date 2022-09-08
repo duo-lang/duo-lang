@@ -30,33 +30,31 @@ evalTermOnce (Print _ prd cmd) = do
   return (Just cmd)
 evalTermOnce (Read _ cns) = do
   tm <- liftIO readInt
-  return (Just (Apply defaultLoc ApplyAnnotOrig (Just (CBox CBV)) tm cns))
+  return (Just (Apply defaultLoc ApplyAnnotOrig (CBox CBV) tm cns))
 evalTermOnce (Jump _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
 evalTermOnce Method {} = return Nothing
   -- throwEvalError defaultLoc ["Eval for type class methods not implemented yet."]
-evalTermOnce (Apply _ _ Nothing _ _) =
-  throwEvalError defaultLoc ["Tried to evaluate command which was not correctly kind annotated (Nothing)"]
-evalTermOnce (Apply _ _ (Just kind) prd cns) = evalApplyOnce kind prd cns
+evalTermOnce (Apply _ _ kind prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ op args) = evalPrimOp op args
 
 evalApplyOnce :: MonoKind -> Term Prd -> Term Cns -> EvalM  (Maybe Command)
 -- Free variables have to be looked up in the environment.
 evalApplyOnce kind (FreeVar _ PrdRep _ fv) cns = do
   prd <- lookupTerm PrdRep fv
-  return (Just (Apply defaultLoc ApplyAnnotOrig (Just kind) prd cns))
+  return (Just (Apply defaultLoc ApplyAnnotOrig kind prd cns))
 evalApplyOnce kind prd (FreeVar _ CnsRep _ fv) = do
   cns <- lookupTerm CnsRep fv
-  return (Just (Apply defaultLoc ApplyAnnotOrig (Just kind) prd cns))
+  return (Just (Apply defaultLoc ApplyAnnotOrig kind prd cns))
 -- (Co-)Pattern matches are evaluated using the ordinary pattern matching rules.
 evalApplyOnce _ prd@(Xtor _ _ PrdRep _ _ xt args) cns@(XCase _ _ CnsRep _ _ cases) = do
   (MkCmdCase _ (XtorPat _ _ argTypes) cmd') <- lookupMatchCase xt cases
-  checkArgs (Apply defaultLoc ApplyAnnotOrig Nothing prd cns) argTypes args
+  checkArgs (Apply defaultLoc ApplyAnnotOrig (error "evalApplyOnce: This Kind should never be used") prd cns) argTypes args
   return (Just  (commandOpening args cmd')) --reduction is just opening
 evalApplyOnce _ prd@(XCase _ _ PrdRep _ _  cases) cns@(Xtor _ _ CnsRep _ _ xt args) = do
   (MkCmdCase _ (XtorPat _ _ argTypes) cmd') <- lookupMatchCase xt cases
-  checkArgs (Apply defaultLoc ApplyAnnotOrig Nothing prd cns) argTypes args
+  checkArgs (Apply defaultLoc ApplyAnnotOrig (error "evalApplyOnce: This Kind should never be used") prd cns) argTypes args
   return (Just (commandOpening args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
 evalApplyOnce (CBox CBV) (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =

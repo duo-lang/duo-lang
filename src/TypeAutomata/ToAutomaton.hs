@@ -235,8 +235,8 @@ insertType (TyRec _ rep rv ty) = do
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData _ polrep _ xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors
-insertType (TyCodata _ polrep _ xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing xtors
+insertType (TyData _  polrep _ xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing xtors
+insertType (TyCodata _ polrep _  xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing xtors
 insertType (TyDataRefined _ polrep _ mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) xtors
 insertType (TyCodataRefined _ polrep _ mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) xtors
 insertType (TySyn _ _ _ ty) = insertType ty
