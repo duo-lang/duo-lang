@@ -1,6 +1,9 @@
 resolver: lts-19.22
+
 packages:
 - .
+
 extra-deps:
 - diagnose-2.2.0
+
 system-ghc: true
