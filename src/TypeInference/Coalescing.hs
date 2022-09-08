@@ -125,7 +125,6 @@ coalesceType (TyUniVar _ NegRep knd tv) = do
             recVarMap <- gets s_recursive
             case M.lookup (tv, Neg) recVarMap of
                 Nothing     -> do
-
                     newName <- getSkolemVar tv
                     return $                                            mkInter defaultLoc knd (TySkolemVar defaultLoc NegRep knd newName : ubs')
                 Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc knd (TyRecVar defaultLoc NegRep knd recVar  : ubs'))
