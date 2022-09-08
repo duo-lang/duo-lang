@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Syntax.Core.Terms
   ( -- Terms
     Term(..)
@@ -8,11 +9,8 @@ module Syntax.Core.Terms
   , InstanceCase(..)
   , Command(..)
   -- Functions
-  , commandClosing
-  , termClosing
   , shiftCmd
   , shiftTerm
-  , commandOpening
   , termLocallyClosed
   ) where
 
@@ -28,6 +26,7 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
+import Syntax.LocallyNameless (LocallyNameless (..))
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -188,9 +187,6 @@ commandOpeningRec k args (Apply loc annot t1 t2) =
 commandOpeningRec k args (PrimOp loc op subst) =
   PrimOp loc op (pctermOpeningRec k args <$> subst)
 
-commandOpening :: Substitution -> Command -> Command
-commandOpening = commandOpeningRec 0
-
 ---------------------------------------------------------------------------------
 -- Variable Closing
 ---------------------------------------------------------------------------------
@@ -234,11 +230,13 @@ commandClosingRec k args (Apply ext annot t1 t2) =
 commandClosingRec k args (PrimOp ext op subst) =
   PrimOp ext op (pctermClosingRec k args <$> subst)
 
-commandClosing :: [(PrdCns, FreeVarName)] -> Command -> Command
-commandClosing = commandClosingRec 0
+instance LocallyNameless Substitution [(PrdCns, FreeVarName)] Command where
+  openRec  = commandOpeningRec
+  closeRec = commandClosingRec
 
-termClosing :: [(PrdCns, FreeVarName)] -> Term pc -> Term pc
-termClosing = termClosingRec 0 
+instance LocallyNameless Substitution [(PrdCns, FreeVarName)] (Term pc) where
+  openRec  = termOpeningRec
+  closeRec = termClosingRec
 
 ---------------------------------------------------------------------------------
 -- Check for locally closedness
