@@ -17,7 +17,7 @@ import Syntax.CST.Names
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
-import Translate.Embed
+import Translate.Embed ()
 import Translate.Reparse
 import Syntax.CST.Program (PrdCnsDeclaration(pcdecl_term))
 
@@ -41,7 +41,7 @@ instance PrettyAnn CST.DataDecl where
     semi
 
 instance PrettyAnn RST.DataDecl where
-  prettyAnn decl = prettyAnn (embedTyDecl decl)
+  prettyAnn decl = prettyAnn (embed decl)
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declarations
@@ -184,10 +184,10 @@ instance PrettyAnn CST.InstanceDeclaration where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn Core.Declaration where
-  prettyAnn decl = prettyAnn (embedCoreDecl decl)
+  prettyAnn decl = prettyAnn (embed decl)
 
 instance PrettyAnn TST.Declaration where
-  prettyAnn decl = prettyAnn (embedTSTDecl decl)
+  prettyAnn decl = prettyAnn (embed decl)
 
 instance PrettyAnn RST.Declaration where
   prettyAnn decl = prettyAnn (reparseDecl decl)

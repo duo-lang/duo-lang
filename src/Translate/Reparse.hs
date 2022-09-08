@@ -1,3 +1,5 @@
+{-# LANGUAGE FunctionalDependencies #-}
+
 module Translate.Reparse
   ( reparseTerm
   , reparsePCTerm
@@ -11,13 +13,7 @@ module Translate.Reparse
   , reparseTermCaseI
   , reparseInstanceCase
   -- Types
-  , embedVariantType
-  , embedType
-  , embedXtorSig
-  , embedPrdCnsType
-  , embedTypeScheme
-  , embedLinearContext
-  , embedTyDecl
+  , Embed(..)
   )where
 
 
@@ -202,143 +198,156 @@ fresh Cns = do
   modify (second tail)
   pure (Just var)
 
-createNamesPCTerm :: RST.PrdCnsTerm -> CreateNameM RST.PrdCnsTerm
-createNamesPCTerm (RST.PrdTerm tm) = RST.PrdTerm <$> createNamesTerm tm
-createNamesPCTerm (RST.CnsTerm tm) = RST.CnsTerm <$> createNamesTerm tm
+class CreateNames a where
+  createNames :: a -> CreateNameM a
 
-createNamesSubstitution :: RST.Substitution  -> CreateNameM RST.Substitution
-createNamesSubstitution = mapM createNamesPCTerm
+instance CreateNames RST.PrdCnsTerm where
+  createNames :: RST.PrdCnsTerm -> CreateNameM RST.PrdCnsTerm
+  createNames (RST.PrdTerm tm) = RST.PrdTerm <$> createNames tm
+  createNames (RST.CnsTerm tm) = RST.CnsTerm <$> createNames tm
 
-createNamesTerm :: RST.Term pc -> CreateNameM (RST.Term pc)
--- Core constructs
-createNamesTerm (RST.BoundVar loc pc idx) =
-  pure $ RST.BoundVar loc pc idx
-createNamesTerm (RST.FreeVar loc pc nm) =
-  pure $ RST.FreeVar loc pc nm
-createNamesTerm (RST.Xtor loc pc ns xt subst) = do
-  subst' <- createNamesSubstitution subst
-  pure $ RST.Xtor loc pc ns xt subst'
-createNamesTerm (RST.XCase loc pc ns cases) = do
-  cases' <- mapM createNamesCmdCase cases
-  pure $ RST.XCase loc pc ns cases'
-createNamesTerm (RST.MuAbs loc pc _ cmd) = do
-  cmd' <- createNamesCommand cmd
-  var <- fresh (case pc of PrdRep -> Cns; CnsRep -> Prd)
-  pure $ RST.MuAbs loc pc var cmd'
--- Syntactic sugar
-createNamesTerm (RST.Semi loc pc ns xt (subst1,pcrep,subst2) e) = do
-  e' <- createNamesTerm e
-  subst1' <- createNamesSubstitution subst1
-  subst2' <- createNamesSubstitution subst2
-  pure $ RST.Semi loc pc ns xt (subst1', pcrep, subst2') e'
-createNamesTerm (RST.Dtor loc pc ns xt e (subst1,pcrep,subst2)) = do
-  e' <- createNamesTerm e
-  subst1' <- createNamesSubstitution subst1
-  subst2' <- createNamesSubstitution subst2
-  pure $ RST.Dtor loc pc ns xt e' (subst1',pcrep,subst2')
-createNamesTerm (RST.CaseOf loc rep ns e cases) = do
-  e' <- createNamesTerm e
-  cases' <- sequence (createNamesTermCase <$> cases)
-  pure $ RST.CaseOf loc rep ns e' cases'
-createNamesTerm (RST.CocaseOf loc rep ns e cases) = do
-  e' <- createNamesTerm e
-  cases' <- sequence (createNamesTermCase <$> cases)
-  pure $ RST.CocaseOf loc rep ns e' cases'
-createNamesTerm (RST.CaseI loc rep ns cases) = do
-  cases' <- sequence (createNamesTermCaseI <$> cases)
-  pure $ RST.CaseI loc rep ns cases'
-createNamesTerm (RST.CocaseI loc rep ns cases) = do
-  cases' <- sequence (createNamesTermCaseI <$> cases)
-  pure $ RST.CocaseI loc rep ns cases'
-createNamesTerm (RST.Lambda loc rep fvs tm) = do
-  tm' <- createNamesTerm tm
-  pure $ RST.Lambda loc rep fvs tm'
--- Primitive constructs
-createNamesTerm (RST.PrimLitI64 loc i) =
-  pure (RST.PrimLitI64 loc i)
-createNamesTerm (RST.PrimLitF64 loc d) =
-  pure (RST.PrimLitF64 loc d)
-createNamesTerm (RST.PrimLitChar loc d) =
-  pure (RST.PrimLitChar loc d)
-createNamesTerm (RST.PrimLitString loc d) =
-  pure (RST.PrimLitString loc d)
+instance CreateNames RST.Substitution where
+  createNames :: RST.Substitution  -> CreateNameM RST.Substitution
+  createNames = mapM createNames
 
-createNamesCommand :: RST.Command -> CreateNameM RST.Command
-createNamesCommand (RST.ExitSuccess loc) =
-  pure $ RST.ExitSuccess loc
-createNamesCommand (RST.ExitFailure loc) =
-  pure $ RST.ExitFailure loc
-createNamesCommand (RST.Jump loc fv) =
-  pure $ RST.Jump loc fv
-createNamesCommand (RST.Method loc mn cn subst) = do
-  subst' <- sequence $ createNamesPCTerm <$> subst
-  pure $ RST.Method loc mn cn subst'
-createNamesCommand (RST.Apply loc prd cns) = do
-  prd' <- createNamesTerm prd
-  cns' <- createNamesTerm cns
-  pure $ RST.Apply loc prd' cns'
-createNamesCommand (RST.Print loc prd cmd) = do
-  prd' <- createNamesTerm prd
-  cmd' <- createNamesCommand cmd
-  pure $ RST.Print loc prd' cmd'
-createNamesCommand (RST.Read loc cns) = do
-  cns' <- createNamesTerm cns
-  pure $ RST.Read loc cns'
-createNamesCommand (RST.PrimOp loc op subst) = do
-  subst' <- sequence $ createNamesPCTerm <$> subst
-  pure $ RST.PrimOp loc op subst'
-createNamesCommand (RST.CaseOfCmd loc ns tm cases) = do
-  tm' <- createNamesTerm tm
-  cases' <- sequence $ createNamesCmdCase <$> cases
-  pure $ RST.CaseOfCmd loc ns tm' cases'
-createNamesCommand (RST.CocaseOfCmd loc ns tm cases) = do
-  tm' <- createNamesTerm tm
-  cases' <- sequence $ createNamesCmdCase <$> cases
-  pure $ RST.CocaseOfCmd loc ns tm' cases'
-createNamesCommand (RST.CaseOfI loc rep ns tm cases) = do
-  tm' <- createNamesTerm tm
-  cases' <- sequence $ createNamesTermCaseI <$> cases
-  pure $ RST.CaseOfI loc rep ns tm' cases'
-createNamesCommand (RST.CocaseOfI loc rep ns tm cases) = do
-  tm' <- createNamesTerm tm
-  cases' <- sequence $ createNamesTermCaseI <$> cases
-  pure $ RST.CocaseOfI loc rep ns tm' cases'
+instance CreateNames (RST.Term pc) where
+  createNames :: RST.Term pc -> CreateNameM (RST.Term pc)
+  -- Core constructs
+  createNames (RST.BoundVar loc pc idx) =
+    pure $ RST.BoundVar loc pc idx
+  createNames (RST.FreeVar loc pc nm) =
+    pure $ RST.FreeVar loc pc nm
+  createNames (RST.Xtor loc pc ns xt subst) = do
+    subst' <- createNames subst
+    pure $ RST.Xtor loc pc ns xt subst'
+  createNames (RST.XCase loc pc ns cases) = do
+    cases' <- mapM createNames cases
+    pure $ RST.XCase loc pc ns cases'
+  createNames (RST.MuAbs loc pc _ cmd) = do
+    cmd' <- createNames cmd
+    var <- fresh (case pc of PrdRep -> Cns; CnsRep -> Prd)
+    pure $ RST.MuAbs loc pc var cmd'
+  -- Syntactic sugar
+  createNames (RST.Semi loc pc ns xt (subst1,pcrep,subst2) e) = do
+    e' <- createNames e
+    subst1' <- createNames subst1
+    subst2' <- createNames subst2
+    pure $ RST.Semi loc pc ns xt (subst1', pcrep, subst2') e'
+  createNames (RST.Dtor loc pc ns xt e (subst1,pcrep,subst2)) = do
+    e' <- createNames e
+    subst1' <- createNames subst1
+    subst2' <- createNames subst2
+    pure $ RST.Dtor loc pc ns xt e' (subst1',pcrep,subst2')
+  createNames (RST.CaseOf loc rep ns e cases) = do
+    e' <- createNames e
+    cases' <- sequence (createNames <$> cases)
+    pure $ RST.CaseOf loc rep ns e' cases'
+  createNames (RST.CocaseOf loc rep ns e cases) = do
+    e' <- createNames e
+    cases' <- sequence (createNames <$> cases)
+    pure $ RST.CocaseOf loc rep ns e' cases'
+  createNames (RST.CaseI loc rep ns cases) = do
+    cases' <- sequence (createNames <$> cases)
+    pure $ RST.CaseI loc rep ns cases'
+  createNames (RST.CocaseI loc rep ns cases) = do
+    cases' <- sequence (createNames <$> cases)
+    pure $ RST.CocaseI loc rep ns cases'
+  createNames (RST.Lambda loc rep fvs tm) = do
+    tm' <- createNames tm
+    pure $ RST.Lambda loc rep fvs tm'
+  -- Primitive constructs
+  createNames (RST.PrimLitI64 loc i) =
+    pure (RST.PrimLitI64 loc i)
+  createNames (RST.PrimLitF64 loc d) =
+    pure (RST.PrimLitF64 loc d)
+  createNames (RST.PrimLitChar loc d) =
+    pure (RST.PrimLitChar loc d)
+  createNames (RST.PrimLitString loc d) =
+    pure (RST.PrimLitString loc d)
 
-createNamesPat :: RST.Pattern -> CreateNameM RST.Pattern
-createNamesPat (RST.XtorPat loc xt args) = do
-  args' <- sequence $ (\(pc,_) -> fresh pc >>= \v -> return (pc,v)) <$> args
-  pure $ RST.XtorPat loc xt args'
+instance CreateNames RST.Command where
+  createNames :: RST.Command -> CreateNameM RST.Command
+  createNames (RST.ExitSuccess loc) =
+    pure $ RST.ExitSuccess loc
+  createNames (RST.ExitFailure loc) =
+    pure $ RST.ExitFailure loc
+  createNames (RST.Jump loc fv) =
+    pure $ RST.Jump loc fv
+  createNames (RST.Method loc mn cn subst) = do
+    subst' <- sequence $ createNames <$> subst
+    pure $ RST.Method loc mn cn subst'
+  createNames (RST.Apply loc prd cns) = do
+    prd' <- createNames prd
+    cns' <- createNames cns
+    pure $ RST.Apply loc prd' cns'
+  createNames (RST.Print loc prd cmd) = do
+    prd' <- createNames prd
+    cmd' <- createNames cmd
+    pure $ RST.Print loc prd' cmd'
+  createNames (RST.Read loc cns) = do
+    cns' <- createNames cns
+    pure $ RST.Read loc cns'
+  createNames (RST.PrimOp loc op subst) = do
+    subst' <- sequence $ createNames <$> subst
+    pure $ RST.PrimOp loc op subst'
+  createNames (RST.CaseOfCmd loc ns tm cases) = do
+    tm' <- createNames tm
+    cases' <- sequence $ createNames <$> cases
+    pure $ RST.CaseOfCmd loc ns tm' cases'
+  createNames (RST.CocaseOfCmd loc ns tm cases) = do
+    tm' <- createNames tm
+    cases' <- sequence $ createNames <$> cases
+    pure $ RST.CocaseOfCmd loc ns tm' cases'
+  createNames (RST.CaseOfI loc rep ns tm cases) = do
+    tm' <- createNames tm
+    cases' <- sequence $ createNames <$> cases
+    pure $ RST.CaseOfI loc rep ns tm' cases'
+  createNames (RST.CocaseOfI loc rep ns tm cases) = do
+    tm' <- createNames tm
+    cases' <- sequence $ createNames <$> cases
+    pure $ RST.CocaseOfI loc rep ns tm' cases'
 
-createNamesPatI :: RST.PatternI -> CreateNameM RST.PatternI
-createNamesPatI (RST.XtorPatI loc xt (as1, (), as2)) = do
-  let f = (\(pc,_) -> fresh pc >>= \v -> return (pc,v))
-  as1' <- sequence $ f <$> as1
-  as2' <- sequence $ f <$> as2
-  pure $ RST.XtorPatI loc xt (as1', (), as2')
+instance CreateNames RST.Pattern where
+  createNames :: RST.Pattern -> CreateNameM RST.Pattern
+  createNames (RST.XtorPat loc xt args) = do
+    args' <- sequence $ (\(pc,_) -> fresh pc >>= \v -> return (pc,v)) <$> args
+    pure $ RST.XtorPat loc xt args'
 
-createNamesCmdCase :: RST.CmdCase -> CreateNameM RST.CmdCase
-createNamesCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } = do
-  pat' <- createNamesPat cmdcase_pat
-  cmd' <- createNamesCommand cmdcase_cmd
-  pure $ RST.MkCmdCase cmdcase_loc pat' cmd'
+instance CreateNames RST.PatternI where
+  createNames :: RST.PatternI -> CreateNameM RST.PatternI
+  createNames (RST.XtorPatI loc xt (as1, (), as2)) = do
+    let f (pc,_) = fresh pc >>= \v -> return (pc,v)
+    as1' <- sequence $ f <$> as1
+    as2' <- sequence $ f <$> as2
+    pure $ RST.XtorPatI loc xt (as1', (), as2')
 
-createNamesTermCase :: RST.TermCase pc -> CreateNameM (RST.TermCase pc)
-createNamesTermCase RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
-  term <- createNamesTerm tmcase_term
-  pat <- createNamesPat tmcase_pat
-  pure $ RST.MkTermCase tmcase_loc pat term
+instance CreateNames RST.CmdCase where
+  createNames :: RST.CmdCase -> CreateNameM RST.CmdCase
+  createNames RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } = do
+    pat' <- createNames cmdcase_pat
+    cmd' <- createNames cmdcase_cmd
+    pure $ RST.MkCmdCase cmdcase_loc pat' cmd'
 
-createNamesTermCaseI :: RST.TermCaseI pc -> CreateNameM (RST.TermCaseI pc)
-createNamesTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } = do
-  term <- createNamesTerm tmcasei_term
-  pat <- createNamesPatI tmcasei_pat
-  pure $ RST.MkTermCaseI tmcasei_loc pat term
+instance CreateNames (RST.TermCase pc) where
+  createNames :: RST.TermCase pc -> CreateNameM (RST.TermCase pc)
+  createNames RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
+    term <- createNames tmcase_term
+    pat <- createNames tmcase_pat
+    pure $ RST.MkTermCase tmcase_loc pat term
 
-createNamesInstanceCase :: RST.InstanceCase -> CreateNameM RST.InstanceCase
-createNamesInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } = do
-  pat' <- createNamesPat instancecase_pat
-  cmd' <- createNamesCommand instancecase_cmd
-  pure $ RST.MkInstanceCase instancecase_loc pat' cmd'
+instance CreateNames (RST.TermCaseI pc) where
+  createNames :: RST.TermCaseI pc -> CreateNameM (RST.TermCaseI pc)
+  createNames RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } = do
+    term <- createNames tmcasei_term
+    pat <- createNames tmcasei_pat
+    pure $ RST.MkTermCaseI tmcasei_loc pat term
+
+instance CreateNames RST.InstanceCase where
+  createNames :: RST.InstanceCase -> CreateNameM RST.InstanceCase
+  createNames RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } = do
+    pat' <- createNames instancecase_pat
+    cmd' <- createNames instancecase_cmd
+    pure $ RST.MkInstanceCase instancecase_loc pat' cmd'
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
@@ -351,253 +360,277 @@ isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "S") [RST.PrdTerm n]) =
   Just n -> Just (n + 1)
 isNumSTermRST _ = Nothing
 
-embedTerm :: RST.Term pc -> CST.Term
-embedTerm (isNumSTermRST -> Just i) =
-  CST.NatLit defaultLoc CST.Nominal i
--- Core constructs
-embedTerm RST.BoundVar{} =
-  error "Should have been removed by opening"
-embedTerm (RST.FreeVar loc _ fv) =
-  CST.Var loc fv
-embedTerm (RST.Xtor loc _ _ xt subst) =
-  CST.Xtor loc xt (CST.ToSTerm <$> embedSubst subst)
-embedTerm (RST.XCase loc PrdRep _ cases) =
-  CST.Cocase loc (embedCmdCase <$> cases)
-embedTerm (RST.XCase loc CnsRep _ cases) =
-  CST.Case loc (embedCmdCase <$> cases)
-embedTerm (RST.MuAbs loc _ fv cmd) =
-  CST.MuAbs loc (fromJust fv) (embedCommand cmd)
--- Syntactic sugar
-embedTerm (RST.Semi loc _ _ (MkXtorName "CoAp")  ([RST.CnsTerm t],CnsRep,[]) tm) =
-  CST.FunApp loc (embedTerm tm) (embedTerm t)
-embedTerm (RST.Semi _loc _ _ (MkXtorName "CoAp")  other _tm) =
-  error $ "embedTerm: " ++ show  other
-embedTerm (RST.Semi loc _ _ xt substi tm) =
-  CST.Semi loc xt (embedSubstI substi) (embedTerm tm)
-embedTerm (RST.Dtor loc _ _ (MkXtorName "Ap") tm ([RST.PrdTerm t],PrdRep,[])) =
-  CST.FunApp loc (embedTerm tm) (embedTerm t)
-embedTerm (RST.Dtor loc _ _ xt tm substi) =
-  CST.Dtor loc xt (embedTerm tm) (embedSubstI substi)
-embedTerm (RST.CaseOf loc _ _ tm cases) =
-  CST.CaseOf loc (embedTerm tm) (embedTermCase <$> cases)
-embedTerm (RST.CocaseOf loc _ _ tm cases) =
-  CST.CocaseOf loc (embedTerm tm) (embedTermCase <$> cases)
-embedTerm (RST.CaseI loc _ _ cases) =
-  CST.Case loc (embedTermCaseI <$> cases)
-embedTerm (RST.CocaseI loc _ _ cases) =
-  CST.Cocase loc (embedTermCaseI <$> cases)
-embedTerm (RST.Lambda loc PrdRep fvs tm) =
-  CST.Lambda loc fvs (embedTerm tm)
-embedTerm (RST.Lambda loc CnsRep fvs tm) =
-  CST.CoLambda loc fvs (embedTerm tm)
-embedTerm (RST.PrimLitI64 loc i) =
-  CST.PrimLitI64 loc i
-embedTerm (RST.PrimLitF64 loc d) =
-  CST.PrimLitF64 loc d
-embedTerm (RST.PrimLitChar loc d) =
-  CST.PrimLitChar loc d
-embedTerm (RST.PrimLitString loc d) =
-  CST.PrimLitString loc d
+class Embed a b | a -> b where
+  embed :: a -> b
+
+instance Embed (RST.Term pc) CST.Term where
+  embed :: RST.Term pc -> CST.Term
+  embed (isNumSTermRST -> Just i) =
+    CST.NatLit defaultLoc CST.Nominal i
+  -- Core constructs
+  embed RST.BoundVar{} =
+    error "Should have been removed by opening"
+  embed (RST.FreeVar loc _ fv) =
+    CST.Var loc fv
+  embed (RST.Xtor loc _ _ xt subst) =
+    CST.Xtor loc xt (CST.ToSTerm <$> embed subst)
+  embed (RST.XCase loc PrdRep _ cases) =
+    CST.Cocase loc (embed <$> cases)
+  embed (RST.XCase loc CnsRep _ cases) =
+    CST.Case loc (embed <$> cases)
+  embed (RST.MuAbs loc _ fv cmd) =
+    CST.MuAbs loc (fromJust fv) (embed cmd)
+  -- Syntactic sugar
+  embed (RST.Semi loc _ _ (MkXtorName "CoAp")  ([RST.CnsTerm t],CnsRep,[]) tm) =
+    CST.FunApp loc (embed tm) (embed t)
+  embed (RST.Semi _loc _ _ (MkXtorName "CoAp")  other _tm) =
+    error $ "embed: " ++ show  other
+  embed (RST.Semi loc _ _ xt substi tm) =
+    CST.Semi loc xt (embed substi) (embed tm)
+  embed (RST.Dtor loc _ _ (MkXtorName "Ap") tm ([RST.PrdTerm t],PrdRep,[])) =
+    CST.FunApp loc (embed tm) (embed t)
+  embed (RST.Dtor loc _ _ xt tm substi) =
+    CST.Dtor loc xt (embed tm) (embed substi)
+  embed (RST.CaseOf loc _ _ tm cases) =
+    CST.CaseOf loc (embed tm) (embed <$> cases)
+  embed (RST.CocaseOf loc _ _ tm cases) =
+    CST.CocaseOf loc (embed tm) (embed <$> cases)
+  embed (RST.CaseI loc _ _ cases) =
+    CST.Case loc (embed <$> cases)
+  embed (RST.CocaseI loc _ _ cases) =
+    CST.Cocase loc (embed <$> cases)
+  embed (RST.Lambda loc PrdRep fvs tm) =
+    CST.Lambda loc fvs (embed tm)
+  embed (RST.Lambda loc CnsRep fvs tm) =
+    CST.CoLambda loc fvs (embed tm)
+  embed (RST.PrimLitI64 loc i) =
+    CST.PrimLitI64 loc i
+  embed (RST.PrimLitF64 loc d) =
+    CST.PrimLitF64 loc d
+  embed (RST.PrimLitChar loc d) =
+    CST.PrimLitChar loc d
+  embed (RST.PrimLitString loc d) =
+    CST.PrimLitString loc d
 
 
-embedPCTerm :: RST.PrdCnsTerm -> CST.Term
-embedPCTerm (RST.PrdTerm tm) = embedTerm tm
-embedPCTerm (RST.CnsTerm tm) = embedTerm tm
+instance Embed RST.PrdCnsTerm CST.Term where
+  embed :: RST.PrdCnsTerm -> CST.Term
+  embed (RST.PrdTerm tm) = embed tm
+  embed (RST.CnsTerm tm) = embed tm
 
-embedSubst :: RST.Substitution -> [CST.Term]
-embedSubst = fmap embedPCTerm
+instance Embed RST.Substitution [CST.Term] where
+  embed :: RST.Substitution -> [CST.Term]
+  embed = fmap embed
 
-embedSubstI :: RST.SubstitutionI pc -> [CST.TermOrStar]
-embedSubstI (subst1,PrdRep,subst2) = (CST.ToSTerm <$> embedSubst subst1) ++ [CST.ToSStar] ++  (CST.ToSTerm <$> embedSubst subst2)
-embedSubstI (subst1,CnsRep,subst2) = (CST.ToSTerm <$> embedSubst subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> embedSubst subst2)
+instance Embed (RST.SubstitutionI pc) [CST.TermOrStar] where
+  embed :: RST.SubstitutionI pc -> [CST.TermOrStar]
+  embed (subst1,PrdRep,subst2) = (CST.ToSTerm <$> embed subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> embed subst2)
+  embed (subst1,CnsRep,subst2) = (CST.ToSTerm <$> embed subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> embed subst2)
 
-embedCommand :: RST.Command -> CST.Term
-embedCommand (RST.Apply loc prd cns) =
-  CST.Apply loc (embedTerm prd) (embedTerm cns)
-embedCommand (RST.Print loc tm cmd) =
-  CST.PrimTerm loc printName [embedTerm tm, embedCommand cmd]
-embedCommand (RST.Read loc cns) =
-  CST.PrimTerm loc readName [embedTerm cns]
-embedCommand (RST.Jump loc fv) =
-  CST.Var loc fv
-embedCommand (RST.Method loc mn _cn subst) =
-  CST.Xtor loc (MkXtorName $ unMethodName mn) (CST.ToSTerm <$> embedSubst subst)
-embedCommand (RST.ExitSuccess loc) =
-  CST.PrimTerm loc exitSuccessName []
-embedCommand (RST.ExitFailure loc) =
-  CST.PrimTerm loc exitFailureName []
-embedCommand (RST.PrimOp loc op subst) =
-  CST.PrimTerm loc (embedPrimitiveOp op) (embedSubst subst)
-embedCommand (RST.CaseOfCmd loc _ns tm cases) =
-  CST.CaseOf loc (embedTerm tm) (embedCmdCase <$> cases)
-embedCommand (RST.CocaseOfCmd loc _ns tm cases) =
-  CST.CocaseOf loc (embedTerm tm) (embedCmdCase <$> cases)
-embedCommand (RST.CaseOfI loc _rep _ns tm cases) =
-  CST.CaseOf loc (embedTerm tm) (embedTermCaseI <$> cases)
-embedCommand (RST.CocaseOfI loc _rep _ns tm cases) =
-  CST.CocaseOf loc (embedTerm tm) (embedTermCaseI <$> cases)
+instance Embed RST.Command CST.Term where
+  embed :: RST.Command -> CST.Term
+  embed (RST.Apply loc prd cns) =
+    CST.Apply loc (embed prd) (embed cns)
+  embed (RST.Print loc tm cmd) =
+    CST.PrimTerm loc printName [embed tm, embed cmd]
+  embed (RST.Read loc cns) =
+    CST.PrimTerm loc readName [embed cns]
+  embed (RST.Jump loc fv) =
+    CST.Var loc fv
+  embed (RST.Method loc mn _cn subst) =
+    CST.Xtor loc (MkXtorName $ unMethodName mn) (CST.ToSTerm <$> embed subst)
+  embed (RST.ExitSuccess loc) =
+    CST.PrimTerm loc exitSuccessName []
+  embed (RST.ExitFailure loc) =
+    CST.PrimTerm loc exitFailureName []
+  embed (RST.PrimOp loc op subst) =
+    CST.PrimTerm loc (embed op) (embed subst)
+  embed (RST.CaseOfCmd loc _ns tm cases) =
+    CST.CaseOf loc (embed tm) (embed <$> cases)
+  embed (RST.CocaseOfCmd loc _ns tm cases) =
+    CST.CocaseOf loc (embed tm) (embed <$> cases)
+  embed (RST.CaseOfI loc _rep _ns tm cases) =
+    CST.CaseOf loc (embed tm) (embed <$> cases)
+  embed (RST.CocaseOfI loc _rep _ns tm cases) =
+    CST.CocaseOf loc (embed tm) (embed <$> cases)
 
-embedPrimitiveOp :: RST.PrimitiveOp -> PrimName
-embedPrimitiveOp RST.I64Add = i64AddName
-embedPrimitiveOp RST.I64Sub = i64SubName
-embedPrimitiveOp RST.I64Mul = i64MulName
-embedPrimitiveOp RST.I64Div = i64DivName
-embedPrimitiveOp RST.I64Mod = i64ModName
-embedPrimitiveOp RST.F64Add = f64AddName
-embedPrimitiveOp RST.F64Sub = f64SubName
-embedPrimitiveOp RST.F64Mul = f64MulName
-embedPrimitiveOp RST.F64Div = f64DivName
-embedPrimitiveOp RST.CharPrepend = charPrependName
-embedPrimitiveOp RST.StringAppend = stringAppendName
+instance Embed RST.PrimitiveOp PrimName where
+  embed :: RST.PrimitiveOp -> PrimName
+  embed RST.I64Add = i64AddName
+  embed RST.I64Sub = i64SubName
+  embed RST.I64Mul = i64MulName
+  embed RST.I64Div = i64DivName
+  embed RST.I64Mod = i64ModName
+  embed RST.F64Add = f64AddName
+  embed RST.F64Sub = f64SubName
+  embed RST.F64Mul = f64MulName
+  embed RST.F64Div = f64DivName
+  embed RST.CharPrepend = charPrependName
+  embed RST.StringAppend = stringAppendName
 
-embedPat :: RST.Pattern -> CST.Pattern
-embedPat (RST.XtorPat loc xt args) =
-  CST.PatXtor loc xt (CST.PatVar loc . fromJust . snd <$> args)
+instance Embed RST.Pattern CST.Pattern where
+  embed :: RST.Pattern -> CST.Pattern
+  embed (RST.XtorPat loc xt args) =
+    CST.PatXtor loc xt (CST.PatVar loc . fromJust . snd <$> args)
 
-embedPatI :: RST.PatternI -> CST.Pattern
-embedPatI (RST.XtorPatI loc xt (as1,_,as2)) =
-  CST.PatXtor loc xt ((CST.PatVar loc . fromJust . snd <$> as1) ++ [CST.PatStar loc] ++ (CST.PatVar loc . fromJust . snd  <$> as2))
+instance Embed RST.PatternI CST.Pattern where
+  embed :: RST.PatternI -> CST.Pattern
+  embed (RST.XtorPatI loc xt (as1,_,as2)) =
+    CST.PatXtor loc xt ((CST.PatVar loc . fromJust . snd <$> as1) ++ [CST.PatStar loc] ++ (CST.PatVar loc . fromJust . snd  <$> as2))
 
-embedCmdCase :: RST.CmdCase -> CST.TermCase
-embedCmdCase RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
-  CST.MkTermCase { tmcase_loc = cmdcase_loc
-                 , tmcase_pat = embedPat cmdcase_pat
-                 , tmcase_term = embedCommand cmdcase_cmd
-                 }
+instance Embed RST.CmdCase CST.TermCase where
+  embed :: RST.CmdCase -> CST.TermCase
+  embed RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
+    CST.MkTermCase { tmcase_loc = cmdcase_loc
+                  , tmcase_pat = embed cmdcase_pat
+                  , tmcase_term = embed cmdcase_cmd
+                  }
 
-embedTermCase :: RST.TermCase pc -> CST.TermCase
-embedTermCase RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
-  CST.MkTermCase { tmcase_loc = tmcase_loc
-                 , tmcase_pat = embedPat tmcase_pat
-                 , tmcase_term = embedTerm tmcase_term}
+instance Embed (RST.TermCase pc) CST.TermCase where
+  embed :: RST.TermCase pc -> CST.TermCase
+  embed RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
+    CST.MkTermCase { tmcase_loc = tmcase_loc
+                  , tmcase_pat = embed tmcase_pat
+                  , tmcase_term = embed tmcase_term}
 
-embedTermCaseI :: RST.TermCaseI pc -> CST.TermCase
-embedTermCaseI RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
-  CST.MkTermCase { tmcase_loc = tmcasei_loc
-                 , tmcase_pat = embedPatI tmcasei_pat
-                 , tmcase_term = embedTerm tmcasei_term
-                 }
+instance Embed (RST.TermCaseI pc) CST.TermCase where
+  embed :: RST.TermCaseI pc -> CST.TermCase
+  embed RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
+    CST.MkTermCase { tmcase_loc = tmcasei_loc
+                  , tmcase_pat = embed tmcasei_pat
+                  , tmcase_term = embed tmcasei_term
+                  }
 
-embedInstanceCase :: RST.InstanceCase -> CST.TermCase
-embedInstanceCase RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } =
-  CST.MkTermCase { tmcase_loc = instancecase_loc
-                 , tmcase_pat = embedPat instancecase_pat
-                 , tmcase_term = embedCommand instancecase_cmd
-                 }
+instance Embed RST.InstanceCase CST.TermCase where
+  embed :: RST.InstanceCase -> CST.TermCase
+  embed RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } =
+    CST.MkTermCase { tmcase_loc = instancecase_loc
+                  , tmcase_pat = embed instancecase_pat
+                  , tmcase_term = embed instancecase_cmd
+                  }
 
-embedPrdCnsType :: RST.PrdCnsType pol -> CST.PrdCnsTyp
-embedPrdCnsType (RST.PrdCnsType PrdRep ty) = CST.PrdType (embedType ty)
-embedPrdCnsType (RST.PrdCnsType CnsRep ty) = CST.CnsType (embedType ty)
+instance Embed (RST.PrdCnsType pol) CST.PrdCnsTyp where
+  embed :: RST.PrdCnsType pol -> CST.PrdCnsTyp
+  embed (RST.PrdCnsType PrdRep ty) = CST.PrdType (embed ty)
+  embed (RST.PrdCnsType CnsRep ty) = CST.CnsType (embed ty)
 
-embedLinearContext :: RST.LinearContext pol -> CST.LinearContext
-embedLinearContext = fmap embedPrdCnsType
+instance Embed (RST.LinearContext pol) CST.LinearContext where
+  embed :: RST.LinearContext pol -> CST.LinearContext
+  embed = fmap embed
 
-embedXtorSig :: RST.XtorSig pol -> CST.XtorSig
-embedXtorSig RST.MkXtorSig { sig_name, sig_args } =
-  CST.MkXtorSig { sig_name = sig_name
-                , sig_args = embedLinearContext sig_args
-                }
+instance Embed (RST.XtorSig pol) CST.XtorSig where
+  embed :: RST.XtorSig pol -> CST.XtorSig
+  embed RST.MkXtorSig { sig_name, sig_args } =
+    CST.MkXtorSig { sig_name = sig_name
+                  , sig_args = embed sig_args
+                  }
 
-embedMethodSig :: RST.MethodSig pol -> CST.XtorSig
-embedMethodSig RST.MkMethodSig { msig_name, msig_args } =
-  CST.MkXtorSig { sig_name = MkXtorName $ unMethodName msig_name
-                , sig_args = embedLinearContext msig_args
-                }
+instance Embed (RST.MethodSig pol) CST.XtorSig where
+  embed :: RST.MethodSig pol -> CST.XtorSig
+  embed RST.MkMethodSig { msig_name, msig_args } =
+    CST.MkXtorSig { sig_name = MkXtorName $ unMethodName msig_name
+                  , sig_args = embed msig_args
+                  }
 
-embedVariantTypes :: [RST.VariantType pol] -> [CST.Typ]
-embedVariantTypes = fmap embedVariantType
+instance Embed [RST.VariantType pol] [CST.Typ] where
+  embed :: [RST.VariantType pol] -> [CST.Typ]
+  embed = fmap embed
 
-embedVariantType :: RST.VariantType pol -> CST.Typ
-embedVariantType (RST.CovariantType ty) = embedType ty
-embedVariantType (RST.ContravariantType ty) = embedType ty
+instance Embed (RST.VariantType pol) CST.Typ where
+  embed :: RST.VariantType pol -> CST.Typ
+  embed (RST.CovariantType ty) = embed ty
+  embed (RST.ContravariantType ty) = embed ty
 
 resugarType :: RST.Typ pol -> Maybe CST.Typ
 resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) =
-  Just (CST.TyBinOp loc (embedType tl) (CustomOp (MkTyOpName "->")) (embedType tr))
+  Just (CST.TyBinOp loc (embed tl) (CustomOp (MkTyOpName "->")) (embed tr))
 resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "CoFun" } [RST.CovariantType tl, RST.ContravariantType tr]) =
-  Just (CST.TyBinOp loc (embedType tl) (CustomOp (MkTyOpName "-<")) (embedType tr))
+  Just (CST.TyBinOp loc (embed tl) (CustomOp (MkTyOpName "-<")) (embed tr))
 resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType t1, RST.CovariantType t2]) =
-  Just (CST.TyBinOp loc (embedType t1) (CustomOp (MkTyOpName "⅋")) (embedType t2))
+  Just (CST.TyBinOp loc (embed t1) (CustomOp (MkTyOpName "⅋")) (embed t2))
 resugarType _ = Nothing
 
 embedRecTVar :: RecTVar -> SkolemTVar
 embedRecTVar (MkRecTVar n) = MkSkolemTVar n
 
-embedType :: RST.Typ pol -> CST.Typ
-embedType (resugarType -> Just ty) = ty
-embedType (RST.TyUniVar loc _ tv) =
-  CST.TyUniVar loc tv
-embedType (RST.TySkolemVar loc _ tv) = 
-  CST.TySkolemVar loc tv
-embedType (RST.TyRecVar loc _ tv) = 
-  CST.TySkolemVar loc $ embedRecTVar tv
-embedType (RST.TyData loc _ xtors) =
-  CST.TyXData loc CST.Data (embedXtorSig <$> xtors)
-embedType (RST.TyCodata loc _ xtors) =
-  CST.TyXData loc CST.Codata (embedXtorSig <$> xtors)
-embedType (RST.TyDataRefined loc _ tn xtors) =
-  CST.TyXRefined loc CST.Data (rnTnName tn) (embedXtorSig <$> xtors)
-embedType (RST.TyCodataRefined loc _ tn xtors) =
-  CST.TyXRefined loc CST.Codata (rnTnName tn) (embedXtorSig <$> xtors)
-embedType (RST.TyNominal loc _ nm args) =
-  CST.TyNominal loc (rnTnName nm) (embedVariantTypes args)
-embedType (RST.TySyn loc _ nm _) =
-  CST.TyNominal loc (rnTnName nm) []
-embedType (RST.TyTop loc) =
-  CST.TyTop loc
-embedType (RST.TyBot loc) =
-  CST.TyBot loc
-embedType (RST.TyUnion loc ty ty') =
-  CST.TyBinOp loc (embedType ty) UnionOp (embedType ty')
-embedType (RST.TyInter loc ty ty') =
-  CST.TyBinOp loc (embedType ty) InterOp (embedType ty')
-embedType (RST.TyRec loc _ tv ty) =
-  CST.TyRec loc (embedRecTVar tv) (embedType ty)
-embedType (RST.TyI64 loc _) =
-  CST.TyI64 loc
-embedType (RST.TyF64 loc _) =
-  CST.TyF64 loc
-embedType (RST.TyChar loc _) =
-  CST.TyChar loc
-embedType (RST.TyString loc _) =
-  CST.TyString loc
-embedType (RST.TyFlipPol _ ty) = embedType ty
+instance Embed (RST.Typ pol) CST.Typ where
+  embed :: RST.Typ pol -> CST.Typ
+  embed (resugarType -> Just ty) = ty
+  embed (RST.TyUniVar loc _ tv) =
+    CST.TyUniVar loc tv
+  embed (RST.TySkolemVar loc _ tv) = 
+    CST.TySkolemVar loc tv
+  embed (RST.TyRecVar loc _ tv) = 
+    CST.TySkolemVar loc $ embedRecTVar tv
+  embed (RST.TyData loc _ xtors) =
+    CST.TyXData loc CST.Data (embed <$> xtors)
+  embed (RST.TyCodata loc _ xtors) =
+    CST.TyXData loc CST.Codata (embed <$> xtors)
+  embed (RST.TyDataRefined loc _ tn xtors) =
+    CST.TyXRefined loc CST.Data (rnTnName tn) (embed <$> xtors)
+  embed (RST.TyCodataRefined loc _ tn xtors) =
+    CST.TyXRefined loc CST.Codata (rnTnName tn) (embed <$> xtors)
+  embed (RST.TyNominal loc _ nm args) =
+    CST.TyNominal loc (rnTnName nm) (embed args)
+  embed (RST.TySyn loc _ nm _) =
+    CST.TyNominal loc (rnTnName nm) []
+  embed (RST.TyTop loc) =
+    CST.TyTop loc
+  embed (RST.TyBot loc) =
+    CST.TyBot loc
+  embed (RST.TyUnion loc ty ty') =
+    CST.TyBinOp loc (embed ty) UnionOp (embed ty')
+  embed (RST.TyInter loc ty ty') =
+    CST.TyBinOp loc (embed ty) InterOp (embed ty')
+  embed (RST.TyRec loc _ tv ty) =
+    CST.TyRec loc (embedRecTVar tv) (embed ty)
+  embed (RST.TyI64 loc _) =
+    CST.TyI64 loc
+  embed (RST.TyF64 loc _) =
+    CST.TyF64 loc
+  embed (RST.TyChar loc _) =
+    CST.TyChar loc
+  embed (RST.TyString loc _) =
+    CST.TyString loc
+  embed (RST.TyFlipPol _ ty) = embed ty
 
-embedTypeScheme :: RST.TypeScheme pol -> CST.TypeScheme
-embedTypeScheme RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
-  CST.TypeScheme { ts_loc = ts_loc
-                 , ts_vars = ts_vars
-                 , ts_constraints = error "Type constraints not implemented yet for RST type scheme."
-                 , ts_monotype = embedType ts_monotype
-                 }
+instance Embed (RST.TypeScheme pol) CST.TypeScheme where
+  embed :: RST.TypeScheme pol -> CST.TypeScheme
+  embed RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
+    CST.TypeScheme { ts_loc = ts_loc
+                  , ts_vars = ts_vars
+                  , ts_constraints = error "Type constraints not implemented yet for RST type scheme."
+                  , ts_monotype = embed ts_monotype
+                  }
 
 
-embedTyDecl :: RST.DataDecl -> CST.DataDecl
-embedTyDecl RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
-  CST.MkDataDecl { data_loc = data_loc
-                 , data_doc = data_doc
-                 , data_refined = CST.NotRefined
-                 , data_name = rnTnName data_name
-                 , data_polarity = data_polarity
-                 , data_kind = Just data_kind
-                 , data_xtors = embedXtorSig <$> fst data_xtors
-                 }
-embedTyDecl RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
-  CST.MkDataDecl { data_loc = data_loc
-                 , data_doc = data_doc
-                 , data_refined = CST.Refined
-                 , data_name = rnTnName data_name
-                 , data_polarity = data_polarity
-                 , data_kind = Just data_kind
-                 , data_xtors = embedXtorSig <$> fst data_xtors
-                 }
+instance Embed RST.DataDecl CST.DataDecl where
+  embed :: RST.DataDecl -> CST.DataDecl
+  embed RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
+    CST.MkDataDecl { data_loc = data_loc
+                  , data_doc = data_doc
+                  , data_refined = CST.NotRefined
+                  , data_name = rnTnName data_name
+                  , data_polarity = data_polarity
+                  , data_kind = Just data_kind
+                  , data_xtors = embed <$> fst data_xtors
+                  }
+  embed RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
+    CST.MkDataDecl { data_loc = data_loc
+                  , data_doc = data_doc
+                  , data_refined = CST.Refined
+                  , data_name = rnTnName data_name
+                  , data_polarity = data_polarity
+                  , data_kind = Just data_kind
+                  , data_xtors = embed <$> fst data_xtors
+                  }
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
 ---------------------------------------------------------------------------------
 
 reparseTerm :: RST.Term pc -> CST.Term
-reparseTerm tm = embedTerm (openTermComplete (evalState (createNamesTerm tm) names))
+reparseTerm tm = embed (openTermComplete (evalState (createNames tm) names))
 
 reparsePCTerm :: RST.PrdCnsTerm -> CST.Term
 reparsePCTerm (RST.PrdTerm tm) = reparseTerm tm
@@ -612,23 +645,23 @@ reparseSubstI (subst1,_,subst2) =
 
 reparseCommand :: RST.Command -> CST.Term
 reparseCommand cmd =
-  embedCommand (openCommandComplete (evalState (createNamesCommand cmd) names))
+  embed (openCommandComplete (evalState (createNames cmd) names))
 
 reparseCmdCase :: RST.CmdCase -> CST.TermCase
 reparseCmdCase cmdcase =
-  embedCmdCase (evalState (createNamesCmdCase cmdcase) names)
+  embed (evalState (createNames cmdcase) names)
 
 reparseTermCase :: RST.TermCase pc -> CST.TermCase
 reparseTermCase termcase =
-  embedTermCase (evalState (createNamesTermCase termcase) names)
+  embed (evalState (createNames termcase) names)
 
 reparseTermCaseI :: RST.TermCaseI pc -> CST.TermCase
 reparseTermCaseI termcasei =
-  embedTermCaseI (evalState (createNamesTermCaseI termcasei) names)
+  embed (evalState (createNames termcasei) names)
 
 reparseInstanceCase :: RST.InstanceCase -> CST.TermCase
 reparseInstanceCase instancecase =
-  embedInstanceCase (openInstanceCase (evalState (createNamesInstanceCase instancecase) names))
+  embed (openInstanceCase (evalState (createNames instancecase) names))
 
 
 reparsePrdCnsDeclaration :: RST.PrdCnsDeclaration pc -> CST.PrdCnsDeclaration
@@ -638,7 +671,7 @@ reparsePrdCnsDeclaration RST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdec
                           , pcdecl_pc = case pcdecl_pc of { PrdRep -> Prd; CnsRep -> Cns }
                           , pcdecl_isRec = pcdecl_isRec
                           , pcdecl_name = pcdecl_name
-                          , pcdecl_annot = embedTypeScheme <$> pcdecl_annot
+                          , pcdecl_annot = embed <$> pcdecl_annot
                           , pcdecl_term = reparseTerm pcdecl_term
                           }
 
@@ -665,7 +698,7 @@ reparseTySynDeclaration RST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, t
   CST.MkTySynDeclaration { tysyndecl_loc = tysyndecl_loc
                          , tysyndecl_doc = tysyndecl_doc
                          , tysyndecl_name = tysyndecl_name
-                         , tysyndecl_res = embedType (fst tysyndecl_res)
+                         , tysyndecl_res = embed (fst tysyndecl_res)
                          }
 
 reparseTyOpDecl :: RST.TyOpDeclaration -> CST.TyOpDeclaration
@@ -684,7 +717,7 @@ reparseClassDecl RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdec
                            , classdecl_doc     = classdecl_doc
                            , classdecl_name    = classdecl_name
                            , classdecl_kinds   = classdecl_kinds
-                           , classdecl_methods = embedMethodSig <$> fst classdecl_methods
+                           , classdecl_methods = embed <$> fst classdecl_methods
                            }
 
 reparseInstanceDecl :: RST.InstanceDeclaration -> CST.InstanceDeclaration
@@ -692,7 +725,7 @@ reparseInstanceDecl RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_d
   = CST.MkInstanceDeclaration { instancedecl_loc   = instancedecl_loc
                               , instancedecl_doc   = instancedecl_doc
                               , instancedecl_name  = instancedecl_name
-                              , instancedecl_typ   = embedType (fst instancedecl_typ)
+                              , instancedecl_typ   = embed (fst instancedecl_typ)
                               , instancedecl_cases = reparseInstanceCase <$> instancedecl_cases
                               }
 
@@ -702,7 +735,7 @@ reparseDecl (RST.PrdCnsDecl _ decl) =
 reparseDecl (RST.CmdDecl decl) =
   CST.CmdDecl (reparseCommandDeclaration decl)
 reparseDecl (RST.DataDecl decl) =
-  CST.DataDecl (embedTyDecl decl)
+  CST.DataDecl (embed decl)
 reparseDecl (RST.XtorDecl decl) =
   CST.XtorDecl (reparseStructuralXtorDeclaration decl)
 reparseDecl (RST.ImportDecl decl) =
