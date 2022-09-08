@@ -44,7 +44,7 @@ dualCmd :: Command -> Either DualizeError Command
 dualCmd (Apply _ annot kind prd cns) = do
     t1 <- dualTerm CnsRep cns
     t2 <- dualTerm PrdRep prd
-    return $ Apply defaultLoc (dualApplyAnnot annot) kind t1 t2--(dualMonoKind kind) t1 t2
+    return $ Apply defaultLoc (dualApplyAnnot annot) (dualMonoKind kind) t1 t2
 dualCmd (Print loc _ _) = Left $ DualPrint loc "Cannot dualize Print command"
 dualCmd (Read loc _)  = Left $ DualRead loc "Cannot dualize Read command"
 dualCmd (Jump _ fv)  = return $ Jump defaultLoc (dualFVName fv)

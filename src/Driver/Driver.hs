@@ -226,11 +226,11 @@ inferDecl mn (Core.DataDecl decl) = do
   where 
     insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
     insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do
-      let names = map RST.sig_name (fst xtors) ++ map RST.sig_name (snd xtors)
+      let names = map RST.sig_name (fst xtors)
       let mk = CBox (returnKind knd)
       foldr (`M.insert`mk) mp names
     insertKinds RST.RefinementDecl{data_kind = knd, data_xtors = xtors} mp = do
-      let names = map RST.sig_name (fst xtors) ++ map RST.sig_name (snd xtors)
+      let names = map RST.sig_name (fst xtors)
       let mk = CBox (returnKind knd)
       foldr (`M.insert`mk) mp names
  
