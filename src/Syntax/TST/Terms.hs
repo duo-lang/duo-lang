@@ -10,7 +10,6 @@ module Syntax.TST.Terms
   , Command(..)
   -- Functions
   , ShiftDirection(..)
-  , shiftCmd
   , getTypeTerm
   , getTypArgs
   , termLocallyClosed
@@ -35,7 +34,7 @@ import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.TST.Types
 import Data.Bifunctor (Bifunctor(second))
-import Syntax.LocallyNameless (LocallyNameless (..))
+import Syntax.LocallyNameless (LocallyNameless (..), Shiftable (..))
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -439,6 +438,14 @@ shiftCmdRec dir n (PrimOp ext op subst) =
   PrimOp ext op (shiftPCTermRec dir n <$> subst)
 
 -- | Shift all unbound BoundVars up by one.
-shiftCmd :: ShiftDirection -> Command -> Command
-shiftCmd dir = shiftCmdRec dir 0
+instance Shiftable ShiftDirection CmdCase where
+  shiftRec = shiftCmdCaseRec 
 
+instance Shiftable ShiftDirection PrdCnsTerm where
+  shiftRec = shiftPCTermRec 
+
+instance Shiftable ShiftDirection Command where
+  shiftRec = shiftCmdRec
+
+instance Shiftable ShiftDirection (Term pc) where
+  shiftRec = shiftTermRec 

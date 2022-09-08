@@ -9,8 +9,6 @@ module Syntax.Core.Terms
   , InstanceCase(..)
   , Command(..)
   -- Functions
-  , shiftCmd
-  , shiftTerm
   , termLocallyClosed
   ) where
 
@@ -26,7 +24,7 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
-import Syntax.LocallyNameless (LocallyNameless (..))
+import Syntax.LocallyNameless (LocallyNameless (..), Shiftable (..))
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -333,8 +331,8 @@ shiftCmdRec dir n (Method ext mn cn subst) = Method ext mn cn (shiftPCTermRec di
 shiftCmdRec dir n (PrimOp ext op subst) = PrimOp ext op (shiftPCTermRec dir n <$> subst)
 
 -- | Shift all unbound BoundVars up by one.
-shiftCmd :: ShiftDirection -> Command -> Command
-shiftCmd dir = shiftCmdRec dir 0
+instance Shiftable ShiftDirection Command where
+  shiftRec = shiftCmdRec
 
-shiftTerm :: ShiftDirection -> Term pc -> Term pc 
-shiftTerm dir = shiftTermRec dir 0
+instance Shiftable ShiftDirection (Term pc) where
+  shiftRec = shiftTermRec
