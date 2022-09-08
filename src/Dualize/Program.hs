@@ -8,7 +8,8 @@ import Syntax.RST.Types (PolarityRep(..))
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Types qualified as TST
 import Dualize.Terms
-import Translate.Embed
+import Translate.Embed ()
+import Translate.Reparse (Embed(..))
 
 
 flipDC :: CST.DataCodata -> CST.DataCodata
@@ -45,10 +46,10 @@ dualDataDecl RST.RefinementDecl { data_loc
                        , data_doc = data_doc
                        , data_name = dualRnTypeName data_name
                        , data_polarity = flipDC data_polarity
-                       , data_refinement_empty = ( embedTSTType (dualType NegRep refinementEmptyNeg')
-                                                 , embedTSTType (dualType PosRep refinementEmptyPos'))
-                       , data_refinement_full = ( embedTSTType (dualType NegRep refinementFullNeg')
-                                                , embedTSTType (dualType PosRep refinementFullPos'))
+                       , data_refinement_empty = ( embed (dualType NegRep refinementEmptyNeg')
+                                                 , embed (dualType PosRep refinementEmptyPos'))
+                       , data_refinement_full = ( embed (dualType NegRep refinementFullNeg')
+                                                , embed (dualType PosRep refinementFullPos'))
                        , data_kind = dualPolyKind data_kind
                        , data_xtors = (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg)
                        , data_xtors_refined = (dualXtorSig PosRep <$> sigsPosRefined,dualXtorSig NegRep <$> sigsNegRefined )
