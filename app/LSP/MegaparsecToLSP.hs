@@ -15,7 +15,7 @@ import Language.LSP.Types
 -- Megaparsec and LSP's numbering conventions don't align!
 posToPosition :: SourcePos -> Position
 posToPosition (SourcePos _ line column) =
-  Position { _line = unPos line - 1, _character = unPos column - 1}
+  Position { _line = fromIntegral (unPos line - 1), _character = fromIntegral (unPos column - 1) }
 
 -- | Convert the Loc that we use internally to LSP's Range type.
 locToRange :: Loc -> Range
