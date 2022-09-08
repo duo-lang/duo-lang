@@ -1,3 +1,4 @@
+-- should fail since constructor S expects CBV argument instead of #F64
 import PeanoStructural;
 
 def prd x := S(1.0#F64);

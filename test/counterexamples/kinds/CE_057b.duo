@@ -1,3 +1,4 @@
+-- should fail since List expects CBV argument instead of #F64
 import List; 
 
 def prd f1 := Cons(1.0#F64, Nil);
