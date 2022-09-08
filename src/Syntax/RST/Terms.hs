@@ -1,3 +1,4 @@
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Syntax.RST.Terms
   ( -- Terms
     Term(..)
@@ -13,21 +14,16 @@ module Syntax.RST.Terms
   , Command(..)
   , PrimitiveOp(..)
    -- Functions
-  , termOpening
-  , termOpeningRec
-  , commandOpening
-  , termClosing
-  , commandClosing
   ) where
 
 import Data.List (elemIndex)
-import Data.Maybe (fromJust, isJust)
 
 import Loc ( Loc )
 import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..) )
+import Syntax.LocallyNameless (LocallyNameless (..))
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -324,13 +320,6 @@ commandOpeningRec k args (CocaseOfI loc pcrep ns t tmcasesI) =
   CocaseOfI loc pcrep ns (termOpeningRec k args t) ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
 
 
-
-commandOpening :: Substitution -> Command -> Command
-commandOpening = commandOpeningRec 0
-
-termOpening :: Substitution -> Term pc -> Term pc
-termOpening = termOpeningRec 0
-
 ---------------------------------------------------------------------------------
 -- Variable Closing
 ---------------------------------------------------------------------------------
@@ -342,10 +331,12 @@ pctermClosingRec k vars (CnsTerm tm) = CnsTerm $ termClosingRec k vars tm
 termClosingRec :: Int -> [(PrdCns, FreeVarName)] -> Term pc -> Term pc
 -- Core constructs
 termClosingRec _ _ bv@BoundVar {} = bv
-termClosingRec k vars (FreeVar loc PrdRep v) | isJust ((Prd,v) `elemIndex` vars) = BoundVar loc PrdRep (k, fromJust ((Prd,v) `elemIndex` vars))
-                                             | otherwise = FreeVar loc PrdRep v
-termClosingRec k vars (FreeVar loc CnsRep v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep (k, fromJust ((Cns,v) `elemIndex` vars))
-                                             | otherwise = FreeVar loc CnsRep v
+termClosingRec k vars (FreeVar loc PrdRep v) = case (Prd,v) `elemIndex` vars of
+                                                  Just ix -> BoundVar loc PrdRep (k, ix)
+                                                  Nothing -> FreeVar loc PrdRep v
+termClosingRec k vars (FreeVar loc CnsRep v) = case (Cns,v) `elemIndex` vars of
+                                                  Just ix -> BoundVar loc CnsRep (k, ix)
+                                                  Nothing -> FreeVar loc CnsRep v
 termClosingRec k vars (Xtor loc pc ns xt subst) =
   Xtor loc pc ns xt (pctermClosingRec k vars <$> subst)
 termClosingRec k vars (XCase loc pc sn cases) =
@@ -408,9 +399,10 @@ commandClosingRec k args (CocaseOfCmd loc ns t cmdcases) =
 commandClosingRec k args (CocaseOfI loc pcrep ns t tmcasesI) =
   CocaseOfI loc pcrep ns (termClosingRec k args t) ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
 
+instance LocallyNameless Substitution [(PrdCns, FreeVarName)] Command where
+  openRec  = commandOpeningRec
+  closeRec = commandClosingRec
 
-termClosing :: [(PrdCns, FreeVarName)] -> Term pc -> Term pc
-termClosing = termClosingRec 0
-
-commandClosing :: [(PrdCns, FreeVarName)] -> Command -> Command
-commandClosing = commandClosingRec 0
+instance LocallyNameless Substitution [(PrdCns, FreeVarName)] (Term pc) where
+  openRec  = termOpeningRec
+  closeRec = termClosingRec
