@@ -61,7 +61,7 @@ def prd convolutedTwo := case 3 of { Z => Z, S(x) => x };
 -- Instead, you can define one yourself, using codata types, which are dual to data types.
 -- So let's define a (monomorphic) function type, the type of functions from Nat to Bool.
 
-codata Fun : CBN { Ap(Nat,return Bool) };
+codata Fun : CBV { Ap(Nat,return Bool) };
 
 -- We call `Ap` (short for "apply) a destructor of the codata type Fun. In parentheses we indicate
 -- the arguments of the destructor, and in square brackets we indicate the return type.
