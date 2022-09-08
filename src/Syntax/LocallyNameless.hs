@@ -8,3 +8,8 @@ class LocallyNameless subst vars a | a -> subst, a -> vars where
 
   open  = openRec  0
   close = closeRec 0
+
+class Shiftable direction a | a -> direction where
+  shiftRec :: direction -> Int -> a -> a
+  shift    :: direction        -> a -> a
+  shift = flip shiftRec 0
