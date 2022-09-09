@@ -10,8 +10,10 @@ import Syntax.RST.Types qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Sugar.Core qualified as Core
-
 import Translate.Reparse ()
+
+import Data.Bifunctor (bimap)
+
 
 embedCmdCase :: Core.CmdCase -> RST.CmdCase
 embedCmdCase Core.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
@@ -149,6 +151,43 @@ embedCoreDecl (Core.ClassDecl decl) =
     RST.ClassDecl decl
 embedCoreDecl (Core.InstanceDecl decl) =
     RST.InstanceDecl (embedInstanceDeclaration decl)
+
+embedTSTDataDecl :: TST.DataDecl -> RST.DataDecl
+embedTSTDataDecl TST.NominalDecl{ 
+  data_loc = loc, 
+  data_doc = doc, 
+  data_name = tyn, 
+  data_polarity = pol, 
+  data_kind = polyknd, 
+  data_xtors = xtors } = 
+  RST.NominalDecl { 
+    data_loc = loc,
+    data_doc = doc, 
+    data_name= tyn,
+    data_polarity = pol,
+    data_kind = polyknd, 
+    data_xtors = Data.Bifunctor.bimap (map embedTSTXtorSig) (map embedTSTXtorSig) xtors }
+
+embedTSTDataDecl TST.RefinementDecl{ 
+  data_loc = loc, 
+  data_doc = doc, 
+  data_name = tyn, 
+  data_polarity = pol, 
+  data_refinement_empty = empt, 
+  data_refinement_full = ful, 
+  data_kind = polyknd, 
+  data_xtors = xtors, 
+  data_xtors_refined = xtors'} =
+  RST.RefinementDecl { 
+    data_loc = loc, 
+    data_doc = doc, 
+    data_name = tyn, 
+    data_polarity = pol, 
+    data_refinement_empty = Data.Bifunctor.bimap embedTSTType embedTSTType empt, 
+    data_refinement_full = Data.Bifunctor.bimap embedTSTType embedTSTType ful, 
+    data_kind = polyknd, 
+    data_xtors = Data.Bifunctor.bimap (map embedTSTXtorSig) (map embedTSTXtorSig) xtors, 
+    data_xtors_refined = Data.Bifunctor.bimap (map embedTSTXtorSig) (map embedTSTXtorSig) xtors'}
 
 embedTSTCmdCase :: TST.CmdCase -> Core.CmdCase
 embedTSTCmdCase TST.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
