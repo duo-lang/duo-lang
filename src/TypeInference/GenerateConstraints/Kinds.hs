@@ -1,5 +1,6 @@
 module TypeInference.GenerateConstraints.Kinds where
 
+import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST
@@ -16,6 +17,7 @@ import TypeInference.GenerateConstraints.Definition
 import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
+import Data.Bifunctor (bimap)
 
 
 --------------------------------------------------------------------------------------------
@@ -50,12 +52,21 @@ getXtorKinds loc (xtor:xtors) = do
 getTyNameKind ::  Loc -> RnTypeName -> GenM (MonoKind,[MonoKind])
 getTyNameKind loc tyn = do
   decl <- lookupTypeName loc tyn
+<<<<<<< HEAD
   let polyKnd = RST.data_kind decl
   let argKnds = map (\(_,_,x) -> x) (kindArgs polyKnd)
   return (CBox (returnKind polyKnd), argKnds)
 
 getKindDecl :: RST.DataDecl -> GenM MonoKind 
 getKindDecl = return . CBox . returnKind . RST.data_kind
+=======
+  getKindDecl decl
+  
+getKindDecl ::  TST.DataDecl -> GenM MonoKind
+getKindDecl decl = do
+  let polyknd = TST.data_kind decl
+  return (CBox (returnKind polyknd))
+>>>>>>> 13555c6c (changed Environment to TST DataDecl)
 
 newKVar :: GenM KVar
 newKVar = do
@@ -69,6 +80,56 @@ newKVar = do
 --------------------------------------------------------------------------------------------
 -- checking Kinds
 --------------------------------------------------------------------------------------------
+
+annotateDataDecl :: RST.DataDecl -> GenM TST.DataDecl 
+annotateDataDecl RST.NominalDecl {
+  data_loc = loc, 
+  data_doc = doc,
+  data_name = tyn,
+  data_polarity = pol,
+  data_kind = polyknd,
+  data_xtors = xtors 
+  } = do
+  xtorsPos <- mapM annotateXtorSig (fst xtors) 
+  xtorsNeg <- mapM annotateXtorSig (snd xtors)
+  return TST.NominalDecl { 
+    data_loc = loc, 
+    data_doc = doc,
+    data_name = tyn,
+    data_polarity = pol,
+    data_kind = polyknd,
+    data_xtors = (xtorsPos, xtorsNeg)  
+  }
+annotateDataDecl RST.RefinementDecl { 
+  data_loc = loc, 
+  data_doc = doc,
+  data_name = tyn,
+  data_polarity = pol ,
+  data_refinement_empty = empt,
+  data_refinement_full = ful,
+  data_kind = polyknd,
+  data_xtors = xtors,
+  data_xtors_refined = xtors'
+  } =  do
+  emptPos <- annotateKind (fst empt)
+  emptNeg <- annotateKind (snd empt)
+  fulPos <- annotateKind (fst ful)
+  fulNeg <- annotateKind (snd ful)
+  xtorsPos <- mapM annotateXtorSig (fst xtors)
+  xtorsNeg <- mapM annotateXtorSig (snd xtors)
+  xtorsPos' <- mapM annotateXtorSig (fst xtors')
+  xtorsNeg' <- mapM annotateXtorSig (snd xtors')
+  return TST.RefinementDecl {
+    data_loc = loc, 
+    data_doc = doc,
+    data_name = tyn,
+    data_polarity = pol ,
+    data_refinement_empty = (emptPos, emptNeg),
+    data_refinement_full = (fulPos, fulNeg),
+    data_kind = polyknd,
+    data_xtors = (xtorsPos, xtorsNeg),
+    data_xtors_refined = (xtorsPos',xtorsNeg')
+  }
 
 annotateInstDecl ::  (RST.Typ RST.Pos, RST.Typ RST.Neg) -> GenM (TST.Typ RST.Pos, TST.Typ RST.Neg)
 annotateInstDecl (ty1, ty2) = do 

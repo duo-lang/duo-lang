@@ -218,9 +218,30 @@ inferDecl mn (Core.CmdDecl decl) = do
 --
 inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
+<<<<<<< HEAD
   let f env = env { declEnv = (RST.data_loc decl,decl) : declEnv env}
   modifyEnvironment mn f 
   pure (TST.DataDecl decl) 
+=======
+  env <- gets drvEnv
+  let loc = RST.data_loc decl
+  decl' <- liftEitherErrLoc loc (fst $ runGenM loc env (annotateDataDecl decl) )
+  let f env = env { declEnv = (loc, fst decl') : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
+
+  modifyEnvironment mn f
+  pure (TST.DataDecl decl)
+  where 
+    insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
+    insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do
+      let names = map RST.sig_name (fst xtors)
+      let mk = CBox (returnKind knd)
+      foldr (`M.insert`mk) mp names
+    insertKinds RST.RefinementDecl{data_kind = knd, data_xtors = xtors} mp = do
+      let names = map RST.sig_name (fst xtors)
+      let mk = CBox (returnKind knd)
+      foldr (`M.insert`mk) mp names
+ 
+>>>>>>> 13555c6c (changed Environment to TST DataDecl)
 --
 -- XtorDecl
 --
