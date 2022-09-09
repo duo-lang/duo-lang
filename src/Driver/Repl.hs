@@ -23,7 +23,7 @@ import Driver.Definition
       getSymbolTables,
       liftEitherErr,
       liftEitherErrLoc)
-import Driver.Driver ( inferDecl, runCompilationModule )
+import Driver.Driver ( Infer(..), runCompilationModule )
 import Eval.Eval ( eval, evalSteps )
 import Parser.Definition ( runInteractiveParser )
 import Parser.Parser ( subtypingProblemP )
@@ -84,7 +84,7 @@ letRepl txt = do
     decl <- runInteractiveParser declarationP txt
     sts <- getSymbolTables
     resolvedDecl <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveDecl decl))
-    _ <- inferDecl interactiveModule (desugar resolvedDecl)
+    _ <- infer interactiveModule (desugar resolvedDecl)
     pure ()
 
 ---------------------------------------------------------------------------------
@@ -99,7 +99,7 @@ runCmd txt steps = do
     sts <- getSymbolTables
     resolvedDecl <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveCommand parsedCommand))
     let cmdDecl = Core.MkCommandDeclaration defaultLoc Nothing (MkFreeVarName "main") (desugar resolvedDecl)
-    (TST.CmdDecl TST.MkCommandDeclaration { cmddecl_cmd }) <- inferDecl interactiveModule (Core.CmdDecl cmdDecl)
+    (TST.CmdDecl TST.MkCommandDeclaration { cmddecl_cmd }) <- infer interactiveModule (Core.CmdDecl cmdDecl)
     env <- gets drvEnv
     let compiledCmd = focus CBV cmddecl_cmd
     let compiledEnv = focus CBV (desugar env)
