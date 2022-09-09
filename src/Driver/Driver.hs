@@ -219,7 +219,10 @@ inferDecl mn (Core.CmdDecl decl) = do
 --
 inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
-  let f env = env { declEnv = (RST.data_loc decl,decl) : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
+  env <- gets drvEnv
+  let loc = RST.data_loc decl
+  decl' <- liftEitherErrLoc loc (fst $ runGenM loc env (annotateDataDecl decl) )
+  let f env = env { declEnv = (loc, fst decl') : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
 
   modifyEnvironment mn f
   pure (TST.DataDecl decl)
