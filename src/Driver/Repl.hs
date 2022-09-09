@@ -33,7 +33,7 @@ import Pretty.Pretty ( ppPrintString )
 import Resolution.Definition ( runResolverM, ResolveReader (ResolveReader) )
 import Resolution.Types ( resolveTypeScheme )
 import Sugar.Desugar ( Desugar(..))
-import Translate.Focusing ( focusCmd, focusEnvironment )
+import Translate.Focusing ( Focus(..))
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
@@ -101,8 +101,8 @@ runCmd txt steps = do
     let cmdDecl = Core.MkCommandDeclaration defaultLoc Nothing (MkFreeVarName "main") (desugar resolvedDecl)
     (TST.CmdDecl TST.MkCommandDeclaration { cmddecl_cmd }) <- inferDecl interactiveModule (Core.CmdDecl cmdDecl)
     env <- gets drvEnv
-    let compiledCmd = focusCmd CBV cmddecl_cmd
-    let compiledEnv = focusEnvironment CBV (desugar env)
+    let compiledCmd = focus CBV cmddecl_cmd
+    let compiledEnv = focus CBV (desugar env)
     case steps of
         NoSteps -> do
             resE <- liftIO $ eval compiledCmd compiledEnv
