@@ -190,7 +190,7 @@ instance PrettyAnn TST.Declaration where
   prettyAnn decl = prettyAnn (embed decl)
 
 instance PrettyAnn RST.Declaration where
-  prettyAnn decl = prettyAnn (reparseDecl decl)
+  prettyAnn decl = prettyAnn (reparse decl)
 
     
 instance PrettyAnn CST.Declaration where
