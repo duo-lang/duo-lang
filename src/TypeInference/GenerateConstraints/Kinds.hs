@@ -78,10 +78,50 @@ newKVar = do
   return kVar 
 
 --------------------------------------------------------------------------------------------
--- checking Kinds
+-- Annotating Data Declarations 
 --------------------------------------------------------------------------------------------
+-- we can't use the environment here, as the results are inserted into the environment
 
-annotateDataDecl :: RST.DataDecl -> GenM TST.DataDecl 
+-- only temporary, will be removed 
+defaultKind :: MonoKind
+defaultKind = CBox CBV
+
+annotXtor :: RST.XtorSig pol -> TST.XtorSig pol
+annotXtor (RST.MkXtorSig nm ctxt) = TST.MkXtorSig nm (annotCtxt ctxt)
+
+annotCtxt :: RST.LinearContext pol -> TST.LinearContext pol
+annotCtxt [] = []
+annotCtxt (RST.PrdCnsType pc ty:rst) = TST.PrdCnsType  pc (annotTy ty) : annotCtxt rst
+
+annotVarTys :: [RST.VariantType pol] -> [TST.VariantType pol]
+annotVarTys [] = [] 
+annotVarTys (RST.CovariantType ty:rst) = TST.CovariantType (annotTy ty) : annotVarTys rst
+annotVarTys (RST.ContravariantType ty:rst) = TST.ContravariantType (annotTy ty) : annotVarTys rst
+
+
+annotTy :: RST.Typ pol -> TST.Typ pol
+annotTy (RST.TySkolemVar loc pol tv) = TST.TySkolemVar loc pol defaultKind tv 
+annotTy (RST.TyUniVar loc pol tv) = TST.TyUniVar loc pol defaultKind tv
+annotTy (RST.TyRecVar loc pol tv) = TST.TyRecVar loc pol defaultKind tv
+annotTy (RST.TyData loc pol xtors) = TST.TyData loc pol defaultKind (map annotXtor xtors)
+annotTy (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol defaultKind (map annotXtor xtors)
+annotTy (RST.TyDataRefined loc pol tyn xtors) = TST.TyDataRefined loc pol defaultKind tyn (map annotXtor xtors)
+annotTy (RST.TyCodataRefined loc pol tyn xtors) = TST.TyCodataRefined loc pol defaultKind tyn (map annotXtor xtors)
+annotTy (RST.TyNominal loc pol tyn vartys) = TST.TyNominal loc pol defaultKind tyn (annotVarTys vartys)
+annotTy (RST.TySyn loc pol tyn ty) = TST.TySyn loc pol tyn (annotTy ty)
+annotTy (RST.TyBot loc) = TST.TyBot loc defaultKind
+annotTy (RST.TyTop loc) =  TST.TyTop loc defaultKind
+annotTy (RST.TyUnion loc ty1 ty2) = TST.TyUnion loc defaultKind (annotTy ty1) (annotTy ty2)
+annotTy (RST.TyInter loc ty1 ty2) = TST.TyInter loc defaultKind (annotTy ty1) (annotTy ty2)
+annotTy (RST.TyRec loc pol tv ty) = TST.TyRec loc pol tv (annotTy ty)
+annotTy (RST.TyI64 loc pol) = TST.TyI64 loc pol
+annotTy (RST.TyF64 loc pol) = TST.TyF64 loc pol
+annotTy (RST.TyChar loc pol) = TST.TyChar loc pol
+annotTy (RST.TyString loc pol) = TST.TyString loc pol
+annotTy (RST.TyFlipPol pol ty) = TST.TyFlipPol pol (annotTy ty)
+
+
+annotateDataDecl :: RST.DataDecl -> TST.DataDecl 
 annotateDataDecl RST.NominalDecl {
   data_loc = loc, 
   data_doc = doc,
@@ -90,16 +130,15 @@ annotateDataDecl RST.NominalDecl {
   data_kind = polyknd,
   data_xtors = xtors 
   } = do
-  xtorsPos <- mapM annotateXtorSig (fst xtors) 
-  xtorsNeg <- mapM annotateXtorSig (snd xtors)
-  return TST.NominalDecl { 
+  let xtors' = Data.Bifunctor.bimap (map annotXtor) (map annotXtor) xtors
+  TST.NominalDecl { 
     data_loc = loc, 
     data_doc = doc,
     data_name = tyn,
     data_polarity = pol,
     data_kind = polyknd,
-    data_xtors = (xtorsPos, xtorsNeg)  
-  }
+    data_xtors = xtors'
+  }        
 annotateDataDecl RST.RefinementDecl { 
   data_loc = loc, 
   data_doc = doc,
@@ -109,27 +148,27 @@ annotateDataDecl RST.RefinementDecl {
   data_refinement_full = ful,
   data_kind = polyknd,
   data_xtors = xtors,
-  data_xtors_refined = xtors'
+  data_xtors_refined = xtorsref
   } =  do
-  emptPos <- annotateKind (fst empt)
-  emptNeg <- annotateKind (snd empt)
-  fulPos <- annotateKind (fst ful)
-  fulNeg <- annotateKind (snd ful)
-  xtorsPos <- mapM annotateXtorSig (fst xtors)
-  xtorsNeg <- mapM annotateXtorSig (snd xtors)
-  xtorsPos' <- mapM annotateXtorSig (fst xtors')
-  xtorsNeg' <- mapM annotateXtorSig (snd xtors')
-  return TST.RefinementDecl {
+  let empt' = Data.Bifunctor.bimap annotTy annotTy empt
+  let ful' = Data.Bifunctor.bimap annotTy annotTy ful
+  let xtors' = Data.Bifunctor.bimap (map annotXtor) (map annotXtor) xtors
+  let xtorsref' = Data.Bifunctor.bimap (map annotXtor) (map annotXtor) xtorsref
+  TST.RefinementDecl {
     data_loc = loc, 
     data_doc = doc,
     data_name = tyn,
     data_polarity = pol ,
-    data_refinement_empty = (emptPos, emptNeg),
-    data_refinement_full = (fulPos, fulNeg),
+    data_refinement_empty = empt',
+    data_refinement_full = ful',
     data_kind = polyknd,
-    data_xtors = (xtorsPos, xtorsNeg),
-    data_xtors_refined = (xtorsPos',xtorsNeg')
+    data_xtors = xtors',
+    data_xtors_refined = xtorsref' 
   }
+
+--------------------------------------------------------------------------------------------
+-- checking Kinds
+--------------------------------------------------------------------------------------------
 
 annotateInstDecl ::  (RST.Typ RST.Pos, RST.Typ RST.Neg) -> GenM (TST.Typ RST.Pos, TST.Typ RST.Neg)
 annotateInstDecl (ty1, ty2) = do 
