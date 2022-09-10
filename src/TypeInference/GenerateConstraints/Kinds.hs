@@ -16,6 +16,8 @@ import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Bifunctor (bimap)
+import GHC.IO.Exception (IOErrorType(OtherError))
+import Test.Hspec.Formatters (FailureReason(Error))
 
 --------------------------------------------------------------------------------------------
 -- Helpers
@@ -87,12 +89,17 @@ annotCtxt (RST.PrdCnsType pc ty:rst) = applyEither (liftPair (annotTy ty, annotC
 
 annotVarTys :: [RST.VariantType pol] -> Either Error [TST.VariantType pol]
 annotVarTys [] = Right [] 
-annotVarTys (RST.CovariantType ty:rst) = applyEither (liftPair (annotTy ty, annotVarTys rst)) (\(ty',vartys) -> TST.CovariantType ty':vartys) 
-annotVarTys (RST.ContravariantType ty:rst) = applyEither (liftPair (annotTy ty, annotVarTys rst)) (\(ty',vartys) -> TST.ContravariantType ty':vartys)
+annotVarTys (RST.CovariantType ty:rst) = 
+  applyEither (liftPair (annotTy ty, annotVarTys rst)) 
+    (\(ty',vartys) -> TST.CovariantType ty':vartys) 
+annotVarTys (RST.ContravariantType ty:rst) = 
+  applyEither (liftPair (annotTy ty, annotVarTys rst)) 
+    (\(ty',vartys) -> TST.ContravariantType ty':vartys)
 
 annotTy :: RST.Typ pol -> Either Error (TST.Typ pol)
 annotTy (RST.TySkolemVar loc pol tv) = Right $ TST.TySkolemVar loc pol defaultKind tv 
-annotTy (RST.TyUniVar loc pol tv) = Right $ TST.TyUniVar loc pol defaultKind tv
+-- uni vars should not appear in data declarations
+annotTy (RST.TyUniVar loc _ _) = Left $ ErrOther (SomeOtherError loc "UniVar should not appear in data declaration")
 annotTy (RST.TyRecVar loc pol tv) = Right $ TST.TyRecVar loc pol defaultKind tv
 annotTy (RST.TyData loc pol xtors) = applyEither (liftList (map annotXtor xtors)) (TST.TyData loc pol defaultKind)
 annotTy (RST.TyCodata loc pol xtors) = applyEither (liftList (map annotXtor xtors)) (TST.TyCodata loc pol defaultKind)
@@ -102,8 +109,12 @@ annotTy (RST.TyNominal loc pol tyn vartys) = applyEither (annotVarTys vartys) (T
 annotTy (RST.TySyn loc pol tyn ty) = applyEither (annotTy ty) (TST.TySyn loc pol tyn)
 annotTy (RST.TyBot loc) = Right $ TST.TyBot loc defaultKind
 annotTy (RST.TyTop loc) = Right $  TST.TyTop loc defaultKind
-annotTy (RST.TyUnion loc ty1 ty2) = applyEither (liftPair (annotTy ty1,annotTy ty2)) (\(ty1,ty2) -> TST.TyUnion loc defaultKind ty1 ty2)
-annotTy (RST.TyInter loc ty1 ty2) = applyEither (liftPair (annotTy ty1,annotTy ty2)) (\(ty1,ty2) -> TST.TyInter loc defaultKind ty1 ty2)
+annotTy (RST.TyUnion loc ty1 ty2) = 
+  applyEither (liftPair (annotTy ty1,annotTy ty2)) 
+    (\(ty1,ty2) -> TST.TyUnion loc (TST.getKind ty1) ty1 ty2)
+annotTy (RST.TyInter loc ty1 ty2) = 
+  applyEither (liftPair (annotTy ty1,annotTy ty2)) 
+    (\(ty1,ty2) -> TST.TyInter loc (TST.getKind ty1) ty1 ty2)
 annotTy (RST.TyRec loc pol tv ty) = applyEither (annotTy ty) (TST.TyRec loc pol tv)
 annotTy (RST.TyI64 loc pol) = Right $ TST.TyI64 loc pol
 annotTy (RST.TyF64 loc pol) = Right $ TST.TyF64 loc pol
