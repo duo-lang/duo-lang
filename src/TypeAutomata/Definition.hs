@@ -14,7 +14,7 @@ import Data.Void
 import Syntax.CST.Names ( RnTypeName, XtorName )
 import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..))
 import Syntax.RST.Types ( Polarity, PolarityRep(..))
-import Syntax.CST.Kinds ( Variance )
+import Syntax.CST.Kinds ( Variance, MonoKind(..))
 
 --------------------------------------------------------------------------------
 -- # Type Automata
@@ -166,6 +166,7 @@ data NodeLabel =
     , nl_nominal :: Set (RnTypeName, [Variance])
     , nl_ref_data :: Map RnTypeName (Set XtorLabel)
     , nl_ref_codata :: Map RnTypeName (Set XtorLabel)
+    , nl_kind :: MonoKind
     }
   |
   MkPrimitiveNodeLabel
@@ -173,20 +174,20 @@ data NodeLabel =
     , pl_prim :: PrimitiveType
     } deriving (Eq,Show,Ord)
 
-emptyNodeLabel :: Polarity -> NodeLabel
+emptyNodeLabel :: Polarity -> MonoKind -> NodeLabel
 emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty
 
 -- emptyPrimNodeLabel :: Polarity -> NodeLabel
 -- emptyPrimNodeLabel pol = MkPrimitiveNodeLabel pol S.empty
 
-singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> NodeLabel
+singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> MonoKind -> NodeLabel
 singleNodeLabel pol Data Nothing xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty M.empty M.empty
 singleNodeLabel pol Codata Nothing xtors = MkNodeLabel pol Nothing (Just xtors) S.empty M.empty M.empty
 singleNodeLabel pol Data (Just tn) xtors   = MkNodeLabel pol Nothing Nothing S.empty (M.singleton tn xtors) M.empty
 singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing Nothing S.empty M.empty (M.singleton tn xtors)
 
 getPolarityNL :: NodeLabel -> Polarity
-getPolarityNL (MkNodeLabel pol _ _ _ _ _) = pol
+getPolarityNL (MkNodeLabel pol _ _ _ _ _ _) = pol
 getPolarityNL (MkPrimitiveNodeLabel pol _) = pol
 
 --------------------------------------------------------------------------------
