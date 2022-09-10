@@ -146,8 +146,8 @@ annotateDataDecl RST.RefinementDecl {
 
 annotateInstDecl ::  (RST.Typ RST.Pos, RST.Typ RST.Neg) -> GenM (TST.Typ RST.Pos, TST.Typ RST.Neg)
 annotateInstDecl (ty1, ty2) = do 
-  ty1' <- annotateKind ty1
-  ty2' <- annotateKind ty2
+  ty1' <- annotateTyp ty1
+  ty2' <- annotateTyp ty2
   return (ty1', ty2')
 
 annotateMaybeTypeScheme ::  Maybe (RST.TypeScheme pol) -> GenM (Maybe (TST.TypeScheme pol))
@@ -158,16 +158,16 @@ annotateMaybeTypeScheme (Just ty) = do
 
 annotateTypeScheme ::  RST.TypeScheme pol -> GenM (TST.TypeScheme pol)
 annotateTypeScheme RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = do
-  ty' <- annotateKind ty
+  ty' <- annotateTyp ty
   return TST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty'}
 
 annotateVariantType ::  RST.VariantType pol -> GenM (TST.VariantType pol)
-annotateVariantType (RST.CovariantType ty) = TST.CovariantType <$> annotateKind ty
-annotateVariantType (RST.ContravariantType ty) = TST.ContravariantType <$> annotateKind ty
+annotateVariantType (RST.CovariantType ty) = TST.CovariantType <$> annotateTyp ty
+annotateVariantType (RST.ContravariantType ty) = TST.ContravariantType <$> annotateTyp ty
 
 annotatePrdCnsType ::  RST.PrdCnsType pol -> GenM (TST.PrdCnsType pol)
 annotatePrdCnsType (RST.PrdCnsType rep ty) = do 
-  ty' <- annotateKind ty
+  ty' <- annotateTyp ty
   return (TST.PrdCnsType rep ty')
 
 annotateLinearContext ::  RST.LinearContext pol -> GenM (TST.LinearContext pol)
@@ -178,8 +178,8 @@ annotateXtorSig RST.MkXtorSig { sig_name = nm, sig_args = ctxt } = do
   ctxt' <- annotateLinearContext ctxt 
   return (TST.MkXtorSig {sig_name = nm, sig_args = ctxt' })
 
-annotateKind ::  RST.Typ pol -> GenM (TST.Typ pol)
-annotateKind (RST.TySkolemVar loc pol tv) = do
+annotateTyp ::  RST.Typ pol -> GenM (TST.Typ pol)
+annotateTyp (RST.TySkolemVar loc pol tv) = do
   skMap <- gets usedSkolemVars
   case M.lookup tv skMap of 
     Nothing -> do
@@ -189,7 +189,7 @@ annotateKind (RST.TySkolemVar loc pol tv) = do
       return (TST.TySkolemVar loc pol (KindVar kv) tv)
     Just mk -> return (TST.TySkolemVar loc pol mk tv)
 
-annotateKind (RST.TyUniVar loc pol tv) = do 
+annotateTyp (RST.TyUniVar loc pol tv) = do 
   uniMap <- gets usedUniVars
   case M.lookup tv uniMap of 
     Nothing -> do
@@ -199,7 +199,7 @@ annotateKind (RST.TyUniVar loc pol tv) = do
       return (TST.TyUniVar loc pol (KindVar kv) tv)
     Just mk -> return (TST.TyUniVar loc pol mk tv)
 
-annotateKind (RST.TyRecVar loc pol rv) = do
+annotateTyp (RST.TyRecVar loc pol rv) = do
   rvMap <- gets usedRecVars
   case M.lookup rv rvMap of 
     Nothing -> do
@@ -209,62 +209,62 @@ annotateKind (RST.TyRecVar loc pol rv) = do
       return (TST.TyRecVar loc pol (KindVar kv) rv)
     Just mk -> return (TST.TyRecVar loc pol mk rv)
 
-annotateKind (RST.TyData loc pol xtors) = do 
+annotateTyp (RST.TyData loc pol xtors) = do 
   knd <- getXtorKinds loc xtors 
   xtors' <- mapM annotateXtorSig xtors
   return (TST.TyData loc pol knd xtors')
 
-annotateKind (RST.TyCodata loc pol xtors) = do 
+annotateTyp (RST.TyCodata loc pol xtors) = do 
   knd <- getXtorKinds loc xtors
   xtors' <- mapM annotateXtorSig xtors
   return (TST.TyCodata loc pol knd xtors')
 
-annotateKind (RST.TyDataRefined loc pol tyn xtors) = do 
+annotateTyp (RST.TyDataRefined loc pol tyn xtors) = do 
   xtors' <- mapM annotateXtorSig xtors
   knd <- getTyNameKind loc tyn
   return (TST.TyDataRefined loc pol knd tyn xtors')
 
-annotateKind (RST.TyCodataRefined loc pol tyn xtors) = do
+annotateTyp (RST.TyCodataRefined loc pol tyn xtors) = do
   xtors' <- mapM annotateXtorSig xtors
   knd <- getTyNameKind loc tyn
   return (TST.TyCodataRefined loc pol knd tyn xtors')
 
-annotateKind (RST.TyNominal loc pol tyn vartys) = do
+annotateTyp (RST.TyNominal loc pol tyn vartys) = do
   vartys' <- mapM annotateVariantType vartys
   knd <- getTyNameKind loc tyn
   return (TST.TyNominal loc pol knd tyn vartys')
 
-annotateKind (RST.TySyn loc pol tn ty) = do 
-  ty' <- annotateKind ty 
+annotateTyp (RST.TySyn loc pol tn ty) = do 
+  ty' <- annotateTyp ty 
   return (TST.TySyn loc pol tn ty')
 
-annotateKind (RST.TyBot loc) = TST.TyBot loc . KindVar <$> newKVar
+annotateTyp (RST.TyBot loc) = TST.TyBot loc . KindVar <$> newKVar
 
-annotateKind (RST.TyTop loc) = TST.TyTop loc . KindVar <$> newKVar
+annotateTyp (RST.TyTop loc) = TST.TyTop loc . KindVar <$> newKVar
 
-annotateKind (RST.TyUnion loc ty1 ty2) = do 
-  ty1' <- annotateKind ty1
-  ty2' <- annotateKind ty2
+annotateTyp (RST.TyUnion loc ty1 ty2) = do 
+  ty1' <- annotateTyp ty1
+  ty2' <- annotateTyp ty2
   kv <- newKVar 
   return (TST.TyUnion loc (KindVar kv) ty1' ty2')
   
-annotateKind (RST.TyInter loc ty1 ty2) = do
-  ty1' <- annotateKind ty1
-  ty2' <- annotateKind ty2
+annotateTyp (RST.TyInter loc ty1 ty2) = do
+  ty1' <- annotateTyp ty1
+  ty2' <- annotateTyp ty2
   kv <- newKVar 
   return (TST.TyInter loc (KindVar kv) ty1' ty2')
   
-annotateKind (RST.TyRec loc pol rv ty) = do
-  ty' <- annotateKind ty
+annotateTyp (RST.TyRec loc pol rv ty) = do
+  ty' <- annotateTyp ty
   return (TST.TyRec loc pol rv ty')
 
-annotateKind (RST.TyI64 loc pol) = return (TST.TyI64 loc pol)
-annotateKind (RST.TyF64 loc pol) = return (TST.TyF64 loc pol)
-annotateKind (RST.TyChar loc pol) = return (TST.TyChar loc pol)
-annotateKind (RST.TyString loc pol) = return(TST.TyString loc pol)
+annotateTyp (RST.TyI64 loc pol) = return (TST.TyI64 loc pol)
+annotateTyp (RST.TyF64 loc pol) = return (TST.TyF64 loc pol)
+annotateTyp (RST.TyChar loc pol) = return (TST.TyChar loc pol)
+annotateTyp (RST.TyString loc pol) = return(TST.TyString loc pol)
 
-annotateKind (RST.TyFlipPol pol ty) = do 
-  ty' <- annotateKind ty
+annotateTyp (RST.TyFlipPol pol ty) = do 
+  ty' <- annotateTyp ty
   return (TST.TyFlipPol pol ty')
 
 
