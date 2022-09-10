@@ -221,11 +221,12 @@ inferDecl mn (Core.CmdDecl decl) = do
 inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
   let loc = RST.data_loc decl
-  let decl' = annotateDataDecl decl
-  let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
-
-  modifyEnvironment mn f
-  pure (TST.DataDecl decl)
+  case annotateDataDecl decl of 
+    Left err -> throwOtherError loc ["Could not infer Type of Data Declaration" <> ppPrint (RST.data_name decl), ppPrint err]
+    Right decl' -> do
+      let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
+      modifyEnvironment mn f
+      pure (TST.DataDecl decl)
   where 
     insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
     insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do
