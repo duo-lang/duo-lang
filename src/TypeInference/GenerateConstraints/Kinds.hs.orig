@@ -52,15 +52,21 @@ getXtorKinds loc (xtor:xtors) = do
 getTyNameKind ::  Loc -> RnTypeName -> GenM (MonoKind,[MonoKind])
 getTyNameKind loc tyn = do
   decl <- lookupTypeName loc tyn
+<<<<<<< HEAD
   let polyKnd = RST.data_kind decl
   let argKnds = map (\(_,_,x) -> x) (kindArgs polyKnd)
   return (CBox (returnKind polyKnd), argKnds)
 
+getKindDecl :: RST.DataDecl -> GenM MonoKind 
+getKindDecl = return . CBox . returnKind . RST.data_kind
+=======
+  getKindDecl decl
   
 getKindDecl ::  TST.DataDecl -> GenM MonoKind
 getKindDecl decl = do
   let polyknd = TST.data_kind decl
   return (CBox (returnKind polyknd))
+>>>>>>> 13555c6c (changed Environment to TST DataDecl)
 
 newKVar :: GenM KVar
 newKVar = do
@@ -230,13 +236,22 @@ annotateTyp (RST.TyRecVar loc pol rv) = do
       return (TST.TyRecVar loc pol (KindVar kv) rv)
     Just mk -> return (TST.TyRecVar loc pol mk rv)
 
+<<<<<<< HEAD
 annotateKind (RST.TyData loc pol xtors) = do 
+=======
+annotateTyp (RST.TyData loc pol xtors) = do 
+  knd <- getXtorKinds loc xtors 
+>>>>>>> c176e109 (renamed annotateKind to annotateTyp)
   xtors' <- mapM annotateXtorSig xtors
   knd <- getXtorKinds loc xtors'
   return (TST.TyData loc pol knd xtors')
 
+<<<<<<< HEAD
+annotateKind (RST.TyCodata loc pol xtors) = do 
+=======
 annotateTyp (RST.TyCodata loc pol xtors) = do 
   knd <- getXtorKinds loc xtors
+>>>>>>> c176e109 (renamed annotateKind to annotateTyp)
   xtors' <- mapM annotateXtorSig xtors
   knd <- getXtorKinds loc xtors'
   return (TST.TyCodata loc pol knd xtors')
@@ -274,10 +289,15 @@ annotateTyp (RST.TySyn loc pol tn ty) = do
   ty' <- annotateTyp ty 
   return (TST.TySyn loc pol tn ty')
 
+<<<<<<< HEAD
+annotateKind (RST.TyBot loc) = do TST.TyBot loc . KindVar <$> newKVar
+
 annotateKind (RST.TyTop loc) = do TST.TyTop loc . KindVar <$> newKVar
+=======
 annotateTyp (RST.TyBot loc) = TST.TyBot loc . KindVar <$> newKVar
 
 annotateTyp (RST.TyTop loc) = TST.TyTop loc . KindVar <$> newKVar
+>>>>>>> c176e109 (renamed annotateKind to annotateTyp)
 
 annotateTyp (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- annotateTyp ty1
