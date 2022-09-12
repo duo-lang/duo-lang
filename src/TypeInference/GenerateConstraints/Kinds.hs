@@ -12,6 +12,11 @@ import Loc
 import Pretty.Pretty
 import TypeInference.GenerateConstraints.Definition
 
+import Driver.Environment
+import Control.Monad.Reader
+import Control.Monad.Except
+import Data.List.NonEmpty (NonEmpty(..))
+
 import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
@@ -53,30 +58,50 @@ newKVar = do
 --------------------------------------------------------------------------------------------
 -- Annotating Data Declarations 
 --------------------------------------------------------------------------------------------
--- we can't use the environment here, as the results are inserted into the environment
+
+newtype DataDeclState = DataDeclState
+  {
+    declKind :: PolyKind
+  }
+
+type DataDeclM a = (ReaderT (M.Map ModuleName Environment, ()) (StateT DataDeclState (Except (NonEmpty Error)))) a
+
+runDataDeclM :: DataDeclM a -> M.Map ModuleName Environment -> DataDeclState -> Either (NonEmpty Error) (a,DataDeclState)
+runDataDeclM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
+
+resolveDataDecl :: RST.DataDecl -> M.Map ModuleName Environment ->  Either (NonEmpty Error) TST.DataDecl
+resolveDataDecl decl env = do
+  (decl', _) <- runDataDeclM (annotateDataDecl decl) env (DataDeclState (RST.data_kind decl))
+  return decl' 
 
 -- only temporary, will be removed 
 defaultKind :: MonoKind
 defaultKind = CBox CBV
 
-annotXtor :: PolyKind -> RST.XtorSig pol -> TST.XtorSig pol
-annotXtor polyknd (RST.MkXtorSig nm ctxt) = TST.MkXtorSig nm (annotCtxt polyknd ctxt)
+annotXtor :: RST.XtorSig pol -> DataDeclM (TST.XtorSig pol)
+annotXtor (RST.MkXtorSig nm ctxt) = do 
+  ctxt' <- annotCtxt ctxt
+  return $ TST.MkXtorSig nm ctxt'
 
-annotCtxt :: PolyKind -> RST.LinearContext pol -> TST.LinearContext pol
-annotCtxt _ [] = []
-annotCtxt polyknd (RST.PrdCnsType pc ty:rst) = TST.PrdCnsType pc (annotTy polyknd ty) : annotCtxt polyknd rst
+annotCtxt :: RST.LinearContext pol -> DataDeclM (TST.LinearContext pol)
+annotCtxt [] = return []
+annotCtxt (RST.PrdCnsType pc ty:rst) = do 
+  rst' <- annotCtxt rst
+  ty' <- annotTy ty
+  return $ TST.PrdCnsType pc ty' : rst'
 
-annotVarTys :: PolyKind -> [RST.VariantType pol] ->[TST.VariantType pol]
-annotVarTys _ [] = [] 
-annotVarTys polyknd (RST.CovariantType ty:rst) = TST.CovariantType (annotTy polyknd ty) : annotVarTys polyknd rst
-annotVarTys polyknd (RST.ContravariantType ty:rst) = TST.ContravariantType (annotTy polyknd ty) : annotVarTys polyknd rst
+annotVarTys :: [RST.VariantType pol] -> DataDeclM [TST.VariantType pol]
+annotVarTys [] = return [] 
+annotVarTys (RST.CovariantType ty:rst) = do
+  rst' <- annotVarTys rst 
+  ty' <- annotTy ty
+  return $ TST.CovariantType ty' : rst'
+annotVarTys (RST.ContravariantType ty:rst) = do 
+  rst'<- annotVarTys rst 
+  ty' <- annotTy ty 
+  return $ TST.ContravariantType ty' : rst'
 
 
-
---data PolyKind =
---  MkPolyKind { kindArgs :: [(Variance, SkolemTVar, MonoKind)]
---             , returnKind :: EvaluationOrder
---             }
 getKindSkolem :: PolyKind -> SkolemTVar -> MonoKind
 getKindSkolem polyknd = searchKindArgs (kindArgs polyknd)
   where 
@@ -84,30 +109,54 @@ getKindSkolem polyknd = searchKindArgs (kindArgs polyknd)
     searchKindArgs [] _ = error "Skolem Variable not found in argument types of polykind"
     searchKindArgs ((_,tv,mk):rst) tv' = if tv == tv' then mk else searchKindArgs rst tv'
 
-annotTy :: PolyKind -> RST.Typ pol -> TST.Typ pol
-annotTy polyknd (RST.TySkolemVar loc pol tv) = TST.TySkolemVar loc pol (getKindSkolem polyknd tv) tv 
+annotTy :: RST.Typ pol -> DataDeclM (TST.Typ pol)
+annotTy (RST.TySkolemVar loc pol tv) = do 
+  polyknd <- gets declKind
+  return $ TST.TySkolemVar loc pol (getKindSkolem polyknd tv) tv 
 -- uni vars should not appear in data declarations
-annotTy _ RST.TyUniVar{} = error "UniVar should not appear in data declaration"
-annotTy polyknd (RST.TyRecVar loc pol tv) = TST.TyRecVar loc pol defaultKind tv
-annotTy polyknd (RST.TyData loc pol xtors) =  TST.TyData loc pol defaultKind (map (annotXtor polyknd) xtors)
-annotTy polyknd (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol defaultKind (map (annotXtor polyknd) xtors)
-annotTy polyknd (RST.TyDataRefined loc pol tyn xtors) =  TST.TyDataRefined loc pol defaultKind tyn (map (annotXtor polyknd) xtors)
-annotTy polyknd (RST.TyCodataRefined loc pol tyn xtors) = TST.TyCodataRefined loc pol defaultKind tyn  (map (annotXtor polyknd) xtors)
-annotTy polyknd (RST.TyNominal loc pol tyn vartys) = TST.TyNominal loc pol defaultKind tyn (annotVarTys polyknd vartys)
-annotTy polyknd (RST.TySyn loc pol tyn ty) =  TST.TySyn loc pol tyn (annotTy polyknd ty)
-annotTy polyknd (RST.TyBot loc) = TST.TyBot loc defaultKind
-annotTy polyknd (RST.TyTop loc) = TST.TyTop loc defaultKind
-annotTy polyknd (RST.TyUnion loc ty1 ty2) = TST.TyUnion loc defaultKind (annotTy polyknd ty1) (annotTy polyknd ty2)
-annotTy polyknd (RST.TyInter loc ty1 ty2) = TST.TyInter loc defaultKind (annotTy polyknd ty1) (annotTy polyknd ty2)
-annotTy polyknd (RST.TyRec loc pol tv ty) = TST.TyRec loc pol tv (annotTy polyknd ty)
-annotTy polyknd (RST.TyI64 loc pol) = TST.TyI64 loc pol
-annotTy polyknd (RST.TyF64 loc pol) = TST.TyF64 loc pol
-annotTy polyknd (RST.TyChar loc pol) = TST.TyChar loc pol
-annotTy polyknd (RST.TyString loc pol) = TST.TyString loc pol
-annotTy polyknd (RST.TyFlipPol pol ty) = TST.TyFlipPol pol (annotTy polyknd ty)
+annotTy (RST.TyUniVar loc _ _) = throwOtherError loc ["UniVar should not appear in data declaration"]
+annotTy (RST.TyRecVar loc pol tv) = return $ TST.TyRecVar loc pol defaultKind tv
+annotTy (RST.TyData loc pol xtors) = do 
+  xtors' <- mapM annotXtor xtors
+  return $ TST.TyData loc pol defaultKind xtors' 
+annotTy (RST.TyCodata loc pol xtors) = do 
+  xtors' <- mapM annotXtor xtors
+  return $ TST.TyCodata loc pol defaultKind xtors'
+annotTy (RST.TyDataRefined loc pol tyn xtors) =  do 
+  xtors' <- mapM annotXtor xtors
+  return $ TST.TyDataRefined loc pol defaultKind tyn xtors' 
+annotTy (RST.TyCodataRefined loc pol tyn xtors) = do 
+  xtors' <- mapM annotXtor xtors
+  return $ TST.TyCodataRefined loc pol defaultKind tyn xtors'
+annotTy (RST.TyNominal loc pol tyn vartys) = do 
+  vartys' <- annotVarTys vartys
+  return $ TST.TyNominal loc pol defaultKind tyn vartys' 
+annotTy (RST.TySyn loc pol tyn ty) =  do 
+  ty' <- annotTy ty
+  return $ TST.TySyn loc pol tyn ty'
+annotTy (RST.TyBot loc) = return $ TST.TyBot loc defaultKind
+annotTy (RST.TyTop loc) = return $ TST.TyTop loc defaultKind
+annotTy (RST.TyUnion loc ty1 ty2) = do 
+  ty1' <- annotTy ty1 
+  ty2' <- annotTy ty2
+  return $ TST.TyUnion loc defaultKind ty1' ty2' 
+annotTy (RST.TyInter loc ty1 ty2) = do 
+  ty1' <- annotTy ty1 
+  ty2' <- annotTy ty2
+  return $ TST.TyInter loc defaultKind ty1' ty2'
+annotTy (RST.TyRec loc pol tv ty) = do 
+  ty' <- annotTy ty
+  return $ TST.TyRec loc pol tv ty' 
+annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
+annotTy (RST.TyF64 loc pol) = return $ TST.TyF64 loc pol
+annotTy (RST.TyChar loc pol) = return $ TST.TyChar loc pol
+annotTy (RST.TyString loc pol) = return $ TST.TyString loc pol
+annotTy (RST.TyFlipPol pol ty) = do 
+  ty' <- annotTy ty 
+  return $ TST.TyFlipPol pol ty'
 
 
-annotateDataDecl :: RST.DataDecl -> TST.DataDecl 
+annotateDataDecl :: RST.DataDecl -> DataDeclM TST.DataDecl 
 annotateDataDecl RST.NominalDecl {
   data_loc = loc, 
   data_doc = doc,
@@ -115,14 +164,16 @@ annotateDataDecl RST.NominalDecl {
   data_polarity = pol,
   data_kind = polyknd,
   data_xtors = xtors 
-  } = 
-    TST.NominalDecl { 
+  } =do 
+    xtorsPos <- mapM annotXtor (fst xtors)
+    xtorsNeg <- mapM annotXtor (snd xtors)
+    return TST.NominalDecl { 
         data_loc = loc, 
         data_doc = doc,
         data_name = tyn,
         data_polarity = pol,
         data_kind = polyknd,
-        data_xtors = Data.Bifunctor.bimap (map (annotXtor polyknd)) (map (annotXtor polyknd)) xtors
+        data_xtors = (xtorsPos, xtorsNeg) 
       }
 annotateDataDecl RST.RefinementDecl { 
   data_loc = loc, 
@@ -134,17 +185,25 @@ annotateDataDecl RST.RefinementDecl {
   data_kind = polyknd,
   data_xtors = xtors,
   data_xtors_refined = xtorsref
-  } = 
-    TST.RefinementDecl {
+  } = do
+    emptPos <- annotTy (fst empt)
+    emptNeg <- annotTy (snd empt)
+    fulPos <- annotTy (fst ful) 
+    fulNeg <- annotTy (snd ful)
+    xtorsPos <- mapM annotXtor (fst xtors)
+    xtorsNeg <- mapM annotXtor (snd xtors)
+    xtorsRefPos <- mapM annotXtor (fst xtorsref)
+    xtorsRefNeg <- mapM annotXtor (snd xtorsref)
+    return TST.RefinementDecl {
       data_loc = loc,
       data_doc = doc,
       data_name = tyn,
       data_polarity = pol ,
-      data_refinement_empty = Data.Bifunctor.bimap (annotTy polyknd) (annotTy polyknd) empt,
-      data_refinement_full = Data.Bifunctor.bimap (annotTy polyknd) (annotTy polyknd) ful, 
+      data_refinement_empty = (emptPos, emptNeg), 
+      data_refinement_full = (fulPos, fulNeg), 
       data_kind = polyknd,
-      data_xtors = Data.Bifunctor.bimap (map (annotXtor polyknd)) (map (annotXtor polyknd)) xtors,
-      data_xtors_refined = Data.Bifunctor.bimap (map (annotXtor polyknd)) (map (annotXtor polyknd)) xtorsref
+      data_xtors = (xtorsPos, xtorsNeg),
+      data_xtors_refined = (xtorsRefPos, xtorsRefNeg) 
       }
 
 --------------------------------------------------------------------------------------------
