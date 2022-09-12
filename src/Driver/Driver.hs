@@ -220,7 +220,8 @@ inferDecl mn (Core.CmdDecl decl) = do
 inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
   let loc = RST.data_loc decl
-  let decl' = annotateDataDecl decl
+  env <- gets drvEnv
+  decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
   let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
   modifyEnvironment mn f
   pure (TST.DataDecl decl)
