@@ -59,58 +59,52 @@ newKVar = do
 defaultKind :: MonoKind
 defaultKind = CBox CBV
 
-applyEither :: Either Error a -> (a->b) -> Either Error b
-applyEither (Left err) _ = Left err 
-applyEither (Right res) f = Right $ f res
+annotXtor :: PolyKind -> RST.XtorSig pol -> TST.XtorSig pol
+annotXtor polyknd (RST.MkXtorSig nm ctxt) = TST.MkXtorSig nm (annotCtxt polyknd ctxt)
 
-liftPair :: (Either Error a, Either Error b) -> Either Error (a,b)
-liftPair (Left err, _) = Left err 
-liftPair (_, Left err) = Left err 
-liftPair (Right f,Right s) = Right (f,s)
+annotCtxt :: PolyKind -> RST.LinearContext pol -> TST.LinearContext pol
+annotCtxt _ [] = []
+annotCtxt polyknd (RST.PrdCnsType pc ty:rst) = TST.PrdCnsType pc (annotTy polyknd ty) : annotCtxt polyknd rst
 
-liftList:: [Either Error a] -> Either Error [a]
-liftList [] = Right []
-liftList (fst:rst) = case fst of 
-  Left err -> Left err 
-  Right res -> 
-    case liftList rst of 
-      Left err -> Left err 
-      Right res' -> Right $ res:res'
+annotVarTys :: PolyKind -> [RST.VariantType pol] ->[TST.VariantType pol]
+annotVarTys _ [] = [] 
+annotVarTys polyknd (RST.CovariantType ty:rst) = TST.CovariantType (annotTy polyknd ty) : annotVarTys polyknd rst
+annotVarTys polyknd (RST.ContravariantType ty:rst) = TST.ContravariantType (annotTy polyknd ty) : annotVarTys polyknd rst
 
 
-annotXtor :: RST.XtorSig pol -> TST.XtorSig pol
-annotXtor (RST.MkXtorSig nm ctxt) = TST.MkXtorSig nm (annotCtxt ctxt)
 
-annotCtxt :: RST.LinearContext pol -> TST.LinearContext pol
-annotCtxt [] = []
-annotCtxt (RST.PrdCnsType pc ty:rst) = TST.PrdCnsType pc (annotTy ty) : annotCtxt rst
+--data PolyKind =
+--  MkPolyKind { kindArgs :: [(Variance, SkolemTVar, MonoKind)]
+--             , returnKind :: EvaluationOrder
+--             }
+getKindSkolem :: PolyKind -> SkolemTVar -> MonoKind
+getKindSkolem polyknd = searchKindArgs (kindArgs polyknd)
+  where 
+    searchKindArgs :: [(Variance, SkolemTVar, MonoKind)] -> SkolemTVar -> MonoKind
+    searchKindArgs [] _ = error "Skolem Variable not found in argument types of polykind"
+    searchKindArgs ((_,tv,mk):rst) tv' = if tv == tv' then mk else searchKindArgs rst tv'
 
-annotVarTys :: [RST.VariantType pol] ->[TST.VariantType pol]
-annotVarTys [] = [] 
-annotVarTys (RST.CovariantType ty:rst) = TST.CovariantType (annotTy ty) : annotVarTys rst
-annotVarTys (RST.ContravariantType ty:rst) = TST.ContravariantType (annotTy ty) : annotVarTys rst
-
-annotTy :: RST.Typ pol -> TST.Typ pol
-annotTy (RST.TySkolemVar loc pol tv) = TST.TySkolemVar loc pol defaultKind tv 
+annotTy :: PolyKind -> RST.Typ pol -> TST.Typ pol
+annotTy polyknd (RST.TySkolemVar loc pol tv) = TST.TySkolemVar loc pol (getKindSkolem polyknd tv) tv 
 -- uni vars should not appear in data declarations
-annotTy (RST.TyUniVar _ _ _) = error "UniVar should not appear in data declaration"
-annotTy (RST.TyRecVar loc pol tv) = TST.TyRecVar loc pol defaultKind tv
-annotTy (RST.TyData loc pol xtors) =  TST.TyData loc pol defaultKind (map annotXtor xtors)
-annotTy (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol defaultKind (map annotXtor xtors)
-annotTy (RST.TyDataRefined loc pol tyn xtors) =  TST.TyDataRefined loc pol defaultKind tyn (map annotXtor xtors)
-annotTy (RST.TyCodataRefined loc pol tyn xtors) = TST.TyCodataRefined loc pol defaultKind tyn  (map annotXtor xtors)
-annotTy (RST.TyNominal loc pol tyn vartys) = TST.TyNominal loc pol defaultKind tyn (annotVarTys vartys)
-annotTy (RST.TySyn loc pol tyn ty) =  TST.TySyn loc pol tyn (annotTy ty)
-annotTy (RST.TyBot loc) = TST.TyBot loc defaultKind
-annotTy (RST.TyTop loc) = TST.TyTop loc defaultKind
-annotTy (RST.TyUnion loc ty1 ty2) = TST.TyUnion loc defaultKind (annotTy ty1) (annotTy ty2)
-annotTy (RST.TyInter loc ty1 ty2) = TST.TyInter loc defaultKind (annotTy ty1) (annotTy ty2)
-annotTy (RST.TyRec loc pol tv ty) = TST.TyRec loc pol tv (annotTy ty)
-annotTy (RST.TyI64 loc pol) = TST.TyI64 loc pol
-annotTy (RST.TyF64 loc pol) = TST.TyF64 loc pol
-annotTy (RST.TyChar loc pol) = TST.TyChar loc pol
-annotTy (RST.TyString loc pol) = TST.TyString loc pol
-annotTy (RST.TyFlipPol pol ty) = TST.TyFlipPol pol (annotTy ty)
+annotTy _ RST.TyUniVar{} = error "UniVar should not appear in data declaration"
+annotTy polyknd (RST.TyRecVar loc pol tv) = TST.TyRecVar loc pol defaultKind tv
+annotTy polyknd (RST.TyData loc pol xtors) =  TST.TyData loc pol defaultKind (map (annotXtor polyknd) xtors)
+annotTy polyknd (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol defaultKind (map (annotXtor polyknd) xtors)
+annotTy polyknd (RST.TyDataRefined loc pol tyn xtors) =  TST.TyDataRefined loc pol defaultKind tyn (map (annotXtor polyknd) xtors)
+annotTy polyknd (RST.TyCodataRefined loc pol tyn xtors) = TST.TyCodataRefined loc pol defaultKind tyn  (map (annotXtor polyknd) xtors)
+annotTy polyknd (RST.TyNominal loc pol tyn vartys) = TST.TyNominal loc pol defaultKind tyn (annotVarTys polyknd vartys)
+annotTy polyknd (RST.TySyn loc pol tyn ty) =  TST.TySyn loc pol tyn (annotTy polyknd ty)
+annotTy polyknd (RST.TyBot loc) = TST.TyBot loc defaultKind
+annotTy polyknd (RST.TyTop loc) = TST.TyTop loc defaultKind
+annotTy polyknd (RST.TyUnion loc ty1 ty2) = TST.TyUnion loc defaultKind (annotTy polyknd ty1) (annotTy polyknd ty2)
+annotTy polyknd (RST.TyInter loc ty1 ty2) = TST.TyInter loc defaultKind (annotTy polyknd ty1) (annotTy polyknd ty2)
+annotTy polyknd (RST.TyRec loc pol tv ty) = TST.TyRec loc pol tv (annotTy polyknd ty)
+annotTy polyknd (RST.TyI64 loc pol) = TST.TyI64 loc pol
+annotTy polyknd (RST.TyF64 loc pol) = TST.TyF64 loc pol
+annotTy polyknd (RST.TyChar loc pol) = TST.TyChar loc pol
+annotTy polyknd (RST.TyString loc pol) = TST.TyString loc pol
+annotTy polyknd (RST.TyFlipPol pol ty) = TST.TyFlipPol pol (annotTy polyknd ty)
 
 
 annotateDataDecl :: RST.DataDecl -> TST.DataDecl 
@@ -128,7 +122,7 @@ annotateDataDecl RST.NominalDecl {
         data_name = tyn,
         data_polarity = pol,
         data_kind = polyknd,
-        data_xtors = Data.Bifunctor.bimap (map annotXtor) (map annotXtor) xtors
+        data_xtors = Data.Bifunctor.bimap (map (annotXtor polyknd)) (map (annotXtor polyknd)) xtors
       }
 annotateDataDecl RST.RefinementDecl { 
   data_loc = loc, 
@@ -146,11 +140,11 @@ annotateDataDecl RST.RefinementDecl {
       data_doc = doc,
       data_name = tyn,
       data_polarity = pol ,
-      data_refinement_empty = Data.Bifunctor.bimap annotTy annotTy empt,
-      data_refinement_full = Data.Bifunctor.bimap annotTy annotTy ful, 
+      data_refinement_empty = Data.Bifunctor.bimap (annotTy polyknd) (annotTy polyknd) empt,
+      data_refinement_full = Data.Bifunctor.bimap (annotTy polyknd) (annotTy polyknd) ful, 
       data_kind = polyknd,
-      data_xtors = Data.Bifunctor.bimap (map annotXtor) (map annotXtor) xtors,
-      data_xtors_refined = Data.Bifunctor.bimap (map annotXtor) (map annotXtor) xtorsref
+      data_xtors = Data.Bifunctor.bimap (map (annotXtor polyknd)) (map (annotXtor polyknd)) xtors,
+      data_xtors_refined = Data.Bifunctor.bimap (map (annotXtor polyknd)) (map (annotXtor polyknd)) xtorsref
       }
 
 --------------------------------------------------------------------------------------------
