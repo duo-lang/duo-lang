@@ -4,6 +4,7 @@ module Parser.Kinds
   , monoKindP
   , polyKindP
   , tParamP
+  , tvarAnnotP
   ) where
 
 import Text.Megaparsec
@@ -29,6 +30,15 @@ monoKindP = CBox <$> evalOrderP
          <|> F64Rep <$ (keywordP KwF64Rep >> sc)
          <|> CharRep <$ (keywordP KwCharRep >> sc)
          <|> StringRep <$ (keywordP KwStringRep >> sc)
+
+-- | Parses annotated Kind Parameter
+tvarAnnotP :: Parser (SkolemTVar, MonoKind, SourcePos)
+tvarAnnotP = do
+  (var,pos) <- tvarP
+  symbolP SymColon 
+  kind <- monoKindP
+  return (var, kind, pos)
+
 
 ---------------------------------------------------------------------------------
 -- PolyKinds
