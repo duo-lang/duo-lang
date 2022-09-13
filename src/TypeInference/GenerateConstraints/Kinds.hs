@@ -13,7 +13,6 @@ import Errors
 import Loc
 import TypeInference.Constraints
 import TypeInference.GenerateConstraints.Definition
-
 import Driver.Environment
 import Control.Monad.Reader
 import Control.Monad.Except
@@ -81,13 +80,20 @@ newKVar = do
 data DataDeclState = DataDeclState
   {
     declKind :: PolyKind,
+    declTyName :: RnTypeName,
     boundRecVars :: M.Map RecTVar MonoKind,
     usedKindVars :: [KVar],
     kvCount :: Int
   }
 
-createDataDeclState :: PolyKind -> DataDeclState
-createDataDeclState polyknd = DataDeclState { declKind = polyknd, boundRecVars = M.empty, usedKindVars = [], kvCount =0  }
+createDataDeclState :: PolyKind -> RnTypeName -> DataDeclState
+createDataDeclState polyknd tyn = DataDeclState 
+  { declKind = polyknd,
+    declTyName = tyn,
+    boundRecVars = M.empty, 
+    usedKindVars = [], 
+    kvCount = 0
+  }
 
 type DataDeclM a = (ReaderT (M.Map ModuleName Environment, ()) (StateT DataDeclState (Except (NonEmpty Error)))) a
 
@@ -96,16 +102,16 @@ runDataDeclM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 
 resolveDataDecl :: RST.DataDecl -> M.Map ModuleName Environment ->  Either (NonEmpty Error) TST.DataDecl
 resolveDataDecl decl env = do
-  (decl', _) <- runDataDeclM (annotateDataDecl decl) env (createDataDeclState (RST.data_kind decl))
+  (decl', _) <- runDataDeclM (annotateDataDecl decl) env (createDataDeclState (RST.data_kind decl) (RST.data_name decl))
   return decl' 
 
 addKVar :: KVar -> DataDeclM () 
-addKVar kv =   modify (\(DataDeclState{declKind = knd, boundRecVars = rvs, usedKindVars = kvs,kvCount = cnt }) 
-          -> DataDeclState { declKind = knd, boundRecVars = rvs, usedKindVars = kv : kvs, kvCount = cnt+1})
+addKVar kv =   modify (\(DataDeclState{declKind = knd, declTyName = tyn, boundRecVars = rvs, usedKindVars = kvs,kvCount = cnt }) 
+          -> DataDeclState { declKind = knd, declTyName = tyn, boundRecVars = rvs, usedKindVars = kv : kvs, kvCount = cnt+1})
 
 addRecVar :: RecTVar ->  MonoKind -> DataDeclM () 
-addRecVar rv mk =   modify (\(DataDeclState{declKind = knd, boundRecVars = rvs, usedKindVars = kvs,kvCount = cnt }) 
-          -> DataDeclState { declKind = knd, boundRecVars = M.insert rv mk rvs, usedKindVars = kvs, kvCount = cnt+1})
+addRecVar rv mk =   modify (\(DataDeclState{declKind = knd, declTyName = tyn, boundRecVars = rvs, usedKindVars = kvs,kvCount = cnt }) 
+          -> DataDeclState { declKind = knd, declTyName = tyn, boundRecVars = M.insert rv mk rvs, usedKindVars = kvs, kvCount = cnt+1})
 
 newDeclKVar :: DataDeclM KVar
 newDeclKVar = do
@@ -186,16 +192,31 @@ annotTy (RST.TyCodata loc pol xtors) = do
     compXtorKinds (xtor1:xtor2:rst) = if xtor1==xtor2 then compXtorKinds (xtor2:rst) else Nothing
 annotTy (RST.TyDataRefined loc pol tyn xtors) =  do 
   xtors' <- mapM annotXtor xtors
-  decl <- lookupTypeName loc tyn
-  return $ TST.TyDataRefined loc pol (CBox $ returnKind $ TST.data_kind decl) tyn xtors' 
+  tyn' <- gets declTyName
+  if tyn == tyn' then do
+    polyknd <- gets declKind
+    return $ TST.TyDataRefined loc pol (CBox $ returnKind polyknd) tyn xtors' 
+  else do 
+    decl <- lookupTypeName loc tyn
+    return $ TST.TyDataRefined loc pol (CBox $ returnKind $ TST.data_kind decl) tyn xtors' 
 annotTy (RST.TyCodataRefined loc pol tyn xtors) = do 
   xtors' <- mapM annotXtor xtors
-  decl <- lookupTypeName loc tyn
-  return $ TST.TyCodataRefined loc pol (CBox $ returnKind (TST.data_kind decl)) tyn xtors'
+  tyn' <- gets declTyName
+  if tyn == tyn' then do 
+    polyknd <- gets declKind
+    return $ TST.TyCodataRefined loc pol (CBox $ returnKind polyknd) tyn xtors'
+  else do
+    decl <- lookupTypeName loc tyn
+    return $ TST.TyCodataRefined loc pol (CBox $ returnKind (TST.data_kind decl)) tyn xtors'
 annotTy (RST.TyNominal loc pol tyn vartys) = do 
-  decl <- lookupTypeName loc tyn
+  tyn' <- gets declTyName
   vartys' <- annotVarTys vartys
-  return $ TST.TyNominal loc pol (CBox $ returnKind (TST.data_kind decl)) tyn vartys' 
+  if tyn == tyn' then do
+    polyknd <- gets declKind
+    return $ TST.TyNominal loc pol (CBox $ returnKind polyknd) tyn vartys' 
+  else do
+    decl <- lookupTypeName loc tyn
+    return $ TST.TyNominal loc pol (CBox $ returnKind (TST.data_kind decl)) tyn vartys' 
 annotTy (RST.TySyn loc pol tyn ty) =  do 
   ty' <- annotTy ty
   return $ TST.TySyn loc pol tyn ty'
