@@ -20,7 +20,6 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Data.Bifunctor (bimap)
 
 --------------------------------------------------------------------------------------------
 -- Helpers
@@ -117,20 +116,44 @@ annotTy (RST.TySkolemVar loc pol tv) = do
 annotTy (RST.TyUniVar loc _ _) = throwOtherError loc ["UniVar should not appear in data declaration"]
 annotTy (RST.TyRecVar loc pol tv) = return $ TST.TyRecVar loc pol defaultKind tv
 annotTy (RST.TyData loc pol xtors) = do 
-  xtors' <- mapM annotXtor xtors
-  return $ TST.TyData loc pol defaultKind xtors' 
+  let xtnms = map RST.sig_name xtors
+  xtorKinds <- mapM lookupXtorKind xtnms
+  let allEq = compXtorKinds xtorKinds  
+  case allEq of 
+    Nothing -> throwOtherError loc ["Not all xtors have the same return kind"]
+    Just mk -> do 
+      xtors' <- mapM annotXtor xtors
+      return $ TST.TyData loc pol mk xtors' 
+  where 
+    compXtorKinds :: [MonoKind] -> Maybe MonoKind
+    compXtorKinds [] = Nothing 
+    compXtorKinds [mk] = Just mk
+    compXtorKinds (xtor1:xtor2:rst) = if xtor1==xtor2 then compXtorKinds (xtor2:rst) else Nothing
 annotTy (RST.TyCodata loc pol xtors) = do 
-  xtors' <- mapM annotXtor xtors
-  return $ TST.TyCodata loc pol defaultKind xtors'
+  let xtnms = map RST.sig_name xtors
+  xtorKinds <- mapM lookupXtorKind xtnms
+  let allEq = compXtorKinds xtorKinds  
+  case allEq of 
+    Nothing -> throwOtherError loc ["Not all xtors have the same return kind"]
+    Just mk -> do 
+      xtors' <- mapM annotXtor xtors
+      return $ TST.TyCodata loc pol mk xtors' 
+  where 
+    compXtorKinds :: [MonoKind] -> Maybe MonoKind
+    compXtorKinds [] = Nothing 
+    compXtorKinds [mk] = Just mk
+    compXtorKinds (xtor1:xtor2:rst) = if xtor1==xtor2 then compXtorKinds (xtor2:rst) else Nothing
 annotTy (RST.TyDataRefined loc pol tyn xtors) =  do 
   xtors' <- mapM annotXtor xtors
   return $ TST.TyDataRefined loc pol defaultKind tyn xtors' 
 annotTy (RST.TyCodataRefined loc pol tyn xtors) = do 
   xtors' <- mapM annotXtor xtors
-  return $ TST.TyCodataRefined loc pol defaultKind tyn xtors'
+  decl <- lookupTypeName loc tyn
+  return $ TST.TyCodataRefined loc pol (CBox $ returnKind (TST.data_kind decl)) tyn xtors'
 annotTy (RST.TyNominal loc pol tyn vartys) = do 
+  decl <- lookupTypeName loc tyn
   vartys' <- annotVarTys vartys
-  return $ TST.TyNominal loc pol defaultKind tyn vartys' 
+  return $ TST.TyNominal loc pol (CBox $ returnKind (TST.data_kind decl)) tyn vartys' 
 annotTy (RST.TySyn loc pol tyn ty) =  do 
   ty' <- annotTy ty
   return $ TST.TySyn loc pol tyn ty'
