@@ -61,11 +61,13 @@ newKVar = do
 data DataDeclState = DataDeclState
   {
     declKind :: PolyKind,
-    boundRecVars :: M.Map RecTVar MonoKind
+    boundRecVars :: M.Map RecTVar MonoKind,
+    usedKindVars :: [KVar],
+    kvCount :: Int
   }
 
 createDataDeclState :: PolyKind -> DataDeclState
-createDataDeclState polyknd = DataDeclState { declKind = polyknd, boundRecVars = M.empty }
+createDataDeclState polyknd = DataDeclState { declKind = polyknd, boundRecVars = M.empty, usedKindVars = [], kvCount =0  }
 
 type DataDeclM a = (ReaderT (M.Map ModuleName Environment, ()) (StateT DataDeclState (Except (NonEmpty Error)))) a
 
@@ -77,10 +79,21 @@ resolveDataDecl decl env = do
   (decl', _) <- runDataDeclM (annotateDataDecl decl) env (createDataDeclState (RST.data_kind decl))
   return decl' 
 
--- only temporary, will be removed 
-defaultKind :: MonoKind
-defaultKind = CBox CBV
+addKVar :: KVar -> DataDeclM () 
+addKVar kv =   modify (\(DataDeclState{declKind = knd, boundRecVars = rvs, usedKindVars = kvs,kvCount = cnt }) 
+          -> DataDeclState { declKind = knd, boundRecVars = rvs, usedKindVars = kv : kvs, kvCount = cnt+1})
 
+addRecVar :: RecTVar ->  MonoKind -> DataDeclM () 
+addRecVar rv mk =   modify (\(DataDeclState{declKind = knd, boundRecVars = rvs, usedKindVars = kvs,kvCount = cnt }) 
+          -> DataDeclState { declKind = knd, boundRecVars = M.insert rv mk rvs, usedKindVars = kvs, kvCount = cnt+1})
+
+newDeclKVar :: DataDeclM KVar
+newDeclKVar = do
+  kvc <- gets kvCount
+  let newKV = MkKVar $ T.pack ("kd"<> show kvc)
+  addKVar newKV
+  return newKV
+  
 annotXtor :: RST.XtorSig pol -> DataDeclM (TST.XtorSig pol)
 annotXtor (RST.MkXtorSig nm ctxt) = do 
   ctxt' <- annotCtxt ctxt
@@ -166,8 +179,8 @@ annotTy (RST.TyNominal loc pol tyn vartys) = do
 annotTy (RST.TySyn loc pol tyn ty) =  do 
   ty' <- annotTy ty
   return $ TST.TySyn loc pol tyn ty'
-annotTy (RST.TyBot loc) = return $ TST.TyBot loc defaultKind
-annotTy (RST.TyTop loc) = return $ TST.TyTop loc defaultKind
+annotTy (RST.TyBot loc) = do TST.TyBot loc . KindVar <$> newDeclKVar
+annotTy (RST.TyTop loc) = do TST.TyTop loc . KindVar <$> newDeclKVar
 annotTy (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
@@ -186,8 +199,8 @@ annotTy (RST.TyInter loc ty1 ty2) = do
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
 annotTy (RST.TyRec loc pol tv ty) = do 
-  modify (\(DataDeclState{declKind=knd, boundRecVars = rvs}) 
-          -> DataDeclState { declKind = knd, boundRecVars = M.insert tv defaultKind rvs })
+  kv <- newDeclKVar
+  addRecVar tv (KindVar kv)
   ty' <- annotTy ty
   return $ TST.TyRec loc pol tv ty' 
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
