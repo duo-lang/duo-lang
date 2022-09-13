@@ -171,11 +171,20 @@ annotTy (RST.TyTop loc) = return $ TST.TyTop loc defaultKind
 annotTy (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
-  return $ TST.TyUnion loc defaultKind ty1' ty2' 
+  let knd = TST.getKind ty1' 
+  if knd == TST.getKind ty2' then 
+    return $ TST.TyUnion loc knd ty1' ty2'
+  else 
+    throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in union do not match"]
+
 annotTy (RST.TyInter loc ty1 ty2) = do 
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
-  return $ TST.TyInter loc defaultKind ty1' ty2'
+  let knd = TST.getKind ty1' 
+  if knd == TST.getKind ty2' then 
+    return $ TST.TyInter loc knd ty1' ty2'
+  else 
+    throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
 annotTy (RST.TyRec loc pol tv ty) = do 
   modify (\(DataDeclState{declKind=knd, boundRecVars = rvs}) 
           -> DataDeclState { declKind = knd, boundRecVars = M.insert tv defaultKind rvs })
