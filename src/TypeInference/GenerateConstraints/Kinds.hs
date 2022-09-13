@@ -58,10 +58,14 @@ newKVar = do
 -- Annotating Data Declarations 
 --------------------------------------------------------------------------------------------
 
-newtype DataDeclState = DataDeclState
+data DataDeclState = DataDeclState
   {
-    declKind :: PolyKind
+    declKind :: PolyKind,
+    boundRecVars :: M.Map RecTVar MonoKind
   }
+
+createDataDeclState :: PolyKind -> DataDeclState
+createDataDeclState polyknd = DataDeclState { declKind = polyknd, boundRecVars = M.empty }
 
 type DataDeclM a = (ReaderT (M.Map ModuleName Environment, ()) (StateT DataDeclState (Except (NonEmpty Error)))) a
 
@@ -70,7 +74,7 @@ runDataDeclM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 
 resolveDataDecl :: RST.DataDecl -> M.Map ModuleName Environment ->  Either (NonEmpty Error) TST.DataDecl
 resolveDataDecl decl env = do
-  (decl', _) <- runDataDeclM (annotateDataDecl decl) env (DataDeclState (RST.data_kind decl))
+  (decl', _) <- runDataDeclM (annotateDataDecl decl) env (createDataDeclState (RST.data_kind decl))
   return decl' 
 
 -- only temporary, will be removed 
@@ -114,7 +118,11 @@ annotTy (RST.TySkolemVar loc pol tv) = do
   return $ TST.TySkolemVar loc pol (getKindSkolem polyknd tv) tv 
 -- uni vars should not appear in data declarations
 annotTy (RST.TyUniVar loc _ _) = throwOtherError loc ["UniVar should not appear in data declaration"]
-annotTy (RST.TyRecVar loc pol tv) = return $ TST.TyRecVar loc pol defaultKind tv
+annotTy (RST.TyRecVar loc pol tv) = do
+  rvs <- gets boundRecVars 
+  case M.lookup tv rvs of 
+    Nothing -> throwOtherError loc ["Unbound RecVar " <> ppPrint tv <> " in Xtor"]
+    Just knd -> return $ TST.TyRecVar loc pol knd tv
 annotTy (RST.TyData loc pol xtors) = do 
   let xtnms = map RST.sig_name xtors
   xtorKinds <- mapM lookupXtorKind xtnms
@@ -145,7 +153,8 @@ annotTy (RST.TyCodata loc pol xtors) = do
     compXtorKinds (xtor1:xtor2:rst) = if xtor1==xtor2 then compXtorKinds (xtor2:rst) else Nothing
 annotTy (RST.TyDataRefined loc pol tyn xtors) =  do 
   xtors' <- mapM annotXtor xtors
-  return $ TST.TyDataRefined loc pol defaultKind tyn xtors' 
+  decl <- lookupTypeName loc tyn
+  return $ TST.TyDataRefined loc pol (CBox $ returnKind $ TST.data_kind decl) tyn xtors' 
 annotTy (RST.TyCodataRefined loc pol tyn xtors) = do 
   xtors' <- mapM annotXtor xtors
   decl <- lookupTypeName loc tyn
@@ -168,6 +177,8 @@ annotTy (RST.TyInter loc ty1 ty2) = do
   ty2' <- annotTy ty2
   return $ TST.TyInter loc defaultKind ty1' ty2'
 annotTy (RST.TyRec loc pol tv ty) = do 
+  modify (\(DataDeclState{declKind=knd, boundRecVars = rvs}) 
+          -> DataDeclState { declKind = knd, boundRecVars = M.insert tv defaultKind rvs })
   ty' <- annotTy ty
   return $ TST.TyRec loc pol tv ty' 
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
