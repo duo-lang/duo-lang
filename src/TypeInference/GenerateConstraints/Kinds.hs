@@ -54,19 +54,14 @@ getXtorKinds loc (xtor:xtors) = do
 getTyNameKind ::  Loc -> RnTypeName -> GenM (MonoKind,[MonoKind])
 getTyNameKind loc tyn = do
   decl <- lookupTypeName loc tyn
-  let polyKnd = RST.data_kind decl
+  let polyKnd = TST.data_kind decl
   let argKnds = map (\(_,_,x) -> x) (kindArgs polyKnd)
   return (CBox (returnKind polyKnd), argKnds)
 
-  
 getKindDecl ::  TST.DataDecl -> GenM MonoKind
 getKindDecl decl = do
   let polyknd = TST.data_kind decl
   return (CBox (returnKind polyknd))
-
-newKVar :: GenM KVar
-newKVar = do
-  kvCnt <- gets kVarCount
   let kVar = MkKVar (T.pack ("kv" <> show kvCnt))
   modify (\gs@GenerateState{} -> gs { kVarCount = kvCnt + 1 })
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_kvars } } ->
@@ -165,13 +160,13 @@ annotTy (RST.TyRecVar loc pol tv) = do
 annotTy (RST.TyData loc pol xtors) = do 
   let xtnms = map RST.sig_name xtors
   xtorKinds <- mapM lookupXtorKind xtnms
-  let allEq = compXtorKinds xtorKinds  
+  let allEq = compXtorKinds (map fst xtorKinds)
   case allEq of 
     Nothing -> throwOtherError loc ["Not all xtors have the same return kind"]
     Just mk -> do 
       xtors' <- mapM annotXtor xtors
       return $ TST.TyData loc pol mk xtors' 
-  where 
+  where
     compXtorKinds :: [MonoKind] -> Maybe MonoKind
     compXtorKinds [] = Nothing 
     compXtorKinds [mk] = Just mk
@@ -179,7 +174,7 @@ annotTy (RST.TyData loc pol xtors) = do
 annotTy (RST.TyCodata loc pol xtors) = do 
   let xtnms = map RST.sig_name xtors
   xtorKinds <- mapM lookupXtorKind xtnms
-  let allEq = compXtorKinds xtorKinds  
+  let allEq = compXtorKinds (map fst xtorKinds)
   case allEq of 
     Nothing -> throwOtherError loc ["Not all xtors have the same return kind"]
     Just mk -> do 

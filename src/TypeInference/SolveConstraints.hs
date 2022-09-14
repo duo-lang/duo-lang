@@ -30,7 +30,7 @@ import Syntax.CST.Names
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.CST.Kinds
 
-
+import Debug.Trace
 ------------------------------------------------------------------------------
 -- Constraint solver monad
 ------------------------------------------------------------------------------
@@ -108,13 +108,6 @@ addLowerBound uv ty = do
 addTypeClassConstraint :: UniTVar -> ClassName -> SolverM ()
 addTypeClassConstraint uv cn = modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs lbs (cn:classes) kind) uv
 
-lookupKVar :: KVar -> SolverM (Maybe MonoKind, Set KVar)
-lookupKVar kv = do 
-  mp <- gets sst_kvars
-  case M.toList (M.filter (\x -> kv `elem` x) mp) of 
-    [] -> throwSolverError defaultLoc ["Kind variable "<> ppPrint kv<> " not found."]
-    [(mk,set)] -> pure (mk,set)
-    _ -> throwSolverError defaultLoc ["Multiple kinds for kind variable" <> ppPrint kv]
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
@@ -160,8 +153,10 @@ unifyKinds (CBox cc1) (CBox cc2) =
     else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
 unifyKinds (KindVar kv1) (KindVar kv2) = do
   sets <- getKVars
-  let ([(kvset1,mk1)],rest1) = partition (\x -> kv1 `elem` fst x) sets
-  let ([(kvset2,mk2)],rest2) = partition (\x -> kv2 `elem` fst x) sets
+  let part1 = partition (\x -> kv1 `elem` fst x) sets
+  let part2 = partition (\x -> kv2 `elem` fst x) sets
+  let ([(kvset1,mk1)],rest1) = case part1 of ([(kvset,mk)],rst) -> ([(kvset,mk)],rst); _ -> error "Not working" 
+  let ([(kvset2,mk2)],rest2) = case part2 of ([(kvset,mk)],rst) -> ([(kvset,mk)],rst); _ -> error "Not workng" 
   let newSet = kvset1 ++ kvset2
   case (mk1,mk2) of 
     (mk1, Nothing) -> putKVars $ (newSet,mk1):rest2

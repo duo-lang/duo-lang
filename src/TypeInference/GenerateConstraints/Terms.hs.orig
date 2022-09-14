@@ -286,8 +286,14 @@ genConstraintsCommand (Core.Read loc cns) = do
   cns' <- genConstraintsTerm cns
   peanoDecl <- lookupTypeName loc peanoNm
   let peanoKnd = CBox (returnKind (TST.data_kind peanoDecl))
+<<<<<<< HEAD
   addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm []) (TST.getTypeTerm cns'))
-    -- subtypes need the same kid
+=======
+  let ty = TST.getTypeTerm cns'
+  addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm []) ty)
+  -- subtypes need the same kind
+  addConstraint $ KindEq KindConstraint peanoKnd (TST.getKind ty) 
+>>>>>>> a1fb5aea (fixed some merge problems)
   return (TST.Read loc cns')
 genConstraintsCommand (Core.Apply loc annot t1 t2) = do
   t1' <- genConstraintsTerm t1
