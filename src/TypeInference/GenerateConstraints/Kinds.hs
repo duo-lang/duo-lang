@@ -131,6 +131,27 @@ getKindSkolem polyknd = searchKindArgs (kindArgs polyknd)
     searchKindArgs [] _ = error "Skolem Variable not found in argument types of polykind"
     searchKindArgs ((_,tv,mk):rst) tv' = if tv == tv' then mk else searchKindArgs rst tv'
 
+removeKVars :: TST.Typ pol -> DataDeclM (TST.Typ pol)
+removeKVars sv@TST.TySkolemVar{} = return sv -- no kvars possible
+removeKVars uv@TST.TyUniVar{} = return uv -- no kvars possible
+removeKVars rv@TST.TyRecVar{} = return rv
+removeKVars tyd@TST.TyData{} = return  tyd
+removeKVars tycd@TST.TyCodata{} = return tycd
+removeKVars tydr@TST.TyDataRefined{} = return tydr
+removeKVars tycdr@TST.TyCodataRefined{} = return tycdr
+removeKVars tyn@TST.TyNominal{} = return tyn
+removeKVars tys@TST.TySyn{} = return tys
+removeKVars bot@TST.TyBot{} = return bot
+removeKVars top@TST.TyTop{} = return top
+removeKVars union@TST.TyUnion{} = return union
+removeKVars inter@TST.TyInter{} = return inter
+removeKVars tr@TST.TyRec{} = return tr
+removeKVars i64@TST.TyI64{} = return i64 -- no kvars possible
+removeKVars f64@TST.TyF64{} = return f64 -- no kvars possible
+removeKVars ch@TST.TyChar{} = return ch -- no kvars possible
+removeKVars str@TST.TyString{} = return str -- no kvars possible
+removeKVars flp@TST.TyFlipPol{} = return flp
+
 annotTy :: RST.Typ pol -> DataDeclM (TST.Typ pol)
 annotTy (RST.TySkolemVar loc pol tv) = do 
   polyknd <- gets declKind
