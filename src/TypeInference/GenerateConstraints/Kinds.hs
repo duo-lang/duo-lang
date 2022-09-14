@@ -131,26 +131,37 @@ getKindSkolem polyknd = searchKindArgs (kindArgs polyknd)
     searchKindArgs [] _ = error "Skolem Variable not found in argument types of polykind"
     searchKindArgs ((_,tv,mk):rst) tv' = if tv == tv' then mk else searchKindArgs rst tv'
 
+-- only recvars, bottom and top can contain kvars
 removeKVars :: TST.Typ pol -> DataDeclM (TST.Typ pol)
-removeKVars sv@TST.TySkolemVar{} = return sv -- no kvars possible
-removeKVars uv@TST.TyUniVar{} = return uv -- no kvars possible
-removeKVars rv@TST.TyRecVar{} = return rv
-removeKVars tyd@TST.TyData{} = return  tyd
-removeKVars tycd@TST.TyCodata{} = return tycd
-removeKVars tydr@TST.TyDataRefined{} = return tydr
-removeKVars tycdr@TST.TyCodataRefined{} = return tycdr
-removeKVars tyn@TST.TyNominal{} = return tyn
-removeKVars tys@TST.TySyn{} = return tys
-removeKVars bot@TST.TyBot{} = return bot
-removeKVars top@TST.TyTop{} = return top
-removeKVars union@TST.TyUnion{} = return union
-removeKVars inter@TST.TyInter{} = return inter
-removeKVars tr@TST.TyRec{} = return tr
-removeKVars i64@TST.TyI64{} = return i64 -- no kvars possible
-removeKVars f64@TST.TyF64{} = return f64 -- no kvars possible
-removeKVars ch@TST.TyChar{} = return ch -- no kvars possible
-removeKVars str@TST.TyString{} = return str -- no kvars possible
-removeKVars flp@TST.TyFlipPol{} = return flp
+-- already correctly annotated
+removeKVars sv@TST.TySkolemVar{}          = return sv
+-- should neve appear
+removeKVars uv@TST.TyUniVar{}             = return uv
+removeKVars rv@TST.TyRecVar{}             = return rv                            -- TODO -- always gets kvar (
+removeKVars tyd@TST.TyData{}              = return tyd                           -- TODO -- xtors are annotated (actual kind always inhabited)
+removeKVars tycd@TST.TyCodata{}           = return tycd                          -- TODO -- xtors are annotated (actual kind always inhabited) 
+removeKVars tydr@TST.TyDataRefined{}      = return tydr                          -- TODO -- xtors are annotated 
+removeKVars tycdr@TST.TyCodataRefined{}   = return tycdr                         -- TODO -- xtors are annotated 
+removeKVars tyn@TST.TyNominal{}           = return tyn                           -- TODO -- vartys are annotated
+-- only the contained type has to be checked
+removeKVars (TST.TySyn loc pol tyn ty)    = do 
+  ty' <- removeKVars ty
+  return $ TST.TySyn loc pol tyn ty'
+removeKVars bot@TST.TyBot{}               = return bot                           -- TODO -- always gets kvar 
+removeKVars top@TST.TyTop{}               = return top                           -- TODO -- always gets kvar
+removeKVars (TST.TyUnion loc knd ty1 ty2) = return (TST.TyUnion loc knd ty1 ty2) -- TODO -- ty1 and ty2 may contain kvars
+removeKVars (TST.TyInter loc knd ty1 ty2) = return (TST.TyInter loc knd ty1 ty2) -- TODO -- ty1 and ty2 may contain kvars
+removeKVars tr@TST.TyRec{}                = return tr                            -- TODO -- recursive type and recvar may contain kvars
+-- primitive types don't contain a type
+removeKVars i64@TST.TyI64{}               = return i64
+removeKVars f64@TST.TyF64{}               = return f64
+removeKVars ch@TST.TyChar{}               = return ch
+removeKVars str@TST.TyString{}            = return str
+-- only the contained type needs to be checked
+removeKVars (TST.TyFlipPol pol ty)        = do 
+  ty' <- removeKVars ty
+  return $ TST.TyFlipPol pol ty'
+
 
 annotTy :: RST.Typ pol -> DataDeclM (TST.Typ pol)
 annotTy (RST.TySkolemVar loc pol tv) = do 
@@ -170,7 +181,7 @@ annotTy (RST.TyData loc pol xtors) = do
   case allEq of 
     Nothing -> throwOtherError loc ["Not all xtors have the same return kind"]
     Just mk -> do 
-      xtors' <- mapM annotXtor xtors
+      xtors' <- mapM (\x -> lookupXtorSig loc x pol) xtnms
       return $ TST.TyData loc pol mk xtors' 
   where 
     compXtorKinds :: [MonoKind] -> Maybe MonoKind
@@ -184,7 +195,7 @@ annotTy (RST.TyCodata loc pol xtors) = do
   case allEq of 
     Nothing -> throwOtherError loc ["Not all xtors have the same return kind"]
     Just mk -> do 
-      xtors' <- mapM annotXtor xtors
+      xtors' <- mapM (\x -> lookupXtorSig loc x (RST.flipPolarityRep pol)) xtnms
       return $ TST.TyCodata loc pol mk xtors' 
   where 
     compXtorKinds :: [MonoKind] -> Maybe MonoKind
