@@ -16,7 +16,8 @@ import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Names
 import Syntax.CST.Kinds
-import Translate.Embed
+import Translate.EmbedTST (EmbedTST(..))
+
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.GenerateConstraints.Kinds
 import TypeInference.Constraints
@@ -99,11 +100,11 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     let substTypes = TST.getTypArgs inferredSubst
     case rep of
       PrdRep -> do
-        let rstty = RST.TyData defaultLoc PosRep [RST.MkXtorSig xt (embedTSTPrdCnsType <$> substTypes)]
+        let rstty = RST.TyData defaultLoc PosRep [RST.MkXtorSig xt (embedTST <$> substTypes)]
         tstty <- annotateKind rstty
         return $ TST.Xtor loc annot rep tstty CST.Structural xt inferredSubst
       CnsRep -> do 
-        let rstty = RST.TyCodata defaultLoc NegRep [RST.MkXtorSig xt (embedTSTPrdCnsType <$> substTypes)]
+        let rstty = RST.TyCodata defaultLoc NegRep [RST.MkXtorSig xt (embedTST <$> substTypes)]
         tstty <- annotateKind rstty
         return $ TST.Xtor loc annot rep tstty CST.Structural xt inferredSubst
   --
@@ -161,11 +162,11 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     case rep of
       -- The return type is a structural type consisting of a XtorSig for each case.
       PrdRep -> do 
-        let rstty = RST.TyCodata defaultLoc PosRep (embedTSTXtorSig <$> xtors)
+        let rstty = RST.TyCodata defaultLoc PosRep (embedTST <$> xtors)
         tstty <- annotateKind rstty
         return $ TST.XCase loc annot rep tstty CST.Structural (fst <$> inferredCases)
       CnsRep -> do
-        let rstty = RST.TyData defaultLoc NegRep (embedTSTXtorSig <$> xtors)
+        let rstty = RST.TyData defaultLoc NegRep (embedTST <$> xtors)
         tstty <- annotateKind rstty
         return $ TST.XCase loc annot rep tstty CST.Structural (fst <$> inferredCases)
   --

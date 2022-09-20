@@ -12,7 +12,8 @@ import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Names
 import TypeInference.Constraints
 import Syntax.CST.Kinds
-import Translate.Embed
+import Translate.EmbedCore ()
+import Translate.EmbedTST (EmbedTST(..))
 
 ---------------------------------------------------------------------------------
 -- Generated Constraints
@@ -94,10 +95,10 @@ printRSTUpperBounds upperbounds =
                 ]
 
 printTSTLowerBounds :: [TST.Typ 'Pos] -> Doc Annotation
-printTSTLowerBounds ls = printRSTLowerBounds (map embedTSTType ls)
+printTSTLowerBounds ls = printRSTLowerBounds (map embedTST ls)
 
 printTSTUpperBounds :: [TST.Typ 'Neg] -> Doc Annotation
-printTSTUpperBounds ls = printRSTUpperBounds (map embedTSTType ls)
+printTSTUpperBounds ls = printRSTUpperBounds (map embedTST ls)
 
 printTypeClassConstraints :: [ClassName] -> Doc Annotation
 printTypeClassConstraints [] = mempty

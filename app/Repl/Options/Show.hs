@@ -22,7 +22,7 @@ import Driver.Environment
 import Syntax.CST.Names
 import Syntax.RST.Program qualified as RST
 import Utils (trim)
-import Translate.Embed
+import Translate.EmbedTST
 
 
 -- Show
@@ -57,7 +57,7 @@ showTypeCmd :: Text -> Repl ()
 showTypeCmd s = do
   env <- gets (drvEnv . replDriverState)
   let concatEnv = concat (fmap snd . declEnv <$> M.elems env)
-  let maybeDecl = find (\x -> rnTnName (RST.data_name x) == MkTypeName s) (map embedTSTDataDecl concatEnv)
+  let maybeDecl = find (\x -> rnTnName (RST.data_name x) == MkTypeName s) (map embedTST concatEnv)
   case maybeDecl of
     Nothing -> prettyRepl ("Type: " <> s <> " not found in environment.")
     Just decl -> prettyRepl decl

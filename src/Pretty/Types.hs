@@ -10,8 +10,9 @@ import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types qualified as CST
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
-import Translate.Reparse
-import Translate.Embed
+import Translate.EmbedRST
+import Translate.EmbedCore ()
+import Translate.EmbedTST (EmbedTST(..))
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
@@ -86,20 +87,20 @@ instance PrettyAnn CST.DataCodata where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (RST.VariantType pol) where
-  prettyAnn varType = prettyAnn (embedVariantType varType)
+  prettyAnn varType = prettyAnn (embedRST varType)
 
 instance PrettyAnn (RST.PrdCnsType pol) where
-  prettyAnn pctype = prettyAnn (embedPrdCnsType pctype)
+  prettyAnn pctype = prettyAnn (embedRST pctype)
 
 instance PrettyAnn (TST.PrdCnsType pol) where 
-  prettyAnn pctype = prettyAnn (embedTSTPrdCnsType pctype)
+  prettyAnn pctype = prettyAnn (embedTST pctype)
 
 instance PrettyAnn CST.PrdCnsTyp where
   prettyAnn (CST.PrdType ty) = prettyAnn ty
   prettyAnn (CST.CnsType ty) = returnKw <+> prettyAnn ty
 
 instance {-# OVERLAPPING #-} PrettyAnn (RST.LinearContext pol) where
-  prettyAnn ctxt = prettyAnn (embedLinearContext ctxt)
+  prettyAnn ctxt = prettyAnn (embedRST ctxt)
 
 instance {-# OVERLAPPING #-} PrettyAnn CST.LinearContext where
   prettyAnn ctxt = parens' comma (prettyAnn <$> ctxt)
@@ -108,10 +109,10 @@ instance {-# OVERLAPPING #-} PrettyAnn (TST.LinearContext pol) where
   prettyAnn ctxt = parens' comma (prettyAnn <$> ctxt)
 
 instance PrettyAnn (RST.XtorSig pol) where
-  prettyAnn xtorSig = prettyAnn (embedXtorSig xtorSig)
+  prettyAnn xtorSig = prettyAnn (embedRST xtorSig)
 
 instance PrettyAnn (TST.XtorSig pol) where
-  prettyAnn xtorSig = prettyAnn (embedTSTXtorSig xtorSig)
+  prettyAnn xtorSig = prettyAnn (embedTST xtorSig)
 
 instance PrettyAnn CST.XtorSig where
   prettyAnn (CST.MkXtorSig xt args) = prettyAnn xt <> prettyAnn args
@@ -121,10 +122,10 @@ instance PrettyAnn CST.XtorSig where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (RST.Typ pol) where
-  prettyAnn typ = prettyAnn (embedType typ)
+  prettyAnn typ = prettyAnn (embedRST typ)
 
 instance PrettyAnn (TST.Typ pol) where
-  prettyAnn typ = prettyAnn (embedTSTType typ)
+  prettyAnn typ = prettyAnn (embedTST typ)
 
 instance PrettyAnn CST.Typ where
   -- Top and Bottom lattice types
@@ -169,10 +170,10 @@ instance PrettyAnn CST.Typ where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (RST.TypeScheme pol) where
-  prettyAnn tys = prettyAnn (embedTypeScheme tys)
+  prettyAnn tys = prettyAnn (embedRST tys)
 
 instance PrettyAnn (TST.TypeScheme pol) where
-  prettyAnn tys = prettyAnn (embedTSTTypeScheme tys)
+  prettyAnn tys = prettyAnn (embedTST tys)
 
 instance PrettyAnn CST.TypeScheme where
   prettyAnn CST.TypeScheme { ts_vars = [], ts_monotype } =

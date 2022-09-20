@@ -38,7 +38,7 @@ import Driver.Environment
     ( Environment(prdEnv, cnsEnv, cmdEnv, declEnv) )
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Names
-import Translate.Embed
+import Translate.EmbedTST
 
 ------------------------------------------------------------------------------
 -- Options
@@ -131,7 +131,7 @@ cmdCompleter = mkWordCompleter (_simpleComplete f)
       let keys = concat [ unFreeVarName <$> M.keys concatPrdEnv
                         , unFreeVarName <$> M.keys concatCnsEnv
                         , unFreeVarName <$> M.keys concatCmdEnv
-                        , (unTypeName . rnTnName . RST.data_name . snd) <$>  map (\(x,y) -> (x, embedTSTDataDecl y)) concatDeclEnv
+                        , (unTypeName . rnTnName . RST.data_name . snd) <$>  map (\(x,y) -> (x, embedTST y)) concatDeclEnv
                         ]
       return $ filter (isPrefixOf n) (completionList ++ (T.unpack <$> keys))
     _simpleComplete f word = f word >>= return . map simpleCompletion
