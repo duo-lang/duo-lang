@@ -47,7 +47,7 @@ import Loc ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program (prdCnsToPol)
-import Sugar.Desugar (desugarModule)
+import Sugar.Desugar (Desugar(..))
 import qualified Data.Set as S
 import Data.Maybe (catMaybes)
 import Pretty.Common (Header(..))
@@ -331,7 +331,7 @@ runCompilationPlan compilationOrder = do
       sts <- getSymbolTables
       resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveModule decls))
       -- 4. Desugar the program
-      let desugaredProg = desugarModule resolvedDecls
+      let desugaredProg = desugar resolvedDecls
       -- 5. Infer the declarations
       inferredDecls <- inferProgram desugaredProg
       -- 6. Add the resolved AST to the cache

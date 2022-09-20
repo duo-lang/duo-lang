@@ -32,8 +32,8 @@ import Parser.Terms ( termP )
 import Pretty.Pretty ( ppPrintString )
 import Resolution.Definition ( runResolverM, ResolveReader (ResolveReader) )
 import Resolution.Types ( resolveTypeScheme )
-import Sugar.Desugar ( desugarCmd, desugarEnvironment,  desugarDecl )
-import Translate.Focusing ( focusCmd, focusEnvironment )
+import Sugar.Desugar ( Desugar(..))
+import Translate.Focusing ( Focus(..))
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
@@ -84,7 +84,7 @@ letRepl txt = do
     decl <- runInteractiveParser declarationP txt
     sts <- getSymbolTables
     resolvedDecl <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveDecl decl))
-    _ <- inferDecl interactiveModule (desugarDecl resolvedDecl)
+    _ <- inferDecl interactiveModule (desugar resolvedDecl)
     pure ()
 
 ---------------------------------------------------------------------------------
@@ -98,11 +98,11 @@ runCmd txt steps = do
     parsedCommand <- runInteractiveParser termP txt
     sts <- getSymbolTables
     resolvedDecl <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveCommand parsedCommand))
-    let cmdDecl = Core.MkCommandDeclaration defaultLoc Nothing (MkFreeVarName "main") (desugarCmd resolvedDecl)
+    let cmdDecl = Core.MkCommandDeclaration defaultLoc Nothing (MkFreeVarName "main") (desugar resolvedDecl)
     (TST.CmdDecl TST.MkCommandDeclaration { cmddecl_cmd }) <- inferDecl interactiveModule (Core.CmdDecl cmdDecl)
     env <- gets drvEnv
-    let compiledCmd = focusCmd CBV cmddecl_cmd
-    let compiledEnv = focusEnvironment CBV (desugarEnvironment env)
+    let compiledCmd = focus CBV cmddecl_cmd
+    let compiledEnv = focus CBV (desugar env)
     case steps of
         NoSteps -> do
             resE <- liftIO $ eval compiledCmd compiledEnv

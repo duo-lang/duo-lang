@@ -1,10 +1,5 @@
 module Translate.Focusing
-  ( focusModule
-  , focusTerm
-  , focusCmd
-  , focusEnvironment
-  , focusPrdCnsDeclaration
-  , focusCommandDeclaration
+  ( Focus(..)
   , isFocusedTerm
   , isFocusedCmd
   ) where
@@ -144,22 +139,27 @@ isFocusedCmd eo (PrimOp loc op subst)      = PrimOp loc op <$> isValueSubst eo s
 -- focusXtor' _ _ (c:ts) Ts := (mu beta_i. focusXtor' _ _ ts (beta_i:Ts)) >> [[c]]
 ---------------------------------------------------------------------------------
 
-focusTerm :: EvaluationOrder  -> Term pc -> Term pc
--- If the term is already focused, we don't want to do anything
-focusTerm eo (isFocusedTerm eo -> Just tm)   = tm
-focusTerm _  (BoundVar loc rep ty var)          = BoundVar loc rep ty var
-focusTerm _  (FreeVar loc rep ty var)           = FreeVar loc rep ty var
-focusTerm eo (Xtor _ _annot pcrep ty ns xt subst) = focusXtor eo pcrep ty ns xt subst
-focusTerm eo (XCase loc _annot rep ty ns cases) = XCase loc MatchAnnotOrig rep ty ns (focusCmdCase eo <$> cases)
-focusTerm eo (MuAbs loc _annot rep ty v cmd)     = MuAbs loc MuAnnotOrig rep ty v (focusCmd eo cmd)
-focusTerm _ (PrimLitI64 loc i)               = PrimLitI64 loc i
-focusTerm _ (PrimLitF64 loc d)               = PrimLitF64 loc d
-focusTerm _ (PrimLitChar loc d)              = PrimLitChar loc d
-focusTerm _ (PrimLitString loc d)            = PrimLitString loc d
+class Focus a where
+  focus :: EvaluationOrder -> a -> a
 
-focusPrdCnsTerm :: EvaluationOrder -> PrdCnsTerm -> PrdCnsTerm
-focusPrdCnsTerm eo (PrdTerm tm) = PrdTerm $ focusTerm eo tm
-focusPrdCnsTerm eo (CnsTerm tm) = CnsTerm $ focusTerm eo tm
+instance Focus (Term pc) where
+  focus :: EvaluationOrder  -> Term pc -> Term pc
+  -- If the term is already focused, we don't want to do anything
+  focus eo (isFocusedTerm eo -> Just tm)   = tm
+  focus _  (BoundVar loc rep ty var)          = BoundVar loc rep ty var
+  focus _  (FreeVar loc rep ty var)           = FreeVar loc rep ty var
+  focus eo (Xtor _ _annot pcrep ty ns xt subst) = focusXtor eo pcrep ty ns xt subst
+  focus eo (XCase loc _annot rep ty ns cases) = XCase loc MatchAnnotOrig rep ty ns (focus eo <$> cases)
+  focus eo (MuAbs loc _annot rep ty v cmd)     = MuAbs loc MuAnnotOrig rep ty v (focus eo cmd)
+  focus _ (PrimLitI64 loc i)               = PrimLitI64 loc i
+  focus _ (PrimLitF64 loc d)               = PrimLitF64 loc d
+  focus _ (PrimLitChar loc d)              = PrimLitChar loc d
+  focus _ (PrimLitString loc d)            = PrimLitString loc d
+
+instance Focus PrdCnsTerm where
+  focus :: EvaluationOrder -> PrdCnsTerm -> PrdCnsTerm
+  focus eo (PrdTerm tm) = PrdTerm $ focus eo tm
+  focus eo (CnsTerm tm) = CnsTerm $ focus eo tm
 
 -- | The variable used for focusing the entire Xtor.
 -- We use an unparseable name to guarantee that the name is fresh.
@@ -192,30 +192,32 @@ focusXtor' eo pc     ty ns xt (PrdTerm                                 prd:pcter
                                                                   tprd = getTypeTerm prd
                                                                   cmd = LN.close [(Prd,var)]  (LN.shift ShiftUp (focusXtor' eo pc ty ns xt pcterms (PrdTerm (FreeVar defaultLoc PrdRep tprd var) : pcterms')))
                                                               in
-                                                                  Apply defaultLoc ApplyAnnotOrig  (CBox eo) (focusTerm eo prd) (MuAbs defaultLoc MuAnnotOrig CnsRep (TyFlipPol NegRep tprd) Nothing cmd)
+                                                                  Apply defaultLoc ApplyAnnotOrig  (CBox eo) (focus eo prd) (MuAbs defaultLoc MuAnnotOrig CnsRep (TyFlipPol NegRep tprd) Nothing cmd)
 focusXtor' eo pc     ty ns xt (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusXtor' eo pc ty ns xt pcterms (CnsTerm cns : pcterms')
 focusXtor' eo pc     ty ns xt (CnsTerm                                 cns:pcterms) pcterms' =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   tcns = getTypeTerm cns
                                                                   cmd = LN.close [(Cns,var)] (LN.shift ShiftUp (focusXtor' eo pc ty ns xt pcterms (CnsTerm (FreeVar defaultLoc CnsRep tcns var) : pcterms')))
-                                                              in Apply defaultLoc ApplyAnnotOrig  (CBox eo) (MuAbs defaultLoc MuAnnotOrig PrdRep (TyFlipPol PosRep tcns) Nothing cmd) (focusTerm eo cns)
+                                                              in Apply defaultLoc ApplyAnnotOrig  (CBox eo) (MuAbs defaultLoc MuAnnotOrig PrdRep (TyFlipPol PosRep tcns) Nothing cmd) (focus eo cns)
 
 
 
-focusCmdCase :: EvaluationOrder -> CmdCase -> CmdCase
-focusCmdCase eo MkCmdCase { cmdcase_pat = XtorPat loc xt args, cmdcase_cmd } =
-    MkCmdCase { cmdcase_loc = defaultLoc
-              , cmdcase_pat = XtorPat loc xt ((\(pc,_) -> (pc, Nothing)) <$> args)
-              , cmdcase_cmd = focusCmd eo cmdcase_cmd}
+instance Focus CmdCase where
+  focus :: EvaluationOrder -> CmdCase -> CmdCase
+  focus eo MkCmdCase { cmdcase_pat = XtorPat loc xt args, cmdcase_cmd } =
+      MkCmdCase { cmdcase_loc = defaultLoc
+                , cmdcase_pat = XtorPat loc xt ((\(pc,_) -> (pc, Nothing)) <$> args)
+                , cmdcase_cmd = focus eo cmdcase_cmd}
 
 
-focusInstanceCase :: EvaluationOrder -> InstanceCase -> InstanceCase
-focusInstanceCase eo MkInstanceCase { instancecase_pat = XtorPat loc xt args, instancecase_cmd } =
-    MkInstanceCase { instancecase_loc = defaultLoc
-                   , instancecase_pat = XtorPat loc xt ((\(pc,_) -> (pc, Nothing)) <$> args)
-                   , instancecase_cmd = focusCmd eo instancecase_cmd
-                   }
+instance Focus InstanceCase where
+  focus :: EvaluationOrder -> InstanceCase -> InstanceCase
+  focus eo MkInstanceCase { instancecase_pat = XtorPat loc xt args, instancecase_cmd } =
+      MkInstanceCase { instancecase_loc = defaultLoc
+                    , instancecase_pat = XtorPat loc xt ((\(pc,_) -> (pc, Nothing)) <$> args)
+                    , instancecase_cmd = focus eo instancecase_cmd
+                    }
 
 
 focusPrimOp :: EvaluationOrder -> RST.PrimitiveOp -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
@@ -226,82 +228,89 @@ focusPrimOp eo op (PrdTerm prd:pcterms) pcterms' =
         var = betaVar (length pcterms')
         cmd = LN.close [(Prd,var)]  (LN.shift ShiftUp (focusPrimOp eo op pcterms (PrdTerm (FreeVar defaultLoc PrdRep (getTypeTerm prd) var) : pcterms')))
     in
-        Apply defaultLoc ApplyAnnotOrig (CBox eo) (focusTerm eo prd) (MuAbs defaultLoc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing cmd)
+        Apply defaultLoc ApplyAnnotOrig (CBox eo) (focus eo prd) (MuAbs defaultLoc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing cmd)
 focusPrimOp eo op (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusPrimOp eo op pcterms (CnsTerm cns : pcterms')
 focusPrimOp eo op (CnsTerm cns:pcterms) pcterms' =
     let
         var = betaVar (length pcterms')
         cmd = LN.close [(Cns,var)] (LN.shift ShiftUp (focusPrimOp eo op pcterms (CnsTerm (FreeVar defaultLoc CnsRep (getTypeTerm cns) var) : pcterms')))
     in
-        Apply defaultLoc ApplyAnnotOrig  (CBox eo) (MuAbs defaultLoc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing cmd) (focusTerm eo cns)
+        Apply defaultLoc ApplyAnnotOrig  (CBox eo) (MuAbs defaultLoc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing cmd) (focus eo cns)
 
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.
-focusCmd :: EvaluationOrder -> Command -> Command
-focusCmd eo (Apply loc _annot _kind prd cns) = Apply loc ApplyAnnotOrig (CBox eo) (focusTerm eo prd) (focusTerm eo cns)
-focusCmd _  (ExitSuccess loc) = ExitSuccess loc
-focusCmd _  (ExitFailure loc) = ExitFailure loc
-focusCmd _  (Jump loc fv) = Jump loc fv
-focusCmd eo (Method loc mn cn subst) = Method loc mn cn (focusPrdCnsTerm eo <$> subst)
-focusCmd eo (Print loc (isValueTerm eo PrdRep -> Just prd) cmd) = Print loc prd (focusCmd eo cmd)
-focusCmd eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig (CBox eo) (focusTerm eo prd)
-                                                             (MuAbs loc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing (Print loc (BoundVar loc PrdRep (getTypeTerm prd) (0,0)) (focusCmd eo cmd)))
-focusCmd eo (Read loc (isValueTerm eo CnsRep -> Just cns)) = Read loc cns
-focusCmd eo (Read loc cns) = Apply loc ApplyAnnotOrig (CBox eo) (MuAbs loc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing (Read loc (BoundVar loc CnsRep (getTypeTerm cns) (0,0))))
-                                                        (focusTerm eo cns)
-focusCmd eo (PrimOp _ op subst) = focusPrimOp eo op subst []
+instance Focus Command where
+  focus :: EvaluationOrder -> Command -> Command
+  focus eo (Apply loc _annot _kind prd cns) = Apply loc ApplyAnnotOrig (CBox eo) (focus eo prd) (focus eo cns)
+  focus _  (ExitSuccess loc) = ExitSuccess loc
+  focus _  (ExitFailure loc) = ExitFailure loc
+  focus _  (Jump loc fv) = Jump loc fv
+  focus eo (Method loc mn cn subst) = Method loc mn cn (focus eo <$> subst)
+  focus eo (Print loc (isValueTerm eo PrdRep -> Just prd) cmd) = Print loc prd (focus eo cmd)
+  focus eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig (CBox eo) (focus eo prd)
+                                                              (MuAbs loc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing (Print loc (BoundVar loc PrdRep (getTypeTerm prd) (0,0)) (focus eo cmd)))
+  focus eo (Read loc (isValueTerm eo CnsRep -> Just cns)) = Read loc cns
+  focus eo (Read loc cns) = Apply loc ApplyAnnotOrig (CBox eo) (MuAbs loc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing (Read loc (BoundVar loc CnsRep (getTypeTerm cns) (0,0))))
+                                                          (focus eo cns)
+  focus eo (PrimOp _ op subst) = focusPrimOp eo op subst []
 
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs
 ---------------------------------------------------------------------------------
 
-focusPrdCnsDeclaration :: EvaluationOrder -> PrdCnsDeclaration pc -> PrdCnsDeclaration pc
-focusPrdCnsDeclaration eo MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
-    MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
-                        , pcdecl_doc = pcdecl_doc
-                        , pcdecl_pc = pcdecl_pc
-                        , pcdecl_isRec = pcdecl_isRec
-                        , pcdecl_name = pcdecl_name
-                        , pcdecl_annot = pcdecl_annot
-                        , pcdecl_term = focusTerm eo pcdecl_term
-                        }
-
-focusCommandDeclaration :: EvaluationOrder -> CommandDeclaration -> CommandDeclaration
-focusCommandDeclaration eo MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
-    MkCommandDeclaration { cmddecl_loc = cmddecl_loc
-                         , cmddecl_doc = cmddecl_doc
-                         , cmddecl_name = cmddecl_name
-                         , cmddecl_cmd = focusCmd eo cmddecl_cmd
-                         }
-
-focusInstanceDeclaration :: EvaluationOrder -> InstanceDeclaration -> InstanceDeclaration
-focusInstanceDeclaration eo MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
-    MkInstanceDeclaration { instancedecl_loc
-                          , instancedecl_doc
-                          , instancedecl_name
-                          , instancedecl_typ
-                          , instancedecl_cases = focusInstanceCase eo <$> instancedecl_cases
+instance Focus (PrdCnsDeclaration pc) where
+  focus :: EvaluationOrder -> PrdCnsDeclaration pc -> PrdCnsDeclaration pc
+  focus eo MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
+      MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
+                          , pcdecl_doc = pcdecl_doc
+                          , pcdecl_pc = pcdecl_pc
+                          , pcdecl_isRec = pcdecl_isRec
+                          , pcdecl_name = pcdecl_name
+                          , pcdecl_annot = pcdecl_annot
+                          , pcdecl_term = focus eo pcdecl_term
                           }
 
-focusDecl :: EvaluationOrder -> Declaration -> Declaration
-focusDecl eo (PrdCnsDecl pcrep decl) = PrdCnsDecl pcrep (focusPrdCnsDeclaration eo decl)
-focusDecl eo (CmdDecl decl)          = CmdDecl (focusCommandDeclaration eo decl)
-focusDecl _  decl@DataDecl {}        = decl
-focusDecl _  decl@XtorDecl {}        = decl
-focusDecl _  decl@ImportDecl {}      = decl
-focusDecl _  decl@SetDecl {}         = decl
-focusDecl _  decl@TyOpDecl {}        = decl
-focusDecl _  decl@TySynDecl {}       = decl
-focusDecl _  decl@ClassDecl {}       = decl
-focusDecl eo (InstanceDecl decl)     = InstanceDecl (focusInstanceDeclaration eo decl)
+instance Focus CommandDeclaration where
+  focus :: EvaluationOrder -> CommandDeclaration -> CommandDeclaration
+  focus eo MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
+      MkCommandDeclaration { cmddecl_loc = cmddecl_loc
+                          , cmddecl_doc = cmddecl_doc
+                          , cmddecl_name = cmddecl_name
+                          , cmddecl_cmd = focus eo cmddecl_cmd
+                          }
 
-focusModule :: EvaluationOrder -> Module -> Module
-focusModule eo mod@MkModule { mod_decls } =
-    mod { mod_decls = focusDecl eo <$> mod_decls }
+instance Focus InstanceDeclaration where
+  focus :: EvaluationOrder -> InstanceDeclaration -> InstanceDeclaration
+  focus eo MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+      MkInstanceDeclaration { instancedecl_loc
+                            , instancedecl_doc
+                            , instancedecl_name
+                            , instancedecl_typ
+                            , instancedecl_cases = focus eo <$> instancedecl_cases
+                            }
 
-focusEnvironment :: EvaluationOrder -> EvalEnv -> EvalEnv
-focusEnvironment cc (prd, cns, cmd) = (prd', cns', cmd')
-  where
-      prd' = focusTerm cc <$> prd
-      cns' = focusTerm cc <$> cns
-      cmd' = focusCmd cc <$> cmd
+instance Focus Declaration where
+  focus :: EvaluationOrder -> Declaration -> Declaration
+  focus eo (PrdCnsDecl pcrep decl) = PrdCnsDecl pcrep (focus eo decl)
+  focus eo (CmdDecl decl)          = CmdDecl (focus eo decl)
+  focus _  decl@DataDecl {}        = decl
+  focus _  decl@XtorDecl {}        = decl
+  focus _  decl@ImportDecl {}      = decl
+  focus _  decl@SetDecl {}         = decl
+  focus _  decl@TyOpDecl {}        = decl
+  focus _  decl@TySynDecl {}       = decl
+  focus _  decl@ClassDecl {}       = decl
+  focus eo (InstanceDecl decl)     = InstanceDecl (focus eo decl)
+
+instance Focus Module where
+  focus :: EvaluationOrder -> Module -> Module
+  focus eo mod@MkModule { mod_decls } =
+      mod { mod_decls = focus eo <$> mod_decls }
+
+instance Focus EvalEnv where
+  focus :: EvaluationOrder -> EvalEnv -> EvalEnv
+  focus cc (prd, cns, cmd) = (prd', cns', cmd')
+    where
+        prd' = focus cc <$> prd
+        cns' = focus cc <$> cns
+        cmd' = focus cc <$> cmd
