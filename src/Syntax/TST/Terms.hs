@@ -8,12 +8,10 @@ module Syntax.TST.Terms
   , InstanceCase(..)
   , Command(..)
   -- Functions
-  , commandClosing
   , ShiftDirection(..)
   , shiftCmd
   , getTypeTerm
   , getTypArgs
-  , commandOpening
   , termLocallyClosed
   , instanceCaseLocallyClosed
   ) where
@@ -36,6 +34,7 @@ import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.TST.Types
 import Data.Bifunctor (Bifunctor(second))
+import Syntax.LocallyNameless (LocallyNameless (..))
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -259,9 +258,6 @@ commandOpeningRec k args (Apply loc annot kind t1 t2) =
 commandOpeningRec k args (PrimOp loc op subst) =
   PrimOp loc op (pctermOpeningRec k args <$> subst)
 
-commandOpening :: Substitution -> Command -> Command
-commandOpening = commandOpeningRec 0
-
 ---------------------------------------------------------------------------------
 -- Variable Closing
 ---------------------------------------------------------------------------------
@@ -308,8 +304,17 @@ commandClosingRec k args (Apply ext annot kind t1 t2) =
 commandClosingRec k args (PrimOp ext op subst) =
   PrimOp ext op (pctermClosingRec k args <$> subst)
 
-commandClosing :: [(PrdCns, FreeVarName)] -> Command -> Command
-commandClosing = commandClosingRec 0
+instance LocallyNameless Substitution [(PrdCns, FreeVarName)] Command where
+  openRec  = commandOpeningRec
+  closeRec = commandClosingRec
+
+instance LocallyNameless Substitution [(PrdCns, FreeVarName)] (Term pc) where
+  openRec  = termOpeningRec
+  closeRec = termClosingRec
+
+instance LocallyNameless Substitution [(PrdCns, FreeVarName)] PrdCnsTerm where
+  openRec  = pctermOpeningRec
+  closeRec = pctermClosingRec
 
 ---------------------------------------------------------------------------------
 -- Check for locally closedness

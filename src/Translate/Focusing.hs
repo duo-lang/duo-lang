@@ -24,6 +24,7 @@ import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.CST.Kinds
 import Syntax.CST.Names
 import Syntax.Core.Annot
+import qualified Syntax.LocallyNameless as LN
 
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues
@@ -174,9 +175,9 @@ betaVar i = MkFreeVarName ("$beta" <> T.pack (show i))
 --   The output should have the property `isFocusedSTerm`.
 focusXtor :: EvaluationOrder -> PrdCnsRep pc ->  Typ (PrdCnsToPol pc) -> CST.NominalStructural -> XtorName -> Substitution -> Term pc
 focusXtor eo PrdRep ty ns xt subst =
-    MuAbs defaultLoc MuAnnotOrig PrdRep ty Nothing (commandClosing [(Cns, alphaVar)] (shiftCmd ShiftUp (focusXtor' eo PrdRep ty ns xt subst [])))
+    MuAbs defaultLoc MuAnnotOrig PrdRep ty Nothing (LN.close [(Cns, alphaVar)] (shiftCmd ShiftUp (focusXtor' eo PrdRep ty ns xt subst [])))
 focusXtor eo CnsRep ty ns xt subst =
-    MuAbs defaultLoc MuAnnotOrig CnsRep ty Nothing (commandClosing [(Prd, alphaVar)] (shiftCmd ShiftUp (focusXtor' eo CnsRep ty ns xt subst [])))
+    MuAbs defaultLoc MuAnnotOrig CnsRep ty Nothing (LN.close [(Prd, alphaVar)] (shiftCmd ShiftUp (focusXtor' eo CnsRep ty ns xt subst [])))
 
 
 focusXtor' :: EvaluationOrder -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) ->  CST.NominalStructural -> XtorName -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
@@ -189,7 +190,7 @@ focusXtor' eo pc     ty ns xt (PrdTerm                                 prd:pcter
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   tprd = getTypeTerm prd
-                                                                  cmd = commandClosing [(Prd,var)]  (shiftCmd ShiftUp (focusXtor' eo pc ty ns xt pcterms (PrdTerm (FreeVar defaultLoc PrdRep tprd var) : pcterms')))
+                                                                  cmd = LN.close [(Prd,var)]  (shiftCmd ShiftUp (focusXtor' eo pc ty ns xt pcterms (PrdTerm (FreeVar defaultLoc PrdRep tprd var) : pcterms')))
                                                               in
                                                                   Apply defaultLoc ApplyAnnotOrig  (CBox eo) (focusTerm eo prd) (MuAbs defaultLoc MuAnnotOrig CnsRep (TyFlipPol NegRep tprd) Nothing cmd)
 focusXtor' eo pc     ty ns xt (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusXtor' eo pc ty ns xt pcterms (CnsTerm cns : pcterms')
@@ -197,7 +198,7 @@ focusXtor' eo pc     ty ns xt (CnsTerm                                 cns:pcter
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   tcns = getTypeTerm cns
-                                                                  cmd = commandClosing [(Cns,var)] (shiftCmd ShiftUp (focusXtor' eo pc ty ns xt pcterms (CnsTerm (FreeVar defaultLoc CnsRep tcns var) : pcterms')))
+                                                                  cmd = LN.close [(Cns,var)] (shiftCmd ShiftUp (focusXtor' eo pc ty ns xt pcterms (CnsTerm (FreeVar defaultLoc CnsRep tcns var) : pcterms')))
                                                               in Apply defaultLoc ApplyAnnotOrig  (CBox eo) (MuAbs defaultLoc MuAnnotOrig PrdRep (TyFlipPol PosRep tcns) Nothing cmd) (focusTerm eo cns)
 
 
@@ -223,14 +224,14 @@ focusPrimOp eo op (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms'
 focusPrimOp eo op (PrdTerm prd:pcterms) pcterms' =
     let
         var = betaVar (length pcterms')
-        cmd = commandClosing [(Prd,var)]  (shiftCmd ShiftUp (focusPrimOp eo op pcterms (PrdTerm (FreeVar defaultLoc PrdRep (getTypeTerm prd) var) : pcterms')))
+        cmd = LN.close [(Prd,var)]  (shiftCmd ShiftUp (focusPrimOp eo op pcterms (PrdTerm (FreeVar defaultLoc PrdRep (getTypeTerm prd) var) : pcterms')))
     in
         Apply defaultLoc ApplyAnnotOrig (CBox eo) (focusTerm eo prd) (MuAbs defaultLoc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing cmd)
 focusPrimOp eo op (CnsTerm (isValueTerm eo CnsRep -> Just cns):pcterms) pcterms' = focusPrimOp eo op pcterms (CnsTerm cns : pcterms')
 focusPrimOp eo op (CnsTerm cns:pcterms) pcterms' =
     let
         var = betaVar (length pcterms')
-        cmd = commandClosing [(Cns,var)] (shiftCmd ShiftUp (focusPrimOp eo op pcterms (CnsTerm (FreeVar defaultLoc CnsRep (getTypeTerm cns) var) : pcterms')))
+        cmd = LN.close [(Cns,var)] (shiftCmd ShiftUp (focusPrimOp eo op pcterms (CnsTerm (FreeVar defaultLoc CnsRep (getTypeTerm cns) var) : pcterms')))
     in
         Apply defaultLoc ApplyAnnotOrig  (CBox eo) (MuAbs defaultLoc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing cmd) (focusTerm eo cns)
 
