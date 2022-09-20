@@ -174,7 +174,7 @@ library
       TypeInference.SolveConstraints
       TypeInference.Constraints
       Translate.Focusing
-      Translate.Reparse
+      Translate.EmbedRST
       Translate.EmbedCore
       Translate.EmbedTST
       Utils

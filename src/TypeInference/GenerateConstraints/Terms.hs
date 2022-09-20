@@ -26,7 +26,7 @@ import Loc
 import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
-import Translate.Reparse (Embed(..))
+import Translate.EmbedRST (Embed(..))
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts

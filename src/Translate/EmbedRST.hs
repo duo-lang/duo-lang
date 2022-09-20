@@ -1,6 +1,4 @@
-{-# LANGUAGE FunctionalDependencies #-}
-
-module Translate.Reparse
+module Translate.EmbedRST
   ( reparseTerm
   , reparsePCTerm
   , reparseCommand
@@ -14,7 +12,7 @@ module Translate.Reparse
   , reparseInstanceCase
   -- Types
   , Embed(..)
-  )where
+  ) where
 
 
 import Control.Monad.State

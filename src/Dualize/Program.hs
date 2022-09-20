@@ -9,7 +9,7 @@ import Syntax.RST.Program qualified as RST
 import Syntax.TST.Types qualified as TST
 import Dualize.Terms
 import Translate.EmbedTST ()
-import Translate.Reparse (Embed(..))
+import Translate.EmbedRST (Embed(..))
 
 
 flipDC :: CST.DataCodata -> CST.DataCodata

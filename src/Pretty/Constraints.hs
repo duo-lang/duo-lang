@@ -13,7 +13,7 @@ import Syntax.CST.Names
 import TypeInference.Constraints
 import Syntax.CST.Kinds
 import Translate.EmbedCore ()
-import Translate.Reparse (Embed(..))
+import Translate.EmbedRST (Embed(..))
 
 ---------------------------------------------------------------------------------
 -- Generated Constraints

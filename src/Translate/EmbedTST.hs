@@ -1,6 +1,6 @@
 module Translate.EmbedTST () where
 
-import Translate.Reparse (Embed(..))
+import Translate.EmbedRST (Embed(..))
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Types qualified as TST

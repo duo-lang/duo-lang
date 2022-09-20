@@ -35,7 +35,7 @@ import Syntax.CST.Names
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
 import Translate.EmbedCore (EmbedCore(..))
-import Translate.Reparse (Embed(..))
+import Translate.EmbedRST (Embed(..))
 
 jumpToDefHandler :: Handlers LSPMonad
 jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do

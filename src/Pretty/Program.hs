@@ -18,7 +18,7 @@ import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
 import Translate.EmbedCore (EmbedCore(..))
-import Translate.Reparse
+import Translate.EmbedRST
 import Syntax.CST.Program (PrdCnsDeclaration(pcdecl_term))
 
 ---------------------------------------------------------------------------------
