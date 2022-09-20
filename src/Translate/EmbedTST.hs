@@ -1,6 +1,7 @@
-module Translate.EmbedTST () where
+module Translate.EmbedTST
+  ( EmbedTST(..)
+  ) where
 
-import Translate.EmbedRST (Embed(..))
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Types qualified as TST
@@ -9,186 +10,231 @@ import qualified Data.Bifunctor as BF (bimap)
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
-instance Embed TST.CmdCase Core.CmdCase where
-  embed :: TST.CmdCase -> Core.CmdCase
-  embed TST.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
-      Core.MkCmdCase { cmdcase_loc = cmdcase_loc
-                    , cmdcase_pat = cmdcase_pat
-                    , cmdcase_cmd = embed cmdcase_cmd
-                    }
+---------------------------------------------------------------------------------
+-- A typeclass for embedTST ding TST.X into Core.X
+---------------------------------------------------------------------------------
 
-instance Embed TST.InstanceCase Core.InstanceCase where
-  embed :: TST.InstanceCase -> Core.InstanceCase
-  embed TST.MkInstanceCase {instancecase_loc, instancecase_pat, instancecase_cmd } =
+class EmbedTST a b | a -> b where
+  embedTST :: a -> b
+
+---------------------------------------------------------------------------------
+-- EmbedTST implementation for terms
+---------------------------------------------------------------------------------
+
+instance EmbedTST TST.CmdCase Core.CmdCase where
+  embedTST :: TST.CmdCase -> Core.CmdCase
+  embedTST TST.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
+      Core.MkCmdCase { cmdcase_loc = cmdcase_loc
+                     , cmdcase_pat = cmdcase_pat
+                     , cmdcase_cmd = embedTST  cmdcase_cmd
+                     }
+
+instance EmbedTST TST.InstanceCase Core.InstanceCase where
+  embedTST :: TST.InstanceCase -> Core.InstanceCase
+  embedTST TST.MkInstanceCase {instancecase_loc, instancecase_pat, instancecase_cmd } =
       Core.MkInstanceCase { instancecase_loc = instancecase_loc
                           , instancecase_pat = instancecase_pat
-                          , instancecase_cmd = embed instancecase_cmd
+                          , instancecase_cmd = embedTST  instancecase_cmd
                           }
 
-instance Embed TST.PrdCnsTerm Core.PrdCnsTerm where
-  embed :: TST.PrdCnsTerm -> Core.PrdCnsTerm
-  embed (TST.PrdTerm tm) = Core.PrdTerm (embed tm)
-  embed (TST.CnsTerm tm) = Core.CnsTerm (embed tm)
+instance EmbedTST TST.PrdCnsTerm Core.PrdCnsTerm where
+  embedTST :: TST.PrdCnsTerm -> Core.PrdCnsTerm
+  embedTST (TST.PrdTerm tm) = Core.PrdTerm (embedTST tm)
+  embedTST (TST.CnsTerm tm) = Core.CnsTerm (embedTST tm)
 
 
-instance Embed TST.Substitution Core.Substitution where
-  embed :: TST.Substitution -> Core.Substitution
-  embed = fmap embed
+instance EmbedTST TST.Substitution Core.Substitution where
+  embedTST  :: TST.Substitution -> Core.Substitution
+  embedTST  = fmap embedTST 
 
-instance Embed (TST.Term pc) (Core.Term pc) where
-  embed :: TST.Term pc -> Core.Term pc
-  embed (TST.BoundVar loc rep _ty idx) =
+instance EmbedTST (TST.Term pc) (Core.Term pc) where
+  embedTST :: TST.Term pc -> Core.Term pc
+  embedTST (TST.BoundVar loc rep _ty idx) =
       Core.BoundVar loc rep idx
-  embed (TST.FreeVar loc rep _ty idx) =
+  embedTST (TST.FreeVar loc rep _ty idx) =
       Core.FreeVar loc rep idx
-  embed (TST.Xtor loc annot rep _ty ns xs subst) =
-      Core.Xtor loc annot rep ns xs (embed subst)
-  embed (TST.XCase loc annot rep _ty ns cases) =
-      Core.XCase loc annot rep ns (embed <$> cases)
-  embed (TST.MuAbs loc annot rep _ty b cmd) =
-      Core.MuAbs loc annot rep b (embed cmd)
-  embed (TST.PrimLitI64 loc i) =
+  embedTST (TST.Xtor loc annot rep _ty ns xs subst) =
+      Core.Xtor loc annot rep ns xs (embedTST subst)
+  embedTST (TST.XCase loc annot rep _ty ns cases) =
+      Core.XCase loc annot rep ns (embedTST <$> cases)
+  embedTST (TST.MuAbs loc annot rep _ty b cmd) =
+      Core.MuAbs loc annot rep b (embedTST cmd)
+  embedTST (TST.PrimLitI64 loc i) =
       Core.PrimLitI64 loc i
-  embed (TST.PrimLitF64 loc d) =
+  embedTST (TST.PrimLitF64 loc d) =
       Core.PrimLitF64 loc d
-  embed (TST.PrimLitChar loc d) =
+  embedTST (TST.PrimLitChar loc d) =
       Core.PrimLitChar loc d
-  embed (TST.PrimLitString loc d) =
+  embedTST (TST.PrimLitString loc d) =
       Core.PrimLitString loc d
 
 
-instance Embed TST.Command Core.Command where
-  embed :: TST.Command -> Core.Command
-  embed (TST.Apply loc annot _kind prd cns ) =
-      Core.Apply loc annot (embed prd) (embed cns)
-  embed (TST.Print loc tm cmd) =
-      Core.Print loc (embed tm) (embed cmd)
-  embed (TST.Read loc tm) =
-      Core.Read loc (embed tm)
-  embed (TST.Jump loc fv) =
+instance EmbedTST TST.Command Core.Command where
+  embedTST :: TST.Command -> Core.Command
+  embedTST (TST.Apply loc annot _kind prd cns ) =
+      Core.Apply loc annot (embedTST prd) (embedTST cns)
+  embedTST (TST.Print loc tm cmd) =
+      Core.Print loc (embedTST  tm) (embedTST cmd)
+  embedTST (TST.Read loc tm) =
+      Core.Read loc (embedTST tm)
+  embedTST (TST.Jump loc fv) =
       Core.Jump loc fv
-  embed (TST.Method loc mn cn subst) =
-      Core.Method loc mn cn (embed subst)
-  embed (TST.ExitSuccess loc) =
+  embedTST (TST.Method loc mn cn subst) =
+      Core.Method loc mn cn (embedTST subst)
+  embedTST (TST.ExitSuccess loc) =
       Core.ExitSuccess loc
-  embed (TST.ExitFailure loc) =
+  embedTST (TST.ExitFailure loc) =
       Core.ExitFailure loc
-  embed (TST.PrimOp loc op subst) =
-      Core.PrimOp loc op (embed subst)
+  embedTST (TST.PrimOp loc op subst) =
+      Core.PrimOp loc op (embedTST subst)
 
-instance Embed TST.Module Core.Module where
-  embed :: TST.Module -> Core.Module
-  embed TST.MkModule { mod_name, mod_fp, mod_decls } =
-      Core.MkModule { mod_name = mod_name
-                    , mod_fp = mod_fp
-                    , mod_decls = embed <$> mod_decls
-                    }
+---------------------------------------------------------------------------------
+-- EmbedTST implementation for types
+---------------------------------------------------------------------------------
 
-instance Embed (TST.PrdCnsDeclaration pc) (Core.PrdCnsDeclaration pc) where
-  embed :: TST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
-  embed TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = TST.Annotated tys, pcdecl_term } =
+instance EmbedTST (TST.PrdCnsType pol) (RST.PrdCnsType pol) where
+  embedTST :: TST.PrdCnsType pol -> RST.PrdCnsType pol
+  embedTST (TST.PrdCnsType pc tp) = RST.PrdCnsType pc (embedTST  tp)
+
+instance EmbedTST (TST.XtorSig pol) (RST.XtorSig pol) where
+  embedTST :: TST.XtorSig pol -> RST.XtorSig pol
+  embedTST TST.MkXtorSig {sig_name = name, sig_args = cont} =
+    RST.MkXtorSig { sig_name = name, sig_args = map embedTST cont}
+
+instance EmbedTST (TST.VariantType pol) (RST.VariantType pol) where
+  embedTST :: TST.VariantType pol -> RST.VariantType pol
+  embedTST (TST.CovariantType tp) =
+    RST.CovariantType (embedTST tp)
+  embedTST (TST.ContravariantType tp) =
+    RST.ContravariantType (embedTST tp)
+
+instance EmbedTST (TST.TypeScheme pol) (RST.TypeScheme pol) where
+  embedTST :: TST.TypeScheme pol -> RST.TypeScheme pol
+  embedTST TST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = mt} =
+    RST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = embedTST mt}
+
+instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
+  embedTST :: TST.LinearContext pol-> RST.LinearContext pol
+  embedTST = map embedTST
+
+instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
+  embedTST :: TST.Typ pol -> RST.Typ pol
+  embedTST (TST.TySkolemVar loc pol _ tv) =
+    RST.TySkolemVar loc pol tv
+  embedTST (TST.TyUniVar loc pol _ tv) =
+    RST.TyUniVar loc pol tv
+  embedTST (TST.TyRecVar loc pol _ tv) =
+    RST.TyRecVar loc pol tv
+  embedTST (TST.TyData loc pol _ xtors) =
+    RST.TyData loc pol (map embedTST xtors)
+  embedTST (TST.TyCodata loc pol _ xtors) =
+    RST.TyCodata loc pol (map embedTST xtors)
+  embedTST (TST.TyDataRefined loc pol _ tn xtors) =
+    RST.TyDataRefined loc pol tn (map embedTST xtors)
+  embedTST (TST.TyCodataRefined loc pol _ tn xtors) =
+    RST.TyCodataRefined loc pol tn (map embedTST xtors)
+  embedTST (TST.TyNominal loc pol _ tn varty) =
+    RST.TyNominal loc pol tn (map embedTST varty)
+  embedTST (TST.TySyn loc pol tn tp) =
+    RST.TySyn loc pol tn (embedTST  tp)
+  embedTST (TST.TyBot loc _ ) =
+    RST.TyBot loc
+  embedTST (TST.TyTop loc _ ) =
+    RST.TyTop loc
+  embedTST (TST.TyUnion loc _ tp1 tp2) =
+    RST.TyUnion loc (embedTST tp1) (embedTST tp2)
+  embedTST (TST.TyInter loc _ tn1 tn2) =
+    RST.TyInter loc (embedTST tn1) (embedTST tn2)
+  embedTST (TST.TyRec loc pol rv tp) =
+    RST.TyRec loc pol rv (embedTST  tp)
+  embedTST (TST.TyI64 loc pol) =
+    RST.TyI64 loc pol
+  embedTST (TST.TyF64 loc pol) =
+    RST.TyF64 loc pol
+  embedTST (TST.TyChar loc pol) =
+    RST.TyChar loc pol
+  embedTST (TST.TyString loc pol) =
+    RST.TyString loc pol
+  embedTST (TST.TyFlipPol pol tp) =
+    RST.TyFlipPol pol (embedTST tp)
+
+---------------------------------------------------------------------------------
+-- EmbedTST implementation for declarations
+---------------------------------------------------------------------------------
+
+instance EmbedTST (TST.PrdCnsDeclaration pc) (Core.PrdCnsDeclaration pc) where
+  embedTST  :: TST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
+  embedTST  TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = TST.Annotated tys, pcdecl_term } =
       Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
-                              , pcdecl_doc = pcdecl_doc
-                              , pcdecl_pc = pcdecl_pc
-                              , pcdecl_isRec = pcdecl_isRec
-                              , pcdecl_name = pcdecl_name
-                              , pcdecl_annot = Just (embed tys)
-                              , pcdecl_term = embed pcdecl_term
-                              }
-  embed TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = TST.Inferred _, pcdecl_term } =
+                               , pcdecl_doc = pcdecl_doc
+                               , pcdecl_pc = pcdecl_pc
+                               , pcdecl_isRec = pcdecl_isRec
+                               , pcdecl_name = pcdecl_name
+                               , pcdecl_annot = Just (embedTST  tys)
+                               , pcdecl_term = embedTST pcdecl_term
+                               }
+  embedTST  TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = TST.Inferred _, pcdecl_term } =
       Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
-                              , pcdecl_doc = pcdecl_doc
-                              , pcdecl_pc = pcdecl_pc
-                              , pcdecl_isRec = pcdecl_isRec
-                              , pcdecl_name = pcdecl_name
-                              , pcdecl_annot = Nothing
-                              , pcdecl_term = embed pcdecl_term
-                              }
+                               , pcdecl_doc = pcdecl_doc
+                               , pcdecl_pc = pcdecl_pc
+                               , pcdecl_isRec = pcdecl_isRec
+                               , pcdecl_name = pcdecl_name
+                               , pcdecl_annot = Nothing
+                               , pcdecl_term = embedTST pcdecl_term
+                               }
 
-instance Embed TST.CommandDeclaration Core.CommandDeclaration where
-  embed :: TST.CommandDeclaration -> Core.CommandDeclaration
-  embed TST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
+instance EmbedTST TST.CommandDeclaration Core.CommandDeclaration where
+  embedTST  :: TST.CommandDeclaration -> Core.CommandDeclaration
+  embedTST  TST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
       Core.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
                                 , cmddecl_doc = cmddecl_doc
                                 , cmddecl_name = cmddecl_name
-                                , cmddecl_cmd = embed cmddecl_cmd
+                                , cmddecl_cmd = embedTST cmddecl_cmd
                                 }
 
-instance Embed TST.InstanceDeclaration Core.InstanceDeclaration where
-  embed :: TST.InstanceDeclaration -> Core.InstanceDeclaration
-  embed TST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+instance EmbedTST TST.InstanceDeclaration Core.InstanceDeclaration where
+  embedTST  :: TST.InstanceDeclaration -> Core.InstanceDeclaration
+  embedTST  TST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
       Core.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
-                                , instancedecl_doc = instancedecl_doc
-                                , instancedecl_name = instancedecl_name
-                                , instancedecl_typ = BF.bimap embed embed instancedecl_typ
-                                , instancedecl_cases = embed <$> instancedecl_cases
-                                }
+                                 , instancedecl_doc = instancedecl_doc
+                                 , instancedecl_name = instancedecl_name
+                                 , instancedecl_typ = BF.bimap embedTST embedTST instancedecl_typ
+                                 , instancedecl_cases = embedTST <$> instancedecl_cases
+                                 }
 
 
-instance Embed TST.Declaration Core.Declaration where
-  embed :: TST.Declaration -> Core.Declaration
-  embed (TST.PrdCnsDecl pcrep decl) =
-      Core.PrdCnsDecl pcrep (embed decl)
-  embed (TST.CmdDecl decl) =
-      Core.CmdDecl (embed decl)
-  embed (TST.DataDecl decl) =
+instance EmbedTST TST.Declaration Core.Declaration where
+  embedTST :: TST.Declaration -> Core.Declaration
+  embedTST (TST.PrdCnsDecl pcrep decl) =
+      Core.PrdCnsDecl pcrep (embedTST decl)
+  embedTST (TST.CmdDecl decl) =
+      Core.CmdDecl (embedTST decl)
+  embedTST (TST.DataDecl decl) =
       Core.DataDecl decl
-  embed (TST.XtorDecl decl) =
+  embedTST (TST.XtorDecl decl) =
       Core.XtorDecl decl
-  embed (TST.ImportDecl decl) =
+  embedTST (TST.ImportDecl decl) =
       Core.ImportDecl decl
-  embed (TST.SetDecl decl) =
+  embedTST (TST.SetDecl decl) =
       Core.SetDecl decl
-  embed (TST.TyOpDecl decl) =
+  embedTST (TST.TyOpDecl decl) =
       Core.TyOpDecl decl
-  embed (TST.TySynDecl decl) =
+  embedTST (TST.TySynDecl decl) =
       Core.TySynDecl decl
-  embed (TST.ClassDecl decl) =
+  embedTST (TST.ClassDecl decl) =
       Core.ClassDecl decl
-  embed (TST.InstanceDecl decl) =
-      Core.InstanceDecl (embed decl)
+  embedTST (TST.InstanceDecl decl) =
+      Core.InstanceDecl (embedTST decl)
 
 
-instance Embed (TST.PrdCnsType pol) (RST.PrdCnsType pol) where
-  embed :: TST.PrdCnsType pol -> RST.PrdCnsType pol
-  embed (TST.PrdCnsType pc tp) = RST.PrdCnsType pc (embed tp)
+---------------------------------------------------------------------------------
+-- EmbedTST implementation for a module
+---------------------------------------------------------------------------------
 
-instance Embed (TST.XtorSig pol) (RST.XtorSig pol) where
-  embed :: TST.XtorSig pol -> RST.XtorSig pol
-  embed TST.MkXtorSig {sig_name = name, sig_args = cont} = RST.MkXtorSig {sig_name=name, sig_args = map embed cont}
-
-instance Embed (TST.VariantType pol) (RST.VariantType pol) where
-  embed :: TST.VariantType pol -> RST.VariantType pol
-  embed (TST.CovariantType tp) = RST.CovariantType (embed tp)
-  embed (TST.ContravariantType tp) = RST.ContravariantType (embed tp)
-
-instance Embed (TST.TypeScheme pol) (RST.TypeScheme pol) where
-  embed :: TST.TypeScheme pol -> RST.TypeScheme pol
-  embed TST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = mt} = RST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = embed mt}
-
-instance Embed (TST.LinearContext pol) (RST.LinearContext pol) where
-  embed :: TST.LinearContext pol-> RST.LinearContext pol
-  embed  = map embed
-
-instance Embed (TST.Typ pol) (RST.Typ pol) where
-  embed :: TST.Typ pol -> RST.Typ pol
-  embed (TST.TySkolemVar loc pol _ tv) = RST.TySkolemVar loc pol tv
-  embed (TST.TyUniVar loc pol _ tv) = RST.TyUniVar loc pol tv
-  embed (TST.TyRecVar loc pol _ tv) = RST.TyRecVar loc pol tv
-  embed (TST.TyData loc pol _ xtors) = RST.TyData loc pol (map embed xtors)
-  embed (TST.TyCodata loc pol _ xtors) = RST.TyCodata loc pol (map embed xtors)
-  embed (TST.TyDataRefined loc pol _ tn xtors) = RST.TyDataRefined loc pol tn (map embed xtors)
-  embed (TST.TyCodataRefined loc pol _ tn xtors) = RST.TyCodataRefined loc pol tn (map embed xtors)
-  embed (TST.TyNominal loc pol _ tn varty) = RST.TyNominal loc pol tn (map embed varty)
-  embed (TST.TySyn loc pol tn tp) = RST.TySyn loc pol tn (embed tp)
-  embed (TST.TyBot loc _ ) = RST.TyBot loc
-  embed (TST.TyTop loc _ ) = RST.TyTop loc
-  embed (TST.TyUnion loc _ tp1 tp2) = RST.TyUnion loc (embed tp1) (embed tp2)
-  embed (TST.TyInter loc _ tn1 tn2) = RST.TyInter loc (embed tn1) (embed tn2)
-  embed (TST.TyRec loc pol rv tp) = RST.TyRec loc pol rv (embed tp)
-  embed (TST.TyI64 loc pol) = RST.TyI64 loc pol
-  embed (TST.TyF64 loc pol) = RST.TyF64 loc pol
-  embed (TST.TyChar loc pol) = RST.TyChar loc pol
-  embed (TST.TyString loc pol) = RST.TyString loc pol
-  embed (TST.TyFlipPol pol tp) = RST.TyFlipPol pol (embed tp)
-
+instance EmbedTST TST.Module Core.Module where
+  embedTST :: TST.Module -> Core.Module
+  embedTST TST.MkModule { mod_name, mod_fp, mod_decls } =
+      Core.MkModule { mod_name = mod_name
+                    , mod_fp = mod_fp
+                    , mod_decls = embedTST  <$> mod_decls
+                    }

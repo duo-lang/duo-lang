@@ -10,7 +10,7 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Names ( FreeVarName )
 import Translate.EmbedCore (EmbedCore(..))
-import Translate.EmbedTST ()
+import Translate.EmbedTST (EmbedTST(..))
 import Translate.EmbedRST
 
 ---------------------------------------------------------------------------------
@@ -47,7 +47,7 @@ instance PrettyAnn Core.CmdCase where
   prettyAnn cmdcase = prettyAnn (embedCore cmdcase)
 
 instance PrettyAnn TST.CmdCase where
-  prettyAnn cmdcase = prettyAnn (embed cmdcase)
+  prettyAnn cmdcase = prettyAnn (embedTST cmdcase)
 
 instance PrettyAnn RST.CmdCase where
   prettyAnn cmdcase = prettyAnn (reparseCmdCase cmdcase)
@@ -77,7 +77,7 @@ instance PrettyAnn CST.TermOrStar  where
 -- PrdCnsTerm
 
 instance PrettyAnn TST.PrdCnsTerm where
-  prettyAnn pcterm = prettyAnn (embedCore (embed pcterm))
+  prettyAnn pcterm = prettyAnn (embedCore (embedTST pcterm))
 
 instance PrettyAnn RST.PrdCnsTerm where
   prettyAnn pcterm = prettyAnn (reparsePCTerm pcterm)
@@ -85,7 +85,7 @@ instance PrettyAnn RST.PrdCnsTerm where
 -- Substitution
 
 instance {-# OVERLAPPING #-} PrettyAnn TST.Substitution where
-  prettyAnn subst = prettyAnn (embedCore (embed subst))
+  prettyAnn subst = prettyAnn (embedCore (embedTST subst))
 
 instance {-# OVERLAPPING #-} PrettyAnn RST.Substitution where
   prettyAnn subst = prettyAnn (reparseSubst subst)
@@ -107,7 +107,7 @@ instance {-# OVERLAPPING #-} PrettyAnn CST.SubstitutionI where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (TST.Term pc) where
-  prettyAnn tm = prettyAnn (embed tm)
+  prettyAnn tm = prettyAnn (embedTST tm)
 
 instance PrettyAnn (RST.Term pc) where
   prettyAnn tm = prettyAnn (reparseTerm tm)
@@ -203,7 +203,7 @@ instance PrettyAnn CST.Term where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn TST.Command where
-  prettyAnn cmd = prettyAnn (embed cmd)
+  prettyAnn cmd = prettyAnn (embedTST cmd)
 
 instance PrettyAnn RST.Command where
   prettyAnn cmd = prettyAnn (reparseCommand cmd)

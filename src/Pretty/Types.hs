@@ -12,7 +12,7 @@ import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
 import Translate.EmbedRST
 import Translate.EmbedCore ()
-import Translate.EmbedTST ()
+import Translate.EmbedTST (EmbedTST(..))
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
@@ -93,7 +93,7 @@ instance PrettyAnn (RST.PrdCnsType pol) where
   prettyAnn pctype = prettyAnn (embed pctype)
 
 instance PrettyAnn (TST.PrdCnsType pol) where 
-  prettyAnn pctype = prettyAnn (embed pctype)
+  prettyAnn pctype = prettyAnn (embedTST pctype)
 
 instance PrettyAnn CST.PrdCnsTyp where
   prettyAnn (CST.PrdType ty) = prettyAnn ty
@@ -112,7 +112,7 @@ instance PrettyAnn (RST.XtorSig pol) where
   prettyAnn xtorSig = prettyAnn (embed xtorSig)
 
 instance PrettyAnn (TST.XtorSig pol) where
-  prettyAnn xtorSig = prettyAnn (embed xtorSig)
+  prettyAnn xtorSig = prettyAnn (embedTST xtorSig)
 
 instance PrettyAnn CST.XtorSig where
   prettyAnn (CST.MkXtorSig xt args) = prettyAnn xt <> prettyAnn args
@@ -125,7 +125,7 @@ instance PrettyAnn (RST.Typ pol) where
   prettyAnn typ = prettyAnn (embed typ)
 
 instance PrettyAnn (TST.Typ pol) where
-  prettyAnn typ = prettyAnn (embed typ)
+  prettyAnn typ = prettyAnn (embedTST typ)
 
 instance PrettyAnn CST.Typ where
   -- Top and Bottom lattice types
@@ -173,7 +173,7 @@ instance PrettyAnn (RST.TypeScheme pol) where
   prettyAnn tys = prettyAnn (embed tys)
 
 instance PrettyAnn (TST.TypeScheme pol) where
-  prettyAnn tys = prettyAnn (embed tys)
+  prettyAnn tys = prettyAnn (embedTST tys)
 
 instance PrettyAnn CST.TypeScheme where
   prettyAnn CST.TypeScheme { ts_vars = [], ts_monotype } =
