@@ -141,6 +141,7 @@ library
       Sugar.Desugar
       Sugar.Core
       Sugar.TST
+      Syntax.LocallyNameless
       Syntax.TST.Program
       Syntax.TST.Terms
       Syntax.TST.Types

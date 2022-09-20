@@ -16,6 +16,7 @@ import Syntax.TST.Terms
 import Eval.Definition
 import Eval.Primitives
 import Loc
+import qualified Syntax.LocallyNameless as LN
 
 ---------------------------------------------------------------------------------
 -- Terms
@@ -51,28 +52,28 @@ evalApplyOnce kind prd (FreeVar _ CnsRep _ fv) = do
 evalApplyOnce _ prd@(Xtor _ _ PrdRep _ _ xt args) cns@(XCase _ _ CnsRep _ _ cases) = do
   (MkCmdCase _ (XtorPat _ _ argTypes) cmd') <- lookupMatchCase xt cases
   checkArgs (Apply defaultLoc ApplyAnnotOrig (error "evalApplyOnce: This Kind should never be used") prd cns) argTypes args
-  return (Just  (commandOpening args cmd')) --reduction is just opening
+  return (Just  (LN.open args cmd')) --reduction is just opening
 evalApplyOnce _ prd@(XCase _ _ PrdRep _ _  cases) cns@(Xtor _ _ CnsRep _ _ xt args) = do
   (MkCmdCase _ (XtorPat _ _ argTypes) cmd') <- lookupMatchCase xt cases
   checkArgs (Apply defaultLoc ApplyAnnotOrig (error "evalApplyOnce: This Kind should never be used") prd cns) argTypes args
-  return (Just (commandOpening args cmd')) --reduction is just opening
+  return (Just (LN.open args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
 evalApplyOnce (CBox CBV) (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
-  return (Just (commandOpening [CnsTerm cns] cmd))
+  return (Just (LN.open [CnsTerm cns] cmd))
 evalApplyOnce I64Rep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
-  return (Just (commandOpening [CnsTerm cns] cmd))
+  return (Just (LN.open [CnsTerm cns] cmd))
 evalApplyOnce F64Rep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
-  return (Just (commandOpening [CnsTerm cns] cmd))
+  return (Just (LN.open [CnsTerm cns] cmd))
 evalApplyOnce CharRep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
-  return (Just (commandOpening [CnsTerm cns] cmd))
+  return (Just (LN.open [CnsTerm cns] cmd))
 evalApplyOnce StringRep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
-  return (Just (commandOpening [CnsTerm cns] cmd))
+  return (Just (LN.open [CnsTerm cns] cmd))
 evalApplyOnce (CBox CBN) prd@(MuAbs _ _ PrdRep _ _ _) (MuAbs _ _ CnsRep _ _ cmd) =
-  return (Just (commandOpening [PrdTerm prd] cmd))
+  return (Just (LN.open [PrdTerm prd] cmd))
 evalApplyOnce _ (MuAbs _ _ PrdRep _ _ cmd) cns =
-  return (Just (commandOpening [CnsTerm cns] cmd))
+  return (Just (LN.open [CnsTerm cns] cmd))
 evalApplyOnce _ prd (MuAbs _ _ CnsRep _ _ cmd) =
-  return (Just (commandOpening [PrdTerm prd] cmd))
+  return (Just (LN.open [PrdTerm prd] cmd))
 -- Bound variables should not occur at the toplevel during evaluation.
 evalApplyOnce _ (BoundVar _ PrdRep _ i) _ =
   throwEvalError defaultLoc ["Found bound variable during evaluation. Index: " <> T.pack (show i)]
