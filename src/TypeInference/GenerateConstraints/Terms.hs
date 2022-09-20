@@ -263,7 +263,7 @@ genConstraintsCommand (Core.Method loc mn cn subst) = do
     -- fresh type var and subsitution for type class variable(s)
   tyParamsMap <- createMethodSubst loc decl
   negTypes <- lookupMethodType loc mn decl NegRep
-  ctxtNeg <- annotateLinearContext negTypes
+  ctxtNeg <- annotateKind negTypes
   let negTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtNeg 
   -- infer arg types
   substInferred <- genConstraintsSubst subst
@@ -291,7 +291,7 @@ genConstraintsCommand (Core.PrimOp loc op subst) = do
   substInferred <- genConstraintsSubst subst
   let substTypes = TST.getTypArgs substInferred
   let sig = primOps op 
-  sigs <- mapM annotatePrdCnsType sig
+  sigs <- mapM annotateKind sig
   _ <- genConstraintsCtxts substTypes sigs (PrimOpArgsConstraint loc)
   pure (TST.PrimOp loc op substInferred)
   
@@ -302,15 +302,15 @@ genConstraintsInstance Core.MkInstanceDeclaration { instancedecl_loc, instancede
   -- We check that all implementations belong to the same type class.
   checkInstanceCoverage instancedecl_loc decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
   -- Generate fresh unification variables for type parameters
-  instancety <- annotateInstDecl instancedecl_typ
+  instancety <- annotateKind instancedecl_typ
   let tyParamsMap = paramsMap (classdecl_kinds decl) [instancety] 
   inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
                    let mn :: MethodName = MkMethodName $ unXtorName xt
                    -- We lookup the types belonging to the xtor in the type declaration.
                    posTypes <- lookupMethodType instancecase_loc mn decl PosRep
                    negTypes <- lookupMethodType instancecase_loc mn decl NegRep
-                   ctxtPos <- annotateLinearContext posTypes
-                   ctxtNeg <- annotateLinearContext negTypes
+                   ctxtPos <- annotateKind posTypes
+                   ctxtNeg <- annotateKind negTypes
                    -- Substitute fresh unification variables for type parameters
                    let posTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtPos 
                    let negTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtNeg 
