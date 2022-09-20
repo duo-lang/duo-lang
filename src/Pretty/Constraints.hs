@@ -99,30 +99,18 @@ printTSTLowerBounds ls = printRSTLowerBounds (map embedTSTType ls)
 printTSTUpperBounds :: [TST.Typ 'Neg] -> Doc Annotation
 printTSTUpperBounds ls = printRSTUpperBounds (map embedTSTType ls)
 
-printTypeClassConstraints :: [ClassName] -> Doc Annotation
-printTypeClassConstraints [] = mempty
-printTypeClassConstraints cns =
-  nest 3 $ vsep [ "Type class constraints:"
+printTypeClassConstraints :: Polarity -> [ClassName] -> Doc Annotation
+printTypeClassConstraints _ [] = mempty
+printTypeClassConstraints pol cns =
+  nest 3 $ vsep [ (case pol of Pos -> "Covariant"; Neg -> "Contravariant") <> " type class constraints:"
                 , vsep (prettyAnn <$> cns)
                 ]
 
 instance PrettyAnn VariableState where
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = []  } =
-    mempty
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = cns } =
-    printTypeClassConstraints cns
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = []  } =
-    printTSTLowerBounds lbs
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = cns } =
-    printTSTLowerBounds lbs <> line <> printTypeClassConstraints cns
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = []  } =
-    printTSTUpperBounds ubs
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = cns } =
-    printTSTUpperBounds ubs <> line <> printTypeClassConstraints cns
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = []  } =
-    printTSTLowerBounds lbs <> line <> printTSTUpperBounds ubs
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = cns } =
-    printTSTLowerBounds lbs <> line <> printTSTUpperBounds ubs <> line <> printTypeClassConstraints cns
+   prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_posclasses = pcns , vst_negclasses = ncns } =
+    printTSTLowerBounds lbs <> line <> printTSTUpperBounds ubs <> line <>
+    printTypeClassConstraints Pos pcns <> line <> printTypeClassConstraints Neg ncns
+    
 instance PrettyAnn SolverResult where
   prettyAnn MkSolverResult { tvarSolution } = vsep
     

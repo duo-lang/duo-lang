@@ -68,12 +68,13 @@ data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInf
 data VariableState = VariableState
   { vst_upperbounds :: [Typ Neg]
   , vst_lowerbounds :: [Typ Pos]
-  , vst_typeclasses :: [ClassName]
+  , vst_posclasses  :: [ClassName]
+  , vst_negclasses  :: [ClassName]
   , vst_kind        :: MonoKind
   }
 
 emptyVarState :: MonoKind -> VariableState
-emptyVarState = VariableState [] [] []
+emptyVarState = VariableState [] [] [] []
 
 data SolverResult = MkSolverResult
   { tvarSolution :: Map UniTVar VariableState

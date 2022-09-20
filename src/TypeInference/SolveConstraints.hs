@@ -86,20 +86,21 @@ putKVars x = modify (\s -> s { sst_kvars = x })
 
 addUpperBound :: UniTVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
-  modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState (ty:ubs) lbs classes kind) uv
+  modifyBounds (\(VariableState ubs lbs poscns negcns kind) -> VariableState (ty:ubs) lbs poscns negcns kind) uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
 addLowerBound :: UniTVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
-  modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs (ty:lbs) classes kind) uv
+  modifyBounds (\(VariableState ubs lbs poscns negcns kind) -> VariableState ubs (ty:lbs) poscns negcns kind) uv
   bounds <- getBounds uv
   let ubs = vst_upperbounds bounds
   return [SubType LowerBoundConstraint ty ub | ub <- ubs]
 
-addTypeClassConstraint :: UniTVar -> ClassName -> SolverM ()
-addTypeClassConstraint uv cn = modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs lbs (cn:classes) kind) uv
+addTypeClassConstraint :: PolarityRep pol -> UniTVar -> ClassName -> SolverM ()
+addTypeClassConstraint PosRep uv cn = modifyBounds (\(VariableState ubs lbs poscns negcns kind) -> VariableState ubs lbs (cn:poscns) negcns kind) uv
+addTypeClassConstraint NegRep uv cn = modifyBounds (\(VariableState ubs lbs poscns negcns kind) -> VariableState ubs lbs poscns (cn:negcns) kind) uv
 
 lookupKVar :: KVar -> Map (Maybe MonoKind) (Set KVar) -> SolverM (Maybe MonoKind, Set KVar)
 lookupKVar kv mp = case M.toList (M.filter (\x -> kv `elem` x) mp) of 
@@ -134,9 +135,11 @@ solve (cs:css) = do
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)
       (TypeClassPos _ cn (TyUniVar _ PosRep _ uv)) -> do
-        addTypeClassConstraint uv cn
+        addTypeClassConstraint PosRep uv cn
+        solve css
       (TypeClassNeg _ cn (TyUniVar _ NegRep _ uv)) -> do
-        addTypeClassConstraint uv cn
+        addTypeClassConstraint NegRep uv cn
+        solve css
       _ -> do
         subCss <- subConstraints cs
         solve (subCss ++ css))
@@ -343,12 +346,12 @@ subConstraints KindEq{} = throwSolverError defaultLoc ["subContraints should not
 ------------------------------------------------------------------------------
 
 zonkVariableState :: Map KVar MonoKind -> VariableState -> VariableState
-zonkVariableState m (VariableState lbs ubs tc k) = do
+zonkVariableState m (VariableState lbs ubs pc nc k) = do
   let bisubst = (MkBisubstitution (M.empty, m) :: Bisubstitution UniVT)
   let zonkedlbs = zonk UniRep bisubst <$> lbs
   let zonkedubs = zonk UniRep bisubst <$> ubs
   let zonkedKind = zonkKind bisubst k
-  VariableState zonkedlbs zonkedubs tc zonkedKind
+  VariableState zonkedlbs zonkedubs pc nc zonkedKind
 
 -- | Creates the variable states that results from solving constraints.
 solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NonEmpty Error) SolverResult
