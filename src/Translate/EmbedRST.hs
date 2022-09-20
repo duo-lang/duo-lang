@@ -1,16 +1,5 @@
 module Translate.EmbedRST
-  ( reparseTerm
-  , reparsePCTerm
-  , reparseCommand
-  , reparseDecl
-  , reparseModule
-  , reparseSubst
-  , reparseSubstI
-  , reparseCmdCase
-  , reparseTermCase
-  , reparseTermCaseI
-  , reparseInstanceCase
-  -- Types
+  ( Reparse(..)
   , EmbedRST(..)
   ) where
 
@@ -616,11 +605,11 @@ instance EmbedRST (RST.Typ pol) CST.Typ where
 instance EmbedRST (RST.TypeScheme pol) CST.TypeScheme where
   embedRST :: RST.TypeScheme pol -> CST.TypeScheme
   embedRST RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
-    CST.TypeScheme { ts_loc = ts_loc
-                  , ts_vars = ts_vars
-                  , ts_constraints = error "Type constraints not implemented yet for RST type scheme."
-                  , ts_monotype = embedRST ts_monotype
-                  }
+    CST.TypeScheme  { ts_loc         = ts_loc
+                    , ts_vars        = ts_vars
+                    , ts_constraints = error "Type constraints not implemented yet for RST type scheme."
+                    , ts_monotype    = embedRST ts_monotype
+                    }
 
 ---------------------------------------------------------------------------------
 -- EmbedTST implementation for declarations
@@ -629,152 +618,173 @@ instance EmbedRST (RST.TypeScheme pol) CST.TypeScheme where
 instance EmbedRST RST.DataDecl CST.DataDecl where
   embedRST :: RST.DataDecl -> CST.DataDecl
   embedRST RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
-    CST.MkDataDecl { data_loc = data_loc
-                  , data_doc = data_doc
-                  , data_refined = CST.NotRefined
-                  , data_name = rnTnName data_name
-                  , data_polarity = data_polarity
-                  , data_kind = Just data_kind
-                  , data_xtors = embedRST <$> fst data_xtors
-                  }
+    CST.MkDataDecl  { data_loc      = data_loc
+                    , data_doc      = data_doc
+                    , data_refined  = CST.NotRefined
+                    , data_name     = rnTnName data_name
+                    , data_polarity = data_polarity
+                    , data_kind     = Just data_kind
+                    , data_xtors    = embedRST <$> fst data_xtors
+                    }
   embedRST RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
-    CST.MkDataDecl { data_loc = data_loc
-                  , data_doc = data_doc
-                  , data_refined = CST.Refined
-                  , data_name = rnTnName data_name
-                  , data_polarity = data_polarity
-                  , data_kind = Just data_kind
-                  , data_xtors = embedRST <$> fst data_xtors
-                  }
+    CST.MkDataDecl  { data_loc      = data_loc
+                    , data_doc      = data_doc
+                    , data_refined  = CST.Refined
+                    , data_name     = rnTnName data_name
+                    , data_polarity = data_polarity
+                    , data_kind     = Just data_kind
+                    , data_xtors    = embedRST <$> fst data_xtors
+                    }
 
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
 ---------------------------------------------------------------------------------
+class Reparse a b | a -> b where
+  reparse :: a -> b
 
-reparseTerm :: RST.Term pc -> CST.Term
-reparseTerm tm = embedRST (open (evalState (createNames tm) names))
+instance Reparse (RST.Term pc) CST.Term where
+  reparse :: RST.Term pc -> CST.Term
+  reparse tm = embedRST (open (evalState (createNames tm) names))
 
-reparsePCTerm :: RST.PrdCnsTerm -> CST.Term
-reparsePCTerm (RST.PrdTerm tm) = reparseTerm tm
-reparsePCTerm (RST.CnsTerm tm) = reparseTerm tm
+instance Reparse RST.PrdCnsTerm CST.Term where
+  reparse :: RST.PrdCnsTerm -> CST.Term
+  reparse (RST.PrdTerm tm) = reparse tm
+  reparse (RST.CnsTerm tm) = reparse tm
 
-reparseSubst :: RST.Substitution -> CST.Substitution
-reparseSubst = fmap reparsePCTerm
+instance Reparse RST.Substitution CST.Substitution where
+  reparse :: RST.Substitution -> CST.Substitution
+  reparse = fmap reparse
 
-reparseSubstI :: RST.SubstitutionI pc -> CST.SubstitutionI
-reparseSubstI (subst1,_,subst2) =
-  (CST.ToSTerm <$> reparseSubst subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> reparseSubst subst2)
+instance Reparse (RST.SubstitutionI pc) CST.SubstitutionI where
+  reparse :: RST.SubstitutionI pc -> CST.SubstitutionI
+  reparse (subst1,_,subst2) =
+    (CST.ToSTerm <$> reparse subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> reparse subst2)
 
-reparseCommand :: RST.Command -> CST.Term
-reparseCommand cmd =
-  embedRST (open (evalState (createNames cmd) names))
+instance Reparse RST.Command CST.Term where
+  reparse :: RST.Command -> CST.Term
+  reparse cmd =
+    embedRST (open (evalState (createNames cmd) names))
 
-reparseCmdCase :: RST.CmdCase -> CST.TermCase
-reparseCmdCase cmdcase =
-  embedRST (evalState (createNames cmdcase) names)
+instance Reparse RST.CmdCase CST.TermCase where
+  reparse :: RST.CmdCase -> CST.TermCase
+  reparse cmdcase =
+    embedRST (evalState (createNames cmdcase) names)
 
-reparseTermCase :: RST.TermCase pc -> CST.TermCase
-reparseTermCase termcase =
-  embedRST (evalState (createNames termcase) names)
+instance Reparse (RST.TermCase pc) CST.TermCase where
+  reparse :: RST.TermCase pc -> CST.TermCase
+  reparse termcase =
+    embedRST (evalState (createNames termcase) names)
 
-reparseTermCaseI :: RST.TermCaseI pc -> CST.TermCase
-reparseTermCaseI termcasei =
-  embedRST (evalState (createNames termcasei) names)
+instance Reparse (RST.TermCaseI pc) CST.TermCase where
+  reparse :: RST.TermCaseI pc -> CST.TermCase
+  reparse termcasei =
+    embedRST (evalState (createNames termcasei) names)
 
-reparseInstanceCase :: RST.InstanceCase -> CST.TermCase
-reparseInstanceCase instancecase =
-  embedRST (open (evalState (createNames instancecase) names))
+instance Reparse RST.InstanceCase CST.TermCase where
+  reparse :: RST.InstanceCase -> CST.TermCase
+  reparse instancecase =
+    embedRST (open (evalState (createNames instancecase) names))
 
-reparsePrdCnsDeclaration :: RST.PrdCnsDeclaration pc -> CST.PrdCnsDeclaration
-reparsePrdCnsDeclaration RST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
-  CST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
-                          , pcdecl_doc = pcdecl_doc
-                          , pcdecl_pc = case pcdecl_pc of { PrdRep -> Prd; CnsRep -> Cns }
-                          , pcdecl_isRec = pcdecl_isRec
-                          , pcdecl_name = pcdecl_name
-                          , pcdecl_annot = embedRST <$> pcdecl_annot
-                          , pcdecl_term = reparseTerm pcdecl_term
-                          }
 
-reparseCommandDeclaration :: RST.CommandDeclaration -> CST.CommandDeclaration
-reparseCommandDeclaration RST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
-  CST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
-                           , cmddecl_doc = cmddecl_doc
-                           , cmddecl_name = cmddecl_name
-                           , cmddecl_cmd= reparseCommand cmddecl_cmd
-                           }
+instance Reparse (RST.PrdCnsDeclaration pc) CST.PrdCnsDeclaration where
+  reparse :: RST.PrdCnsDeclaration pc -> CST.PrdCnsDeclaration
+  reparse RST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
+    CST.MkPrdCnsDeclaration { pcdecl_loc   = pcdecl_loc
+                            , pcdecl_doc   = pcdecl_doc
+                            , pcdecl_pc    = case pcdecl_pc of { PrdRep -> Prd; CnsRep -> Cns }
+                            , pcdecl_isRec = pcdecl_isRec
+                            , pcdecl_name  = pcdecl_name
+                            , pcdecl_annot = embedRST <$> pcdecl_annot
+                            , pcdecl_term  = reparse pcdecl_term
+                            }
 
-reparseStructuralXtorDeclaration :: RST.StructuralXtorDeclaration -> CST.StructuralXtorDeclaration
-reparseStructuralXtorDeclaration RST.MkStructuralXtorDeclaration { strxtordecl_loc, strxtordecl_doc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder} =
-  CST.MkStructuralXtorDeclaration { strxtordecl_loc = strxtordecl_loc
-                                  , strxtordecl_doc = strxtordecl_doc
-                                  , strxtordecl_xdata = strxtordecl_xdata
-                                  , strxtordecl_name = strxtordecl_name
-                                  , strxtordecl_arity= strxtordecl_arity
-                                  , strxtordecl_evalOrder = Just strxtordecl_evalOrder
-                                  }
-
-reparseTySynDeclaration :: RST.TySynDeclaration -> CST.TySynDeclaration
-reparseTySynDeclaration RST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res } =
-  CST.MkTySynDeclaration { tysyndecl_loc = tysyndecl_loc
-                         , tysyndecl_doc = tysyndecl_doc
-                         , tysyndecl_name = tysyndecl_name
-                         , tysyndecl_res = embedRST (fst tysyndecl_res)
-                         }
-
-reparseTyOpDecl :: RST.TyOpDeclaration -> CST.TyOpDeclaration
-reparseTyOpDecl RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res } =
-  CST.MkTyOpDeclaration { tyopdecl_loc = tyopdecl_loc
-                        , tyopdecl_doc = tyopdecl_doc
-                        , tyopdecl_sym = tyopdecl_sym
-                        , tyopdecl_prec = tyopdecl_prec
-                        , tyopdecl_assoc = tyopdecl_assoc
-                        , tyopdecl_res = rnTnName tyopdecl_res
-                        }
-
-reparseClassDecl :: RST.ClassDeclaration -> CST.ClassDeclaration
-reparseClassDecl RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_methods }
-  = CST.MkClassDeclaration { classdecl_loc     = classdecl_loc
-                           , classdecl_doc     = classdecl_doc
-                           , classdecl_name    = classdecl_name
-                           , classdecl_kinds   = classdecl_kinds
-                           , classdecl_methods = embedRST <$> fst classdecl_methods
-                           }
-
-reparseInstanceDecl :: RST.InstanceDeclaration -> CST.InstanceDeclaration
-reparseInstanceDecl RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases }
-  = CST.MkInstanceDeclaration { instancedecl_loc   = instancedecl_loc
-                              , instancedecl_doc   = instancedecl_doc
-                              , instancedecl_name  = instancedecl_name
-                              , instancedecl_typ   = embedRST (fst instancedecl_typ)
-                              , instancedecl_cases = reparseInstanceCase <$> instancedecl_cases
+instance Reparse RST.CommandDeclaration CST.CommandDeclaration where
+  reparse :: RST.CommandDeclaration -> CST.CommandDeclaration
+  reparse RST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
+    CST.MkCommandDeclaration  { cmddecl_loc  = cmddecl_loc
+                              , cmddecl_doc  = cmddecl_doc
+                              , cmddecl_name = cmddecl_name
+                              , cmddecl_cmd  = reparse cmddecl_cmd
                               }
 
-reparseDecl :: RST.Declaration -> CST.Declaration
-reparseDecl (RST.PrdCnsDecl _ decl) =
-  CST.PrdCnsDecl (reparsePrdCnsDeclaration decl)
-reparseDecl (RST.CmdDecl decl) =
-  CST.CmdDecl (reparseCommandDeclaration decl)
-reparseDecl (RST.DataDecl decl) =
-  CST.DataDecl (embedRST decl)
-reparseDecl (RST.XtorDecl decl) =
-  CST.XtorDecl (reparseStructuralXtorDeclaration decl)
-reparseDecl (RST.ImportDecl decl) =
-  CST.ImportDecl decl
-reparseDecl (RST.SetDecl decl) =
-  CST.SetDecl decl
-reparseDecl (RST.TyOpDecl decl) =
-  CST.TyOpDecl (reparseTyOpDecl decl)
-reparseDecl (RST.TySynDecl decl) =
-  CST.TySynDecl (reparseTySynDeclaration decl)
-reparseDecl (RST.ClassDecl decl) =
-  CST.ClassDecl (reparseClassDecl decl)
-reparseDecl (RST.InstanceDecl decl) =
-  CST.InstanceDecl (reparseInstanceDecl decl)
+instance Reparse RST.StructuralXtorDeclaration CST.StructuralXtorDeclaration where
+  reparse :: RST.StructuralXtorDeclaration -> CST.StructuralXtorDeclaration
+  reparse RST.MkStructuralXtorDeclaration { strxtordecl_loc, strxtordecl_doc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder} =
+    CST.MkStructuralXtorDeclaration { strxtordecl_loc       = strxtordecl_loc
+                                    , strxtordecl_doc       = strxtordecl_doc
+                                    , strxtordecl_xdata     = strxtordecl_xdata
+                                    , strxtordecl_name      = strxtordecl_name
+                                    , strxtordecl_arity     = strxtordecl_arity
+                                    , strxtordecl_evalOrder = Just strxtordecl_evalOrder
+                                    }
 
-reparseModule :: RST.Module -> CST.Module
-reparseModule RST.MkModule { mod_name, mod_fp, mod_decls } =
-  CST.MkModule { mod_name = mod_name
-               , mod_fp = mod_fp
-               , mod_decls = reparseDecl <$> mod_decls
-               }
+instance Reparse RST.TySynDeclaration CST.TySynDeclaration where
+  reparse :: RST.TySynDeclaration -> CST.TySynDeclaration
+  reparse RST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res } =
+    CST.MkTySynDeclaration  { tysyndecl_loc  = tysyndecl_loc
+                            , tysyndecl_doc  = tysyndecl_doc
+                            , tysyndecl_name = tysyndecl_name
+                            , tysyndecl_res  = embedRST (fst tysyndecl_res)
+                            }
+
+instance Reparse RST.TyOpDeclaration CST.TyOpDeclaration where
+  reparse :: RST.TyOpDeclaration -> CST.TyOpDeclaration
+  reparse RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res } =
+    CST.MkTyOpDeclaration { tyopdecl_loc   = tyopdecl_loc
+                          , tyopdecl_doc   = tyopdecl_doc
+                          , tyopdecl_sym   = tyopdecl_sym
+                          , tyopdecl_prec  = tyopdecl_prec
+                          , tyopdecl_assoc = tyopdecl_assoc
+                          , tyopdecl_res   = rnTnName tyopdecl_res
+                          }
+
+instance Reparse RST.ClassDeclaration CST.ClassDeclaration where
+  reparse :: RST.ClassDeclaration -> CST.ClassDeclaration
+  reparse RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_methods }
+    = CST.MkClassDeclaration  { classdecl_loc     = classdecl_loc
+                              , classdecl_doc     = classdecl_doc
+                              , classdecl_name    = classdecl_name
+                              , classdecl_kinds   = classdecl_kinds
+                              , classdecl_methods = embedRST <$> fst classdecl_methods
+                              }
+
+instance Reparse RST.InstanceDeclaration CST.InstanceDeclaration where
+  reparse :: RST.InstanceDeclaration -> CST.InstanceDeclaration
+  reparse RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases }
+    = CST.MkInstanceDeclaration { instancedecl_loc   = instancedecl_loc
+                                , instancedecl_doc   = instancedecl_doc
+                                , instancedecl_name  = instancedecl_name
+                                , instancedecl_typ   = embedRST (fst instancedecl_typ)
+                                , instancedecl_cases = reparse <$> instancedecl_cases
+                                }
+
+instance Reparse RST.Declaration CST.Declaration where
+  reparse :: RST.Declaration -> CST.Declaration
+  reparse (RST.PrdCnsDecl _ decl) =
+    CST.PrdCnsDecl (reparse decl)
+  reparse (RST.CmdDecl decl) =
+    CST.CmdDecl (reparse decl)
+  reparse (RST.DataDecl decl) =
+    CST.DataDecl (embedRST decl)
+  reparse (RST.XtorDecl decl) =
+    CST.XtorDecl (reparse decl)
+  reparse (RST.ImportDecl decl) =
+    CST.ImportDecl decl
+  reparse (RST.SetDecl decl) =
+    CST.SetDecl decl
+  reparse (RST.TyOpDecl decl) =
+    CST.TyOpDecl (reparse decl)
+  reparse (RST.TySynDecl decl) =
+    CST.TySynDecl (reparse decl)
+  reparse (RST.ClassDecl decl) =
+    CST.ClassDecl (reparse decl)
+  reparse (RST.InstanceDecl decl) =
+    CST.InstanceDecl (reparse decl)
+
+instance Reparse RST.Module CST.Module where
+  reparse :: RST.Module -> CST.Module
+  reparse RST.MkModule { mod_name, mod_fp, mod_decls } =
+    CST.MkModule  { mod_name = mod_name
+                  , mod_fp = mod_fp
+                  , mod_decls = reparse <$> mod_decls
+                  }
