@@ -17,7 +17,8 @@ import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Names
 import Syntax.CST.Kinds
-import Translate.Embed ()
+import Translate.EmbedTST ()
+
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.GenerateConstraints.Kinds
 import TypeInference.Constraints

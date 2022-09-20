@@ -12,6 +12,7 @@ import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
 import Translate.Reparse
 import Translate.Embed ()
+import Translate.EmbedTST ()
 
 ---------------------------------------------------------------------------------
 -- Symbols used in the prettyprinting of types
