@@ -1,5 +1,3 @@
-{-# LANGUAGE FunctionalDependencies #-}
-
 module TypeInference.GenerateConstraints.Terms
   ( GenConstraints(..)
   , genConstraintsTermRecursive
@@ -31,9 +29,6 @@ import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
 ---------------------------------------------------------------------------------------------
-
-class GenConstraints a b | a -> b where
-  genConstraints :: a -> GenM b
 
 instance GenConstraints (Core.PrdCnsTerm) (TST.PrdCnsTerm) where
   genConstraints :: Core.PrdCnsTerm

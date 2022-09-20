@@ -76,7 +76,9 @@ common shared-lang-options
                      ViewPatterns,
                      MultiWayIf,
                      PatternSynonyms,
-                     InstanceSigs
+                     InstanceSigs,
+                     MultiParamTypeClasses,
+                     FunctionalDependencies
 
 common shared-ghc-opts
   ghc-options:
