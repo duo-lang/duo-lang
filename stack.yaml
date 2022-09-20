@@ -6,10 +6,4 @@ packages:
 extra-deps:
 - diagnose-2.2.0
 
-#setup-info:
-  #ghc:
-    #linux64-tinfo6:
-      #9.0.2:
-        #url: 'https://downloads.haskell.org/~ghc/9.0.2/ghc-9.0.2-x86_64-ubuntu20.04-linux.tar.xz'
-
 system-ghc: true
