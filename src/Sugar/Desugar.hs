@@ -1,4 +1,3 @@
-{-# LANGUAGE FunctionalDependencies #-}
 module Sugar.Desugar
   ( Desugar(..)
   )
