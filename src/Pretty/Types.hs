@@ -87,10 +87,10 @@ instance PrettyAnn CST.DataCodata where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (RST.VariantType pol) where
-  prettyAnn varType = prettyAnn (embed varType)
+  prettyAnn varType = prettyAnn (embedRST varType)
 
 instance PrettyAnn (RST.PrdCnsType pol) where
-  prettyAnn pctype = prettyAnn (embed pctype)
+  prettyAnn pctype = prettyAnn (embedRST pctype)
 
 instance PrettyAnn (TST.PrdCnsType pol) where 
   prettyAnn pctype = prettyAnn (embedTST pctype)
@@ -100,7 +100,7 @@ instance PrettyAnn CST.PrdCnsTyp where
   prettyAnn (CST.CnsType ty) = returnKw <+> prettyAnn ty
 
 instance {-# OVERLAPPING #-} PrettyAnn (RST.LinearContext pol) where
-  prettyAnn ctxt = prettyAnn (embed ctxt)
+  prettyAnn ctxt = prettyAnn (embedRST ctxt)
 
 instance {-# OVERLAPPING #-} PrettyAnn CST.LinearContext where
   prettyAnn ctxt = parens' comma (prettyAnn <$> ctxt)
@@ -109,7 +109,7 @@ instance {-# OVERLAPPING #-} PrettyAnn (TST.LinearContext pol) where
   prettyAnn ctxt = parens' comma (prettyAnn <$> ctxt)
 
 instance PrettyAnn (RST.XtorSig pol) where
-  prettyAnn xtorSig = prettyAnn (embed xtorSig)
+  prettyAnn xtorSig = prettyAnn (embedRST xtorSig)
 
 instance PrettyAnn (TST.XtorSig pol) where
   prettyAnn xtorSig = prettyAnn (embedTST xtorSig)
@@ -122,7 +122,7 @@ instance PrettyAnn CST.XtorSig where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (RST.Typ pol) where
-  prettyAnn typ = prettyAnn (embed typ)
+  prettyAnn typ = prettyAnn (embedRST typ)
 
 instance PrettyAnn (TST.Typ pol) where
   prettyAnn typ = prettyAnn (embedTST typ)
@@ -170,7 +170,7 @@ instance PrettyAnn CST.Typ where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (RST.TypeScheme pol) where
-  prettyAnn tys = prettyAnn (embed tys)
+  prettyAnn tys = prettyAnn (embedRST tys)
 
 instance PrettyAnn (TST.TypeScheme pol) where
   prettyAnn tys = prettyAnn (embedTST tys)
