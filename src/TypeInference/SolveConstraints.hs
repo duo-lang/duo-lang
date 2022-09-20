@@ -15,7 +15,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Maybe (fromMaybe)
 
-import Driver.Environment (Environment)
+import Driver.Environment (Environment (..))
 import Errors
 import Syntax.TST.Types 
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))
@@ -23,10 +23,12 @@ import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
 import TypeInference.Constraints
-import Loc ( defaultLoc )
+import Loc ( defaultLoc, getLoc )
 import Syntax.CST.Names
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.CST.Kinds
+import Syntax.TST.Program (InstanceDeclaration)
+import Utils (nestedLookup)
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad
@@ -340,6 +342,74 @@ subConstraints (SubType _ t1 t2) = do
 subConstraints (TypeClassPos _ _cn _typ) = pure []
 subConstraints (TypeClassNeg _ _cn _tyn) = pure []
 subConstraints KindEq{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
+
+------------------------------------------------------------------------------
+-- Instance Resolution
+------------------------------------------------------------------------------
+
+isAtomicType :: Typ pol -> Maybe (Typ pol)
+isAtomicType t@TySkolemVar {} = Just t
+isAtomicType t@TyUniVar {} = Just t
+isAtomicType t@TyRecVar {} = Just t
+isAtomicType t@TyData {} = Just t
+isAtomicType t@TyCodata {} = Just t
+isAtomicType t@TyDataRefined {} = Just t
+isAtomicType t@TyCodataRefined {} = Just t
+isAtomicType t@TyNominal {} = Just t
+isAtomicType _ = Nothing
+
+solveClassConstraints :: UniTVar -> VariableState -> SolverM (Map ClassName ())
+solveClassConstraints uvar VariableState { vst_upperbounds, vst_lowerbounds, vst_posclasses, vst_negclasses } = do
+  _ <- solveCoClasses vst_upperbounds vst_posclasses
+  _ <- solveContraClasses vst_lowerbounds vst_negclasses
+  pure M.empty
+
+solveCoClasses :: [Typ Neg] -> [ClassName] -> SolverM (Map ClassName ())
+solveCoClasses = undefined
+
+solveCoClass :: Typ Neg -> ClassName -> SolverM (ModuleName, InstanceDeclaration)
+-- from rules:
+solveCoClass t@TyTop {} cn = throwSolverError (getLoc t) [ "Cannot find instance " <> ppPrint cn
+                                                         , "for top type." ]
+solveCoClass (TyInter _ _ t1 t2) cn =
+  catchError (solveCoClass t1 cn) (const $ solveCoClass t2 cn)
+-- atomic:
+solveCoClass (isAtomicType -> Just t) cn = getInstanceNeg cn t
+-- rest:
+solveCoClass t cn = throwSolverError (getLoc t) [ "Cannot find instance " <> ppPrint cn
+                                                , "for positive type " <> ppPrint t ]
+
+solveContraClasses :: [Typ Pos] -> [ClassName] -> SolverM (Map ClassName ())
+solveContraClasses = undefined
+
+solveContraClass :: Typ Pos -> ClassName -> SolverM (ModuleName, InstanceDeclaration)
+-- from rules:
+solveContraClass t@TyBot {} cn = throwSolverError (getLoc t) [ "Cannot find instance " <> ppPrint cn
+
+                                                             , "for bot type." ]
+solveContraClass (TyUnion _ _ t1 t2) cn =
+  catchError (solveContraClass t1 cn) (const $ solveContraClass t2 cn)
+-- atomic:
+solveContraClass (isAtomicType -> Just t) cn = getInstancePos cn t
+-- rest:
+solveContraClass t cn = throwSolverError (getLoc t) [ "Cannot find instance " <> ppPrint cn
+                                                    , "for negative type " <> ppPrint t ]
+
+getInstancePos :: ClassName -> Typ Pos -> SolverM (ModuleName, InstanceDeclaration)
+getInstancePos cn typ = do
+   (envMap,()) <- ask
+   case nestedLookup (cn,typ) (M.map instancePosEnv envMap) of
+     Nothing -> throwSolverError (getLoc typ) [ "Cannot find instance " <> ppPrint cn
+                                              , "for positive type " <> ppPrint typ ]
+     (Just idecl) -> pure idecl
+
+getInstanceNeg :: ClassName -> Typ Neg -> SolverM (ModuleName, InstanceDeclaration)
+getInstanceNeg cn typ = do
+  (envMap,()) <- ask
+  case nestedLookup (cn,typ) (M.map instanceNegEnv envMap) of
+    Nothing -> throwSolverError (getLoc typ) [ "Cannot find instance " <> ppPrint cn
+                                             , "for negative type " <> ppPrint typ ]
+    (Just idecl) -> pure idecl
 
 ------------------------------------------------------------------------------
 -- Exported Function

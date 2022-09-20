@@ -6,6 +6,7 @@ module Utils
   , trim
   , indexMaybe
   , mapAppend
+  , nestedLookup
     -- Verbosity
   , Verbosity(..)
     -- Directory helper functions
@@ -60,6 +61,13 @@ mapAppend k a = M.alter (\case
                               Nothing -> Just a
                               Just b  -> Just $ a <> b)
                         k
+
+-- | Get key and element from a map in a map if exists.
+nestedLookup :: Ord j => j -> Map k (Map j a) -> Maybe (k,a)
+nestedLookup k m = M.foldrWithKey (\k x y -> case x of Nothing -> y; Just z -> Just (k,z))
+                                  Nothing
+                                  (M.map (M.lookup k) m)
+
 ----------------------------------------------------------------------------------
 -- Directory helper functions
 ----------------------------------------------------------------------------------
