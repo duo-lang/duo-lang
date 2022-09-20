@@ -1,4 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
 module Syntax.RST.Terms
   ( -- Terms
     Term(..)

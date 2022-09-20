@@ -1,4 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
 module Syntax.TST.Terms
   ( -- Terms
     Term(..)

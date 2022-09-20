@@ -1,5 +1,3 @@
-{-# LANGUAGE FunctionalDependencies #-}
-
 module Syntax.LocallyNameless where
 
 class LocallyNameless subst vars a | a -> subst, a -> vars where
