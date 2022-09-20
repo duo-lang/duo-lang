@@ -34,7 +34,7 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
-import Translate.EmbedCore ()
+import Translate.EmbedCore (EmbedCore(..))
 import Translate.Reparse (Embed(..))
 
 jumpToDefHandler :: Handlers LSPMonad
@@ -55,7 +55,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
           Left _err -> do
             responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
           Right (_,prog) -> do
-            responder (generateJumpToDef pos (embed (embed prog)))
+            responder (generateJumpToDef pos (embedCore (embed prog)))
 
 
 generateJumpToDef :: Position -> RST.Module -> Either ResponseError (Location |? b)

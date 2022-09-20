@@ -8,7 +8,7 @@ import Pretty.Program ()
 
 import Driver.Definition
 import Driver.Driver (inferProgramIO)
-import Translate.EmbedCore ()
+import Translate.EmbedCore (EmbedCore(..))
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
@@ -29,7 +29,7 @@ testHelper (example,decls) cbx = describe (show cbx ++ " Focusing the program in
       case decls of
         Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
         Right decls -> do
-          let focusedDecls :: CST.Module = reparseModule $ embed $ embed $ focusModule cbx decls
+          let focusedDecls :: CST.Module = reparseModule $ embedCore $ embed $ focusModule cbx decls
           res <- runIO $ inferProgramIO defaultDriverState focusedDecls
           case res of
             (Left err,_) -> do
