@@ -40,10 +40,8 @@ import TypeInference.GenerateConstraints.Definition
     ( runGenM )
 import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
-    ( genConstraintsTerm,
-      genConstraintsCommand,
-      genConstraintsTermRecursive,
-      genConstraintsInstance )
+    ( GenConstraints(..),
+      genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
 import Loc ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types (PolarityRep(..))
@@ -89,7 +87,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 1. Generate the constraints.
   let genFun = case pcdecl_isRec of
         CST.Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
-        CST.NonRecursive -> genConstraintsTerm pcdecl_term
+        CST.NonRecursive -> genConstraints pcdecl_term
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName pcdecl_name))
@@ -148,7 +146,7 @@ inferCommandDeclaration :: ModuleName
 inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } = do
   env <- gets drvEnv
   -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErr (runGenM cmddecl_loc env (genConstraintsCommand cmddecl_cmd))
+  (cmdInferred,constraints) <- liftEitherErr (runGenM cmddecl_loc env (genConstraints cmddecl_cmd))
   -- Solve the constraints
   solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env
   guardVerbose $ do
@@ -173,7 +171,7 @@ inferInstanceDeclaration :: ModuleName
 inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_name, instancedecl_typ } = do
   env <- gets drvEnv
   -- Generate the constraints
-  (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraintsInstance decl))
+  (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraints decl))
   -- Solve the constraints
   solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
   guardVerbose $ do
