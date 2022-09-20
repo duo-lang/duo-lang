@@ -28,7 +28,7 @@ import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
 import Syntax.CST.Names ( FreeVarName(..) )
-import Translate.Focusing ( isFocusedTerm, isFocusedCmd, focusPrdCnsDeclaration, focusCommandDeclaration)
+import Translate.Focusing ( isFocusedTerm, isFocusedCmd, Focus(..) )
 import Loc
 
 ---------------------------------------------------------------------------------
@@ -200,7 +200,7 @@ generateFocusEdit :: forall pc.TextDocumentIdentifier -> EvaluationOrder -> TST.
 generateFocusEdit (TextDocumentIdentifier uri) eo decl =
   let
     newDecl :: TST.Declaration
-    newDecl = TST.PrdCnsDecl (TST.pcdecl_pc decl) (focusPrdCnsDeclaration eo decl)
+    newDecl = TST.PrdCnsDecl (TST.pcdecl_pc decl) (focus eo decl)
     replacement = ppPrint newDecl
     edit = TextEdit {_range = locToRange (TST.pcdecl_loc decl), _newText = replacement }
   in
@@ -224,7 +224,7 @@ generateCmdFocusCodeAction ident eo decl =
 generateCmdFocusEdit :: TextDocumentIdentifier -> EvaluationOrder -> TST.CommandDeclaration -> WorkspaceEdit
 generateCmdFocusEdit (TextDocumentIdentifier uri) eo decl =
   let
-    newDecl = TST.CmdDecl (focusCommandDeclaration eo decl)
+    newDecl = TST.CmdDecl (focus eo decl)
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange (TST.cmddecl_loc decl), _newText= replacement }
   in
