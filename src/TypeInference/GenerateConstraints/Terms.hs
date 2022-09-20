@@ -30,16 +30,16 @@ import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 -- Substitutions and Linear Contexts
 ---------------------------------------------------------------------------------------------
 
-instance GenConstraints (Core.PrdCnsTerm) (TST.PrdCnsTerm) where
+instance GenConstraints Core.PrdCnsTerm TST.PrdCnsTerm where
   genConstraints :: Core.PrdCnsTerm
-                      -> GenM TST.PrdCnsTerm
+                 -> GenM TST.PrdCnsTerm
   genConstraints (Core.PrdTerm tm) = TST.PrdTerm <$> genConstraints tm
   genConstraints (Core.CnsTerm tm) = TST.CnsTerm <$> genConstraints tm
 
-instance GenConstraints (Core.Substitution) (TST.Substitution) where
+instance GenConstraints Core.Substitution TST.Substitution where
   genConstraints :: Core.Substitution
-                      -> GenM TST.Substitution
-  genConstraints subst = sequence (genConstraints <$> subst)
+                 -> GenM TST.Substitution
+  genConstraints = mapM genConstraints
 
 genConstraintsCtxts :: TST.LinearContext Pos -> TST.LinearContext Neg -> ConstraintInfo -> GenM ()
 genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = do
@@ -72,7 +72,7 @@ genConstraintsCtxts ctx1@(_:_) ctx2@[] info = do
 -- | Generate the constraints for a given Term.
 instance GenConstraints (Core.Term pc) (TST.Term pc) where
   genConstraints :: Core.Term pc
-                      -> GenM (TST.Term pc)
+                 -> GenM (TST.Term pc)
   --
   -- Bound variables:
   --
@@ -257,7 +257,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
   genConstraints (Core.PrimLitChar loc d) = pure $ TST.PrimLitChar loc d
   genConstraints (Core.PrimLitString loc d) = pure $ TST.PrimLitString loc d
 
-instance GenConstraints (Core.Command) (TST.Command) where
+instance GenConstraints Core.Command TST.Command where
   genConstraints :: Core.Command -> GenM TST.Command
   genConstraints (Core.ExitSuccess loc) =
     pure (TST.ExitSuccess loc)
@@ -304,7 +304,7 @@ instance GenConstraints (Core.Command) (TST.Command) where
     _ <- genConstraintsCtxts substTypes sigs (PrimOpArgsConstraint loc)
     pure (TST.PrimOp loc op substInferred)
   
-instance GenConstraints (Core.InstanceDeclaration) (TST.InstanceDeclaration) where
+instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
   genConstraints :: Core.InstanceDeclaration -> GenM TST.InstanceDeclaration
   genConstraints Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
     -- We lookup the class declaration  of the instance.

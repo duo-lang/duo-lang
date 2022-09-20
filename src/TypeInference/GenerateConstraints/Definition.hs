@@ -114,7 +114,7 @@ runGenM loc env m = case runWriter (runExceptT (runStateT (runReaderT  (getGenM 
   (Right (x, state),warns) -> (Right (x, constraintSet state), warns)
 
 ---------------------------------------------------------------------------------------------
--- A c
+-- A typeclass for generating constraints and transforming from a Core.X to a TST.X
 ---------------------------------------------------------------------------------------------
 
 class GenConstraints a b | a -> b where
