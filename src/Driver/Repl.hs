@@ -43,7 +43,7 @@ import TypeAutomata.Subsume ( subsume )
 import Loc ( defaultLoc )
 import Resolution.Program (resolveDecl)
 import Resolution.Terms (resolveCommand)
-import TypeInference.GenerateConstraints.Kinds (annotateTypeScheme)
+import TypeInference.GenerateConstraints.Kinds (AnnotateKind(..))
 import TypeInference.GenerateConstraints.Definition (runGenM)
 
 
@@ -126,8 +126,8 @@ subsumeRepl txt = do
     resolved_t1 <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveTypeScheme PosRep t1))
     resolved_t2 <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveTypeScheme PosRep t2))
     env <- gets drvEnv
-    resolved_t1' <- liftEitherErrLoc defaultLoc (fst $ runGenM defaultLoc env (annotateTypeScheme resolved_t1))
-    resolved_t2' <- liftEitherErrLoc defaultLoc (fst $ runGenM defaultLoc env (annotateTypeScheme resolved_t2))
+    resolved_t1' <- liftEitherErrLoc defaultLoc (fst $ runGenM defaultLoc env (annotateKind resolved_t1))
+    resolved_t2' <- liftEitherErrLoc defaultLoc (fst $ runGenM defaultLoc env (annotateKind resolved_t2))
     isSubsumed <-  liftEitherErr (subsume PosRep (fst resolved_t1') (fst resolved_t2'),[])
     liftIO $ putStrLn $ if isSubsumed
                         then "Subsumption holds"

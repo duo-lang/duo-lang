@@ -9,8 +9,9 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Names ( FreeVarName )
-import Translate.Embed
-import Translate.Reparse
+import Translate.EmbedCore (EmbedCore(..))
+import Translate.EmbedTST (EmbedTST(..))
+import Translate.EmbedRST
 
 ---------------------------------------------------------------------------------
 -- Data/Codata and Nominal/Structural/Refinement
@@ -43,10 +44,10 @@ instance PrettyAnn CST.Pattern where
 -- CmdCase
 
 instance PrettyAnn Core.CmdCase where
-  prettyAnn cmdcase = prettyAnn (embedCmdCase cmdcase)
+  prettyAnn cmdcase = prettyAnn (embedCore cmdcase)
 
 instance PrettyAnn TST.CmdCase where
-  prettyAnn cmdcase = prettyAnn (embedTSTCmdCase cmdcase)
+  prettyAnn cmdcase = prettyAnn (embedTST cmdcase)
 
 instance PrettyAnn RST.CmdCase where
   prettyAnn cmdcase = prettyAnn (reparseCmdCase cmdcase)
@@ -76,7 +77,7 @@ instance PrettyAnn CST.TermOrStar  where
 -- PrdCnsTerm
 
 instance PrettyAnn TST.PrdCnsTerm where
-  prettyAnn pcterm = prettyAnn (embedPCTerm (embedTSTPCTerm pcterm))
+  prettyAnn pcterm = prettyAnn (embedCore (embedTST pcterm))
 
 instance PrettyAnn RST.PrdCnsTerm where
   prettyAnn pcterm = prettyAnn (reparsePCTerm pcterm)
@@ -84,7 +85,7 @@ instance PrettyAnn RST.PrdCnsTerm where
 -- Substitution
 
 instance {-# OVERLAPPING #-} PrettyAnn TST.Substitution where
-  prettyAnn subst = prettyAnn (embedSubst (embedTSTSubst subst))
+  prettyAnn subst = prettyAnn (embedCore (embedTST subst))
 
 instance {-# OVERLAPPING #-} PrettyAnn RST.Substitution where
   prettyAnn subst = prettyAnn (reparseSubst subst)
@@ -106,13 +107,13 @@ instance {-# OVERLAPPING #-} PrettyAnn CST.SubstitutionI where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (TST.Term pc) where
-  prettyAnn tm = prettyAnn (embedTSTTerm tm)
+  prettyAnn tm = prettyAnn (embedTST tm)
 
 instance PrettyAnn (RST.Term pc) where
   prettyAnn tm = prettyAnn (reparseTerm tm)
 
 instance PrettyAnn (Core.Term pc) where
-  prettyAnn tm = prettyAnn (embedCoreTerm tm)
+  prettyAnn tm = prettyAnn (embedCore tm)
 
 
 collectLambdaVarsAndBody ::  CST.Term -> ([FreeVarName], CST.Term)
@@ -202,10 +203,10 @@ instance PrettyAnn CST.Term where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn TST.Command where
-  prettyAnn cmd = prettyAnn (embedTSTCommand cmd)
+  prettyAnn cmd = prettyAnn (embedTST cmd)
 
 instance PrettyAnn RST.Command where
   prettyAnn cmd = prettyAnn (reparseCommand cmd)
 
 instance PrettyAnn Core.Command where
-  prettyAnn cmd = prettyAnn (embedCoreCommand cmd)
+  prettyAnn cmd = prettyAnn (embedCore cmd)
