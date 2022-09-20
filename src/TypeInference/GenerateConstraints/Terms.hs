@@ -99,11 +99,11 @@ genConstraintsTerm (Core.Xtor loc annot rep CST.Structural xt subst) = do
   case rep of
     PrdRep -> do
       let rstty = RST.TyData defaultLoc PosRep [RST.MkXtorSig xt (embedTSTPrdCnsType <$> substTypes)]
-      tstty <- annotateTyp rstty
+      tstty <- annotateKind rstty
       return $ TST.Xtor loc annot rep tstty CST.Structural xt inferredSubst
     CnsRep -> do 
       let rstty = RST.TyCodata defaultLoc NegRep [RST.MkXtorSig xt (embedTSTPrdCnsType <$> substTypes)]
-      tstty <- annotateTyp rstty
+      tstty <- annotateKind rstty
       return $ TST.Xtor loc annot rep tstty CST.Structural xt inferredSubst
 --
 -- Nominal Xtors
@@ -161,11 +161,11 @@ genConstraintsTerm (Core.XCase loc annot rep CST.Structural cases) = do
     -- The return type is a structural type consisting of a XtorSig for each case.
     PrdRep -> do 
       let rstty = RST.TyCodata defaultLoc PosRep (embedTSTXtorSig <$> xtors)
-      tstty <- annotateTyp rstty
+      tstty <- annotateKind rstty
       return $ TST.XCase loc annot rep tstty CST.Structural (fst <$> inferredCases)
     CnsRep -> do
       let rstty = RST.TyData defaultLoc NegRep (embedTSTXtorSig <$> xtors)
-      tstty <- annotateTyp rstty
+      tstty <- annotateKind rstty
       return $ TST.XCase loc annot rep tstty CST.Structural (fst <$> inferredCases)
 --
 -- Nominal pattern and copattern matches
