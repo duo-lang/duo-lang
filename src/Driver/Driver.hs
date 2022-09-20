@@ -50,7 +50,6 @@ import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program (prdCnsToPol)
 import Sugar.Desugar (desugarModule)
-import qualified Data.Set as S
 import Data.Maybe (catMaybes)
 import Pretty.Common (Header(..))
 import Pretty.Program ()
@@ -182,8 +181,9 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
     ppPrintIO constraints
     ppPrintIO solverResult
   -- Insert into environment
-  let instty' = TST.instancedecl_typ instanceInferred
-  let f env = env { instanceEnv = M.adjust (S.insert instty') instancedecl_name (instanceEnv env)}
+  let (instPos, instNeg) = TST.instancedecl_typ instanceInferred
+  let f env = env { instancePosEnv = M.insert (instancedecl_name, instPos) instanceInferred (instancePosEnv env)
+                  , instanceNegEnv = M.insert (instancedecl_name, instNeg) instanceInferred (instanceNegEnv env) }
   modifyEnvironment mn f
   pure instanceInferred
 
@@ -191,8 +191,7 @@ inferClassDeclaration :: ModuleName
                       -> RST.ClassDeclaration
                       -> DriverM RST.ClassDeclaration
 inferClassDeclaration mn decl@RST.MkClassDeclaration { classdecl_name } = do
-  let f env = env { classEnv = M.insert classdecl_name decl (classEnv env)
-                  , instanceEnv = M.insert classdecl_name S.empty (instanceEnv env) }
+  let f env = env { classEnv = M.insert classdecl_name decl (classEnv env) }
   modifyEnvironment mn f
   pure decl
 
