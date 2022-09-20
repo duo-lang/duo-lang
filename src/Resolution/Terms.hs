@@ -19,6 +19,7 @@ import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..), Arity, PrdCnsRep(..))
 import Syntax.CST.Names
 import Loc
+import qualified Syntax.LocallyNameless as LN
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
@@ -145,7 +146,7 @@ resolveCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , ic
   cmd' <- resolveCommand icase_term
   pure RST.MkCmdCase { cmdcase_loc = icase_loc
                      , cmdcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
-                     , cmdcase_cmd = RST.commandClosing icase_args cmd'
+                     , cmdcase_cmd = LN.close icase_args cmd'
                      }
 
 resolveTermCaseI :: PrdCnsRep pc -> IntermediateCaseI pc -> ResolverM (RST.TermCaseI pc)
@@ -153,7 +154,7 @@ resolveTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args 
   tm' <- resolveTerm rep icasei_term
   pure RST.MkTermCaseI { tmcasei_loc = icasei_loc
                        , tmcasei_pat = RST.XtorPatI icasei_loc icasei_name (second Just <$> args1, (), second Just <$> args2)
-                       , tmcasei_term = RST.termClosing (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
+                       , tmcasei_term = LN.close (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
                        }
 
 resolveTermCase :: PrdCnsRep pc -> IntermediateCase -> ResolverM (RST.TermCase pc)
@@ -161,7 +162,7 @@ resolveTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icas
   tm' <- resolveTerm rep icase_term
   pure RST.MkTermCase { tmcase_loc  = icase_loc
                       , tmcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
-                      , tmcase_term = RST.termClosing icase_args tm'
+                      , tmcase_term = LN.close icase_args tm'
                       }
 
 resolveInstanceCase :: IntermediateCase -> ResolverM RST.InstanceCase
@@ -169,7 +170,7 @@ resolveInstanceCase MkIntermediateCase { icase_loc , icase_name , icase_args , i
   cmd' <- resolveCommand icase_term
   pure RST.MkInstanceCase { instancecase_loc = icase_loc
                           , instancecase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
-                          , instancecase_cmd = RST.commandClosing icase_args cmd'
+                          , instancecase_cmd = LN.close icase_args cmd'
                           }
 
 
@@ -353,7 +354,7 @@ analyzeSubstitution loc arity subst = do
     0 -> pure $ ExplicitSubst (zip arity (toTm <$> subst))
     1 -> do
       let zipped :: [(PrdCns, CST.TermOrStar)] = zip arity subst
-      case span (not . isStarT . snd) zipped of
+      case break (isStarT . snd) zipped of
         (subst1,(pc,_):subst2) -> pure $ ImplicitSubst (second toTm <$> subst1) pc (second toTm <$> subst2)
         _ -> throwOtherError loc ["Compiler bug in analyzeSubstitution"]
     n -> throwOtherError loc ["At most one star expected. Got " <> T.pack (show n) <> " stars."]
@@ -386,10 +387,10 @@ resolveTerm rep (CST.Var loc v) =
 ---------------------------------------------------------------------------------
 resolveTerm PrdRep (CST.MuAbs loc fv cmd) = do
   cmd' <- resolveCommand cmd
-  pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')
+  pure $ RST.MuAbs loc PrdRep (Just fv) (LN.close [(Cns,fv)] cmd')
 resolveTerm CnsRep (CST.MuAbs loc fv cmd) = do
   cmd' <- resolveCommand cmd
-  pure $ RST.MuAbs loc CnsRep (Just fv) (RST.commandClosing [(Prd,fv)] cmd')
+  pure $ RST.MuAbs loc CnsRep (Just fv) (LN.close [(Prd,fv)] cmd')
 ---------------------------------------------------------------------------------
 -- Xtor
 ---------------------------------------------------------------------------------
@@ -575,12 +576,12 @@ resolveTerm CnsRep (CST.NatLit loc _ns _i) =
 resolveTerm PrdRep (CST.Lambda loc fv tm) =
   do
     tm' <- resolveTerm PrdRep tm
-    let tm'' = RST.termClosing [(Prd,fv)] tm'
+    let tm'' = LN.close [(Prd,fv)] tm'
     return $ RST.Lambda loc PrdRep fv tm''
 resolveTerm CnsRep (CST.CoLambda loc fv tm) =
   do
     tm' <- resolveTerm CnsRep tm
-    let tm'' = RST.termClosing [(Cns,fv)] tm'
+    let tm'' = LN.close [(Cns,fv)] tm'
     return $ RST.Lambda loc CnsRep fv tm''
 resolveTerm rep (CST.FunApp loc fun arg) =
   resolveApp rep loc fun arg
