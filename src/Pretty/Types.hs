@@ -11,7 +11,7 @@ import Syntax.CST.Types qualified as CST
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
 import Translate.Reparse
-import Translate.Embed ()
+import Translate.EmbedCore ()
 import Translate.EmbedTST ()
 
 ---------------------------------------------------------------------------------

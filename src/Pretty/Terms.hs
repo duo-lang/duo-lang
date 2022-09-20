@@ -9,7 +9,7 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Names ( FreeVarName )
-import Translate.Embed ()
+import Translate.EmbedCore ()
 import Translate.EmbedTST ()
 import Translate.Reparse
 

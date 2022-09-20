@@ -175,8 +175,8 @@ library
       TypeInference.Constraints
       Translate.Focusing
       Translate.Reparse
+      Translate.EmbedCore
       Translate.EmbedTST
-      Translate.Embed
       Utils
   other-modules:
       Paths_duo_lang

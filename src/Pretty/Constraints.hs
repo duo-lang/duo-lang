@@ -12,7 +12,7 @@ import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Names
 import TypeInference.Constraints
 import Syntax.CST.Kinds
-import Translate.Embed ()
+import Translate.EmbedCore ()
 import Translate.Reparse (Embed(..))
 
 ---------------------------------------------------------------------------------

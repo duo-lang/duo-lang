@@ -1,4 +1,4 @@
-module Translate.Embed () where
+module Translate.EmbedCore () where
 
 import Syntax.CST.Types (PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST

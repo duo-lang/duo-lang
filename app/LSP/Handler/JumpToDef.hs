@@ -34,7 +34,7 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
-import Translate.Embed ()
+import Translate.EmbedCore ()
 import Translate.Reparse (Embed(..))
 
 jumpToDefHandler :: Handlers LSPMonad

@@ -17,7 +17,7 @@ import Syntax.CST.Names
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
-import Translate.Embed ()
+import Translate.EmbedCore ()
 import Translate.Reparse
 import Syntax.CST.Program (PrdCnsDeclaration(pcdecl_term))
 

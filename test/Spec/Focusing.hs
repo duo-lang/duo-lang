@@ -8,7 +8,7 @@ import Pretty.Program ()
 
 import Driver.Definition
 import Driver.Driver (inferProgramIO)
-import Translate.Embed ()
+import Translate.EmbedCore ()
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
