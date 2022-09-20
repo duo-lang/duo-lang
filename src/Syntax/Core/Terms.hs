@@ -9,8 +9,6 @@ module Syntax.Core.Terms
   , InstanceCase(..)
   , Command(..)
   -- Functions
-  , shiftCmd
-  , shiftTerm
   , termLocallyClosed
   ) where
 
@@ -26,7 +24,7 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
-import Syntax.LocallyNameless (LocallyNameless (..))
+import Syntax.LocallyNameless (LocallyNameless (..), Shiftable (..))
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -297,44 +295,41 @@ termLocallyClosed = termLocallyClosedRec []
 -- Used in program transformations like focusing.
 ---------------------------------------------------------------------------------
 
-shiftPCTermRec :: ShiftDirection -> Int -> PrdCnsTerm -> PrdCnsTerm
-shiftPCTermRec dir n (PrdTerm tm) = PrdTerm $ shiftTermRec dir n tm
-shiftPCTermRec dir n (CnsTerm tm) = CnsTerm $ shiftTermRec dir n tm
+instance Shiftable PrdCnsTerm where
+  shiftRec :: ShiftDirection -> Int -> PrdCnsTerm -> PrdCnsTerm
+  shiftRec dir n (PrdTerm tm) = PrdTerm $ shiftRec dir n tm
+  shiftRec dir n (CnsTerm tm) = CnsTerm $ shiftRec dir n tm
 
-shiftTermRec :: ShiftDirection -> Int -> Term pc -> Term pc
--- If (n <= i), then the bound variable was free from the position where shift was called.
-shiftTermRec ShiftUp n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcrep (i + 1, j)
-                                                  | otherwise = BoundVar loc pcrep (i    , j)
-shiftTermRec ShiftDown n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcrep (i - 1, j)
-                                                    | otherwise = BoundVar loc pcrep (i    , j)                                        
-shiftTermRec _ _ var@FreeVar {} = var
-shiftTermRec dir n (Xtor loc annot pcrep ns xt subst) =
-    Xtor loc annot pcrep ns xt (shiftPCTermRec dir n <$> subst)
-shiftTermRec dir n (XCase loc annot pcrep ns cases) =
-  XCase loc annot pcrep ns (shiftCmdCaseRec dir (n + 1) <$> cases)
-shiftTermRec dir n (MuAbs loc annot pcrep bs cmd) =
-  MuAbs loc annot pcrep bs (shiftCmdRec dir (n + 1) cmd)
-shiftTermRec _ _ lit@PrimLitI64{} = lit
-shiftTermRec _ _ lit@PrimLitF64{} = lit
-shiftTermRec _ _ lit@PrimLitChar{} = lit
-shiftTermRec _ _ lit@PrimLitString{} = lit
+instance Shiftable (Term pc) where
+  shiftRec :: ShiftDirection -> Int -> Term pc -> Term pc
+  -- If (n <= i), then the bound variable was free from the position where shift was called.
+  shiftRec ShiftUp n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcrep (i + 1, j)
+                                                | otherwise = BoundVar loc pcrep (i    , j)
+  shiftRec ShiftDown n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcrep (i - 1, j)
+                                                  | otherwise = BoundVar loc pcrep (i    , j)                                        
+  shiftRec _ _ var@FreeVar {} = var
+  shiftRec dir n (Xtor loc annot pcrep ns xt subst) =
+    Xtor loc annot pcrep ns xt (shiftRec dir n <$> subst)
+  shiftRec dir n (XCase loc annot pcrep ns cases) =
+    XCase loc annot pcrep ns (shiftRec dir (n + 1) <$> cases)
+  shiftRec dir n (MuAbs loc annot pcrep bs cmd) =
+    MuAbs loc annot pcrep bs (shiftRec dir (n + 1) cmd)
+  shiftRec _ _ lit@PrimLitI64{} = lit
+  shiftRec _ _ lit@PrimLitF64{} = lit
+  shiftRec _ _ lit@PrimLitChar{} = lit
+  shiftRec _ _ lit@PrimLitString{} = lit
 
-shiftCmdCaseRec :: ShiftDirection -> Int -> CmdCase -> CmdCase
-shiftCmdCaseRec dir n (MkCmdCase ext pat cmd) = MkCmdCase ext pat (shiftCmdRec dir n cmd)
+instance Shiftable CmdCase where
+  shiftRec :: ShiftDirection -> Int -> CmdCase -> CmdCase
+  shiftRec dir n (MkCmdCase ext pat cmd) = MkCmdCase ext pat (shiftRec dir n cmd)
 
-shiftCmdRec :: ShiftDirection -> Int -> Command -> Command
-shiftCmdRec dir n (Apply loc annot prd cns) = Apply loc annot (shiftTermRec dir n prd) (shiftTermRec dir n cns)
-shiftCmdRec _ _ (ExitSuccess ext) = ExitSuccess ext
-shiftCmdRec _ _ (ExitFailure ext) = ExitFailure ext
-shiftCmdRec dir n (Print ext prd cmd) = Print ext (shiftTermRec dir n prd) (shiftCmdRec dir n cmd)
-shiftCmdRec dir n (Read ext cns) = Read ext (shiftTermRec dir n cns)
-shiftCmdRec _ _ (Jump ext fv) = Jump ext fv
-shiftCmdRec dir n (Method ext mn cn subst) = Method ext mn cn (shiftPCTermRec dir n <$> subst)
-shiftCmdRec dir n (PrimOp ext op subst) = PrimOp ext op (shiftPCTermRec dir n <$> subst)
-
--- | Shift all unbound BoundVars up by one.
-shiftCmd :: ShiftDirection -> Command -> Command
-shiftCmd dir = shiftCmdRec dir 0
-
-shiftTerm :: ShiftDirection -> Term pc -> Term pc 
-shiftTerm dir = shiftTermRec dir 0
+instance Shiftable Command where
+  shiftRec :: ShiftDirection -> Int -> Command -> Command
+  shiftRec dir n (Apply loc annot prd cns) = Apply loc annot (shiftRec dir n prd) (shiftRec dir n cns)
+  shiftRec _ _ (ExitSuccess ext) = ExitSuccess ext
+  shiftRec _ _ (ExitFailure ext) = ExitFailure ext
+  shiftRec dir n (Print ext prd cmd) = Print ext (shiftRec dir n prd) (shiftRec dir n cmd)
+  shiftRec dir n (Read ext cns) = Read ext (shiftRec dir n cns)
+  shiftRec _ _ (Jump ext fv) = Jump ext fv
+  shiftRec dir n (Method ext mn cn subst) = Method ext mn cn (shiftRec dir n <$> subst)
+  shiftRec dir n (PrimOp ext op subst) = PrimOp ext op (shiftRec dir n <$> subst)
