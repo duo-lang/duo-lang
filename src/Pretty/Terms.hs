@@ -4,12 +4,12 @@ import Prettyprinter
 
 import Pretty.Common ()
 import Pretty.Pretty
+import Sugar.Desugar (Desugar(embedCore))
 import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Terms qualified as RST
 import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Names ( FreeVarName )
-import Translate.EmbedCore (EmbedCore(..))
 import Translate.EmbedTST (EmbedTST(..))
 import Translate.EmbedRST
 
