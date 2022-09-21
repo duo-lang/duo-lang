@@ -18,11 +18,26 @@ import Syntax.CST.Names
 import qualified Syntax.LocallyNameless as LN
 
 ---------------------------------------------------------------------------------
--- These functions  translate a locally nameless term into a named representation.
---
--- Use only for prettyprinting! These functions only "undo" the steps in the parser
--- and do not fulfil any semantic properties w.r.t shadowing etc.!
+-- Various Helper Functions
 ---------------------------------------------------------------------------------
+
+newtype CreateNameM a =
+  MkCreateNameM { unCreateNameM :: State ([FreeVarName],[FreeVarName]) a }
+    deriving (Functor, Applicative,Monad, MonadState ([FreeVarName],[FreeVarName]))
+
+names :: ([FreeVarName], [FreeVarName])
+names =  ((\y -> MkFreeVarName ("x" <> T.pack (show y))) <$> [(1 :: Int)..]
+         ,(\y -> MkFreeVarName ("k" <> T.pack (show y))) <$> [(1 :: Int)..])
+
+fresh :: PrdCns -> CreateNameM FreeVarName
+fresh Prd = do
+  var <- gets (head . fst)
+  modify (first tail)
+  pure var
+fresh Cns = do
+  var  <- gets (head . snd)
+  modify (second tail)
+  pure var
 
 freeVarNamesToXtorArgs :: [(PrdCns, Maybe FreeVarName)] -> RST.Substitution
 freeVarNamesToXtorArgs bs = f <$> bs
@@ -32,24 +47,124 @@ freeVarNamesToXtorArgs bs = f <$> bs
     f (Cns, Nothing) = error "Create Names first!"
     f (Cns, Just fv) = RST.CnsTerm $ RST.FreeVar defaultLoc CnsRep fv
 
+isNumSTermRST :: RST.Term pc -> Maybe Int
+isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "Z") []) = Just 0
+isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
+  Nothing -> Nothing
+  Just n -> Just (n + 1)
+isNumSTermRST _ = Nothing
+
+instance EmbedRST RST.PrimitiveOp PrimName where
+  embedRST :: RST.PrimitiveOp -> PrimName
+  embedRST RST.I64Add = i64AddName
+  embedRST RST.I64Sub = i64SubName
+  embedRST RST.I64Mul = i64MulName
+  embedRST RST.I64Div = i64DivName
+  embedRST RST.I64Mod = i64ModName
+  embedRST RST.F64Add = f64AddName
+  embedRST RST.F64Sub = f64SubName
+  embedRST RST.F64Mul = f64MulName
+  embedRST RST.F64Div = f64DivName
+  embedRST RST.CharPrepend = charPrependName
+  embedRST RST.StringAppend = stringAppendName
+
+---------------------------------------------------------------------------------
+-- Unresolving
+---------------------------------------------------------------------------------
+
 class Open a where
   open :: a -> a
 
-instance Open (RST.TermCase pc) where
-  open :: RST.TermCase pc -> RST.TermCase pc
-  open RST.MkTermCase { tmcase_loc, tmcase_pat = RST.XtorPat loc xt args , tmcase_term } =
-      RST.MkTermCase { tmcase_loc = tmcase_loc
-                    , tmcase_pat = RST.XtorPat loc xt args
-                    , tmcase_term = LN.open (freeVarNamesToXtorArgs args) (open tmcase_term)
-                    }
+class CreateNames a where
+  createNames :: a -> CreateNameM a
 
-instance Open (RST.TermCaseI pc) where
-  open :: RST.TermCaseI pc -> RST.TermCaseI pc
-  open RST.MkTermCaseI { tmcasei_loc, tmcasei_pat = RST.XtorPatI loc xt (as1, (), as2), tmcasei_term } =
-    RST.MkTermCaseI { tmcasei_loc = tmcasei_loc
-                    , tmcasei_pat = RST.XtorPatI loc xt (as1, (), as2)
-                    , tmcasei_term = LN.open (freeVarNamesToXtorArgs (as1 ++ [(Cns, Nothing)] ++ as2)) (open tmcasei_term)
-                    }
+class EmbedRST a b | a -> b where
+  embedRST :: a -> b
+
+class Unresolve a b | a -> b where
+  unresolve :: a -> b
+
+---------------------------------------------------------------------------------
+-- Unresolving terms
+---------------------------------------------------------------------------------
+
+-- PrdCnsTerm
+
+instance Open RST.PrdCnsTerm where
+  open :: RST.PrdCnsTerm -> RST.PrdCnsTerm
+  open (RST.PrdTerm tm) = RST.PrdTerm $ open tm
+  open (RST.CnsTerm tm) = RST.CnsTerm $ open tm
+
+instance CreateNames RST.PrdCnsTerm where
+  createNames :: RST.PrdCnsTerm -> CreateNameM RST.PrdCnsTerm
+  createNames (RST.PrdTerm tm) = RST.PrdTerm <$> createNames tm
+  createNames (RST.CnsTerm tm) = RST.CnsTerm <$> createNames tm
+
+instance EmbedRST RST.PrdCnsTerm CST.Term where
+  embedRST :: RST.PrdCnsTerm -> CST.Term
+  embedRST (RST.PrdTerm tm) = embedRST tm
+  embedRST (RST.CnsTerm tm) = embedRST tm
+
+instance Unresolve RST.PrdCnsTerm CST.Term where
+  unresolve :: RST.PrdCnsTerm -> CST.Term
+  unresolve (RST.PrdTerm tm) = unresolve tm
+  unresolve (RST.CnsTerm tm) = unresolve tm
+
+-- Substitution
+
+instance CreateNames RST.Substitution where
+  createNames :: RST.Substitution  -> CreateNameM RST.Substitution
+  createNames = mapM createNames
+
+instance EmbedRST RST.Substitution [CST.Term] where
+  embedRST :: RST.Substitution -> [CST.Term]
+  embedRST = fmap embedRST
+
+instance Unresolve RST.Substitution CST.Substitution where
+  unresolve :: RST.Substitution -> CST.Substitution
+  unresolve = fmap unresolve
+
+-- SubstitutionI
+
+instance EmbedRST (RST.SubstitutionI pc) [CST.TermOrStar] where
+  embedRST :: RST.SubstitutionI pc -> [CST.TermOrStar]
+  embedRST (subst1,PrdRep,subst2) = (CST.ToSTerm <$> embedRST subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> embedRST subst2)
+  embedRST (subst1,CnsRep,subst2) = (CST.ToSTerm <$> embedRST subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> embedRST subst2)
+
+instance Unresolve (RST.SubstitutionI pc) CST.SubstitutionI where
+  unresolve :: RST.SubstitutionI pc -> CST.SubstitutionI
+  unresolve (subst1,_,subst2) =
+    (CST.ToSTerm <$> unresolve subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> unresolve subst2)
+
+-- Pattern
+
+instance CreateNames RST.Pattern where
+  createNames :: RST.Pattern -> CreateNameM RST.Pattern
+  createNames (RST.XtorPat loc xt args) = do
+    args' <- mapM (\(pc,_) -> fresh pc >>= \v -> return (pc, Just v)) args
+    pure $ RST.XtorPat loc xt args'
+
+instance EmbedRST RST.Pattern CST.Pattern where
+  embedRST :: RST.Pattern -> CST.Pattern
+  embedRST (RST.XtorPat loc xt args) =
+    CST.PatXtor loc xt (CST.PatVar loc . fromJust . snd <$> args)
+
+-- PatternI
+
+instance CreateNames RST.PatternI where
+  createNames :: RST.PatternI -> CreateNameM RST.PatternI
+  createNames (RST.XtorPatI loc xt (as1, (), as2)) = do
+    let f (pc,_) = fresh pc >>= \v -> return (pc, Just v)
+    as1' <- mapM f as1
+    as2' <- mapM f as2
+    pure $ RST.XtorPatI loc xt (as1', (), as2')
+
+instance EmbedRST RST.PatternI CST.Pattern where
+  embedRST :: RST.PatternI -> CST.Pattern
+  embedRST (RST.XtorPatI loc xt (as1,_,as2)) =
+    CST.PatXtor loc xt ((CST.PatVar loc . fromJust . snd <$> as1) ++ [CST.PatStar loc] ++ (CST.PatVar loc . fromJust . snd  <$> as2))
+
+-- CmdCase
 
 instance Open RST.CmdCase where
   open :: RST.CmdCase -> RST.CmdCase
@@ -59,6 +174,87 @@ instance Open RST.CmdCase where
                   , cmdcase_cmd = LN.open (freeVarNamesToXtorArgs args) (open cmdcase_cmd)
                   }
 
+instance CreateNames RST.CmdCase where
+  createNames :: RST.CmdCase -> CreateNameM RST.CmdCase
+  createNames RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } = do
+    pat' <- createNames cmdcase_pat
+    cmd' <- createNames cmdcase_cmd
+    pure $ RST.MkCmdCase cmdcase_loc pat' cmd'
+
+instance EmbedRST RST.CmdCase CST.TermCase where
+  embedRST :: RST.CmdCase -> CST.TermCase
+  embedRST RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
+    CST.MkTermCase { tmcase_loc = cmdcase_loc
+                  , tmcase_pat = embedRST cmdcase_pat
+                  , tmcase_term = embedRST cmdcase_cmd
+                  }
+
+instance Unresolve RST.CmdCase CST.TermCase where
+  unresolve :: RST.CmdCase -> CST.TermCase
+  unresolve cmdcase =
+    embedRST (evalState (unCreateNameM (createNames cmdcase)) names)
+
+-- TermCase
+
+instance Open (RST.TermCase pc) where
+  open :: RST.TermCase pc -> RST.TermCase pc
+  open RST.MkTermCase { tmcase_loc, tmcase_pat = RST.XtorPat loc xt args , tmcase_term } =
+      RST.MkTermCase { tmcase_loc = tmcase_loc
+                    , tmcase_pat = RST.XtorPat loc xt args
+                    , tmcase_term = LN.open (freeVarNamesToXtorArgs args) (open tmcase_term)
+                    }
+
+instance CreateNames (RST.TermCase pc) where
+  createNames :: RST.TermCase pc -> CreateNameM (RST.TermCase pc)
+  createNames RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
+    term <- createNames tmcase_term
+    pat <- createNames tmcase_pat
+    pure $ RST.MkTermCase tmcase_loc pat term
+
+instance EmbedRST (RST.TermCase pc) CST.TermCase where
+  embedRST :: RST.TermCase pc -> CST.TermCase
+  embedRST RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
+    CST.MkTermCase { tmcase_loc = tmcase_loc
+                  , tmcase_pat = embedRST tmcase_pat
+                  , tmcase_term = embedRST tmcase_term}
+
+instance Unresolve (RST.TermCase pc) CST.TermCase where
+  unresolve :: RST.TermCase pc -> CST.TermCase
+  unresolve termcase =
+    embedRST (evalState (unCreateNameM (createNames termcase)) names)
+
+-- TermCaseI
+
+instance Open (RST.TermCaseI pc) where
+  open :: RST.TermCaseI pc -> RST.TermCaseI pc
+  open RST.MkTermCaseI { tmcasei_loc, tmcasei_pat = RST.XtorPatI loc xt (as1, (), as2), tmcasei_term } =
+    RST.MkTermCaseI { tmcasei_loc = tmcasei_loc
+                    , tmcasei_pat = RST.XtorPatI loc xt (as1, (), as2)
+                    , tmcasei_term = LN.open (freeVarNamesToXtorArgs (as1 ++ [(Cns, Nothing)] ++ as2)) (open tmcasei_term)
+                    }
+
+instance CreateNames (RST.TermCaseI pc) where
+  createNames :: RST.TermCaseI pc -> CreateNameM (RST.TermCaseI pc)
+  createNames RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } = do
+    term <- createNames tmcasei_term
+    pat <- createNames tmcasei_pat
+    pure $ RST.MkTermCaseI tmcasei_loc pat term
+
+instance EmbedRST (RST.TermCaseI pc) CST.TermCase where
+  embedRST :: RST.TermCaseI pc -> CST.TermCase
+  embedRST RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
+    CST.MkTermCase { tmcase_loc = tmcasei_loc
+                  , tmcase_pat = embedRST tmcasei_pat
+                  , tmcase_term = embedRST tmcasei_term
+                  }
+
+instance Unresolve (RST.TermCaseI pc) CST.TermCase where
+  unresolve :: RST.TermCaseI pc -> CST.TermCase
+  unresolve termcasei =
+    embedRST (evalState (unCreateNameM (createNames termcasei)) names)
+
+-- InstanceCase
+
 instance Open RST.InstanceCase where
   open :: RST.InstanceCase -> RST.InstanceCase
   open RST.MkInstanceCase { instancecase_loc, instancecase_pat = pat@(RST.XtorPat _loc _xt args), instancecase_cmd } =
@@ -67,10 +263,27 @@ instance Open RST.InstanceCase where
                       , instancecase_cmd = LN.open (freeVarNamesToXtorArgs args) (open instancecase_cmd)
                       }
 
-instance Open RST.PrdCnsTerm where
-  open :: RST.PrdCnsTerm -> RST.PrdCnsTerm
-  open (RST.PrdTerm tm) = RST.PrdTerm $ open tm
-  open (RST.CnsTerm tm) = RST.CnsTerm $ open tm
+instance CreateNames RST.InstanceCase where
+  createNames :: RST.InstanceCase -> CreateNameM RST.InstanceCase
+  createNames RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } = do
+    pat' <- createNames instancecase_pat
+    cmd' <- createNames instancecase_cmd
+    pure $ RST.MkInstanceCase instancecase_loc pat' cmd'
+
+instance EmbedRST RST.InstanceCase CST.TermCase where
+  embedRST :: RST.InstanceCase -> CST.TermCase
+  embedRST RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } =
+    CST.MkTermCase { tmcase_loc = instancecase_loc
+                  , tmcase_pat = embedRST instancecase_pat
+                  , tmcase_term = embedRST instancecase_cmd
+                  }
+
+instance Unresolve RST.InstanceCase CST.TermCase where
+  unresolve :: RST.InstanceCase -> CST.TermCase
+  unresolve instancecase =
+    embedRST (open (evalState (unCreateNameM (createNames instancecase)) names))
+
+-- Term
 
 instance Open (RST.Term pc) where
   open :: RST.Term pc -> RST.Term pc
@@ -117,67 +330,6 @@ instance Open (RST.Term pc) where
     RST.PrimLitChar loc d
   open (RST.PrimLitString loc d) =
     RST.PrimLitString loc d
-
-instance Open RST.Command where
-  open :: RST.Command -> RST.Command
-  open (RST.Apply loc t1 t2) =
-    RST.Apply loc (open t1) (open t2)
-  open (RST.Print loc t cmd) =
-    RST.Print loc (open t) (open cmd)
-  open (RST.Read loc cns) =
-    RST.Read loc (open cns)
-  open (RST.Jump loc fv) =
-    RST.Jump loc fv
-  open (RST.Method loc mn cn subst) =
-    RST.Method loc mn cn (open <$> subst)
-  open (RST.ExitSuccess loc) =
-    RST.ExitSuccess loc
-  open (RST.ExitFailure loc) =
-    RST.ExitFailure loc
-  open (RST.PrimOp loc op subst) =
-    RST.PrimOp loc op (open <$> subst)
-  open (RST.CaseOfCmd loc ns tm cases) =
-    RST.CaseOfCmd loc ns (open tm) (open <$> cases)
-  open (RST.CocaseOfCmd loc ns tm cases) =
-    RST.CocaseOfCmd loc ns (open tm) (open <$> cases)
-  open (RST.CaseOfI loc rep ns tm cases) =
-    RST.CaseOfI loc rep ns (open tm) (open <$> cases)
-  open (RST.CocaseOfI loc rep ns tm cases) =
-    RST.CocaseOfI loc rep ns (open tm) (open <$> cases)
-
----------------------------------------------------------------------------------
--- CreateNames Monad
----------------------------------------------------------------------------------
-
-newtype CreateNameM a =
-  MkCreateNameM { unCreateNameM :: State ([FreeVarName],[FreeVarName]) a }
-    deriving (Functor, Applicative,Monad, MonadState ([FreeVarName],[FreeVarName]))
-
-names :: ([FreeVarName], [FreeVarName])
-names =  ((\y -> MkFreeVarName ("x" <> T.pack (show y))) <$> [(1 :: Int)..]
-         ,(\y -> MkFreeVarName ("k" <> T.pack (show y))) <$> [(1 :: Int)..])
-
-fresh :: PrdCns -> CreateNameM FreeVarName
-fresh Prd = do
-  var <- gets (head . fst)
-  modify (first tail)
-  pure var
-fresh Cns = do
-  var  <- gets (head . snd)
-  modify (second tail)
-  pure var
-
-class CreateNames a where
-  createNames :: a -> CreateNameM a
-
-instance CreateNames RST.PrdCnsTerm where
-  createNames :: RST.PrdCnsTerm -> CreateNameM RST.PrdCnsTerm
-  createNames (RST.PrdTerm tm) = RST.PrdTerm <$> createNames tm
-  createNames (RST.CnsTerm tm) = RST.CnsTerm <$> createNames tm
-
-instance CreateNames RST.Substitution where
-  createNames :: RST.Substitution  -> CreateNameM RST.Substitution
-  createNames = mapM createNames
 
 instance CreateNames (RST.Term pc) where
   createNames :: RST.Term pc -> CreateNameM (RST.Term pc)
@@ -234,108 +386,6 @@ instance CreateNames (RST.Term pc) where
   createNames (RST.PrimLitString loc d) =
     pure (RST.PrimLitString loc d)
 
-instance CreateNames RST.Command where
-  createNames :: RST.Command -> CreateNameM RST.Command
-  createNames (RST.ExitSuccess loc) =
-    pure $ RST.ExitSuccess loc
-  createNames (RST.ExitFailure loc) =
-    pure $ RST.ExitFailure loc
-  createNames (RST.Jump loc fv) =
-    pure $ RST.Jump loc fv
-  createNames (RST.Method loc mn cn subst) = do
-    subst' <- mapM createNames subst
-    pure $ RST.Method loc mn cn subst'
-  createNames (RST.Apply loc prd cns) = do
-    prd' <- createNames prd
-    cns' <- createNames cns
-    pure $ RST.Apply loc prd' cns'
-  createNames (RST.Print loc prd cmd) = do
-    prd' <- createNames prd
-    cmd' <- createNames cmd
-    pure $ RST.Print loc prd' cmd'
-  createNames (RST.Read loc cns) = do
-    cns' <- createNames cns
-    pure $ RST.Read loc cns'
-  createNames (RST.PrimOp loc op subst) = do
-    subst' <- mapM createNames subst
-    pure $ RST.PrimOp loc op subst'
-  createNames (RST.CaseOfCmd loc ns tm cases) = do
-    tm' <- createNames tm
-    cases' <- mapM createNames cases
-    pure $ RST.CaseOfCmd loc ns tm' cases'
-  createNames (RST.CocaseOfCmd loc ns tm cases) = do
-    tm' <- createNames tm
-    cases' <- mapM createNames cases
-    pure $ RST.CocaseOfCmd loc ns tm' cases'
-  createNames (RST.CaseOfI loc rep ns tm cases) = do
-    tm' <- createNames tm
-    cases' <- mapM createNames cases
-    pure $ RST.CaseOfI loc rep ns tm' cases'
-  createNames (RST.CocaseOfI loc rep ns tm cases) = do
-    tm' <- createNames tm
-    cases' <- mapM createNames cases
-    pure $ RST.CocaseOfI loc rep ns tm' cases'
-
-instance CreateNames RST.Pattern where
-  createNames :: RST.Pattern -> CreateNameM RST.Pattern
-  createNames (RST.XtorPat loc xt args) = do
-    args' <- mapM (\(pc,_) -> fresh pc >>= \v -> return (pc, Just v)) args
-    pure $ RST.XtorPat loc xt args'
-
-instance CreateNames RST.PatternI where
-  createNames :: RST.PatternI -> CreateNameM RST.PatternI
-  createNames (RST.XtorPatI loc xt (as1, (), as2)) = do
-    let f (pc,_) = fresh pc >>= \v -> return (pc, Just v)
-    as1' <- mapM f as1
-    as2' <- mapM f as2
-    pure $ RST.XtorPatI loc xt (as1', (), as2')
-
-instance CreateNames RST.CmdCase where
-  createNames :: RST.CmdCase -> CreateNameM RST.CmdCase
-  createNames RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } = do
-    pat' <- createNames cmdcase_pat
-    cmd' <- createNames cmdcase_cmd
-    pure $ RST.MkCmdCase cmdcase_loc pat' cmd'
-
-instance CreateNames (RST.TermCase pc) where
-  createNames :: RST.TermCase pc -> CreateNameM (RST.TermCase pc)
-  createNames RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
-    term <- createNames tmcase_term
-    pat <- createNames tmcase_pat
-    pure $ RST.MkTermCase tmcase_loc pat term
-
-instance CreateNames (RST.TermCaseI pc) where
-  createNames :: RST.TermCaseI pc -> CreateNameM (RST.TermCaseI pc)
-  createNames RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } = do
-    term <- createNames tmcasei_term
-    pat <- createNames tmcasei_pat
-    pure $ RST.MkTermCaseI tmcasei_loc pat term
-
-instance CreateNames RST.InstanceCase where
-  createNames :: RST.InstanceCase -> CreateNameM RST.InstanceCase
-  createNames RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } = do
-    pat' <- createNames instancecase_pat
-    cmd' <- createNames instancecase_cmd
-    pure $ RST.MkInstanceCase instancecase_loc pat' cmd'
-
----------------------------------------------------------------------------------
--- A typeclass for embedding RST.X into CST.X
----------------------------------------------------------------------------------
-
-class EmbedRST a b | a -> b where
-  embedRST :: a -> b
-
----------------------------------------------------------------------------------
--- EmbedTST implementation for terms
----------------------------------------------------------------------------------
-
-isNumSTermRST :: RST.Term pc -> Maybe Int
-isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "Z") []) = Just 0
-isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
-  Nothing -> Nothing
-  Just n -> Just (n + 1)
-isNumSTermRST _ = Nothing
-
 instance EmbedRST (RST.Term pc) CST.Term where
   embedRST :: RST.Term pc -> CST.Term
   embedRST (isNumSTermRST -> Just i) =
@@ -385,20 +435,80 @@ instance EmbedRST (RST.Term pc) CST.Term where
   embedRST (RST.PrimLitString loc d) =
     CST.PrimLitString loc d
 
+instance Unresolve (RST.Term pc) CST.Term where
+  unresolve :: RST.Term pc -> CST.Term
+  unresolve tm = embedRST (open (evalState (unCreateNameM (createNames tm)) names))
 
-instance EmbedRST RST.PrdCnsTerm CST.Term where
-  embedRST :: RST.PrdCnsTerm -> CST.Term
-  embedRST (RST.PrdTerm tm) = embedRST tm
-  embedRST (RST.CnsTerm tm) = embedRST tm
+-- Command
 
-instance EmbedRST RST.Substitution [CST.Term] where
-  embedRST :: RST.Substitution -> [CST.Term]
-  embedRST = fmap embedRST
+instance Open RST.Command where
+  open :: RST.Command -> RST.Command
+  open (RST.Apply loc t1 t2) =
+    RST.Apply loc (open t1) (open t2)
+  open (RST.Print loc t cmd) =
+    RST.Print loc (open t) (open cmd)
+  open (RST.Read loc cns) =
+    RST.Read loc (open cns)
+  open (RST.Jump loc fv) =
+    RST.Jump loc fv
+  open (RST.Method loc mn cn subst) =
+    RST.Method loc mn cn (open <$> subst)
+  open (RST.ExitSuccess loc) =
+    RST.ExitSuccess loc
+  open (RST.ExitFailure loc) =
+    RST.ExitFailure loc
+  open (RST.PrimOp loc op subst) =
+    RST.PrimOp loc op (open <$> subst)
+  open (RST.CaseOfCmd loc ns tm cases) =
+    RST.CaseOfCmd loc ns (open tm) (open <$> cases)
+  open (RST.CocaseOfCmd loc ns tm cases) =
+    RST.CocaseOfCmd loc ns (open tm) (open <$> cases)
+  open (RST.CaseOfI loc rep ns tm cases) =
+    RST.CaseOfI loc rep ns (open tm) (open <$> cases)
+  open (RST.CocaseOfI loc rep ns tm cases) =
+    RST.CocaseOfI loc rep ns (open tm) (open <$> cases)
 
-instance EmbedRST (RST.SubstitutionI pc) [CST.TermOrStar] where
-  embedRST :: RST.SubstitutionI pc -> [CST.TermOrStar]
-  embedRST (subst1,PrdRep,subst2) = (CST.ToSTerm <$> embedRST subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> embedRST subst2)
-  embedRST (subst1,CnsRep,subst2) = (CST.ToSTerm <$> embedRST subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> embedRST subst2)
+instance CreateNames RST.Command where
+  createNames :: RST.Command -> CreateNameM RST.Command
+  createNames (RST.ExitSuccess loc) =
+    pure $ RST.ExitSuccess loc
+  createNames (RST.ExitFailure loc) =
+    pure $ RST.ExitFailure loc
+  createNames (RST.Jump loc fv) =
+    pure $ RST.Jump loc fv
+  createNames (RST.Method loc mn cn subst) = do
+    subst' <- mapM createNames subst
+    pure $ RST.Method loc mn cn subst'
+  createNames (RST.Apply loc prd cns) = do
+    prd' <- createNames prd
+    cns' <- createNames cns
+    pure $ RST.Apply loc prd' cns'
+  createNames (RST.Print loc prd cmd) = do
+    prd' <- createNames prd
+    cmd' <- createNames cmd
+    pure $ RST.Print loc prd' cmd'
+  createNames (RST.Read loc cns) = do
+    cns' <- createNames cns
+    pure $ RST.Read loc cns'
+  createNames (RST.PrimOp loc op subst) = do
+    subst' <- mapM createNames subst
+    pure $ RST.PrimOp loc op subst'
+  createNames (RST.CaseOfCmd loc ns tm cases) = do
+    tm' <- createNames tm
+    cases' <- mapM createNames cases
+    pure $ RST.CaseOfCmd loc ns tm' cases'
+  createNames (RST.CocaseOfCmd loc ns tm cases) = do
+    tm' <- createNames tm
+    cases' <- mapM createNames cases
+    pure $ RST.CocaseOfCmd loc ns tm' cases'
+  createNames (RST.CaseOfI loc rep ns tm cases) = do
+    tm' <- createNames tm
+    cases' <- mapM createNames cases
+    pure $ RST.CaseOfI loc rep ns tm' cases'
+  createNames (RST.CocaseOfI loc rep ns tm cases) = do
+    tm' <- createNames tm
+    cases' <- mapM createNames cases
+    pure $ RST.CocaseOfI loc rep ns tm' cases'
 
 instance EmbedRST RST.Command CST.Term where
   embedRST :: RST.Command -> CST.Term
@@ -427,115 +537,10 @@ instance EmbedRST RST.Command CST.Term where
   embedRST (RST.CocaseOfI loc _rep _ns tm cases) =
     CST.CocaseOf loc (embedRST tm) (embedRST <$> cases)
 
-instance EmbedRST RST.PrimitiveOp PrimName where
-  embedRST :: RST.PrimitiveOp -> PrimName
-  embedRST RST.I64Add = i64AddName
-  embedRST RST.I64Sub = i64SubName
-  embedRST RST.I64Mul = i64MulName
-  embedRST RST.I64Div = i64DivName
-  embedRST RST.I64Mod = i64ModName
-  embedRST RST.F64Add = f64AddName
-  embedRST RST.F64Sub = f64SubName
-  embedRST RST.F64Mul = f64MulName
-  embedRST RST.F64Div = f64DivName
-  embedRST RST.CharPrepend = charPrependName
-  embedRST RST.StringAppend = stringAppendName
-
-instance EmbedRST RST.Pattern CST.Pattern where
-  embedRST :: RST.Pattern -> CST.Pattern
-  embedRST (RST.XtorPat loc xt args) =
-    CST.PatXtor loc xt (CST.PatVar loc . fromJust . snd <$> args)
-
-instance EmbedRST RST.PatternI CST.Pattern where
-  embedRST :: RST.PatternI -> CST.Pattern
-  embedRST (RST.XtorPatI loc xt (as1,_,as2)) =
-    CST.PatXtor loc xt ((CST.PatVar loc . fromJust . snd <$> as1) ++ [CST.PatStar loc] ++ (CST.PatVar loc . fromJust . snd  <$> as2))
-
-instance EmbedRST RST.CmdCase CST.TermCase where
-  embedRST :: RST.CmdCase -> CST.TermCase
-  embedRST RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
-    CST.MkTermCase { tmcase_loc = cmdcase_loc
-                  , tmcase_pat = embedRST cmdcase_pat
-                  , tmcase_term = embedRST cmdcase_cmd
-                  }
-
-instance EmbedRST (RST.TermCase pc) CST.TermCase where
-  embedRST :: RST.TermCase pc -> CST.TermCase
-  embedRST RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
-    CST.MkTermCase { tmcase_loc = tmcase_loc
-                  , tmcase_pat = embedRST tmcase_pat
-                  , tmcase_term = embedRST tmcase_term}
-
-instance EmbedRST (RST.TermCaseI pc) CST.TermCase where
-  embedRST :: RST.TermCaseI pc -> CST.TermCase
-  embedRST RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
-    CST.MkTermCase { tmcase_loc = tmcasei_loc
-                  , tmcase_pat = embedRST tmcasei_pat
-                  , tmcase_term = embedRST tmcasei_term
-                  }
-
-instance EmbedRST RST.InstanceCase CST.TermCase where
-  embedRST :: RST.InstanceCase -> CST.TermCase
-  embedRST RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } =
-    CST.MkTermCase { tmcase_loc = instancecase_loc
-                  , tmcase_pat = embedRST instancecase_pat
-                  , tmcase_term = embedRST instancecase_cmd
-                  }
-
----------------------------------------------------------------------------------
--- Unresolving
----------------------------------------------------------------------------------
-
-class Unresolve a b | a -> b where
-  unresolve :: a -> b
-
----------------------------------------------------------------------------------
--- Unresolving terms
----------------------------------------------------------------------------------
-
-instance Unresolve (RST.Term pc) CST.Term where
-  unresolve :: RST.Term pc -> CST.Term
-  unresolve tm = embedRST (open (evalState (unCreateNameM (createNames tm)) names))
-
-instance Unresolve RST.PrdCnsTerm CST.Term where
-  unresolve :: RST.PrdCnsTerm -> CST.Term
-  unresolve (RST.PrdTerm tm) = unresolve tm
-  unresolve (RST.CnsTerm tm) = unresolve tm
-
-instance Unresolve RST.Substitution CST.Substitution where
-  unresolve :: RST.Substitution -> CST.Substitution
-  unresolve = fmap unresolve
-
-instance Unresolve (RST.SubstitutionI pc) CST.SubstitutionI where
-  unresolve :: RST.SubstitutionI pc -> CST.SubstitutionI
-  unresolve (subst1,_,subst2) =
-    (CST.ToSTerm <$> unresolve subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> unresolve subst2)
-
 instance Unresolve RST.Command CST.Term where
   unresolve :: RST.Command -> CST.Term
   unresolve cmd =
     embedRST (open (evalState (unCreateNameM (createNames cmd)) names))
-
-instance Unresolve RST.CmdCase CST.TermCase where
-  unresolve :: RST.CmdCase -> CST.TermCase
-  unresolve cmdcase =
-    embedRST (evalState (unCreateNameM (createNames cmdcase)) names)
-
-instance Unresolve (RST.TermCase pc) CST.TermCase where
-  unresolve :: RST.TermCase pc -> CST.TermCase
-  unresolve termcase =
-    embedRST (evalState (unCreateNameM (createNames termcase)) names)
-
-instance Unresolve (RST.TermCaseI pc) CST.TermCase where
-  unresolve :: RST.TermCaseI pc -> CST.TermCase
-  unresolve termcasei =
-    embedRST (evalState (unCreateNameM (createNames termcasei)) names)
-
-instance Unresolve RST.InstanceCase CST.TermCase where
-  unresolve :: RST.InstanceCase -> CST.TermCase
-  unresolve instancecase =
-    embedRST (open (evalState (unCreateNameM (createNames instancecase)) names))
-
 
 ---------------------------------------------------------------------------------
 -- Unresolving types
