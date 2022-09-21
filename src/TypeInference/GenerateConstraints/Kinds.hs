@@ -63,15 +63,13 @@ newKVar = do
 data DataDeclState = DataDeclState
   {
     declKind :: PolyKind,
-    declTyName :: RnTypeName,
-    boundRecVars :: M.Map RecTVar MonoKind
+    declTyName :: RnTypeName
   }
 
 createDataDeclState :: PolyKind -> RnTypeName -> DataDeclState
 createDataDeclState polyknd tyn = DataDeclState 
   { declKind = polyknd,
-    declTyName = tyn,
-    boundRecVars = M.empty
+    declTyName = tyn
   }
 
 type DataDeclM a = (ReaderT (M.Map ModuleName Environment, ()) (StateT DataDeclState (Except (NonEmpty Error)))) a
@@ -83,11 +81,6 @@ resolveDataDecl :: RST.DataDecl -> M.Map ModuleName Environment ->  Either (NonE
 resolveDataDecl decl env = do
   (decl', _) <- runDataDeclM (annotateDataDecl decl) env (createDataDeclState (RST.data_kind decl) (RST.data_name decl))
   return decl' 
-
-addRecVar :: RecTVar ->  MonoKind -> DataDeclM () 
-addRecVar rv mk =   modify (\ds@DataDeclState{boundRecVars = rvs}
-          -> ds { boundRecVars = M.insert rv mk rvs})
-
   
 annotXtor :: RST.XtorSig pol -> DataDeclM (TST.XtorSig pol)
 annotXtor (RST.MkXtorSig nm ctxt) =
@@ -120,6 +113,7 @@ annotTy (RST.TySkolemVar loc pol tv) = do
 annotTy (RST.TyUniVar loc _ _) = throwOtherError loc ["UniVar should not appear in data declaration"]
 annotTy (RST.TyRecVar loc pol tv) = do 
   polyknd <- gets declKind
+  -- not sure if this is correct
   return $ TST.TyRecVar loc pol (CBox $ returnKind polyknd) tv
 annotTy (RST.TyData loc pol xtors) = do 
   let xtnms = map RST.sig_name xtors
