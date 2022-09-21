@@ -89,19 +89,13 @@ resolveDataDecl decl env = do
   return decl' 
 
 addKVar :: KVar -> DataDeclM () 
-addKVar kv =   modify (\(ds@DataDeclState{usedKindVars = kvs, kvCount = cnt }) 
+addKVar kv =   modify (\ds@DataDeclState{usedKindVars = kvs, kvCount = cnt }
           -> ds { usedKindVars = kv : kvs, kvCount = cnt+1})
 
 addRecVar :: RecTVar ->  MonoKind -> DataDeclM () 
-addRecVar rv mk =   modify (\(ds@DataDeclState{boundRecVars = rvs, kvCount = cnt}) 
+addRecVar rv mk =   modify (\ds@DataDeclState{boundRecVars = rvs, kvCount = cnt}
           -> ds { boundRecVars = M.insert rv mk rvs, kvCount = cnt+1})
 
-newDeclKVar :: DataDeclM KVar
-newDeclKVar = do
-  kvc <- gets kvCount
-  let newKV = MkKVar $ T.pack ("kd"<> show kvc)
-  addKVar newKV
-  return newKV
   
 annotXtor :: RST.XtorSig pol -> DataDeclM (TST.XtorSig pol)
 annotXtor (RST.MkXtorSig nm ctxt) =
@@ -126,49 +120,13 @@ getKindSkolem polyknd = searchKindArgs (kindArgs polyknd)
                             Nothing -> error "Skolem Variable not found in argument types of polykind"
                             Just (_,_,mk) -> mk
 
--- only recvars, bottom and top can contain kvars
-removeKVars :: TST.Typ pol -> DataDeclM (TST.Typ pol)
--- already correctly annotated
-removeKVars sv@TST.TySkolemVar{}          = return sv
--- should neve appear
-removeKVars uv@TST.TyUniVar{}             = return uv
-removeKVars rv@TST.TyRecVar{}             = return rv                            -- TODO -- always gets kvar (
-removeKVars tyd@TST.TyData{}              = return tyd                           -- TODO -- xtors are annotated (actual kind always inhabited)
-removeKVars tycd@TST.TyCodata{}           = return tycd                          -- TODO -- xtors are annotated (actual kind always inhabited) 
-removeKVars tydr@TST.TyDataRefined{}      = return tydr                          -- TODO -- xtors are annotated 
-removeKVars tycdr@TST.TyCodataRefined{}   = return tycdr                         -- TODO -- xtors are annotated 
-removeKVars tyn@TST.TyNominal{}           = return tyn                           -- TODO -- vartys are annotated
--- only the contained type has to be checked
-removeKVars (TST.TySyn loc pol tyn ty)    = do 
-  ty' <- removeKVars ty
-  return $ TST.TySyn loc pol tyn ty'
-removeKVars bot@TST.TyBot{}               = return bot                           -- TODO -- always gets kvar 
-removeKVars top@TST.TyTop{}               = return top                           -- TODO -- always gets kvar
-removeKVars (TST.TyUnion loc knd ty1 ty2) = return (TST.TyUnion loc knd ty1 ty2) -- TODO -- ty1 and ty2 may contain kvars
-removeKVars (TST.TyInter loc knd ty1 ty2) = return (TST.TyInter loc knd ty1 ty2) -- TODO -- ty1 and ty2 may contain kvars
-removeKVars tr@TST.TyRec{}                = return tr                            -- TODO -- recursive type and recvar may contain kvars
--- primitive types don't contain a type
-removeKVars i64@TST.TyI64{}               = return i64
-removeKVars f64@TST.TyF64{}               = return f64
-removeKVars ch@TST.TyChar{}               = return ch
-removeKVars str@TST.TyString{}            = return str
--- only the contained type needs to be checked
-removeKVars (TST.TyFlipPol pol ty)        = do 
-  ty' <- removeKVars ty
-  return $ TST.TyFlipPol pol ty'
-
-
 annotTy :: RST.Typ pol -> DataDeclM (TST.Typ pol)
 annotTy (RST.TySkolemVar loc pol tv) = do 
   polyknd <- gets declKind
   return $ TST.TySkolemVar loc pol (getKindSkolem polyknd tv) tv 
 -- uni vars should not appear in data declarations
 annotTy (RST.TyUniVar loc _ _) = throwOtherError loc ["UniVar should not appear in data declaration"]
-annotTy (RST.TyRecVar loc pol tv) = do
-  rvs <- gets boundRecVars 
-  case M.lookup tv rvs of 
-    Nothing -> throwOtherError loc ["Unbound RecVar " <> ppPrint tv <> " in Xtor"]
-    Just knd -> return $ TST.TyRecVar loc pol knd tv
+annotTy (RST.TyRecVar loc _ _) = throwOtherError loc ["RecVar should not appear in data declaration"]
 annotTy (RST.TyData loc pol xtors) = do 
   let xtnms = map RST.sig_name xtors
   xtorKinds <- mapM lookupXtorKind xtnms
@@ -227,8 +185,8 @@ annotTy (RST.TyNominal loc pol tyn vartys) = do
 annotTy (RST.TySyn loc pol tyn ty) =  do 
   ty' <- annotTy ty
   return $ TST.TySyn loc pol tyn ty'
-annotTy (RST.TyBot loc) = do TST.TyBot loc . KindVar <$> newDeclKVar
-annotTy (RST.TyTop loc) = do TST.TyTop loc . KindVar <$> newDeclKVar
+annotTy (RST.TyBot loc) = throwOtherError loc ["TyBot should not be contained in a data declaration"]
+annotTy (RST.TyTop loc) = throwOtherError loc ["TyTop should not be contained in a data declaration"]
 annotTy (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
@@ -246,11 +204,7 @@ annotTy (RST.TyInter loc ty1 ty2) = do
     return $ TST.TyInter loc knd ty1' ty2'
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
-annotTy (RST.TyRec loc pol tv ty) = do 
-  kv <- newDeclKVar
-  addRecVar tv (KindVar kv)
-  ty' <- annotTy ty
-  return $ TST.TyRec loc pol tv ty' 
+annotTy (RST.TyRec loc _ _ _) = throwOtherError loc ["Recursive Types should not appear in data Declaration"]
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
 annotTy (RST.TyF64 loc pol) = return $ TST.TyF64 loc pol
 annotTy (RST.TyChar loc pol) = return $ TST.TyChar loc pol
