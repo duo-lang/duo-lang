@@ -11,7 +11,7 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Names ( FreeVarName )
 import Translate.EmbedTST (EmbedTST(..))
-import Translate.EmbedRST
+import Resolution.Unresolve
 
 ---------------------------------------------------------------------------------
 -- Data/Codata and Nominal/Structural/Refinement
@@ -50,12 +50,12 @@ instance PrettyAnn TST.CmdCase where
   prettyAnn cmdcase = prettyAnn (embedTST cmdcase)
 
 instance PrettyAnn RST.CmdCase where
-  prettyAnn cmdcase = prettyAnn (reparse cmdcase)
+  prettyAnn cmdcase = prettyAnn (unresolve cmdcase)
 
 -- TermCase
 
 instance PrettyAnn (RST.TermCase pc) where
-  prettyAnn termcase = prettyAnn (reparse termcase)
+  prettyAnn termcase = prettyAnn (unresolve termcase)
 
 instance PrettyAnn CST.TermCase where
   prettyAnn CST.MkTermCase{ tmcase_pat, tmcase_term } =
@@ -64,7 +64,7 @@ instance PrettyAnn CST.TermCase where
       prettyAnn tmcase_term
 
 instance PrettyAnn (RST.TermCaseI pc) where
-  prettyAnn termcasei = prettyAnn (reparse termcasei)
+  prettyAnn termcasei = prettyAnn (unresolve termcasei)
 
 instance PrettyAnn CST.TermOrStar  where
   prettyAnn (CST.ToSTerm t) = prettyAnn t
@@ -80,7 +80,7 @@ instance PrettyAnn TST.PrdCnsTerm where
   prettyAnn pcterm = prettyAnn (embedCore (embedTST pcterm))
 
 instance PrettyAnn RST.PrdCnsTerm where
-  prettyAnn pcterm = prettyAnn (reparse pcterm)
+  prettyAnn pcterm = prettyAnn (unresolve pcterm)
 
 -- Substitution
 
@@ -88,7 +88,7 @@ instance {-# OVERLAPPING #-} PrettyAnn TST.Substitution where
   prettyAnn subst = prettyAnn (embedCore (embedTST subst))
 
 instance {-# OVERLAPPING #-} PrettyAnn RST.Substitution where
-  prettyAnn subst = prettyAnn (reparse subst)
+  prettyAnn subst = prettyAnn (unresolve subst)
 
 instance {-# OVERLAPPING #-} PrettyAnn CST.Substitution where
   prettyAnn subst = parens' comma (prettyAnn <$> subst)
@@ -96,7 +96,7 @@ instance {-# OVERLAPPING #-} PrettyAnn CST.Substitution where
 -- SubstitutionI
 
 instance PrettyAnn (RST.SubstitutionI pc) where
-  prettyAnn substi = prettyAnn (reparse substi)
+  prettyAnn substi = prettyAnn (unresolve substi)
 
 instance {-# OVERLAPPING #-} PrettyAnn CST.SubstitutionI where
   prettyAnn substi = parens' comma (prettyAnn <$> substi)
@@ -110,7 +110,7 @@ instance PrettyAnn (TST.Term pc) where
   prettyAnn tm = prettyAnn (embedTST tm)
 
 instance PrettyAnn (RST.Term pc) where
-  prettyAnn tm = prettyAnn (reparse tm)
+  prettyAnn tm = prettyAnn (unresolve tm)
 
 instance PrettyAnn (Core.Term pc) where
   prettyAnn tm = prettyAnn (embedCore tm)
@@ -206,7 +206,7 @@ instance PrettyAnn TST.Command where
   prettyAnn cmd = prettyAnn (embedTST cmd)
 
 instance PrettyAnn RST.Command where
-  prettyAnn cmd = prettyAnn (reparse cmd)
+  prettyAnn cmd = prettyAnn (unresolve cmd)
 
 instance PrettyAnn Core.Command where
   prettyAnn cmd = prettyAnn (embedCore cmd)
