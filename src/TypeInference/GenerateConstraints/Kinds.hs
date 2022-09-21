@@ -64,18 +64,14 @@ data DataDeclState = DataDeclState
   {
     declKind :: PolyKind,
     declTyName :: RnTypeName,
-    boundRecVars :: M.Map RecTVar MonoKind,
-    usedKindVars :: [KVar],
-    kvCount :: Int
+    boundRecVars :: M.Map RecTVar MonoKind
   }
 
 createDataDeclState :: PolyKind -> RnTypeName -> DataDeclState
 createDataDeclState polyknd tyn = DataDeclState 
   { declKind = polyknd,
     declTyName = tyn,
-    boundRecVars = M.empty, 
-    usedKindVars = [], 
-    kvCount = 0
+    boundRecVars = M.empty
   }
 
 type DataDeclM a = (ReaderT (M.Map ModuleName Environment, ()) (StateT DataDeclState (Except (NonEmpty Error)))) a
@@ -87,10 +83,6 @@ resolveDataDecl :: RST.DataDecl -> M.Map ModuleName Environment ->  Either (NonE
 resolveDataDecl decl env = do
   (decl', _) <- runDataDeclM (annotateDataDecl decl) env (createDataDeclState (RST.data_kind decl) (RST.data_name decl))
   return decl' 
-
-addKVar :: KVar -> DataDeclM () 
-addKVar kv =   modify (\ds@DataDeclState{usedKindVars = kvs, kvCount = cnt }
-          -> ds { usedKindVars = kv : kvs, kvCount = cnt+1})
 
 addRecVar :: RecTVar ->  MonoKind -> DataDeclM () 
 addRecVar rv mk =   modify (\ds@DataDeclState{boundRecVars = rvs, kvCount = cnt}
