@@ -109,18 +109,18 @@ instance Desugar RST.PrdCnsTerm Core.PrdCnsTerm where
 
 instance Desugar RST.Substitution Core.Substitution where
   desugar :: RST.Substitution -> Core.Substitution
-  desugar (RST.MkSubstitution subst) = fmap desugar subst
+  desugar (RST.MkSubstitution subst) = Core.MkSubstitution $ fmap desugar subst
 
   embedCore :: Core.Substitution -> RST.Substitution
-  embedCore subst = RST.MkSubstitution (fmap embedCore subst)
+  embedCore (Core.MkSubstitution subst) = RST.MkSubstitution (fmap embedCore subst)
 
 instance Desugar (RST.SubstitutionI pc) (Core.SubstitutionI pc) where
   desugar :: RST.SubstitutionI pc -> Core.SubstitutionI pc
   desugar (RST.MkSubstitutionI (subst1, pc, subst2)) = 
-    (desugar <$> subst1, pc, desugar <$> subst2)
+    Core.MkSubstitutionI (desugar <$> subst1, pc, desugar <$> subst2)
 
   embedCore :: Core.SubstitutionI pc -> RST.SubstitutionI pc
-  embedCore (subst1, pc, subst2) =
+  embedCore (Core.MkSubstitutionI (subst1, pc, subst2)) =
     RST.MkSubstitutionI (embedCore <$> subst1, pc, embedCore <$> subst2)
 
 instance Desugar (RST.Term pc) (Core.Term pc) where

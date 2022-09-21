@@ -41,7 +41,7 @@ instance GenConstraints Core.PrdCnsTerm TST.PrdCnsTerm where
 instance GenConstraints Core.Substitution TST.Substitution where
   genConstraints :: Core.Substitution
                  -> GenM TST.Substitution
-  genConstraints = fmap MkSubstitution . mapM genConstraints
+  genConstraints = fmap MkSubstitution . mapM genConstraints . Core.unSubstitution
 
 genConstraintsCtxts :: TST.LinearContext Pos -> TST.LinearContext Neg -> ConstraintInfo -> GenM ()
 genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = do
