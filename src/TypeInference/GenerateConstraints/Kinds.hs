@@ -103,27 +103,18 @@ newDeclKVar = do
   return newKV
   
 annotXtor :: RST.XtorSig pol -> DataDeclM (TST.XtorSig pol)
-annotXtor (RST.MkXtorSig nm ctxt) = do 
-  ctxt' <- annotCtxt ctxt
-  return $ TST.MkXtorSig nm ctxt'
+annotXtor (RST.MkXtorSig nm ctxt) =
+  TST.MkXtorSig nm <$> mapM annotPrdCns ctxt
 
-annotCtxt :: RST.LinearContext pol -> DataDeclM (TST.LinearContext pol)
-annotCtxt [] = return []
-annotCtxt (RST.PrdCnsType pc ty:rst) = do 
-  rst' <- annotCtxt rst
-  ty' <- annotTy ty
-  return $ TST.PrdCnsType pc ty' : rst'
+annotPrdCns :: RST.PrdCnsType pol -> DataDeclM (TST.PrdCnsType pol)
+annotPrdCns (RST.PrdCnsType pc ty) = 
+  TST.PrdCnsType pc <$> annotTy ty
 
-annotVarTys :: [RST.VariantType pol] -> DataDeclM [TST.VariantType pol]
-annotVarTys [] = return [] 
-annotVarTys (RST.CovariantType ty:rst) = do
-  rst' <- annotVarTys rst 
-  ty' <- annotTy ty
-  return $ TST.CovariantType ty' : rst'
-annotVarTys (RST.ContravariantType ty:rst) = do 
-  rst'<- annotVarTys rst 
-  ty' <- annotTy ty 
-  return $ TST.ContravariantType ty' : rst'
+annotVarTy :: RST.VariantType pol -> DataDeclM (TST.VariantType pol)
+annotVarTy (RST.CovariantType ty) =
+  TST.CovariantType <$> annotTy ty 
+annotVarTy (RST.ContravariantType ty) =
+  TST.ContravariantType <$> annotTy ty 
 
 
 getKindSkolem :: PolyKind -> SkolemTVar -> MonoKind
@@ -224,7 +215,7 @@ annotTy (RST.TyCodataRefined loc pol tyn xtors) = do
     return $ TST.TyCodataRefined loc pol (CBox $ returnKind (TST.data_kind decl)) tyn xtors'
 annotTy (RST.TyNominal loc pol tyn vartys) = do 
   tyn' <- gets declTyName
-  vartys' <- annotVarTys vartys
+  vartys' <- mapM annotVarTy vartys
   if tyn == tyn' then do
     polyknd <- gets declKind
     return $ TST.TyNominal loc pol (CBox $ returnKind polyknd) tyn vartys' 
@@ -274,17 +265,17 @@ annotateDataDecl RST.NominalDecl {
   data_name = tyn,
   data_polarity = pol,
   data_kind = polyknd,
-  data_xtors = xtors 
+  data_xtors = (xtorsPos, xtorsNeg)
   } =do 
-    xtorsPos <- mapM annotXtor (fst xtors)
-    xtorsNeg <- mapM annotXtor (snd xtors)
+    xtorsPos' <- mapM annotXtor xtorsPos
+    xtorsNeg' <- mapM annotXtor xtorsNeg
     return TST.NominalDecl { 
         data_loc = loc, 
         data_doc = doc,
         data_name = tyn,
         data_polarity = pol,
         data_kind = polyknd,
-        data_xtors = (xtorsPos, xtorsNeg) 
+        data_xtors = (xtorsPos', xtorsNeg') 
       }
 annotateDataDecl RST.RefinementDecl { 
   data_loc = loc, 
