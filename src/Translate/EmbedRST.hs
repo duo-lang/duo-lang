@@ -186,15 +186,15 @@ names :: ([FreeVarName], [FreeVarName])
 names =  ((\y -> MkFreeVarName ("x" <> T.pack (show y))) <$> [(1 :: Int)..]
          ,(\y -> MkFreeVarName ("k" <> T.pack (show y))) <$> [(1 :: Int)..])
 
-fresh :: PrdCns -> CreateNameM (Maybe FreeVarName)
+fresh :: PrdCns -> CreateNameM FreeVarName
 fresh Prd = do
   var <- gets (head . fst)
   modify (first tail)
-  pure (Just var)
+  pure var
 fresh Cns = do
   var  <- gets (head . snd)
   modify (second tail)
-  pure (Just var)
+  pure var
 
 class CreateNames a where
   createNames :: a -> CreateNameM a
@@ -224,7 +224,7 @@ instance CreateNames (RST.Term pc) where
   createNames (RST.MuAbs loc pc _ cmd) = do
     cmd' <- createNames cmd
     var <- fresh (case pc of PrdRep -> Cns; CnsRep -> Prd)
-    pure $ RST.MuAbs loc pc var cmd'
+    pure $ RST.MuAbs loc pc (Just var) cmd'
   -- Syntactic sugar
   createNames (RST.Semi loc pc ns xt (subst1,pcrep,subst2) e) = do
     e' <- createNames e
@@ -238,17 +238,17 @@ instance CreateNames (RST.Term pc) where
     pure $ RST.Dtor loc pc ns xt e' (subst1',pcrep,subst2')
   createNames (RST.CaseOf loc rep ns e cases) = do
     e' <- createNames e
-    cases' <- sequence (createNames <$> cases)
+    cases' <- mapM createNames cases
     pure $ RST.CaseOf loc rep ns e' cases'
   createNames (RST.CocaseOf loc rep ns e cases) = do
     e' <- createNames e
-    cases' <- sequence (createNames <$> cases)
+    cases' <- mapM createNames cases
     pure $ RST.CocaseOf loc rep ns e' cases'
   createNames (RST.CaseI loc rep ns cases) = do
-    cases' <- sequence (createNames <$> cases)
+    cases' <- mapM createNames cases
     pure $ RST.CaseI loc rep ns cases'
   createNames (RST.CocaseI loc rep ns cases) = do
-    cases' <- sequence (createNames <$> cases)
+    cases' <- mapM createNames cases
     pure $ RST.CocaseI loc rep ns cases'
   createNames (RST.Lambda loc rep fvs tm) = do
     tm' <- createNames tm
@@ -272,7 +272,7 @@ instance CreateNames RST.Command where
   createNames (RST.Jump loc fv) =
     pure $ RST.Jump loc fv
   createNames (RST.Method loc mn cn subst) = do
-    subst' <- sequence $ createNames <$> subst
+    subst' <- mapM createNames subst
     pure $ RST.Method loc mn cn subst'
   createNames (RST.Apply loc prd cns) = do
     prd' <- createNames prd
@@ -286,37 +286,37 @@ instance CreateNames RST.Command where
     cns' <- createNames cns
     pure $ RST.Read loc cns'
   createNames (RST.PrimOp loc op subst) = do
-    subst' <- sequence $ createNames <$> subst
+    subst' <- mapM createNames subst
     pure $ RST.PrimOp loc op subst'
   createNames (RST.CaseOfCmd loc ns tm cases) = do
     tm' <- createNames tm
-    cases' <- sequence $ createNames <$> cases
+    cases' <- mapM createNames cases
     pure $ RST.CaseOfCmd loc ns tm' cases'
   createNames (RST.CocaseOfCmd loc ns tm cases) = do
     tm' <- createNames tm
-    cases' <- sequence $ createNames <$> cases
+    cases' <- mapM createNames cases
     pure $ RST.CocaseOfCmd loc ns tm' cases'
   createNames (RST.CaseOfI loc rep ns tm cases) = do
     tm' <- createNames tm
-    cases' <- sequence $ createNames <$> cases
+    cases' <- mapM createNames cases
     pure $ RST.CaseOfI loc rep ns tm' cases'
   createNames (RST.CocaseOfI loc rep ns tm cases) = do
     tm' <- createNames tm
-    cases' <- sequence $ createNames <$> cases
+    cases' <- mapM createNames cases
     pure $ RST.CocaseOfI loc rep ns tm' cases'
 
 instance CreateNames RST.Pattern where
   createNames :: RST.Pattern -> CreateNameM RST.Pattern
   createNames (RST.XtorPat loc xt args) = do
-    args' <- sequence $ (\(pc,_) -> fresh pc >>= \v -> return (pc,v)) <$> args
+    args' <- mapM (\(pc,_) -> fresh pc >>= \v -> return (pc, Just v)) args
     pure $ RST.XtorPat loc xt args'
 
 instance CreateNames RST.PatternI where
   createNames :: RST.PatternI -> CreateNameM RST.PatternI
   createNames (RST.XtorPatI loc xt (as1, (), as2)) = do
-    let f (pc,_) = fresh pc >>= \v -> return (pc,v)
-    as1' <- sequence $ f <$> as1
-    as2' <- sequence $ f <$> as2
+    let f (pc,_) = fresh pc >>= \v -> return (pc, Just v)
+    as1' <- mapM f as1
+    as2' <- mapM f as2
     pure $ RST.XtorPatI loc xt (as1', (), as2')
 
 instance CreateNames RST.CmdCase where
@@ -348,17 +348,6 @@ instance CreateNames RST.InstanceCase where
     pure $ RST.MkInstanceCase instancecase_loc pat' cmd'
 
 ---------------------------------------------------------------------------------
--- CreateNames Monad
----------------------------------------------------------------------------------
-
-isNumSTermRST :: RST.Term pc -> Maybe Int
-isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "Z") []) = Just 0
-isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
-  Nothing -> Nothing
-  Just n -> Just (n + 1)
-isNumSTermRST _ = Nothing
-
----------------------------------------------------------------------------------
 -- A typeclass for embedding RST.X into CST.X
 ---------------------------------------------------------------------------------
 
@@ -368,6 +357,13 @@ class EmbedRST a b | a -> b where
 ---------------------------------------------------------------------------------
 -- EmbedTST implementation for terms
 ---------------------------------------------------------------------------------
+
+isNumSTermRST :: RST.Term pc -> Maybe Int
+isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "Z") []) = Just 0
+isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
+  Nothing -> Nothing
+  Just n -> Just (n + 1)
+isNumSTermRST _ = Nothing
 
 instance EmbedRST (RST.Term pc) CST.Term where
   embedRST :: RST.Term pc -> CST.Term
@@ -568,9 +564,9 @@ instance EmbedRST (RST.Typ pol) CST.Typ where
   embedRST (resugarType -> Just ty) = ty
   embedRST (RST.TyUniVar loc _ tv) =
     CST.TyUniVar loc tv
-  embedRST (RST.TySkolemVar loc _ tv) = 
+  embedRST (RST.TySkolemVar loc _ tv) =
     CST.TySkolemVar loc tv
-  embedRST (RST.TyRecVar loc _ tv) = 
+  embedRST (RST.TyRecVar loc _ tv) =
     CST.TySkolemVar loc $ embedRecTVar tv
   embedRST (RST.TyData loc _ xtors) =
     CST.TyXData loc CST.Data (embedRST <$> xtors)
