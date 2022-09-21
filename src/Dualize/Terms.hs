@@ -66,7 +66,7 @@ dualPattern :: Pattern -> Pattern
 dualPattern (XtorPat _ xtor vars) = XtorPat defaultLoc (dualXtorName xtor) (map (bimap flipPC (dualFVName <$>)) vars)
 
 dualSubst :: Substitution -> Either DualizeError Substitution
-dualSubst = mapM dualPrdCnsTerm
+dualSubst = fmap MkSubstitution . mapM dualPrdCnsTerm . unSubstitution
   where
       dualPrdCnsTerm :: PrdCnsTerm -> Either DualizeError PrdCnsTerm
       dualPrdCnsTerm (PrdTerm t) = dualTerm PrdRep t <&> CnsTerm

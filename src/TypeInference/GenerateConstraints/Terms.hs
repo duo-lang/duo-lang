@@ -26,6 +26,7 @@ import Loc
 import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
+import Syntax.TST.Terms (Substitution(..))
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -40,7 +41,7 @@ instance GenConstraints Core.PrdCnsTerm TST.PrdCnsTerm where
 instance GenConstraints Core.Substitution TST.Substitution where
   genConstraints :: Core.Substitution
                  -> GenM TST.Substitution
-  genConstraints = mapM genConstraints
+  genConstraints = fmap MkSubstitution . mapM genConstraints
 
 genConstraintsCtxts :: TST.LinearContext Pos -> TST.LinearContext Neg -> ConstraintInfo -> GenM ()
 genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = do

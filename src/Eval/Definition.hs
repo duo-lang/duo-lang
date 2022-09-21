@@ -46,20 +46,22 @@ lookupMatchCase xt cases = case find (\MkCmdCase { cmdcase_pat = XtorPat _ xt' _
                                        ]
 
 checkArgs :: Command -> [(PrdCns,a)] -> Substitution -> EvalM ()
-checkArgs _md [] [] = return ()
-checkArgs cmd ((Prd,_):rest1) (PrdTerm _:rest2) = checkArgs cmd rest1 rest2
-checkArgs cmd ((Cns,_):rest1) (CnsTerm _:rest2) = checkArgs cmd rest1 rest2
-checkArgs cmd _ _ = throwEvalError defaultLoc [ "Error during evaluation of:"
-                                              ,  ppPrint cmd
-                                              , "Argument lengths don't coincide."
-                                              ]
+checkArgs cmd args (MkSubstitution subst) = checkArgs' args subst
+  where
+    checkArgs' [] [] = return ()
+    checkArgs' ((Prd,_):rest1) (PrdTerm _:rest2) = checkArgs' rest1 rest2
+    checkArgs' ((Cns,_):rest1) (CnsTerm _:rest2) = checkArgs' rest1 rest2
+    checkArgs' _ _ = throwEvalError defaultLoc [ "Error during evaluation of:"
+                                                  ,  ppPrint cmd
+                                                  , "Argument lengths don't coincide."
+                                                  ]
 
 natType :: TST.Typ 'Pos
 natType = TST.TyNominal defaultLoc PosRep (CBox CBV) peanoNm []
 
 convertInt :: Int -> Term Prd
-convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "Z") []
-convertInt n = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "S") [PrdTerm $ convertInt (n-1)]
+convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "Z") $ MkSubstitution []
+convertInt n = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "S") $ MkSubstitution [PrdTerm $ convertInt (n-1)]
 
 
 readInt :: IO (Term Prd)

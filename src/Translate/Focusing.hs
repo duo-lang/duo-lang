@@ -17,6 +17,7 @@ import Syntax.CST.Names
 import Syntax.Core.Annot
 import qualified Syntax.LocallyNameless as LN
 import Data.Maybe (isNothing)
+import Syntax.NMap (NMap(..), (<¢>))
 
 ---------------------------------------------------------------------------------
 -- Check whether terms are focused, values or covalues
@@ -44,7 +45,7 @@ isValuePCTerm eo (CnsTerm tm) = CnsTerm <$> isValueTerm eo CnsRep tm
 
 -- | Check whether all arguments in the given argument list are substitutable.
 isValueSubst :: EvaluationOrder -> Substitution -> Maybe Substitution
-isValueSubst eo = mapM (isValuePCTerm eo)
+isValueSubst eo = fmap MkSubstitution . mapM (isValuePCTerm eo) . unSubstitution
 
 ---------------------------------------------------------------------------------
 -- A typeclass for focusing 
@@ -151,10 +152,10 @@ instance Focus PrdCnsTerm where
 
 instance Focus Substitution where
   focus :: EvaluationOrder -> Substitution -> Substitution
-  focus eo = fmap (focus eo)
+  focus eo = nmap (focus eo)
 
   isFocused :: EvaluationOrder -> Substitution -> Maybe Substitution
-  isFocused eo = mapM (isFocused eo)
+  isFocused eo = nmapM (isFocused eo)
 
 -- | The variable used for focusing the entire Xtor.
 -- We use an unparseable name to guarantee that the name is fresh.
@@ -170,15 +171,15 @@ betaVar i = MkFreeVarName ("$beta" <> T.pack (show i))
 --   The output should have the property `isFocusedSTerm`.
 focusXtor :: EvaluationOrder -> PrdCnsRep pc ->  Typ (PrdCnsToPol pc) -> CST.NominalStructural -> XtorName -> Substitution -> Term pc
 focusXtor eo PrdRep ty ns xt subst =
-    MuAbs defaultLoc MuAnnotOrig PrdRep ty Nothing (LN.close [(Cns, alphaVar)] (LN.shift ShiftUp (focusXtor' eo PrdRep ty ns xt subst [])))
+    MuAbs defaultLoc MuAnnotOrig PrdRep ty Nothing (LN.close [(Cns, alphaVar)] (LN.shift ShiftUp (focusXtor' eo PrdRep ty ns xt (unSubstitution subst) [])))
 focusXtor eo CnsRep ty ns xt subst =
-    MuAbs defaultLoc MuAnnotOrig CnsRep ty Nothing (LN.close [(Prd, alphaVar)] (LN.shift ShiftUp (focusXtor' eo CnsRep ty ns xt subst [])))
+    MuAbs defaultLoc MuAnnotOrig CnsRep ty Nothing (LN.close [(Prd, alphaVar)] (LN.shift ShiftUp (focusXtor' eo CnsRep ty ns xt (unSubstitution subst) [])))
 
 
 focusXtor' :: EvaluationOrder -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) ->  CST.NominalStructural -> XtorName -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
 focusXtor' eo CnsRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (CBox eo) (FreeVar defaultLoc PrdRep (TyFlipPol PosRep ty) alphaVar)
-                                                                           (Xtor defaultLoc XtorAnnotOrig CnsRep ty ns xt (reverse pcterms'))
-focusXtor' eo PrdRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (CBox eo) (Xtor defaultLoc XtorAnnotOrig PrdRep ty ns xt (reverse pcterms'))
+                                                                           (Xtor defaultLoc XtorAnnotOrig CnsRep ty ns xt (MkSubstitution $ reverse pcterms'))
+focusXtor' eo PrdRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (CBox eo) (Xtor defaultLoc XtorAnnotOrig PrdRep ty ns xt (MkSubstitution $ reverse pcterms'))
                                                                            (FreeVar defaultLoc CnsRep (TyFlipPol NegRep ty) alphaVar)
 focusXtor' eo pc     ty ns xt (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusXtor' eo pc ty ns xt pcterms (PrdTerm prd : pcterms')
 focusXtor' eo pc     ty ns xt (PrdTerm                                 prd:pcterms) pcterms' =
@@ -225,7 +226,7 @@ instance Focus InstanceCase where
 
 
 focusPrimOp :: EvaluationOrder -> RST.PrimitiveOp -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
-focusPrimOp _  op [] pcterms' = PrimOp defaultLoc op (reverse pcterms')
+focusPrimOp _  op [] pcterms' = PrimOp defaultLoc op (MkSubstitution $ reverse pcterms')
 focusPrimOp eo op (PrdTerm (isValueTerm eo PrdRep -> Just prd):pcterms) pcterms' = focusPrimOp eo op pcterms (PrdTerm prd : pcterms')
 focusPrimOp eo op (PrdTerm prd:pcterms) pcterms' =
     let
@@ -249,14 +250,14 @@ instance Focus Command where
   focus _  (ExitSuccess loc) = ExitSuccess loc
   focus _  (ExitFailure loc) = ExitFailure loc
   focus _  (Jump loc fv) = Jump loc fv
-  focus eo (Method loc mn cn subst) = Method loc mn cn (focus eo <$> subst)
+  focus eo (Method loc mn cn subst) = Method loc mn cn (focus eo <¢> subst)
   focus eo (Print loc (isValueTerm eo PrdRep -> Just prd) cmd) = Print loc prd (focus eo cmd)
   focus eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig (CBox eo) (focus eo prd)
                                                               (MuAbs loc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing (Print loc (BoundVar loc PrdRep (getTypeTerm prd) (0,0)) (focus eo cmd)))
   focus eo (Read loc (isValueTerm eo CnsRep -> Just cns)) = Read loc cns
   focus eo (Read loc cns) = Apply loc ApplyAnnotOrig (CBox eo) (MuAbs loc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing (Read loc (BoundVar loc CnsRep (getTypeTerm cns) (0,0))))
                                                           (focus eo cns)
-  focus eo (PrimOp _ op subst) = focusPrimOp eo op subst []
+  focus eo (PrimOp _ op subst) = focusPrimOp eo op (unSubstitution subst) []
 
   isFocused :: EvaluationOrder -> Command -> Maybe Command
   isFocused eo (Apply loc _annot _kind prd cns) = Apply loc ApplyAnnotOrig (CBox eo) <$> isFocused eo prd <*> isFocused eo cns
