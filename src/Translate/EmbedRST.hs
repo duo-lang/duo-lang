@@ -1,8 +1,4 @@
-module Translate.EmbedRST
-  ( Reparse(..)
-  , EmbedRST(..)
-  ) where
-
+module Translate.EmbedRST ( Reparse(..) ) where
 
 import Control.Monad.State
 import Data.Bifunctor
@@ -512,7 +508,7 @@ instance EmbedRST RST.InstanceCase CST.TermCase where
                   }
 
 ---------------------------------------------------------------------------------
--- EmbedTST implementation for types
+-- EmbedRST implementation for types
 ---------------------------------------------------------------------------------
 
 instance EmbedRST (RST.PrdCnsType pol) CST.PrdCnsTyp where
@@ -635,11 +631,15 @@ instance EmbedRST RST.DataDecl CST.DataDecl where
                     }
 
 ---------------------------------------------------------------------------------
--- CreateNames Monad
+-- Reparsing
 ---------------------------------------------------------------------------------
 
 class Reparse a b | a -> b where
   reparse :: a -> b
+
+---------------------------------------------------------------------------------
+-- Reparsing terms
+---------------------------------------------------------------------------------
 
 instance Reparse (RST.Term pc) CST.Term where
   reparse :: RST.Term pc -> CST.Term
@@ -684,6 +684,35 @@ instance Reparse RST.InstanceCase CST.TermCase where
   reparse instancecase =
     embedRST (open (evalState (unCreateNameM (createNames instancecase)) names))
 
+
+---------------------------------------------------------------------------------
+-- Reparsing types
+---------------------------------------------------------------------------------
+
+instance Reparse (RST.VariantType pol) CST.Typ where
+  reparse = embedRST
+
+instance Reparse (RST.PrdCnsType pol) CST.PrdCnsTyp where
+  reparse = embedRST
+
+instance Reparse (RST.LinearContext pol) CST.LinearContext where
+  reparse = embedRST
+
+instance Reparse (RST.XtorSig pol) CST.XtorSig where
+  reparse = embedRST
+
+instance Reparse (RST.Typ pol) CST.Typ where
+  reparse = embedRST
+
+instance Reparse (RST.TypeScheme pol) CST.TypeScheme where
+  reparse = embedRST
+
+instance Reparse RST.DataDecl CST.DataDecl where
+  reparse = embedRST
+
+---------------------------------------------------------------------------------
+-- Reparsing declarations
+---------------------------------------------------------------------------------
 
 instance Reparse (RST.PrdCnsDeclaration pc) CST.PrdCnsDeclaration where
   reparse :: RST.PrdCnsDeclaration pc -> CST.PrdCnsDeclaration

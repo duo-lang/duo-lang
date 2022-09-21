@@ -42,7 +42,7 @@ instance PrettyAnn CST.DataDecl where
     semi
 
 instance PrettyAnn RST.DataDecl where
-  prettyAnn decl = prettyAnn (embedRST decl)
+  prettyAnn decl = prettyAnn (reparse decl)
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declarations
