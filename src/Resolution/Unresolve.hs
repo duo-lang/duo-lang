@@ -15,31 +15,6 @@ import Syntax.RST.Terms qualified as RST
 import Loc
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
 import Syntax.CST.Names
-    ( BinOp(InterOp, CustomOp, UnionOp),
-      FreeVarName(MkFreeVarName),
-      MethodName(unMethodName),
-      RecTVar(MkRecTVar),
-      RnTypeName(MkRnTypeName, rnTnName),
-      SkolemTVar(MkSkolemTVar),
-      PrimName(..),
-      printName,
-      readName,
-      exitSuccessName,
-      exitFailureName,
-      i64AddName,
-      i64SubName,
-      i64MulName,
-      i64DivName,
-      i64ModName,
-      f64AddName,
-      f64SubName,
-      f64MulName,
-      f64DivName,
-      charPrependName,
-      stringAppendName,
-      TyOpName(MkTyOpName),
-      TypeName(MkTypeName),
-      XtorName(MkXtorName) )
 import qualified Syntax.LocallyNameless as LN
 
 ---------------------------------------------------------------------------------
@@ -508,137 +483,14 @@ instance EmbedRST RST.InstanceCase CST.TermCase where
                   }
 
 ---------------------------------------------------------------------------------
--- EmbedRST implementation for types
----------------------------------------------------------------------------------
-
-instance EmbedRST (RST.PrdCnsType pol) CST.PrdCnsTyp where
-  embedRST :: RST.PrdCnsType pol -> CST.PrdCnsTyp
-  embedRST (RST.PrdCnsType PrdRep ty) = CST.PrdType (embedRST ty)
-  embedRST (RST.PrdCnsType CnsRep ty) = CST.CnsType (embedRST ty)
-
-instance EmbedRST (RST.LinearContext pol) CST.LinearContext where
-  embedRST :: RST.LinearContext pol -> CST.LinearContext
-  embedRST = fmap embedRST
-
-instance EmbedRST (RST.XtorSig pol) CST.XtorSig where
-  embedRST :: RST.XtorSig pol -> CST.XtorSig
-  embedRST RST.MkXtorSig { sig_name, sig_args } =
-    CST.MkXtorSig { sig_name = sig_name
-                  , sig_args = embedRST sig_args
-                  }
-
-instance EmbedRST (RST.MethodSig pol) CST.XtorSig where
-  embedRST :: RST.MethodSig pol -> CST.XtorSig
-  embedRST RST.MkMethodSig { msig_name, msig_args } =
-    CST.MkXtorSig { sig_name = MkXtorName $ unMethodName msig_name
-                  , sig_args = embedRST msig_args
-                  }
-
-instance EmbedRST [RST.VariantType pol] [CST.Typ] where
-  embedRST :: [RST.VariantType pol] -> [CST.Typ]
-  embedRST = fmap embedRST
-
-instance EmbedRST (RST.VariantType pol) CST.Typ where
-  embedRST :: RST.VariantType pol -> CST.Typ
-  embedRST (RST.CovariantType ty) = embedRST ty
-  embedRST (RST.ContravariantType ty) = embedRST ty
-
-resugarType :: RST.Typ pol -> Maybe CST.Typ
-resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) =
-  Just (CST.TyBinOp loc (embedRST tl) (CustomOp (MkTyOpName "->")) (embedRST tr))
-resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "CoFun" } [RST.CovariantType tl, RST.ContravariantType tr]) =
-  Just (CST.TyBinOp loc (embedRST tl) (CustomOp (MkTyOpName "-<")) (embedRST tr))
-resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType t1, RST.CovariantType t2]) =
-  Just (CST.TyBinOp loc (embedRST t1) (CustomOp (MkTyOpName "⅋")) (embedRST t2))
-resugarType _ = Nothing
-
-embedRecTVar :: RecTVar -> SkolemTVar
-embedRecTVar (MkRecTVar n) = MkSkolemTVar n
-
-instance EmbedRST (RST.Typ pol) CST.Typ where
-  embedRST :: RST.Typ pol -> CST.Typ
-  embedRST (resugarType -> Just ty) = ty
-  embedRST (RST.TyUniVar loc _ tv) =
-    CST.TyUniVar loc tv
-  embedRST (RST.TySkolemVar loc _ tv) =
-    CST.TySkolemVar loc tv
-  embedRST (RST.TyRecVar loc _ tv) =
-    CST.TySkolemVar loc $ embedRecTVar tv
-  embedRST (RST.TyData loc _ xtors) =
-    CST.TyXData loc CST.Data (embedRST <$> xtors)
-  embedRST (RST.TyCodata loc _ xtors) =
-    CST.TyXData loc CST.Codata (embedRST <$> xtors)
-  embedRST (RST.TyDataRefined loc _ tn xtors) =
-    CST.TyXRefined loc CST.Data (rnTnName tn) (embedRST <$> xtors)
-  embedRST (RST.TyCodataRefined loc _ tn xtors) =
-    CST.TyXRefined loc CST.Codata (rnTnName tn) (embedRST <$> xtors)
-  embedRST (RST.TyNominal loc _ nm args) =
-    CST.TyNominal loc (rnTnName nm) (embedRST args)
-  embedRST (RST.TySyn loc _ nm _) =
-    CST.TyNominal loc (rnTnName nm) []
-  embedRST (RST.TyTop loc) =
-    CST.TyTop loc
-  embedRST (RST.TyBot loc) =
-    CST.TyBot loc
-  embedRST (RST.TyUnion loc ty ty') =
-    CST.TyBinOp loc (embedRST ty) UnionOp (embedRST ty')
-  embedRST (RST.TyInter loc ty ty') =
-    CST.TyBinOp loc (embedRST ty) InterOp (embedRST ty')
-  embedRST (RST.TyRec loc _ tv ty) =
-    CST.TyRec loc (embedRecTVar tv) (embedRST ty)
-  embedRST (RST.TyI64 loc _) =
-    CST.TyI64 loc
-  embedRST (RST.TyF64 loc _) =
-    CST.TyF64 loc
-  embedRST (RST.TyChar loc _) =
-    CST.TyChar loc
-  embedRST (RST.TyString loc _) =
-    CST.TyString loc
-  embedRST (RST.TyFlipPol _ ty) = embedRST ty
-
-instance EmbedRST (RST.TypeScheme pol) CST.TypeScheme where
-  embedRST :: RST.TypeScheme pol -> CST.TypeScheme
-  embedRST RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
-    CST.TypeScheme  { ts_loc         = ts_loc
-                    , ts_vars        = ts_vars
-                    , ts_constraints = error "Type constraints not implemented yet for RST type scheme."
-                    , ts_monotype    = embedRST ts_monotype
-                    }
-
----------------------------------------------------------------------------------
--- EmbedTST implementation for declarations
----------------------------------------------------------------------------------
-
-instance EmbedRST RST.DataDecl CST.DataDecl where
-  embedRST :: RST.DataDecl -> CST.DataDecl
-  embedRST RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
-    CST.MkDataDecl  { data_loc      = data_loc
-                    , data_doc      = data_doc
-                    , data_refined  = CST.NotRefined
-                    , data_name     = rnTnName data_name
-                    , data_polarity = data_polarity
-                    , data_kind     = Just data_kind
-                    , data_xtors    = embedRST <$> fst data_xtors
-                    }
-  embedRST RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
-    CST.MkDataDecl  { data_loc      = data_loc
-                    , data_doc      = data_doc
-                    , data_refined  = CST.Refined
-                    , data_name     = rnTnName data_name
-                    , data_polarity = data_polarity
-                    , data_kind     = Just data_kind
-                    , data_xtors    = embedRST <$> fst data_xtors
-                    }
-
----------------------------------------------------------------------------------
--- Reparsing
+-- Unresolving
 ---------------------------------------------------------------------------------
 
 class Unresolve a b | a -> b where
   unresolve :: a -> b
 
 ---------------------------------------------------------------------------------
--- Reparsing terms
+-- Unresolving terms
 ---------------------------------------------------------------------------------
 
 instance Unresolve (RST.Term pc) CST.Term where
@@ -686,32 +538,101 @@ instance Unresolve RST.InstanceCase CST.TermCase where
 
 
 ---------------------------------------------------------------------------------
--- Reparsing types
+-- Unresolving types
 ---------------------------------------------------------------------------------
-
-instance Unresolve (RST.VariantType pol) CST.Typ where
-  unresolve = embedRST
 
 instance Unresolve (RST.PrdCnsType pol) CST.PrdCnsTyp where
-  unresolve = embedRST
+  unresolve :: RST.PrdCnsType pol -> CST.PrdCnsTyp
+  unresolve (RST.PrdCnsType PrdRep ty) = CST.PrdType (unresolve ty)
+  unresolve (RST.PrdCnsType CnsRep ty) = CST.CnsType (unresolve ty)
 
 instance Unresolve (RST.LinearContext pol) CST.LinearContext where
-  unresolve = embedRST
+  unresolve :: RST.LinearContext pol -> CST.LinearContext
+  unresolve = fmap unresolve
 
 instance Unresolve (RST.XtorSig pol) CST.XtorSig where
-  unresolve = embedRST
+  unresolve :: RST.XtorSig pol -> CST.XtorSig
+  unresolve RST.MkXtorSig { sig_name, sig_args } =
+    CST.MkXtorSig { sig_name = sig_name
+                  , sig_args = unresolve sig_args
+                  }
+
+instance Unresolve (RST.VariantType pol) CST.Typ where
+  unresolve :: RST.VariantType pol -> CST.Typ
+  unresolve (RST.CovariantType ty) = unresolve ty
+  unresolve (RST.ContravariantType ty) = unresolve ty
+
+resugarType :: RST.Typ pol -> Maybe CST.Typ
+resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) =
+  Just (CST.TyBinOp loc (unresolve tl) (CustomOp (MkTyOpName "->")) (unresolve tr))
+resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "CoFun" } [RST.CovariantType tl, RST.ContravariantType tr]) =
+  Just (CST.TyBinOp loc (unresolve tl) (CustomOp (MkTyOpName "-<")) (unresolve tr))
+resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType t1, RST.CovariantType t2]) =
+  Just (CST.TyBinOp loc (unresolve t1) (CustomOp (MkTyOpName "⅋")) (unresolve t2))
+resugarType _ = Nothing
+
+embedRecTVar :: RecTVar -> SkolemTVar
+embedRecTVar (MkRecTVar n) = MkSkolemTVar n
 
 instance Unresolve (RST.Typ pol) CST.Typ where
-  unresolve = embedRST
+  unresolve :: RST.Typ pol -> CST.Typ
+  unresolve (resugarType -> Just ty) = ty
+  unresolve (RST.TyUniVar loc _ tv) =
+    CST.TyUniVar loc tv
+  unresolve (RST.TySkolemVar loc _ tv) =
+    CST.TySkolemVar loc tv
+  unresolve (RST.TyRecVar loc _ tv) =
+    CST.TySkolemVar loc $ embedRecTVar tv
+  unresolve (RST.TyData loc _ xtors) =
+    CST.TyXData loc CST.Data (unresolve <$> xtors)
+  unresolve (RST.TyCodata loc _ xtors) =
+    CST.TyXData loc CST.Codata (unresolve <$> xtors)
+  unresolve (RST.TyDataRefined loc _ tn xtors) =
+    CST.TyXRefined loc CST.Data (rnTnName tn) (unresolve <$> xtors)
+  unresolve (RST.TyCodataRefined loc _ tn xtors) =
+    CST.TyXRefined loc CST.Codata (rnTnName tn) (unresolve <$> xtors)
+  unresolve (RST.TyNominal loc _ nm args) =
+    CST.TyNominal loc (rnTnName nm) (unresolve <$> args)
+  unresolve (RST.TySyn loc _ nm _) =
+    CST.TyNominal loc (rnTnName nm) []
+  unresolve (RST.TyTop loc) =
+    CST.TyTop loc
+  unresolve (RST.TyBot loc) =
+    CST.TyBot loc
+  unresolve (RST.TyUnion loc ty ty') =
+    CST.TyBinOp loc (unresolve ty) UnionOp (unresolve ty')
+  unresolve (RST.TyInter loc ty ty') =
+    CST.TyBinOp loc (unresolve ty) InterOp (unresolve ty')
+  unresolve (RST.TyRec loc _ tv ty) =
+    CST.TyRec loc (embedRecTVar tv) (unresolve ty)
+  unresolve (RST.TyI64 loc _) =
+    CST.TyI64 loc
+  unresolve (RST.TyF64 loc _) =
+    CST.TyF64 loc
+  unresolve (RST.TyChar loc _) =
+    CST.TyChar loc
+  unresolve (RST.TyString loc _) =
+    CST.TyString loc
+  unresolve (RST.TyFlipPol _ ty) = unresolve ty
 
 instance Unresolve (RST.TypeScheme pol) CST.TypeScheme where
-  unresolve = embedRST
+  unresolve :: RST.TypeScheme pol -> CST.TypeScheme
+  unresolve RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
+    CST.TypeScheme  { ts_loc         = ts_loc
+                    , ts_vars        = ts_vars
+                    , ts_constraints = error "Type constraints not implemented yet for RST type scheme."
+                    , ts_monotype    = unresolve ts_monotype
+                    }
 
-instance Unresolve RST.DataDecl CST.DataDecl where
-  unresolve = embedRST
+instance Unresolve (RST.MethodSig pol) CST.XtorSig where
+  unresolve :: RST.MethodSig pol -> CST.XtorSig
+  unresolve RST.MkMethodSig { msig_name, msig_args } =
+    CST.MkXtorSig { sig_name = MkXtorName $ unMethodName msig_name
+                  , sig_args = unresolve <$> msig_args
+                  }
 
 ---------------------------------------------------------------------------------
--- Reparsing declarations
+-- Unresolving declarations
 ---------------------------------------------------------------------------------
 
 instance Unresolve (RST.PrdCnsDeclaration pc) CST.PrdCnsDeclaration where
@@ -722,7 +643,7 @@ instance Unresolve (RST.PrdCnsDeclaration pc) CST.PrdCnsDeclaration where
                             , pcdecl_pc    = case pcdecl_pc of { PrdRep -> Prd; CnsRep -> Cns }
                             , pcdecl_isRec = pcdecl_isRec
                             , pcdecl_name  = pcdecl_name
-                            , pcdecl_annot = embedRST <$> pcdecl_annot
+                            , pcdecl_annot = unresolve <$> pcdecl_annot
                             , pcdecl_term  = unresolve pcdecl_term
                             }
 
@@ -752,7 +673,7 @@ instance Unresolve RST.TySynDeclaration CST.TySynDeclaration where
     CST.MkTySynDeclaration  { tysyndecl_loc  = tysyndecl_loc
                             , tysyndecl_doc  = tysyndecl_doc
                             , tysyndecl_name = tysyndecl_name
-                            , tysyndecl_res  = embedRST (fst tysyndecl_res)
+                            , tysyndecl_res  = unresolve (fst tysyndecl_res)
                             }
 
 instance Unresolve RST.TyOpDeclaration CST.TyOpDeclaration where
@@ -773,7 +694,7 @@ instance Unresolve RST.ClassDeclaration CST.ClassDeclaration where
                               , classdecl_doc     = classdecl_doc
                               , classdecl_name    = classdecl_name
                               , classdecl_kinds   = classdecl_kinds
-                              , classdecl_methods = embedRST <$> fst classdecl_methods
+                              , classdecl_methods = unresolve <$> fst classdecl_methods
                               }
 
 instance Unresolve RST.InstanceDeclaration CST.InstanceDeclaration where
@@ -782,9 +703,30 @@ instance Unresolve RST.InstanceDeclaration CST.InstanceDeclaration where
     = CST.MkInstanceDeclaration { instancedecl_loc   = instancedecl_loc
                                 , instancedecl_doc   = instancedecl_doc
                                 , instancedecl_name  = instancedecl_name
-                                , instancedecl_typ   = embedRST (fst instancedecl_typ)
+                                , instancedecl_typ   = unresolve (fst instancedecl_typ)
                                 , instancedecl_cases = unresolve <$> instancedecl_cases
                                 }
+
+instance Unresolve RST.DataDecl CST.DataDecl where
+  unresolve :: RST.DataDecl -> CST.DataDecl
+  unresolve RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
+    CST.MkDataDecl  { data_loc      = data_loc
+                    , data_doc      = data_doc
+                    , data_refined  = CST.NotRefined
+                    , data_name     = rnTnName data_name
+                    , data_polarity = data_polarity
+                    , data_kind     = Just data_kind
+                    , data_xtors    = unresolve <$> fst data_xtors
+                    }
+  unresolve RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
+    CST.MkDataDecl  { data_loc      = data_loc
+                    , data_doc      = data_doc
+                    , data_refined  = CST.Refined
+                    , data_name     = rnTnName data_name
+                    , data_polarity = data_polarity
+                    , data_kind     = Just data_kind
+                    , data_xtors    = unresolve <$> fst data_xtors
+                    }
 
 instance Unresolve RST.Declaration CST.Declaration where
   unresolve :: RST.Declaration -> CST.Declaration
@@ -793,7 +735,7 @@ instance Unresolve RST.Declaration CST.Declaration where
   unresolve (RST.CmdDecl decl) =
     CST.CmdDecl (unresolve decl)
   unresolve (RST.DataDecl decl) =
-    CST.DataDecl (embedRST decl)
+    CST.DataDecl (unresolve decl)
   unresolve (RST.XtorDecl decl) =
     CST.XtorDecl (unresolve decl)
   unresolve (RST.ImportDecl decl) =
