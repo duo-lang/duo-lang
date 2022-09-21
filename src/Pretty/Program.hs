@@ -9,6 +9,7 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
 import Pretty.Common
+import Sugar.Desugar (Desugar(..))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..))
@@ -17,7 +18,6 @@ import Syntax.CST.Names
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
-import Translate.EmbedCore (EmbedCore(..))
 import Translate.EmbedRST
 import Translate.EmbedTST (EmbedTST(..))
 import Syntax.CST.Program (PrdCnsDeclaration(pcdecl_term))

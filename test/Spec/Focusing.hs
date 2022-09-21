@@ -8,13 +8,12 @@ import Pretty.Program ()
 
 import Driver.Definition
 import Driver.Driver (inferProgramIO)
-
+import Sugar.Desugar (Desugar(..))
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
 import Translate.Focusing
 import Translate.EmbedRST
-import Translate.EmbedCore (EmbedCore(..))
 import Translate.EmbedTST (EmbedTST(..))
 import Errors
 

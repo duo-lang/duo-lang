@@ -30,11 +30,11 @@ import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupInRangeMap )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( moduleP )
+import Sugar.Desugar (Desugar(..))
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
-import Translate.EmbedCore (EmbedCore(..))
 import Translate.EmbedTST(EmbedTST(..))
 
 jumpToDefHandler :: Handlers LSPMonad

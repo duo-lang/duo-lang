@@ -176,7 +176,6 @@ library
       TypeInference.Constraints
       Translate.Focusing
       Translate.EmbedRST
-      Translate.EmbedCore
       Translate.EmbedTST
       Utils
   other-modules:
