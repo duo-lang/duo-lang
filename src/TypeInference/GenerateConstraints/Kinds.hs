@@ -85,8 +85,8 @@ resolveDataDecl decl env = do
   return decl' 
 
 addRecVar :: RecTVar ->  MonoKind -> DataDeclM () 
-addRecVar rv mk =   modify (\ds@DataDeclState{boundRecVars = rvs, kvCount = cnt}
-          -> ds { boundRecVars = M.insert rv mk rvs, kvCount = cnt+1})
+addRecVar rv mk =   modify (\ds@DataDeclState{boundRecVars = rvs}
+          -> ds { boundRecVars = M.insert rv mk rvs})
 
   
 annotXtor :: RST.XtorSig pol -> DataDeclM (TST.XtorSig pol)
@@ -118,7 +118,9 @@ annotTy (RST.TySkolemVar loc pol tv) = do
   return $ TST.TySkolemVar loc pol (getKindSkolem polyknd tv) tv 
 -- uni vars should not appear in data declarations
 annotTy (RST.TyUniVar loc _ _) = throwOtherError loc ["UniVar should not appear in data declaration"]
-annotTy (RST.TyRecVar loc _ _) = throwOtherError loc ["RecVar should not appear in data declaration"]
+annotTy (RST.TyRecVar loc pol tv) = do 
+  polyknd <- gets declKind
+  return $ TST.TyRecVar loc pol (CBox $ returnKind polyknd) tv
 annotTy (RST.TyData loc pol xtors) = do 
   let xtnms = map RST.sig_name xtors
   xtorKinds <- mapM lookupXtorKind xtnms
@@ -198,7 +200,9 @@ annotTy (RST.TyInter loc ty1 ty2) = do
     return $ TST.TyInter loc knd ty1' ty2'
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
-annotTy (RST.TyRec loc _ tv ty) = throwOtherError loc ["Recursive Types should not appear in data Declaration", T.pack $ show ty]
+annotTy (RST.TyRec loc pol tv ty) = do 
+  ty' <- annotTy ty
+  return (TST.TyRec loc pol tv ty')
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
 annotTy (RST.TyF64 loc pol) = return $ TST.TyF64 loc pol
 annotTy (RST.TyChar loc pol) = return $ TST.TyChar loc pol
