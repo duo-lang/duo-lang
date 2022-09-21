@@ -13,7 +13,7 @@ import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
 import Translate.Focusing
-import Translate.EmbedRST
+import Resolution.Unresolve
 import Translate.EmbedTST (EmbedTST(..))
 import Errors
 

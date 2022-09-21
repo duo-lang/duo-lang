@@ -11,7 +11,7 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Names ( FreeVarName )
 import Translate.EmbedTST (EmbedTST(..))
-import Translate.EmbedRST
+import Resolution.Unresolve
 
 ---------------------------------------------------------------------------------
 -- Data/Codata and Nominal/Structural/Refinement

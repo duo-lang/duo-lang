@@ -136,6 +136,7 @@ library
       Resolution.SymbolTable
       Resolution.Terms
       Resolution.Types
+      Resolution.Unresolve
       Dualize.Terms
       Dualize.Program
       Sugar.Desugar
@@ -175,7 +176,6 @@ library
       TypeInference.SolveConstraints
       TypeInference.Constraints
       Translate.Focusing
-      Translate.EmbedRST
       Translate.EmbedTST
       Utils
   other-modules:

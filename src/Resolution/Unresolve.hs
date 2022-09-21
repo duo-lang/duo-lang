@@ -1,4 +1,4 @@
-module Translate.EmbedRST ( Reparse(..) ) where
+module Resolution.Unresolve ( Reparse(..) ) where
 
 import Control.Monad.State
 import Data.Bifunctor
