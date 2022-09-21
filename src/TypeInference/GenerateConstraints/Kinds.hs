@@ -21,6 +21,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
+import Data.Foldable (find)
 
 --------------------------------------------------------------------------------------------
 -- Helpers
@@ -88,12 +89,12 @@ resolveDataDecl decl env = do
   return decl' 
 
 addKVar :: KVar -> DataDeclM () 
-addKVar kv =   modify (\(DataDeclState{declKind = knd, declTyName = tyn, boundRecVars = rvs, usedKindVars = kvs,kvCount = cnt }) 
-          -> DataDeclState { declKind = knd, declTyName = tyn, boundRecVars = rvs, usedKindVars = kv : kvs, kvCount = cnt+1})
+addKVar kv =   modify (\(ds@DataDeclState{usedKindVars = kvs, kvCount = cnt }) 
+          -> ds { usedKindVars = kv : kvs, kvCount = cnt+1})
 
 addRecVar :: RecTVar ->  MonoKind -> DataDeclM () 
-addRecVar rv mk =   modify (\(DataDeclState{declKind = knd, declTyName = tyn, boundRecVars = rvs, usedKindVars = kvs,kvCount = cnt }) 
-          -> DataDeclState { declKind = knd, declTyName = tyn, boundRecVars = M.insert rv mk rvs, usedKindVars = kvs, kvCount = cnt+1})
+addRecVar rv mk =   modify (\(ds@DataDeclState{boundRecVars = rvs, kvCount = cnt}) 
+          -> ds { boundRecVars = M.insert rv mk rvs, kvCount = cnt+1})
 
 newDeclKVar :: DataDeclM KVar
 newDeclKVar = do
@@ -121,8 +122,9 @@ getKindSkolem :: PolyKind -> SkolemTVar -> MonoKind
 getKindSkolem polyknd = searchKindArgs (kindArgs polyknd)
   where 
     searchKindArgs :: [(Variance, SkolemTVar, MonoKind)] -> SkolemTVar -> MonoKind
-    searchKindArgs [] _ = error "Skolem Variable not found in argument types of polykind"
-    searchKindArgs ((_,tv,mk):rst) tv' = if tv == tv' then mk else searchKindArgs rst tv'
+    searchKindArgs l tv = case find (\(_,tv',_) -> tv == tv') l of
+                            Nothing -> error "Skolem Variable not found in argument types of polykind"
+                            Just (_,_,mk) -> mk
 
 -- only recvars, bottom and top can contain kvars
 removeKVars :: TST.Typ pol -> DataDeclM (TST.Typ pol)
