@@ -84,10 +84,10 @@ instance ToJumpMap RST.PrdCnsTerm where
   toJumpMap (RST.CnsTerm tm) = toJumpMap tm
 
 instance ToJumpMap RST.Substitution where
-  toJumpMap subst = M.unions (toJumpMap <$> subst)
+  toJumpMap (RST.MkSubstitution subst) = M.unions (toJumpMap <$> subst)
 
 instance ToJumpMap (RST.SubstitutionI pc) where
-  toJumpMap (subst1,_,subst2) =
+  toJumpMap (RST.MkSubstitutionI (subst1,_,subst2)) =
     M.unions ((toJumpMap <$> subst1) ++ (toJumpMap <$> subst2))
 
 instance ToJumpMap RST.CmdCase where

@@ -90,16 +90,16 @@ instance {-# OVERLAPPING #-} PrettyAnn TST.Substitution where
 instance {-# OVERLAPPING #-} PrettyAnn RST.Substitution where
   prettyAnn subst = prettyAnn (unresolve subst)
 
-instance {-# OVERLAPPING #-} PrettyAnn CST.Substitution where
-  prettyAnn subst = parens' comma (prettyAnn <$> subst)
+instance PrettyAnn CST.Substitution where
+  prettyAnn (CST.MkSubstitution subst) = parens' comma (prettyAnn <$> subst)
 
 -- SubstitutionI
 
 instance PrettyAnn (RST.SubstitutionI pc) where
   prettyAnn substi = prettyAnn (unresolve substi)
 
-instance {-# OVERLAPPING #-} PrettyAnn CST.SubstitutionI where
-  prettyAnn substi = parens' comma (prettyAnn <$> substi)
+instance PrettyAnn CST.SubstitutionI where
+  prettyAnn (CST.MkSubstitutionI substi) = parens' comma (prettyAnn <$> substi)
 
 
 ---------------------------------------------------------------------------------
@@ -130,11 +130,10 @@ instance PrettyAnn CST.Term where
   prettyAnn (CST.Var _ v) =
     prettyAnn v
   prettyAnn (CST.Xtor _ xt args) =
-    prettyAnn xt <>
-    parens' comma (prettyAnn <$> args)
+    prettyAnn xt <> prettyAnn args
   prettyAnn (CST.Semi _ xt args c) =
     prettyAnn xt <>
-    parens' comma (prettyAnn <$> args) <>
+    prettyAnn args <>
     annSymbol ";;" <+>
     prettyAnn c
   prettyAnn (CST.CocaseOf  _ t cases) =
@@ -157,7 +156,7 @@ instance PrettyAnn CST.Term where
     "." <>
     parens (prettyAnn cmd)
   prettyAnn (CST.Dtor _ xt t substi) =
-      parens ( prettyAnn t <> "." <> prettyAnn xt <> parens' comma (prettyAnn <$> substi))
+      parens ( prettyAnn t <> "." <> prettyAnn xt <> prettyAnn substi )
   prettyAnn (CST.PrimLitI64 _ i) =
     annLiteral (prettyAnn i <>
     "#I64")
@@ -190,11 +189,10 @@ instance PrettyAnn CST.Term where
     prettyAnn (show n)
   prettyAnn (CST.NatLit _ CST.Refinement n) =
     prettyAnn (show n)
-  prettyAnn (CST.PrimTerm _ nm []) =
+  prettyAnn (CST.PrimTerm _ nm (CST.MkSubstitution [])) =
     prettyAnn nm
   prettyAnn (CST.PrimTerm _ nm args) =
-    prettyAnn nm <>
-    parens' comma (prettyAnn <$> args)
+    prettyAnn nm <> prettyAnn args
   prettyAnn (CST.Apply _ t1 t2) =
     group (nest 3 (line' <> vsep [parens $ prettyAnn t1, annSymbol ">>", prettyAnn t2]))
 

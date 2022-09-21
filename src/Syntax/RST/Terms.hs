@@ -2,8 +2,8 @@ module Syntax.RST.Terms
   ( -- Terms
     Term(..)
   , PrdCnsTerm(..)
-  , Substitution
-  , SubstitutionI
+  , Substitution(..)
+  , SubstitutionI(..)
   , Pattern(..)
   , PatternI(..)
   , TermCase(..)
@@ -45,7 +45,10 @@ data PrdCnsTerm where
 
 deriving instance Show PrdCnsTerm
 
-type Substitution = [PrdCnsTerm]
+newtype Substitution =
+  MkSubstitution { unSubstitution :: [PrdCnsTerm] }
+
+deriving instance Show Substitution
 
 -- | A SubstitutionI is like a substitution where one of the arguments has been
 -- replaced by an implicit argument. The following convention for the use of the
@@ -53,7 +56,10 @@ type Substitution = [PrdCnsTerm]
 --
 -- SubstitutionI Prd = ... [*] ...
 -- SubstitutionI Cns = ... (*) ...
-type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
+newtype SubstitutionI (pc :: PrdCns) =
+  MkSubstitutionI { unSubstitutionI :: ([PrdCnsTerm], PrdCnsRep pc, [PrdCnsTerm]) }
+
+deriving instance Show (SubstitutionI pc)
 
 ---------------------------------------------------------------------------------
 -- Pattern/copattern match cases
@@ -250,31 +256,31 @@ pctermOpeningRec k subst (CnsTerm tm) = CnsTerm $ termOpeningRec k subst tm
 
 termOpeningRec :: Int -> Substitution -> Term pc -> Term pc
 -- Core constructs
-termOpeningRec k subst bv@(BoundVar _ pcrep (i,j)) | i == k    = case (pcrep, subst !! j) of
+termOpeningRec k subst bv@(BoundVar _ pcrep (i,j)) | i == k    = case (pcrep, unSubstitution subst !! j) of
                                                                       (PrdRep, PrdTerm tm) -> tm
                                                                       (CnsRep, CnsTerm tm) -> tm
                                                                       t                    -> error $ "termOpeningRec BOOM: " ++ show t
                                                    | otherwise = bv
 termOpeningRec _ _ fv@FreeVar {}= fv
 termOpeningRec k args (Xtor loc rep ns xt subst) =
-  Xtor loc rep ns xt (pctermOpeningRec k args <$> subst)
+  Xtor loc rep ns xt (MkSubstitution (pctermOpeningRec k args <$> unSubstitution subst))
 termOpeningRec k args (XCase loc rep ns cases) =
   XCase loc rep ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
 termOpeningRec k args (MuAbs loc rep fv cmd) =
   MuAbs loc rep fv (commandOpeningRec (k+1) args cmd)
 -- Syntactic sugar
-termOpeningRec k args (Semi loc rep ns xtor (args1,pcrep,args2) tm) =
+termOpeningRec k args (Semi loc rep ns xtor (MkSubstitutionI (args1,pcrep,args2)) tm) =
   let
     args1' = pctermOpeningRec k args <$> args1
     args2' = pctermOpeningRec k args <$> args2
   in
-    Semi loc rep ns xtor (args1', pcrep, args2') (termOpeningRec k args tm)
-termOpeningRec k args (Dtor loc rep ns xt t (args1,pcrep,args2)) =
+    Semi loc rep ns xtor (MkSubstitutionI (args1', pcrep, args2')) (termOpeningRec k args tm)
+termOpeningRec k args (Dtor loc rep ns xt t (MkSubstitutionI (args1,pcrep,args2))) =
   let
     args1' = pctermOpeningRec k args <$> args1
     args2' = pctermOpeningRec k args <$> args2
   in
-    Dtor loc rep ns xt (termOpeningRec k args t) (args1', pcrep, args2')
+    Dtor loc rep ns xt (termOpeningRec k args t) (MkSubstitutionI (args1', pcrep, args2'))
 termOpeningRec k args (CaseOf loc rep ns t cases) =
   CaseOf loc rep ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
 termOpeningRec k args (CocaseOf loc rep ns t tmcases) = 
@@ -304,11 +310,11 @@ commandOpeningRec k args (Read loc cns) =
 commandOpeningRec _ _ (Jump loc fv) =
   Jump loc fv
 commandOpeningRec k args (Method loc mn cn subst) =
-  Method loc mn cn (pctermOpeningRec k args <$> subst)
+  Method loc mn cn (MkSubstitution (pctermOpeningRec k args <$> unSubstitution subst))
 commandOpeningRec k args (Apply loc t1 t2) =
   Apply loc (termOpeningRec k args t1) (termOpeningRec k args t2)
 commandOpeningRec k args (PrimOp loc op subst) =
-  PrimOp loc op (pctermOpeningRec k args <$> subst)
+  PrimOp loc op (MkSubstitution (pctermOpeningRec k args <$> unSubstitution subst))
 commandOpeningRec k args (CaseOfCmd loc ns t cmdcases) =
   CaseOfCmd loc ns  (termOpeningRec k args t) $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cmdcases
 commandOpeningRec k args (CaseOfI loc pcrep ns t tmcasesI) =
@@ -337,24 +343,24 @@ termClosingRec k vars (FreeVar loc CnsRep v) = case (Cns,v) `elemIndex` vars of
                                                   Just ix -> BoundVar loc CnsRep (k, ix)
                                                   Nothing -> FreeVar loc CnsRep v
 termClosingRec k vars (Xtor loc pc ns xt subst) =
-  Xtor loc pc ns xt (pctermClosingRec k vars <$> subst)
+  Xtor loc pc ns xt (MkSubstitution (pctermClosingRec k vars <$> unSubstitution subst))
 termClosingRec k vars (XCase loc pc sn cases) =
   XCase loc pc sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
 termClosingRec k vars (MuAbs loc pc fv cmd) =
   MuAbs loc pc fv (commandClosingRec (k+1) vars cmd)
 -- Syntactic sugar
-termClosingRec k args (Semi loc rep ns xt (args1,pcrep,args2) t) = 
+termClosingRec k args (Semi loc rep ns xt (MkSubstitutionI (args1,pcrep,args2)) t) = 
   let
     args1' = pctermClosingRec k args <$> args1
     args2' = pctermClosingRec k args <$> args2
   in
-  Semi loc rep ns xt (args1',pcrep,args2') (termClosingRec k args t)
-termClosingRec k args (Dtor loc pc ns xt t (args1,pcrep,args2)) =
+  Semi loc rep ns xt (MkSubstitutionI (args1',pcrep,args2')) (termClosingRec k args t)
+termClosingRec k args (Dtor loc pc ns xt t (MkSubstitutionI (args1,pcrep,args2))) =
   let
     args1' = pctermClosingRec k args <$> args1
     args2' = pctermClosingRec k args <$> args2
   in
-    Dtor loc pc ns xt (termClosingRec k args t) (args1', pcrep, args2')
+    Dtor loc pc ns xt (termClosingRec k args t) (MkSubstitutionI (args1', pcrep, args2'))
 termClosingRec k args (CaseOf loc rep ns t cases) =
   CaseOf loc rep ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
 termClosingRec k args (CocaseOf loc rep ns t tmcases) = 
@@ -380,7 +386,7 @@ commandClosingRec _ _ (ExitFailure ext) =
 commandClosingRec _ _ (Jump ext fv) =
   Jump ext fv
 commandClosingRec k args (Method ext mn cn subst) =
-  Method ext mn cn (pctermClosingRec k args <$> subst)
+  Method ext mn cn (MkSubstitution (pctermClosingRec k args <$> unSubstitution subst))
 commandClosingRec k args (Print ext t cmd) =
   Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
 commandClosingRec k args (Read ext cns) =
@@ -388,7 +394,7 @@ commandClosingRec k args (Read ext cns) =
 commandClosingRec k args (Apply ext t1 t2) =
   Apply ext (termClosingRec k args t1) (termClosingRec k args t2)
 commandClosingRec k args (PrimOp ext op subst) =
-  PrimOp ext op (pctermClosingRec k args <$> subst)
+  PrimOp ext op (MkSubstitution (pctermClosingRec k args <$> unSubstitution subst))
 commandClosingRec k args (CaseOfCmd loc ns t cmdcases) =
   CaseOfCmd loc ns  (termClosingRec k args t) $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) args cmdcase_cmd }) cmdcases
 commandClosingRec k args (CaseOfI loc pcrep ns t tmcasesI) =
