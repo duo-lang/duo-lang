@@ -178,7 +178,9 @@ instance Open RST.Command where
 -- CreateNames Monad
 ---------------------------------------------------------------------------------
 
-type CreateNameM a = State ([FreeVarName],[FreeVarName]) a
+newtype CreateNameM a =
+  MkCreateNameM { unCreateNameM :: State ([FreeVarName],[FreeVarName]) a }
+    deriving (Functor, Applicative,Monad, MonadState ([FreeVarName],[FreeVarName]))
 
 names :: ([FreeVarName], [FreeVarName])
 names =  ((\y -> MkFreeVarName ("x" <> T.pack (show y))) <$> [(1 :: Int)..]
@@ -639,12 +641,13 @@ instance EmbedRST RST.DataDecl CST.DataDecl where
 ---------------------------------------------------------------------------------
 -- CreateNames Monad
 ---------------------------------------------------------------------------------
+
 class Reparse a b | a -> b where
   reparse :: a -> b
 
 instance Reparse (RST.Term pc) CST.Term where
   reparse :: RST.Term pc -> CST.Term
-  reparse tm = embedRST (open (evalState (createNames tm) names))
+  reparse tm = embedRST (open (evalState (unCreateNameM (createNames tm)) names))
 
 instance Reparse RST.PrdCnsTerm CST.Term where
   reparse :: RST.PrdCnsTerm -> CST.Term
@@ -663,27 +666,27 @@ instance Reparse (RST.SubstitutionI pc) CST.SubstitutionI where
 instance Reparse RST.Command CST.Term where
   reparse :: RST.Command -> CST.Term
   reparse cmd =
-    embedRST (open (evalState (createNames cmd) names))
+    embedRST (open (evalState (unCreateNameM (createNames cmd)) names))
 
 instance Reparse RST.CmdCase CST.TermCase where
   reparse :: RST.CmdCase -> CST.TermCase
   reparse cmdcase =
-    embedRST (evalState (createNames cmdcase) names)
+    embedRST (evalState (unCreateNameM (createNames cmdcase)) names)
 
 instance Reparse (RST.TermCase pc) CST.TermCase where
   reparse :: RST.TermCase pc -> CST.TermCase
   reparse termcase =
-    embedRST (evalState (createNames termcase) names)
+    embedRST (evalState (unCreateNameM (createNames termcase)) names)
 
 instance Reparse (RST.TermCaseI pc) CST.TermCase where
   reparse :: RST.TermCaseI pc -> CST.TermCase
   reparse termcasei =
-    embedRST (evalState (createNames termcasei) names)
+    embedRST (evalState (unCreateNameM (createNames termcasei)) names)
 
 instance Reparse RST.InstanceCase CST.TermCase where
   reparse :: RST.InstanceCase -> CST.TermCase
   reparse instancecase =
-    embedRST (open (evalState (createNames instancecase) names))
+    embedRST (open (evalState (unCreateNameM (createNames instancecase)) names))
 
 
 instance Reparse (RST.PrdCnsDeclaration pc) CST.PrdCnsDeclaration where
