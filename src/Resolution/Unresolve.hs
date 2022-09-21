@@ -1,4 +1,4 @@
-module Resolution.Unresolve ( Reparse(..) ) where
+module Resolution.Unresolve ( Unresolve(..) ) where
 
 import Control.Monad.State
 import Data.Bifunctor
@@ -634,54 +634,54 @@ instance EmbedRST RST.DataDecl CST.DataDecl where
 -- Reparsing
 ---------------------------------------------------------------------------------
 
-class Reparse a b | a -> b where
-  reparse :: a -> b
+class Unresolve a b | a -> b where
+  unresolve :: a -> b
 
 ---------------------------------------------------------------------------------
 -- Reparsing terms
 ---------------------------------------------------------------------------------
 
-instance Reparse (RST.Term pc) CST.Term where
-  reparse :: RST.Term pc -> CST.Term
-  reparse tm = embedRST (open (evalState (unCreateNameM (createNames tm)) names))
+instance Unresolve (RST.Term pc) CST.Term where
+  unresolve :: RST.Term pc -> CST.Term
+  unresolve tm = embedRST (open (evalState (unCreateNameM (createNames tm)) names))
 
-instance Reparse RST.PrdCnsTerm CST.Term where
-  reparse :: RST.PrdCnsTerm -> CST.Term
-  reparse (RST.PrdTerm tm) = reparse tm
-  reparse (RST.CnsTerm tm) = reparse tm
+instance Unresolve RST.PrdCnsTerm CST.Term where
+  unresolve :: RST.PrdCnsTerm -> CST.Term
+  unresolve (RST.PrdTerm tm) = unresolve tm
+  unresolve (RST.CnsTerm tm) = unresolve tm
 
-instance Reparse RST.Substitution CST.Substitution where
-  reparse :: RST.Substitution -> CST.Substitution
-  reparse = fmap reparse
+instance Unresolve RST.Substitution CST.Substitution where
+  unresolve :: RST.Substitution -> CST.Substitution
+  unresolve = fmap unresolve
 
-instance Reparse (RST.SubstitutionI pc) CST.SubstitutionI where
-  reparse :: RST.SubstitutionI pc -> CST.SubstitutionI
-  reparse (subst1,_,subst2) =
-    (CST.ToSTerm <$> reparse subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> reparse subst2)
+instance Unresolve (RST.SubstitutionI pc) CST.SubstitutionI where
+  unresolve :: RST.SubstitutionI pc -> CST.SubstitutionI
+  unresolve (subst1,_,subst2) =
+    (CST.ToSTerm <$> unresolve subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> unresolve subst2)
 
-instance Reparse RST.Command CST.Term where
-  reparse :: RST.Command -> CST.Term
-  reparse cmd =
+instance Unresolve RST.Command CST.Term where
+  unresolve :: RST.Command -> CST.Term
+  unresolve cmd =
     embedRST (open (evalState (unCreateNameM (createNames cmd)) names))
 
-instance Reparse RST.CmdCase CST.TermCase where
-  reparse :: RST.CmdCase -> CST.TermCase
-  reparse cmdcase =
+instance Unresolve RST.CmdCase CST.TermCase where
+  unresolve :: RST.CmdCase -> CST.TermCase
+  unresolve cmdcase =
     embedRST (evalState (unCreateNameM (createNames cmdcase)) names)
 
-instance Reparse (RST.TermCase pc) CST.TermCase where
-  reparse :: RST.TermCase pc -> CST.TermCase
-  reparse termcase =
+instance Unresolve (RST.TermCase pc) CST.TermCase where
+  unresolve :: RST.TermCase pc -> CST.TermCase
+  unresolve termcase =
     embedRST (evalState (unCreateNameM (createNames termcase)) names)
 
-instance Reparse (RST.TermCaseI pc) CST.TermCase where
-  reparse :: RST.TermCaseI pc -> CST.TermCase
-  reparse termcasei =
+instance Unresolve (RST.TermCaseI pc) CST.TermCase where
+  unresolve :: RST.TermCaseI pc -> CST.TermCase
+  unresolve termcasei =
     embedRST (evalState (unCreateNameM (createNames termcasei)) names)
 
-instance Reparse RST.InstanceCase CST.TermCase where
-  reparse :: RST.InstanceCase -> CST.TermCase
-  reparse instancecase =
+instance Unresolve RST.InstanceCase CST.TermCase where
+  unresolve :: RST.InstanceCase -> CST.TermCase
+  unresolve instancecase =
     embedRST (open (evalState (unCreateNameM (createNames instancecase)) names))
 
 
@@ -689,55 +689,55 @@ instance Reparse RST.InstanceCase CST.TermCase where
 -- Reparsing types
 ---------------------------------------------------------------------------------
 
-instance Reparse (RST.VariantType pol) CST.Typ where
-  reparse = embedRST
+instance Unresolve (RST.VariantType pol) CST.Typ where
+  unresolve = embedRST
 
-instance Reparse (RST.PrdCnsType pol) CST.PrdCnsTyp where
-  reparse = embedRST
+instance Unresolve (RST.PrdCnsType pol) CST.PrdCnsTyp where
+  unresolve = embedRST
 
-instance Reparse (RST.LinearContext pol) CST.LinearContext where
-  reparse = embedRST
+instance Unresolve (RST.LinearContext pol) CST.LinearContext where
+  unresolve = embedRST
 
-instance Reparse (RST.XtorSig pol) CST.XtorSig where
-  reparse = embedRST
+instance Unresolve (RST.XtorSig pol) CST.XtorSig where
+  unresolve = embedRST
 
-instance Reparse (RST.Typ pol) CST.Typ where
-  reparse = embedRST
+instance Unresolve (RST.Typ pol) CST.Typ where
+  unresolve = embedRST
 
-instance Reparse (RST.TypeScheme pol) CST.TypeScheme where
-  reparse = embedRST
+instance Unresolve (RST.TypeScheme pol) CST.TypeScheme where
+  unresolve = embedRST
 
-instance Reparse RST.DataDecl CST.DataDecl where
-  reparse = embedRST
+instance Unresolve RST.DataDecl CST.DataDecl where
+  unresolve = embedRST
 
 ---------------------------------------------------------------------------------
 -- Reparsing declarations
 ---------------------------------------------------------------------------------
 
-instance Reparse (RST.PrdCnsDeclaration pc) CST.PrdCnsDeclaration where
-  reparse :: RST.PrdCnsDeclaration pc -> CST.PrdCnsDeclaration
-  reparse RST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
+instance Unresolve (RST.PrdCnsDeclaration pc) CST.PrdCnsDeclaration where
+  unresolve :: RST.PrdCnsDeclaration pc -> CST.PrdCnsDeclaration
+  unresolve RST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
     CST.MkPrdCnsDeclaration { pcdecl_loc   = pcdecl_loc
                             , pcdecl_doc   = pcdecl_doc
                             , pcdecl_pc    = case pcdecl_pc of { PrdRep -> Prd; CnsRep -> Cns }
                             , pcdecl_isRec = pcdecl_isRec
                             , pcdecl_name  = pcdecl_name
                             , pcdecl_annot = embedRST <$> pcdecl_annot
-                            , pcdecl_term  = reparse pcdecl_term
+                            , pcdecl_term  = unresolve pcdecl_term
                             }
 
-instance Reparse RST.CommandDeclaration CST.CommandDeclaration where
-  reparse :: RST.CommandDeclaration -> CST.CommandDeclaration
-  reparse RST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
+instance Unresolve RST.CommandDeclaration CST.CommandDeclaration where
+  unresolve :: RST.CommandDeclaration -> CST.CommandDeclaration
+  unresolve RST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
     CST.MkCommandDeclaration  { cmddecl_loc  = cmddecl_loc
                               , cmddecl_doc  = cmddecl_doc
                               , cmddecl_name = cmddecl_name
-                              , cmddecl_cmd  = reparse cmddecl_cmd
+                              , cmddecl_cmd  = unresolve cmddecl_cmd
                               }
 
-instance Reparse RST.StructuralXtorDeclaration CST.StructuralXtorDeclaration where
-  reparse :: RST.StructuralXtorDeclaration -> CST.StructuralXtorDeclaration
-  reparse RST.MkStructuralXtorDeclaration { strxtordecl_loc, strxtordecl_doc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder} =
+instance Unresolve RST.StructuralXtorDeclaration CST.StructuralXtorDeclaration where
+  unresolve :: RST.StructuralXtorDeclaration -> CST.StructuralXtorDeclaration
+  unresolve RST.MkStructuralXtorDeclaration { strxtordecl_loc, strxtordecl_doc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder} =
     CST.MkStructuralXtorDeclaration { strxtordecl_loc       = strxtordecl_loc
                                     , strxtordecl_doc       = strxtordecl_doc
                                     , strxtordecl_xdata     = strxtordecl_xdata
@@ -746,18 +746,18 @@ instance Reparse RST.StructuralXtorDeclaration CST.StructuralXtorDeclaration whe
                                     , strxtordecl_evalOrder = Just strxtordecl_evalOrder
                                     }
 
-instance Reparse RST.TySynDeclaration CST.TySynDeclaration where
-  reparse :: RST.TySynDeclaration -> CST.TySynDeclaration
-  reparse RST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res } =
+instance Unresolve RST.TySynDeclaration CST.TySynDeclaration where
+  unresolve :: RST.TySynDeclaration -> CST.TySynDeclaration
+  unresolve RST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res } =
     CST.MkTySynDeclaration  { tysyndecl_loc  = tysyndecl_loc
                             , tysyndecl_doc  = tysyndecl_doc
                             , tysyndecl_name = tysyndecl_name
                             , tysyndecl_res  = embedRST (fst tysyndecl_res)
                             }
 
-instance Reparse RST.TyOpDeclaration CST.TyOpDeclaration where
-  reparse :: RST.TyOpDeclaration -> CST.TyOpDeclaration
-  reparse RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res } =
+instance Unresolve RST.TyOpDeclaration CST.TyOpDeclaration where
+  unresolve :: RST.TyOpDeclaration -> CST.TyOpDeclaration
+  unresolve RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res } =
     CST.MkTyOpDeclaration { tyopdecl_loc   = tyopdecl_loc
                           , tyopdecl_doc   = tyopdecl_doc
                           , tyopdecl_sym   = tyopdecl_sym
@@ -766,9 +766,9 @@ instance Reparse RST.TyOpDeclaration CST.TyOpDeclaration where
                           , tyopdecl_res   = rnTnName tyopdecl_res
                           }
 
-instance Reparse RST.ClassDeclaration CST.ClassDeclaration where
-  reparse :: RST.ClassDeclaration -> CST.ClassDeclaration
-  reparse RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_methods }
+instance Unresolve RST.ClassDeclaration CST.ClassDeclaration where
+  unresolve :: RST.ClassDeclaration -> CST.ClassDeclaration
+  unresolve RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_methods }
     = CST.MkClassDeclaration  { classdecl_loc     = classdecl_loc
                               , classdecl_doc     = classdecl_doc
                               , classdecl_name    = classdecl_name
@@ -776,43 +776,43 @@ instance Reparse RST.ClassDeclaration CST.ClassDeclaration where
                               , classdecl_methods = embedRST <$> fst classdecl_methods
                               }
 
-instance Reparse RST.InstanceDeclaration CST.InstanceDeclaration where
-  reparse :: RST.InstanceDeclaration -> CST.InstanceDeclaration
-  reparse RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases }
+instance Unresolve RST.InstanceDeclaration CST.InstanceDeclaration where
+  unresolve :: RST.InstanceDeclaration -> CST.InstanceDeclaration
+  unresolve RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases }
     = CST.MkInstanceDeclaration { instancedecl_loc   = instancedecl_loc
                                 , instancedecl_doc   = instancedecl_doc
                                 , instancedecl_name  = instancedecl_name
                                 , instancedecl_typ   = embedRST (fst instancedecl_typ)
-                                , instancedecl_cases = reparse <$> instancedecl_cases
+                                , instancedecl_cases = unresolve <$> instancedecl_cases
                                 }
 
-instance Reparse RST.Declaration CST.Declaration where
-  reparse :: RST.Declaration -> CST.Declaration
-  reparse (RST.PrdCnsDecl _ decl) =
-    CST.PrdCnsDecl (reparse decl)
-  reparse (RST.CmdDecl decl) =
-    CST.CmdDecl (reparse decl)
-  reparse (RST.DataDecl decl) =
+instance Unresolve RST.Declaration CST.Declaration where
+  unresolve :: RST.Declaration -> CST.Declaration
+  unresolve (RST.PrdCnsDecl _ decl) =
+    CST.PrdCnsDecl (unresolve decl)
+  unresolve (RST.CmdDecl decl) =
+    CST.CmdDecl (unresolve decl)
+  unresolve (RST.DataDecl decl) =
     CST.DataDecl (embedRST decl)
-  reparse (RST.XtorDecl decl) =
-    CST.XtorDecl (reparse decl)
-  reparse (RST.ImportDecl decl) =
+  unresolve (RST.XtorDecl decl) =
+    CST.XtorDecl (unresolve decl)
+  unresolve (RST.ImportDecl decl) =
     CST.ImportDecl decl
-  reparse (RST.SetDecl decl) =
+  unresolve (RST.SetDecl decl) =
     CST.SetDecl decl
-  reparse (RST.TyOpDecl decl) =
-    CST.TyOpDecl (reparse decl)
-  reparse (RST.TySynDecl decl) =
-    CST.TySynDecl (reparse decl)
-  reparse (RST.ClassDecl decl) =
-    CST.ClassDecl (reparse decl)
-  reparse (RST.InstanceDecl decl) =
-    CST.InstanceDecl (reparse decl)
+  unresolve (RST.TyOpDecl decl) =
+    CST.TyOpDecl (unresolve decl)
+  unresolve (RST.TySynDecl decl) =
+    CST.TySynDecl (unresolve decl)
+  unresolve (RST.ClassDecl decl) =
+    CST.ClassDecl (unresolve decl)
+  unresolve (RST.InstanceDecl decl) =
+    CST.InstanceDecl (unresolve decl)
 
-instance Reparse RST.Module CST.Module where
-  reparse :: RST.Module -> CST.Module
-  reparse RST.MkModule { mod_name, mod_fp, mod_decls } =
+instance Unresolve RST.Module CST.Module where
+  unresolve :: RST.Module -> CST.Module
+  unresolve RST.MkModule { mod_name, mod_fp, mod_decls } =
     CST.MkModule  { mod_name = mod_name
                   , mod_fp = mod_fp
-                  , mod_decls = reparse <$> mod_decls
+                  , mod_decls = unresolve <$> mod_decls
                   }

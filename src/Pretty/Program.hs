@@ -42,7 +42,7 @@ instance PrettyAnn CST.DataDecl where
     semi
 
 instance PrettyAnn RST.DataDecl where
-  prettyAnn decl = prettyAnn (reparse decl)
+  prettyAnn decl = prettyAnn (unresolve decl)
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declarations
@@ -191,7 +191,7 @@ instance PrettyAnn TST.Declaration where
   prettyAnn decl = prettyAnn (embedTST decl)
 
 instance PrettyAnn RST.Declaration where
-  prettyAnn decl = prettyAnn (reparse decl)
+  prettyAnn decl = prettyAnn (unresolve decl)
 
     
 instance PrettyAnn CST.Declaration where
