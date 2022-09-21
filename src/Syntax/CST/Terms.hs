@@ -14,9 +14,17 @@ data TermOrStar where
 deriving instance Show TermOrStar
 deriving instance Eq TermOrStar
 
-type Substitution = [Term]
-type SubstitutionI = [TermOrStar]
+newtype Substitution =
+  MkSubstitution { unSubstitution :: [Term] }
 
+deriving instance Show Substitution
+deriving instance Eq Substitution
+
+newtype SubstitutionI =
+  MkSubstitutionI { unSubstitutionI :: [TermOrStar] }
+
+deriving instance Show SubstitutionI
+deriving instance Eq SubstitutionI
 
 --------------------------------------------------------------------------------------------
 -- Patterns
@@ -64,7 +72,7 @@ data NominalStructural where
   deriving (Eq, Ord, Show)
 
 data Term where
-    PrimTerm :: Loc -> PrimName -> [Term] -> Term 
+    PrimTerm :: Loc -> PrimName -> Substitution -> Term 
     Var :: Loc -> FreeVarName -> Term
     Xtor :: Loc -> XtorName -> SubstitutionI -> Term
     Semi :: Loc -> XtorName -> SubstitutionI -> Term -> Term

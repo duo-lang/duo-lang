@@ -109,10 +109,19 @@ instance Desugar RST.PrdCnsTerm Core.PrdCnsTerm where
 
 instance Desugar RST.Substitution Core.Substitution where
   desugar :: RST.Substitution -> Core.Substitution
-  desugar = fmap desugar
+  desugar (RST.MkSubstitution subst) = fmap desugar subst
 
   embedCore :: Core.Substitution -> RST.Substitution
-  embedCore = fmap embedCore
+  embedCore subst = RST.MkSubstitution (fmap embedCore subst)
+
+instance Desugar (RST.SubstitutionI pc) (Core.SubstitutionI pc) where
+  desugar :: RST.SubstitutionI pc -> Core.SubstitutionI pc
+  desugar (RST.MkSubstitutionI (subst1, pc, subst2)) = 
+    (desugar <$> subst1, pc, desugar <$> subst2)
+
+  embedCore :: Core.SubstitutionI pc -> RST.SubstitutionI pc
+  embedCore (subst1, pc, subst2) =
+    RST.MkSubstitutionI (embedCore <$> subst1, pc, embedCore <$> subst2)
 
 instance Desugar (RST.Term pc) (Core.Term pc) where
   desugar :: RST.Term pc -> Core.Term pc
@@ -124,7 +133,7 @@ instance Desugar (RST.Term pc) (Core.Term pc) where
   desugar (RST.FreeVar loc pc fv) =
     Core.FreeVar loc pc fv
   desugar (RST.Xtor loc pc ns xt args) =
-    Core.Xtor loc Core.XtorAnnotOrig pc ns xt (desugar <$> args)
+    Core.Xtor loc Core.XtorAnnotOrig pc ns xt (desugar args)
   desugar (RST.MuAbs loc pc  bs cmd) =
     Core.MuAbs loc Core.MuAnnotOrig pc bs (desugar cmd)
   desugar (RST.XCase loc pc ns cases) =
@@ -132,10 +141,10 @@ instance Desugar (RST.Term pc) (Core.Term pc) where
   ---------------------------------------------------------------------------------
   -- Syntactic sugar
   ---------------------------------------------------------------------------------
-  desugar (RST.Semi loc rep ns xt (args1,r,args2) t) =
-    Core.Semi loc rep ns xt (desugar <$> args1,r,desugar <$> args2) (desugar t)
-  desugar (RST.Dtor loc rep ns xt t (args1,r,args2)) =
-    Core.Dtor loc rep ns xt (desugar t) (desugar <$> args1,r,desugar <$> args2)
+  desugar (RST.Semi loc rep ns xt subst t) =
+    Core.Semi loc rep ns xt (desugar subst) (desugar t)
+  desugar (RST.Dtor loc rep ns xt t subst) =
+    Core.Dtor loc rep ns xt (desugar t) (desugar subst)
   desugar (RST.CaseOf loc rep ns t cases) =
     Core.CaseOf loc rep ns (desugar t) (desugar <$> cases)
   desugar (RST.CocaseOf loc rep ns t cases) =
@@ -175,10 +184,10 @@ instance Desugar (RST.Term pc) (Core.Term pc) where
   ---------------------------------------------------------------------------------
   -- Syntactic sugar
   ---------------------------------------------------------------------------------
-  embedCore (Core.Semi loc rep ns xt (subst,r,subst2) t ) =
-    RST.Semi loc rep ns xt (embedCore subst, r, embedCore subst2) (embedCore t)
-  embedCore (Core.Dtor loc rep ns xt t (subst,r,subst2)) =
-    RST.Dtor loc rep ns xt (embedCore t) (embedCore subst, r, embedCore subst2)
+  embedCore (Core.Semi loc rep ns xt subst t ) =
+    RST.Semi loc rep ns xt (embedCore subst) (embedCore t)
+  embedCore (Core.Dtor loc rep ns xt t subst) =
+    RST.Dtor loc rep ns xt (embedCore t) (embedCore subst)
   embedCore (Core.CaseOf loc rep ns t cases) =
     RST.CaseOf loc rep ns (embedCore t) (embedCore <$> cases)
   embedCore (Core.CocaseOf loc rep ns t cases) =
@@ -215,13 +224,13 @@ instance Desugar RST.Command Core.Command where
   desugar (RST.Jump loc fv) =
     Core.Jump loc fv
   desugar (RST.Method loc mn cn subst) =
-    Core.Method loc mn cn (desugar <$> subst)
+    Core.Method loc mn cn (desugar subst)
   desugar (RST.ExitSuccess loc) =
     Core.ExitSuccess loc
   desugar (RST.ExitFailure loc) =
     Core.ExitFailure loc
   desugar (RST.PrimOp loc op subst) =
-    Core.PrimOp loc op (desugar <$> subst)
+    Core.PrimOp loc op (desugar subst)
   ---------------------------------------------------------------------------------
   -- Syntactic sugar
   -- uses pattern synonyms defined in Sugar.Core 

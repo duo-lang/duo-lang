@@ -40,7 +40,7 @@ fresh Cns = do
   pure var
 
 freeVarNamesToXtorArgs :: [(PrdCns, Maybe FreeVarName)] -> RST.Substitution
-freeVarNamesToXtorArgs bs = f <$> bs
+freeVarNamesToXtorArgs bs = RST.MkSubstitution (f <$> bs)
   where
     f (Prd, Nothing) = error "Create Names first!"
     f (Prd, Just fv) = RST.PrdTerm $ RST.FreeVar defaultLoc PrdRep fv
@@ -48,8 +48,8 @@ freeVarNamesToXtorArgs bs = f <$> bs
     f (Cns, Just fv) = RST.CnsTerm $ RST.FreeVar defaultLoc CnsRep fv
 
 isNumSTermRST :: RST.Term pc -> Maybe Int
-isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "Z") []) = Just 0
-isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "S") [RST.PrdTerm n]) = case isNumSTermRST n of
+isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "Z") (RST.MkSubstitution [])) = Just 0
+isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n])) = case isNumSTermRST n of
   Nothing -> Nothing
   Just n -> Just (n + 1)
 isNumSTermRST _ = Nothing
@@ -112,29 +112,49 @@ instance Unresolve RST.PrdCnsTerm CST.Term where
 
 -- Substitution
 
+instance Open RST.Substitution where
+  open :: RST.Substitution -> RST.Substitution
+  open (RST.MkSubstitution subst) =
+    RST.MkSubstitution (open <$> subst)
+
 instance CreateNames RST.Substitution where
   createNames :: RST.Substitution  -> CreateNameM RST.Substitution
-  createNames = mapM createNames
+  createNames (RST.MkSubstitution subst) =
+    RST.MkSubstitution <$> mapM createNames subst
 
-instance EmbedRST RST.Substitution [CST.Term] where
-  embedRST :: RST.Substitution -> [CST.Term]
-  embedRST = fmap embedRST
+instance EmbedRST RST.Substitution CST.Substitution where
+  embedRST :: RST.Substitution -> CST.Substitution
+  embedRST (RST.MkSubstitution subst) =
+    CST.MkSubstitution (embedRST <$> subst)
 
 instance Unresolve RST.Substitution CST.Substitution where
   unresolve :: RST.Substitution -> CST.Substitution
-  unresolve = fmap unresolve
+  unresolve (RST.MkSubstitution subst) =
+    CST.MkSubstitution (unresolve <$> subst)
 
 -- SubstitutionI
 
-instance EmbedRST (RST.SubstitutionI pc) [CST.TermOrStar] where
-  embedRST :: RST.SubstitutionI pc -> [CST.TermOrStar]
-  embedRST (subst1,PrdRep,subst2) = (CST.ToSTerm <$> embedRST subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> embedRST subst2)
-  embedRST (subst1,CnsRep,subst2) = (CST.ToSTerm <$> embedRST subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> embedRST subst2)
+instance Open (RST.SubstitutionI pc) where
+  open :: RST.SubstitutionI pc -> RST.SubstitutionI pc
+  open (RST.MkSubstitutionI (subst1,pc,subst2)) =
+    RST.MkSubstitutionI (open <$> subst1,pc,open <$> subst2)
+
+instance CreateNames (RST.SubstitutionI pc) where
+  createNames :: RST.SubstitutionI pc -> CreateNameM (RST.SubstitutionI pc)
+  createNames (RST.MkSubstitutionI (subst1,pc,subst2)) = do
+    subst1' <- mapM createNames subst1
+    subst2' <- mapM createNames subst2
+    pure (RST.MkSubstitutionI (subst1', pc, subst2'))
+
+instance EmbedRST (RST.SubstitutionI pc) CST.SubstitutionI where
+  embedRST :: RST.SubstitutionI pc -> CST.SubstitutionI
+  embedRST (RST.MkSubstitutionI (subst1,_,subst2)) =
+    CST.MkSubstitutionI $ (CST.ToSTerm . embedRST <$> subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm . embedRST <$> subst2)
 
 instance Unresolve (RST.SubstitutionI pc) CST.SubstitutionI where
   unresolve :: RST.SubstitutionI pc -> CST.SubstitutionI
-  unresolve (subst1,_,subst2) =
-    (CST.ToSTerm <$> unresolve subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm <$> unresolve subst2)
+  unresolve (RST.MkSubstitutionI (subst1,_,subst2)) =
+    CST.MkSubstitutionI $ (CST.ToSTerm . unresolve <$> subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm . unresolve <$> subst2)
 
 -- Pattern
 
@@ -293,20 +313,20 @@ instance Open (RST.Term pc) where
   open (RST.FreeVar loc pc v) =
     RST.FreeVar loc pc v
   open (RST.Xtor loc pc ns xt args) =
-    RST.Xtor loc pc ns xt (open <$> args)
+    RST.Xtor loc pc ns xt (open args)
   open (RST.XCase loc pc ns cases) =
     RST.XCase loc pc ns (open <$> cases)
   open (RST.MuAbs loc PrdRep (Just fv) cmd) =
-    RST.MuAbs loc PrdRep (Just fv) (LN.open [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)] (open cmd))
+    RST.MuAbs loc PrdRep (Just fv) (LN.open (RST.MkSubstitution [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)]) (open cmd))
   open (RST.MuAbs loc CnsRep (Just fv) cmd) =
-    RST.MuAbs loc CnsRep (Just fv) (LN.open [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)] (open cmd))
+    RST.MuAbs loc CnsRep (Just fv) (LN.open (RST.MkSubstitution [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)]) (open cmd))
   open (RST.MuAbs _ _ Nothing _) =
     error "Create names first!"
   -- Syntactic sugar
-  open (RST.Semi loc rep ns xt (args1, pcrep, args2) t) =
-    RST.Semi loc rep ns xt (open <$> args1, pcrep, open <$> args2) (open t)
-  open (RST.Dtor loc rep ns xt t (args1,pcrep,args2)) =
-    RST.Dtor loc rep ns xt (open t) (open <$> args1,pcrep, open <$> args2)
+  open (RST.Semi loc rep ns xt subst t) =
+    RST.Semi loc rep ns xt (open subst) (open t)
+  open (RST.Dtor loc rep ns xt t subst) =
+    RST.Dtor loc rep ns xt (open t) (open subst)
   open (RST.CaseOf loc rep ns t cases) =
     RST.CaseOf loc rep ns (open t) (open <$> cases)
   open (RST.CocaseOf loc rep ns t cases) =
@@ -318,8 +338,8 @@ instance Open (RST.Term pc) where
   open (RST.Lambda loc pc fv tm) =
     let
       tm' = open tm
-      tm'' = case pc of PrdRep -> LN.open [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)] tm'
-                        CnsRep -> LN.open [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)] tm'
+      tm'' = case pc of PrdRep -> LN.open (RST.MkSubstitution [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)]) tm'
+                        CnsRep -> LN.open (RST.MkSubstitution [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)]) tm'
     in RST.Lambda loc pc fv tm''
   -- Primitive constructs
   open (RST.PrimLitI64 loc i) =
@@ -349,16 +369,14 @@ instance CreateNames (RST.Term pc) where
     var <- fresh (case pc of PrdRep -> Cns; CnsRep -> Prd)
     pure $ RST.MuAbs loc pc (Just var) cmd'
   -- Syntactic sugar
-  createNames (RST.Semi loc pc ns xt (subst1,pcrep,subst2) e) = do
+  createNames (RST.Semi loc pc ns xt subst e) = do
     e' <- createNames e
-    subst1' <- createNames subst1
-    subst2' <- createNames subst2
-    pure $ RST.Semi loc pc ns xt (subst1', pcrep, subst2') e'
-  createNames (RST.Dtor loc pc ns xt e (subst1,pcrep,subst2)) = do
+    subst' <- createNames subst
+    pure $ RST.Semi loc pc ns xt subst' e'
+  createNames (RST.Dtor loc pc ns xt e subst) = do
     e' <- createNames e
-    subst1' <- createNames subst1
-    subst2' <- createNames subst2
-    pure $ RST.Dtor loc pc ns xt e' (subst1',pcrep,subst2')
+    subst' <- createNames subst
+    pure $ RST.Dtor loc pc ns xt e' subst'
   createNames (RST.CaseOf loc rep ns e cases) = do
     e' <- createNames e
     cases' <- mapM createNames cases
@@ -396,7 +414,7 @@ instance EmbedRST (RST.Term pc) CST.Term where
   embedRST (RST.FreeVar loc _ fv) =
     CST.Var loc fv
   embedRST (RST.Xtor loc _ _ xt subst) =
-    CST.Xtor loc xt (CST.ToSTerm <$> embedRST subst)
+    CST.Xtor loc xt (CST.MkSubstitutionI (CST.ToSTerm . embedRST <$> RST.unSubstitution subst))
   embedRST (RST.XCase loc PrdRep _ cases) =
     CST.Cocase loc (embedRST <$> cases)
   embedRST (RST.XCase loc CnsRep _ cases) =
@@ -404,13 +422,13 @@ instance EmbedRST (RST.Term pc) CST.Term where
   embedRST (RST.MuAbs loc _ fv cmd) =
     CST.MuAbs loc (fromJust fv) (embedRST cmd)
   -- Syntactic sugar
-  embedRST (RST.Semi loc _ _ (MkXtorName "CoAp")  ([RST.CnsTerm t],CnsRep,[]) tm) =
+  embedRST (RST.Semi loc _ _ (MkXtorName "CoAp") (RST.MkSubstitutionI ([RST.CnsTerm t],CnsRep,[])) tm) =
     CST.FunApp loc (embedRST tm) (embedRST t)
   embedRST (RST.Semi _loc _ _ (MkXtorName "CoAp")  other _tm) =
     error $ "embed: " ++ show  other
   embedRST (RST.Semi loc _ _ xt substi tm) =
     CST.Semi loc xt (embedRST substi) (embedRST tm)
-  embedRST (RST.Dtor loc _ _ (MkXtorName "Ap") tm ([RST.PrdTerm t],PrdRep,[])) =
+  embedRST (RST.Dtor loc _ _ (MkXtorName "Ap") tm (RST.MkSubstitutionI ([RST.PrdTerm t],PrdRep,[]))) =
     CST.FunApp loc (embedRST tm) (embedRST t)
   embedRST (RST.Dtor loc _ _ xt tm substi) =
     CST.Dtor loc xt (embedRST tm) (embedRST substi)
@@ -452,13 +470,13 @@ instance Open RST.Command where
   open (RST.Jump loc fv) =
     RST.Jump loc fv
   open (RST.Method loc mn cn subst) =
-    RST.Method loc mn cn (open <$> subst)
+    RST.Method loc mn cn (open subst)
   open (RST.ExitSuccess loc) =
     RST.ExitSuccess loc
   open (RST.ExitFailure loc) =
     RST.ExitFailure loc
   open (RST.PrimOp loc op subst) =
-    RST.PrimOp loc op (open <$> subst)
+    RST.PrimOp loc op (open subst)
   open (RST.CaseOfCmd loc ns tm cases) =
     RST.CaseOfCmd loc ns (open tm) (open <$> cases)
   open (RST.CocaseOfCmd loc ns tm cases) =
@@ -477,7 +495,7 @@ instance CreateNames RST.Command where
   createNames (RST.Jump loc fv) =
     pure $ RST.Jump loc fv
   createNames (RST.Method loc mn cn subst) = do
-    subst' <- mapM createNames subst
+    subst' <- createNames subst
     pure $ RST.Method loc mn cn subst'
   createNames (RST.Apply loc prd cns) = do
     prd' <- createNames prd
@@ -491,7 +509,7 @@ instance CreateNames RST.Command where
     cns' <- createNames cns
     pure $ RST.Read loc cns'
   createNames (RST.PrimOp loc op subst) = do
-    subst' <- mapM createNames subst
+    subst' <- createNames subst
     pure $ RST.PrimOp loc op subst'
   createNames (RST.CaseOfCmd loc ns tm cases) = do
     tm' <- createNames tm
@@ -515,17 +533,17 @@ instance EmbedRST RST.Command CST.Term where
   embedRST (RST.Apply loc prd cns) =
     CST.Apply loc (embedRST prd) (embedRST cns)
   embedRST (RST.Print loc tm cmd) =
-    CST.PrimTerm loc printName [embedRST tm, embedRST cmd]
+    CST.PrimTerm loc printName (CST.MkSubstitution [embedRST tm, embedRST cmd])
   embedRST (RST.Read loc cns) =
-    CST.PrimTerm loc readName [embedRST cns]
+    CST.PrimTerm loc readName (CST.MkSubstitution [embedRST cns])
   embedRST (RST.Jump loc fv) =
     CST.Var loc fv
   embedRST (RST.Method loc mn _cn subst) =
-    CST.Xtor loc (MkXtorName $ unMethodName mn) (CST.ToSTerm <$> embedRST subst)
+    CST.Xtor loc (MkXtorName $ unMethodName mn) (CST.MkSubstitutionI (CST.ToSTerm . embedRST <$> RST.unSubstitution subst))
   embedRST (RST.ExitSuccess loc) =
-    CST.PrimTerm loc exitSuccessName []
+    CST.PrimTerm loc exitSuccessName (CST.MkSubstitution [])
   embedRST (RST.ExitFailure loc) =
-    CST.PrimTerm loc exitFailureName []
+    CST.PrimTerm loc exitFailureName (CST.MkSubstitution [])
   embedRST (RST.PrimOp loc op subst) =
     CST.PrimTerm loc (embedRST op) (embedRST subst)
   embedRST (RST.CaseOfCmd loc _ns tm cases) =
