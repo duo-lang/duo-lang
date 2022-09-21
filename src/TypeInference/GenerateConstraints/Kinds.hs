@@ -14,10 +14,10 @@ import Loc
 import Pretty.Pretty
 import TypeInference.GenerateConstraints.Definition
 import Driver.Environment
+
 import Control.Monad.Reader
 import Control.Monad.Except
 import Data.List.NonEmpty (NonEmpty(..))
-
 import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
@@ -148,23 +148,25 @@ annotTy (RST.TyCodata loc pol xtors) = do
     compXtorKinds [mk] = Just mk
     compXtorKinds (xtor1:xtor2:rst) = if xtor1==xtor2 then compXtorKinds (xtor2:rst) else Nothing
 annotTy (RST.TyDataRefined loc pol tyn xtors) =  do 
-  xtors' <- mapM annotXtor xtors
   tyn' <- gets declTyName
   if tyn == tyn' then do
     polyknd <- gets declKind
+    xtors' <- mapM annotXtor xtors
     return $ TST.TyDataRefined loc pol (CBox $ returnKind polyknd) tyn xtors' 
   else do 
     decl <- lookupTypeName loc tyn
-    return $ TST.TyDataRefined loc pol (CBox $ returnKind $ TST.data_kind decl) tyn xtors' 
+    let xtors = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) $ TST.data_xtors decl
+    return $ TST.TyDataRefined loc pol (CBox $ returnKind $ TST.data_kind decl) tyn xtors
 annotTy (RST.TyCodataRefined loc pol tyn xtors) = do 
-  xtors' <- mapM annotXtor xtors
   tyn' <- gets declTyName
   if tyn == tyn' then do 
+    xtors' <- mapM annotXtor xtors
     polyknd <- gets declKind
     return $ TST.TyCodataRefined loc pol (CBox $ returnKind polyknd) tyn xtors'
   else do
     decl <- lookupTypeName loc tyn
-    return $ TST.TyCodataRefined loc pol (CBox $ returnKind (TST.data_kind decl)) tyn xtors'
+    let xtors = (case pol of RST.PosRep -> snd; RST.NegRep -> fst) $ TST.data_xtors decl
+    return $ TST.TyCodataRefined loc pol (CBox $ returnKind (TST.data_kind decl)) tyn xtors
 annotTy (RST.TyNominal loc pol tyn vartys) = do 
   tyn' <- gets declTyName
   vartys' <- mapM annotVarTy vartys
@@ -196,7 +198,7 @@ annotTy (RST.TyInter loc ty1 ty2) = do
     return $ TST.TyInter loc knd ty1' ty2'
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
-annotTy (RST.TyRec loc _ _ _) = throwOtherError loc ["Recursive Types should not appear in data Declaration"]
+annotTy (RST.TyRec loc _ tv ty) = throwOtherError loc ["Recursive Types should not appear in data Declaration", T.pack $ show ty]
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
 annotTy (RST.TyF64 loc pol) = return $ TST.TyF64 loc pol
 annotTy (RST.TyChar loc pol) = return $ TST.TyChar loc pol
