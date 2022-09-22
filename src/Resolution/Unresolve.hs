@@ -1,4 +1,4 @@
-module Resolution.Unresolve ( Unresolve(..) ) where
+module Resolution.Unresolve ( Unresolve(..), runUnresolveM ) where
 
 import Control.Monad.State
 import Data.Bifunctor
@@ -18,7 +18,7 @@ import Syntax.CST.Names
 import qualified Syntax.LocallyNameless as LN
 
 ---------------------------------------------------------------------------------
--- Various Helper Functions
+-- The Unresolve Monad
 ---------------------------------------------------------------------------------
 
 newtype UnresolveM a =
@@ -49,6 +49,10 @@ freeVarNamesToXtorArgs bs = RST.MkSubstitution (f <$> bs)
     f (Prd, Just fv) = RST.PrdTerm $ RST.FreeVar defaultLoc PrdRep fv
     f (Cns, Nothing) = error "Create Names first!"
     f (Cns, Just fv) = RST.CnsTerm $ RST.FreeVar defaultLoc CnsRep fv
+
+---------------------------------------------------------------------------------
+-- helperfunctions
+---------------------------------------------------------------------------------
 
 isNumSTermRST :: RST.Term pc -> Maybe Int
 isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "Z") (RST.MkSubstitution [])) = Just 0
@@ -85,7 +89,7 @@ class EmbedRST a b | a -> b where
   embedRST :: a -> b
 
 class Unresolve a b | a -> b where
-  unresolve :: a -> b
+  unresolve :: a -> UnresolveM b
 
 ---------------------------------------------------------------------------------
 -- Unresolving terms
@@ -109,7 +113,7 @@ instance EmbedRST RST.PrdCnsTerm CST.Term where
   embedRST (RST.CnsTerm tm) = embedRST tm
 
 instance Unresolve RST.PrdCnsTerm CST.Term where
-  unresolve :: RST.PrdCnsTerm -> CST.Term
+  unresolve :: RST.PrdCnsTerm -> UnresolveM CST.Term
   unresolve (RST.PrdTerm tm) = unresolve tm
   unresolve (RST.CnsTerm tm) = unresolve tm
 
@@ -131,9 +135,10 @@ instance EmbedRST RST.Substitution CST.Substitution where
     CST.MkSubstitution (embedRST <$> subst)
 
 instance Unresolve RST.Substitution CST.Substitution where
-  unresolve :: RST.Substitution -> CST.Substitution
-  unresolve (RST.MkSubstitution subst) =
-    CST.MkSubstitution (unresolve <$> subst)
+  unresolve :: RST.Substitution -> UnresolveM CST.Substitution
+  unresolve (RST.MkSubstitution subst) = do
+    subst' <- mapM unresolve subst
+    pure (CST.MkSubstitution subst')
 
 -- SubstitutionI
 
@@ -155,9 +160,11 @@ instance EmbedRST (RST.SubstitutionI pc) CST.SubstitutionI where
     CST.MkSubstitutionI $ (CST.ToSTerm . embedRST <$> subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm . embedRST <$> subst2)
 
 instance Unresolve (RST.SubstitutionI pc) CST.SubstitutionI where
-  unresolve :: RST.SubstitutionI pc -> CST.SubstitutionI
-  unresolve (RST.MkSubstitutionI (subst1,_,subst2)) =
-    CST.MkSubstitutionI $ (CST.ToSTerm . unresolve <$> subst1) ++ [CST.ToSStar] ++ (CST.ToSTerm . unresolve <$> subst2)
+  unresolve :: RST.SubstitutionI pc -> UnresolveM CST.SubstitutionI
+  unresolve (RST.MkSubstitutionI (subst1,_,subst2)) = do
+    subst1' <- mapM (fmap CST.ToSTerm . unresolve) subst1
+    subst2' <- mapM (fmap CST.ToSTerm . unresolve) subst2
+    pure $ CST.MkSubstitutionI (subst1' <> [CST.ToSStar] <> subst2')
 
 -- Pattern
 
@@ -213,8 +220,8 @@ instance EmbedRST RST.CmdCase CST.TermCase where
                   }
 
 instance Unresolve RST.CmdCase CST.TermCase where
-  unresolve :: RST.CmdCase -> CST.TermCase
-  unresolve cmdcase = embedRST (runUnresolveM (createNames cmdcase))
+  unresolve :: RST.CmdCase -> UnresolveM CST.TermCase
+  unresolve cmdcase = pure $ embedRST (runUnresolveM (createNames cmdcase))
 
 -- TermCase
 
@@ -241,8 +248,8 @@ instance EmbedRST (RST.TermCase pc) CST.TermCase where
                   , tmcase_term = embedRST tmcase_term}
 
 instance Unresolve (RST.TermCase pc) CST.TermCase where
-  unresolve :: RST.TermCase pc -> CST.TermCase
-  unresolve termcase = embedRST (runUnresolveM (createNames termcase))
+  unresolve :: RST.TermCase pc -> UnresolveM CST.TermCase
+  unresolve termcase = pure $ embedRST (runUnresolveM (createNames termcase))
 
 -- TermCaseI
 
@@ -270,8 +277,8 @@ instance EmbedRST (RST.TermCaseI pc) CST.TermCase where
                   }
 
 instance Unresolve (RST.TermCaseI pc) CST.TermCase where
-  unresolve :: RST.TermCaseI pc -> CST.TermCase
-  unresolve termcasei = embedRST (runUnresolveM (createNames termcasei))
+  unresolve :: RST.TermCaseI pc -> UnresolveM CST.TermCase
+  unresolve termcasei = pure $ embedRST (runUnresolveM (createNames termcasei))
 
 -- InstanceCase
 
@@ -299,8 +306,8 @@ instance EmbedRST RST.InstanceCase CST.TermCase where
                   }
 
 instance Unresolve RST.InstanceCase CST.TermCase where
-  unresolve :: RST.InstanceCase -> CST.TermCase
-  unresolve instancecase = embedRST (open (runUnresolveM (createNames instancecase)))
+  unresolve :: RST.InstanceCase -> UnresolveM CST.TermCase
+  unresolve instancecase = pure $ embedRST (open (runUnresolveM (createNames instancecase)))
 
 -- Term
 
@@ -453,8 +460,8 @@ instance EmbedRST (RST.Term pc) CST.Term where
     CST.PrimLitString loc d
 
 instance Unresolve (RST.Term pc) CST.Term where
-  unresolve :: RST.Term pc -> CST.Term
-  unresolve tm = embedRST (open (runUnresolveM (createNames tm)))
+  unresolve :: RST.Term pc -> UnresolveM CST.Term
+  unresolve tm = pure $ embedRST (open (runUnresolveM (createNames tm)))
 
 -- Command
 
@@ -555,227 +562,257 @@ instance EmbedRST RST.Command CST.Term where
     CST.CocaseOf loc (embedRST tm) (embedRST <$> cases)
 
 instance Unresolve RST.Command CST.Term where
-  unresolve :: RST.Command -> CST.Term
-  unresolve cmd = embedRST (open (runUnresolveM (createNames cmd)))
+  unresolve :: RST.Command -> UnresolveM CST.Term
+  unresolve cmd = pure $ embedRST (open (runUnresolveM (createNames cmd)))
 
 ---------------------------------------------------------------------------------
 -- Unresolving types
 ---------------------------------------------------------------------------------
 
 instance Unresolve (RST.PrdCnsType pol) CST.PrdCnsTyp where
-  unresolve :: RST.PrdCnsType pol -> CST.PrdCnsTyp
-  unresolve (RST.PrdCnsType PrdRep ty) = CST.PrdType (unresolve ty)
-  unresolve (RST.PrdCnsType CnsRep ty) = CST.CnsType (unresolve ty)
+  unresolve :: RST.PrdCnsType pol -> UnresolveM CST.PrdCnsTyp
+  unresolve (RST.PrdCnsType PrdRep ty) = CST.PrdType <$> (unresolve ty)
+  unresolve (RST.PrdCnsType CnsRep ty) = CST.CnsType <$> (unresolve ty)
 
 instance Unresolve (RST.LinearContext pol) CST.LinearContext where
-  unresolve :: RST.LinearContext pol -> CST.LinearContext
-  unresolve = fmap unresolve
+  unresolve :: RST.LinearContext pol -> UnresolveM CST.LinearContext
+  unresolve = mapM unresolve
 
 instance Unresolve (RST.XtorSig pol) CST.XtorSig where
-  unresolve :: RST.XtorSig pol -> CST.XtorSig
-  unresolve RST.MkXtorSig { sig_name, sig_args } =
-    CST.MkXtorSig { sig_name = sig_name
-                  , sig_args = unresolve sig_args
-                  }
+  unresolve :: RST.XtorSig pol -> UnresolveM CST.XtorSig
+  unresolve RST.MkXtorSig { sig_name, sig_args } = do
+    sig_args' <- unresolve sig_args
+    pure CST.MkXtorSig { sig_name = sig_name
+                       , sig_args = sig_args'
+                       }
 
 instance Unresolve (RST.VariantType pol) CST.Typ where
-  unresolve :: RST.VariantType pol -> CST.Typ
+  unresolve :: RST.VariantType pol -> UnresolveM CST.Typ
   unresolve (RST.CovariantType ty) = unresolve ty
   unresolve (RST.ContravariantType ty) = unresolve ty
 
-resugarType :: RST.Typ pol -> Maybe CST.Typ
-resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) =
-  Just (CST.TyBinOp loc (unresolve tl) (CustomOp (MkTyOpName "->")) (unresolve tr))
-resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "CoFun" } [RST.CovariantType tl, RST.ContravariantType tr]) =
-  Just (CST.TyBinOp loc (unresolve tl) (CustomOp (MkTyOpName "-<")) (unresolve tr))
-resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType t1, RST.CovariantType t2]) =
-  Just (CST.TyBinOp loc (unresolve t1) (CustomOp (MkTyOpName "⅋")) (unresolve t2))
-resugarType _ = Nothing
+resugarType :: RST.Typ pol -> UnresolveM (Maybe CST.Typ)
+resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) = do
+  tl' <- unresolve tl
+  tr' <- unresolve tr
+  pure $ Just (CST.TyBinOp loc tl' (CustomOp (MkTyOpName "->")) tr')
+resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "CoFun" } [RST.CovariantType tl, RST.ContravariantType tr]) = do
+  tl' <- unresolve tl
+  tr' <- unresolve tr
+  pure $ Just (CST.TyBinOp loc tl' (CustomOp (MkTyOpName "-<")) tr')
+resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType tl, RST.CovariantType tr]) = do
+  tl' <- unresolve tl
+  tr' <- unresolve tr
+  pure $ Just (CST.TyBinOp loc tl' (CustomOp (MkTyOpName "⅋")) tr')
+resugarType _ = pure Nothing
 
 embedRecTVar :: RecTVar -> SkolemTVar
 embedRecTVar (MkRecTVar n) = MkSkolemTVar n
 
 instance Unresolve (RST.Typ pol) CST.Typ where
-  unresolve :: RST.Typ pol -> CST.Typ
-  unresolve (resugarType -> Just ty) = ty
+  unresolve :: RST.Typ pol -> UnresolveM CST.Typ
+  unresolve (runUnresolveM . resugarType -> Just ty) = pure ty
   unresolve (RST.TyUniVar loc _ tv) =
-    CST.TyUniVar loc tv
+    pure $ CST.TyUniVar loc tv
   unresolve (RST.TySkolemVar loc _ tv) =
-    CST.TySkolemVar loc tv
+    pure $ CST.TySkolemVar loc tv
   unresolve (RST.TyRecVar loc _ tv) =
-    CST.TySkolemVar loc $ embedRecTVar tv
-  unresolve (RST.TyData loc _ xtors) =
-    CST.TyXData loc CST.Data (unresolve <$> xtors)
-  unresolve (RST.TyCodata loc _ xtors) =
-    CST.TyXData loc CST.Codata (unresolve <$> xtors)
-  unresolve (RST.TyDataRefined loc _ tn xtors) =
-    CST.TyXRefined loc CST.Data (rnTnName tn) (unresolve <$> xtors)
-  unresolve (RST.TyCodataRefined loc _ tn xtors) =
-    CST.TyXRefined loc CST.Codata (rnTnName tn) (unresolve <$> xtors)
-  unresolve (RST.TyNominal loc _ nm args) =
-    CST.TyNominal loc (rnTnName nm) (unresolve <$> args)
+    pure $ CST.TySkolemVar loc $ embedRecTVar tv
+  unresolve (RST.TyData loc _ xtors) = do
+    xtors' <- mapM unresolve xtors
+    pure $ CST.TyXData loc CST.Data xtors'
+  unresolve (RST.TyCodata loc _ xtors) = do
+    xtors' <- mapM unresolve xtors
+    pure $ CST.TyXData loc CST.Codata xtors'
+  unresolve (RST.TyDataRefined loc _ tn xtors) = do
+    xtors' <- mapM unresolve xtors
+    pure $ CST.TyXRefined loc CST.Data (rnTnName tn) xtors'
+  unresolve (RST.TyCodataRefined loc _ tn xtors) = do
+    xtors' <- mapM unresolve xtors
+    pure $ CST.TyXRefined loc CST.Codata (rnTnName tn) xtors'
+  unresolve (RST.TyNominal loc _ nm args) = do
+    args' <- mapM unresolve args
+    pure $ CST.TyNominal loc (rnTnName nm) args'
   unresolve (RST.TySyn loc _ nm _) =
-    CST.TyNominal loc (rnTnName nm) []
+    pure $ CST.TyNominal loc (rnTnName nm) []
   unresolve (RST.TyTop loc) =
-    CST.TyTop loc
+    pure $ CST.TyTop loc
   unresolve (RST.TyBot loc) =
-    CST.TyBot loc
-  unresolve (RST.TyUnion loc ty ty') =
-    CST.TyBinOp loc (unresolve ty) UnionOp (unresolve ty')
-  unresolve (RST.TyInter loc ty ty') =
-    CST.TyBinOp loc (unresolve ty) InterOp (unresolve ty')
-  unresolve (RST.TyRec loc _ tv ty) =
-    CST.TyRec loc (embedRecTVar tv) (unresolve ty)
+    pure $ CST.TyBot loc
+  unresolve (RST.TyUnion loc tyl tyr) = do
+    tyl' <- unresolve tyl
+    tyr' <- unresolve tyr
+    pure $ CST.TyBinOp loc tyl' UnionOp tyr'
+  unresolve (RST.TyInter loc tyl tyr) = do
+    tyl' <- unresolve tyl
+    tyr' <- unresolve tyr
+    pure $ CST.TyBinOp loc tyl' InterOp tyr'
+  unresolve (RST.TyRec loc _ tv ty) = do
+    ty' <- unresolve ty
+    pure $ CST.TyRec loc (embedRecTVar tv) ty'
   unresolve (RST.TyI64 loc _) =
-    CST.TyI64 loc
+    pure $ CST.TyI64 loc
   unresolve (RST.TyF64 loc _) =
-    CST.TyF64 loc
+    pure $ CST.TyF64 loc
   unresolve (RST.TyChar loc _) =
-    CST.TyChar loc
+    pure $ CST.TyChar loc
   unresolve (RST.TyString loc _) =
-    CST.TyString loc
-  unresolve (RST.TyFlipPol _ ty) = unresolve ty
+    pure $ CST.TyString loc
+  unresolve (RST.TyFlipPol _ ty) =
+    unresolve ty
 
 instance Unresolve (RST.TypeScheme pol) CST.TypeScheme where
-  unresolve :: RST.TypeScheme pol -> CST.TypeScheme
-  unresolve RST.TypeScheme { ts_loc, ts_vars, ts_monotype } =
-    CST.TypeScheme  { ts_loc         = ts_loc
-                    , ts_vars        = ts_vars
-                    , ts_constraints = error "Type constraints not implemented yet for RST type scheme."
-                    , ts_monotype    = unresolve ts_monotype
-                    }
+  unresolve :: RST.TypeScheme pol -> UnresolveM CST.TypeScheme
+  unresolve RST.TypeScheme { ts_loc, ts_vars, ts_monotype } = do
+    type' <- unresolve ts_monotype
+    pure $ CST.TypeScheme  { ts_loc         = ts_loc
+                           , ts_vars        = ts_vars
+                           , ts_constraints = []
+                           , ts_monotype    = type'
+                           }
 
 instance Unresolve (RST.MethodSig pol) CST.XtorSig where
-  unresolve :: RST.MethodSig pol -> CST.XtorSig
-  unresolve RST.MkMethodSig { msig_name, msig_args } =
-    CST.MkXtorSig { sig_name = MkXtorName $ unMethodName msig_name
-                  , sig_args = unresolve <$> msig_args
-                  }
+  unresolve :: RST.MethodSig pol -> UnresolveM CST.XtorSig
+  unresolve RST.MkMethodSig { msig_name, msig_args } = do
+    args' <- mapM unresolve msig_args
+    pure CST.MkXtorSig { sig_name = MkXtorName $ unMethodName msig_name
+                       , sig_args = args'
+                       }
 
 ---------------------------------------------------------------------------------
 -- Unresolving declarations
 ---------------------------------------------------------------------------------
 
 instance Unresolve (RST.PrdCnsDeclaration pc) CST.PrdCnsDeclaration where
-  unresolve :: RST.PrdCnsDeclaration pc -> CST.PrdCnsDeclaration
-  unresolve RST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
-    CST.MkPrdCnsDeclaration { pcdecl_loc   = pcdecl_loc
-                            , pcdecl_doc   = pcdecl_doc
-                            , pcdecl_pc    = case pcdecl_pc of { PrdRep -> Prd; CnsRep -> Cns }
-                            , pcdecl_isRec = pcdecl_isRec
-                            , pcdecl_name  = pcdecl_name
-                            , pcdecl_annot = unresolve <$> pcdecl_annot
-                            , pcdecl_term  = unresolve pcdecl_term
-                            }
+  unresolve :: RST.PrdCnsDeclaration pc -> UnresolveM CST.PrdCnsDeclaration
+  unresolve RST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } = do
+    annot' <- mapM unresolve pcdecl_annot
+    term' <- unresolve pcdecl_term
+    pure $ CST.MkPrdCnsDeclaration { pcdecl_loc   = pcdecl_loc
+                                   , pcdecl_doc   = pcdecl_doc
+                                   , pcdecl_pc    = case pcdecl_pc of { PrdRep -> Prd; CnsRep -> Cns }
+                                   , pcdecl_isRec = pcdecl_isRec
+                                   , pcdecl_name  = pcdecl_name
+                                   , pcdecl_annot = annot'
+                                   , pcdecl_term  = term'
+                                   }
 
 instance Unresolve RST.CommandDeclaration CST.CommandDeclaration where
-  unresolve :: RST.CommandDeclaration -> CST.CommandDeclaration
-  unresolve RST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
-    CST.MkCommandDeclaration  { cmddecl_loc  = cmddecl_loc
-                              , cmddecl_doc  = cmddecl_doc
-                              , cmddecl_name = cmddecl_name
-                              , cmddecl_cmd  = unresolve cmddecl_cmd
-                              }
+  unresolve :: RST.CommandDeclaration -> UnresolveM CST.CommandDeclaration
+  unresolve RST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } = do
+    cmd' <- unresolve cmddecl_cmd
+    pure $ CST.MkCommandDeclaration  { cmddecl_loc  = cmddecl_loc
+                                     , cmddecl_doc  = cmddecl_doc
+                                     , cmddecl_name = cmddecl_name
+                                     , cmddecl_cmd  = cmd'
+                                     }
 
 instance Unresolve RST.StructuralXtorDeclaration CST.StructuralXtorDeclaration where
-  unresolve :: RST.StructuralXtorDeclaration -> CST.StructuralXtorDeclaration
+  unresolve :: RST.StructuralXtorDeclaration -> UnresolveM CST.StructuralXtorDeclaration
   unresolve RST.MkStructuralXtorDeclaration { strxtordecl_loc, strxtordecl_doc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder} =
-    CST.MkStructuralXtorDeclaration { strxtordecl_loc       = strxtordecl_loc
-                                    , strxtordecl_doc       = strxtordecl_doc
-                                    , strxtordecl_xdata     = strxtordecl_xdata
-                                    , strxtordecl_name      = strxtordecl_name
-                                    , strxtordecl_arity     = strxtordecl_arity
-                                    , strxtordecl_evalOrder = Just strxtordecl_evalOrder
-                                    }
+    pure CST.MkStructuralXtorDeclaration { strxtordecl_loc       = strxtordecl_loc
+                                         , strxtordecl_doc       = strxtordecl_doc
+                                         , strxtordecl_xdata     = strxtordecl_xdata
+                                         , strxtordecl_name      = strxtordecl_name
+                                         , strxtordecl_arity     = strxtordecl_arity
+                                         , strxtordecl_evalOrder = Just strxtordecl_evalOrder
+                                         }
 
 instance Unresolve RST.TySynDeclaration CST.TySynDeclaration where
-  unresolve :: RST.TySynDeclaration -> CST.TySynDeclaration
-  unresolve RST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res } =
-    CST.MkTySynDeclaration  { tysyndecl_loc  = tysyndecl_loc
-                            , tysyndecl_doc  = tysyndecl_doc
-                            , tysyndecl_name = tysyndecl_name
-                            , tysyndecl_res  = unresolve (fst tysyndecl_res)
-                            }
+  unresolve :: RST.TySynDeclaration -> UnresolveM CST.TySynDeclaration
+  unresolve RST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res } = do
+    res' <- unresolve (fst tysyndecl_res)
+    pure CST.MkTySynDeclaration  { tysyndecl_loc  = tysyndecl_loc
+                                 , tysyndecl_doc  = tysyndecl_doc
+                                 , tysyndecl_name = tysyndecl_name
+                                 , tysyndecl_res  = res'
+                                 }
 
 instance Unresolve RST.TyOpDeclaration CST.TyOpDeclaration where
-  unresolve :: RST.TyOpDeclaration -> CST.TyOpDeclaration
+  unresolve :: RST.TyOpDeclaration -> UnresolveM CST.TyOpDeclaration
   unresolve RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res } =
-    CST.MkTyOpDeclaration { tyopdecl_loc   = tyopdecl_loc
-                          , tyopdecl_doc   = tyopdecl_doc
-                          , tyopdecl_sym   = tyopdecl_sym
-                          , tyopdecl_prec  = tyopdecl_prec
-                          , tyopdecl_assoc = tyopdecl_assoc
-                          , tyopdecl_res   = rnTnName tyopdecl_res
-                          }
+    pure CST.MkTyOpDeclaration { tyopdecl_loc   = tyopdecl_loc
+                               , tyopdecl_doc   = tyopdecl_doc
+                               , tyopdecl_sym   = tyopdecl_sym
+                               , tyopdecl_prec  = tyopdecl_prec
+                               , tyopdecl_assoc = tyopdecl_assoc
+                               , tyopdecl_res   = rnTnName tyopdecl_res
+                               }
 
 instance Unresolve RST.ClassDeclaration CST.ClassDeclaration where
-  unresolve :: RST.ClassDeclaration -> CST.ClassDeclaration
-  unresolve RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_methods }
-    = CST.MkClassDeclaration  { classdecl_loc     = classdecl_loc
-                              , classdecl_doc     = classdecl_doc
-                              , classdecl_name    = classdecl_name
-                              , classdecl_kinds   = classdecl_kinds
-                              , classdecl_methods = unresolve <$> fst classdecl_methods
-                              }
+  unresolve :: RST.ClassDeclaration -> UnresolveM CST.ClassDeclaration
+  unresolve RST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_methods } = do
+    methods' <- mapM unresolve (fst classdecl_methods)
+    pure $ CST.MkClassDeclaration  { classdecl_loc     = classdecl_loc
+                                   , classdecl_doc     = classdecl_doc
+                                   , classdecl_name    = classdecl_name
+                                   , classdecl_kinds   = classdecl_kinds
+                                   , classdecl_methods = methods'
+                                   }
 
 instance Unresolve RST.InstanceDeclaration CST.InstanceDeclaration where
-  unresolve :: RST.InstanceDeclaration -> CST.InstanceDeclaration
-  unresolve RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases }
-    = CST.MkInstanceDeclaration { instancedecl_loc   = instancedecl_loc
-                                , instancedecl_doc   = instancedecl_doc
-                                , instancedecl_name  = instancedecl_name
-                                , instancedecl_typ   = unresolve (fst instancedecl_typ)
-                                , instancedecl_cases = unresolve <$> instancedecl_cases
-                                }
+  unresolve :: RST.InstanceDeclaration -> UnresolveM CST.InstanceDeclaration
+  unresolve RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
+    typ' <- unresolve (fst instancedecl_typ)
+    cases' <- mapM unresolve instancedecl_cases
+    pure $ CST.MkInstanceDeclaration { instancedecl_loc   = instancedecl_loc
+                                     , instancedecl_doc   = instancedecl_doc
+                                     , instancedecl_name  = instancedecl_name
+                                     , instancedecl_typ   = typ'
+                                     , instancedecl_cases = cases'
+                                     }
 
 instance Unresolve RST.DataDecl CST.DataDecl where
-  unresolve :: RST.DataDecl -> CST.DataDecl
-  unresolve RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
-    CST.MkDataDecl  { data_loc      = data_loc
-                    , data_doc      = data_doc
-                    , data_refined  = CST.NotRefined
-                    , data_name     = rnTnName data_name
-                    , data_polarity = data_polarity
-                    , data_kind     = Just data_kind
-                    , data_xtors    = unresolve <$> fst data_xtors
-                    }
-  unresolve RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } =
-    CST.MkDataDecl  { data_loc      = data_loc
-                    , data_doc      = data_doc
-                    , data_refined  = CST.Refined
-                    , data_name     = rnTnName data_name
-                    , data_polarity = data_polarity
-                    , data_kind     = Just data_kind
-                    , data_xtors    = unresolve <$> fst data_xtors
-                    }
+  unresolve :: RST.DataDecl -> UnresolveM CST.DataDecl
+  unresolve RST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } = do
+    xtors' <- mapM unresolve (fst data_xtors)
+    pure $ CST.MkDataDecl { data_loc      = data_loc
+                          , data_doc      = data_doc
+                          , data_refined  = CST.NotRefined
+                          , data_name     = rnTnName data_name
+                          , data_polarity = data_polarity
+                          , data_kind     = Just data_kind
+                          , data_xtors    = xtors'
+                          }
+  unresolve RST.RefinementDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors } = do
+    xtors' <- mapM unresolve (fst data_xtors)
+    pure $ CST.MkDataDecl { data_loc      = data_loc
+                          , data_doc      = data_doc
+                          , data_refined  = CST.Refined
+                          , data_name     = rnTnName data_name
+                          , data_polarity = data_polarity
+                          , data_kind     = Just data_kind
+                          , data_xtors    = xtors'
+                          }
 
 instance Unresolve RST.Declaration CST.Declaration where
-  unresolve :: RST.Declaration -> CST.Declaration
+  unresolve :: RST.Declaration -> UnresolveM CST.Declaration
   unresolve (RST.PrdCnsDecl _ decl) =
-    CST.PrdCnsDecl (unresolve decl)
+    CST.PrdCnsDecl <$> unresolve decl
   unresolve (RST.CmdDecl decl) =
-    CST.CmdDecl (unresolve decl)
+    CST.CmdDecl <$> unresolve decl
   unresolve (RST.DataDecl decl) =
-    CST.DataDecl (unresolve decl)
+    CST.DataDecl <$> unresolve decl
   unresolve (RST.XtorDecl decl) =
-    CST.XtorDecl (unresolve decl)
+    CST.XtorDecl <$> unresolve decl
   unresolve (RST.ImportDecl decl) =
-    CST.ImportDecl decl
+    pure $ CST.ImportDecl decl
   unresolve (RST.SetDecl decl) =
-    CST.SetDecl decl
+    pure $ CST.SetDecl decl
   unresolve (RST.TyOpDecl decl) =
-    CST.TyOpDecl (unresolve decl)
+    CST.TyOpDecl <$> unresolve decl
   unresolve (RST.TySynDecl decl) =
-    CST.TySynDecl (unresolve decl)
+    CST.TySynDecl <$> unresolve decl
   unresolve (RST.ClassDecl decl) =
-    CST.ClassDecl (unresolve decl)
+    CST.ClassDecl <$> unresolve decl
   unresolve (RST.InstanceDecl decl) =
-    CST.InstanceDecl (unresolve decl)
+    CST.InstanceDecl <$> unresolve decl
 
 instance Unresolve RST.Module CST.Module where
-  unresolve :: RST.Module -> CST.Module
-  unresolve RST.MkModule { mod_name, mod_fp, mod_decls } =
-    CST.MkModule  { mod_name = mod_name
-                  , mod_fp = mod_fp
-                  , mod_decls = unresolve <$> mod_decls
-                  }
+  unresolve :: RST.Module -> UnresolveM CST.Module
+  unresolve RST.MkModule { mod_name, mod_fp, mod_decls } = do
+    decls' <- mapM unresolve mod_decls
+    pure $ CST.MkModule  { mod_name = mod_name
+                         , mod_fp = mod_fp
+                         , mod_decls = decls'
+                         }

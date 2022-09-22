@@ -30,7 +30,7 @@ testHelper (example,decls) cbx = describe (show cbx ++ " Focusing the program in
       case decls of
         Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
         Right decls -> do
-          let focusedDecls :: CST.Module = unresolve $ embedCore $ embedTST $ focus cbx decls
+          let focusedDecls :: CST.Module = runUnresolveM $ unresolve $ embedCore $ embedTST $ focus cbx decls
           res <- runIO $ inferProgramIO defaultDriverState focusedDecls
           case res of
             (Left err,_) -> do
