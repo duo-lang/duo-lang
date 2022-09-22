@@ -134,8 +134,8 @@ evalStepsM cmd = evalSteps' [cmd] cmd
 -- The Eval Monad
 ---------------------------------------------------------------------------------
 
-eval :: Command -> EvalEnv -> IO (Either (NonEmpty Error) Command)
+eval :: (Monad m, EvalMonad m) => Command -> EvalEnv -> m (Either (NonEmpty Error) Command)
 eval cmd = runEval (evalM cmd)
 
-evalSteps :: Command -> EvalEnv -> IO (Either (NonEmpty Error) [Command])
+evalSteps :: (Monad m, EvalMonad m) => Command -> EvalEnv -> m (Either (NonEmpty Error) [Command])
 evalSteps cmd = runEval (evalStepsM cmd)
