@@ -88,7 +88,7 @@ instance Unresolve RST.PrimitiveOp PrimName where
 ---------------------------------------------------------------------------------
 
 class Open a where
-  open :: a -> a
+  open :: a -> UnresolveM a
 
 class CreateNames a where
   createNames :: a -> UnresolveM a
@@ -106,9 +106,9 @@ class Unresolve a b | a -> b where
 -- PrdCnsTerm
 
 instance Open RST.PrdCnsTerm where
-  open :: RST.PrdCnsTerm -> RST.PrdCnsTerm
-  open (RST.PrdTerm tm) = RST.PrdTerm $ open tm
-  open (RST.CnsTerm tm) = RST.CnsTerm $ open tm
+  open :: RST.PrdCnsTerm -> UnresolveM RST.PrdCnsTerm
+  open (RST.PrdTerm tm) = RST.PrdTerm <$> open tm
+  open (RST.CnsTerm tm) = RST.CnsTerm <$> open tm
 
 instance CreateNames RST.PrdCnsTerm where
   createNames :: RST.PrdCnsTerm -> UnresolveM RST.PrdCnsTerm
@@ -128,9 +128,10 @@ instance Unresolve RST.PrdCnsTerm CST.Term where
 -- Substitution
 
 instance Open RST.Substitution where
-  open :: RST.Substitution -> RST.Substitution
-  open (RST.MkSubstitution subst) =
-    RST.MkSubstitution (open <$> subst)
+  open :: RST.Substitution -> UnresolveM RST.Substitution
+  open (RST.MkSubstitution subst) = do
+    subst' <- mapM open subst
+    pure $ RST.MkSubstitution subst'
 
 instance CreateNames RST.Substitution where
   createNames :: RST.Substitution  -> UnresolveM RST.Substitution
@@ -152,9 +153,11 @@ instance Unresolve RST.Substitution CST.Substitution where
 -- SubstitutionI
 
 instance Open (RST.SubstitutionI pc) where
-  open :: RST.SubstitutionI pc -> RST.SubstitutionI pc
-  open (RST.MkSubstitutionI (subst1,pc,subst2)) =
-    RST.MkSubstitutionI (open <$> subst1,pc,open <$> subst2)
+  open :: RST.SubstitutionI pc -> UnresolveM (RST.SubstitutionI pc)
+  open (RST.MkSubstitutionI (subst1,pc,subst2)) = do
+    subst1' <- mapM open subst1
+    subst2' <- mapM open subst2
+    pure $ RST.MkSubstitutionI (subst1',pc,subst2')
 
 instance CreateNames (RST.SubstitutionI pc) where
   createNames :: RST.SubstitutionI pc -> UnresolveM (RST.SubstitutionI pc)
@@ -208,12 +211,13 @@ instance EmbedRST RST.PatternI CST.Pattern where
 -- CmdCase
 
 instance Open RST.CmdCase where
-  open :: RST.CmdCase -> RST.CmdCase
-  open RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
-    RST.MkCmdCase { cmdcase_loc = cmdcase_loc
-                  , cmdcase_pat = cmdcase_pat
-                  , cmdcase_cmd = LN.open (patternToSubst cmdcase_pat) (open cmdcase_cmd)
-                  }
+  open :: RST.CmdCase -> UnresolveM RST.CmdCase
+  open RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } = do
+    cmd' <- open cmdcase_cmd
+    pure RST.MkCmdCase { cmdcase_loc = cmdcase_loc
+                       , cmdcase_pat = cmdcase_pat
+                       , cmdcase_cmd = LN.open (patternToSubst cmdcase_pat) cmd'
+                       }
 
 instance CreateNames RST.CmdCase where
   createNames :: RST.CmdCase -> UnresolveM RST.CmdCase
@@ -239,12 +243,13 @@ instance Unresolve RST.CmdCase CST.TermCase where
 -- TermCase
 
 instance Open (RST.TermCase pc) where
-  open :: RST.TermCase pc -> RST.TermCase pc
-  open RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
-      RST.MkTermCase { tmcase_loc = tmcase_loc
-                     , tmcase_pat = tmcase_pat
-                     , tmcase_term = LN.open (patternToSubst tmcase_pat) (open tmcase_term)
-                     }
+  open :: RST.TermCase pc -> UnresolveM (RST.TermCase pc)
+  open RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
+    term' <- open tmcase_term
+    pure RST.MkTermCase { tmcase_loc = tmcase_loc
+                        , tmcase_pat = tmcase_pat
+                        , tmcase_term = LN.open (patternToSubst tmcase_pat) term'
+                        }
 
 instance CreateNames (RST.TermCase pc) where
   createNames :: RST.TermCase pc -> UnresolveM (RST.TermCase pc)
@@ -270,12 +275,13 @@ instance Unresolve (RST.TermCase pc) CST.TermCase where
 -- TermCaseI
 
 instance Open (RST.TermCaseI pc) where
-  open :: RST.TermCaseI pc -> RST.TermCaseI pc
-  open RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
-    RST.MkTermCaseI { tmcasei_loc = tmcasei_loc
-                    , tmcasei_pat = tmcasei_pat
-                    , tmcasei_term = LN.open (patternIToSubst tmcasei_pat) (open tmcasei_term)
-                    }
+  open :: RST.TermCaseI pc -> UnresolveM (RST.TermCaseI pc)
+  open RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } = do
+    term' <- open tmcasei_term
+    pure RST.MkTermCaseI { tmcasei_loc = tmcasei_loc
+                         , tmcasei_pat = tmcasei_pat
+                         , tmcasei_term = LN.open (patternIToSubst tmcasei_pat) term'
+                         }
 
 instance CreateNames (RST.TermCaseI pc) where
   createNames :: RST.TermCaseI pc -> UnresolveM (RST.TermCaseI pc)
@@ -301,12 +307,13 @@ instance Unresolve (RST.TermCaseI pc) CST.TermCase where
 -- InstanceCase
 
 instance Open RST.InstanceCase where
-  open :: RST.InstanceCase -> RST.InstanceCase
-  open RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } =
-    RST.MkInstanceCase { instancecase_loc = instancecase_loc
-                       , instancecase_pat = instancecase_pat
-                       , instancecase_cmd = LN.open (patternToSubst instancecase_pat) (open instancecase_cmd)
-                       }
+  open :: RST.InstanceCase -> UnresolveM RST.InstanceCase
+  open RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } = do
+    cmd' <- open instancecase_cmd
+    pure RST.MkInstanceCase { instancecase_loc = instancecase_loc
+                            , instancecase_pat = instancecase_pat
+                            , instancecase_cmd = LN.open (patternToSubst instancecase_pat) cmd'
+                            }
 
 instance CreateNames RST.InstanceCase where
   createNames :: RST.InstanceCase -> UnresolveM RST.InstanceCase
@@ -327,55 +334,72 @@ instance EmbedRST RST.InstanceCase CST.TermCase where
 
 instance Unresolve RST.InstanceCase CST.TermCase where
   unresolve :: RST.InstanceCase -> UnresolveM CST.TermCase
-  unresolve instancecase = embedRST (open (runUnresolveM (createNames instancecase)))
+  unresolve instancecase = do
+    case' <- (open (runUnresolveM (createNames instancecase)))
+    embedRST case'
 
 -- Term
 
 instance Open (RST.Term pc) where
-  open :: RST.Term pc -> RST.Term pc
+  open :: RST.Term pc -> UnresolveM (RST.Term pc)
   -- Core constructs
   open (RST.BoundVar loc pc idx) =
-    RST.BoundVar loc pc idx
+    pure $ RST.BoundVar loc pc idx
   open (RST.FreeVar loc pc v) =
-    RST.FreeVar loc pc v
-  open (RST.Xtor loc pc ns xt args) =
-    RST.Xtor loc pc ns xt (open args)
-  open (RST.XCase loc pc ns cases) =
-    RST.XCase loc pc ns (open <$> cases)
-  open (RST.MuAbs loc PrdRep (Just fv) cmd) =
-    RST.MuAbs loc PrdRep (Just fv) (LN.open (RST.MkSubstitution [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)]) (open cmd))
-  open (RST.MuAbs loc CnsRep (Just fv) cmd) =
-    RST.MuAbs loc CnsRep (Just fv) (LN.open (RST.MkSubstitution [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)]) (open cmd))
+    pure $ RST.FreeVar loc pc v
+  open (RST.Xtor loc pc ns xt args) = do
+    args' <- open args
+    pure $ RST.Xtor loc pc ns xt args'
+  open (RST.XCase loc pc ns cases) = do
+    cases' <- mapM open cases
+    pure $ RST.XCase loc pc ns cases'
+  open (RST.MuAbs loc PrdRep (Just fv) cmd) = do
+    cmd' <- open cmd
+    let cmd'' = LN.open (RST.MkSubstitution [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)]) cmd'
+    pure $ RST.MuAbs loc PrdRep (Just fv) cmd''
+  open (RST.MuAbs loc CnsRep (Just fv) cmd) = do
+    cmd' <- open cmd
+    let cmd'' = LN.open (RST.MkSubstitution [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)]) cmd'
+    pure $ RST.MuAbs loc CnsRep (Just fv) cmd''
   open (RST.MuAbs _ _ Nothing _) =
     error "Create names first!"
   -- Syntactic sugar
-  open (RST.Semi loc rep ns xt subst t) =
-    RST.Semi loc rep ns xt (open subst) (open t)
-  open (RST.Dtor loc rep ns xt t subst) =
-    RST.Dtor loc rep ns xt (open t) (open subst)
-  open (RST.CaseOf loc rep ns t cases) =
-    RST.CaseOf loc rep ns (open t) (open <$> cases)
-  open (RST.CocaseOf loc rep ns t cases) =
-    RST.CocaseOf loc rep ns (open t) (open <$> cases)
-  open (RST.CaseI loc rep ns cases) =
-    RST.CaseI loc rep ns (open <$> cases)
-  open (RST.CocaseI loc rep ns cocases) =
-    RST.CocaseI loc rep ns (open <$> cocases)
-  open (RST.Lambda loc pc fv tm) =
-    let
-      tm' = open tm
-      tm'' = case pc of PrdRep -> LN.open (RST.MkSubstitution [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)]) tm'
-                        CnsRep -> LN.open (RST.MkSubstitution [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)]) tm'
-    in RST.Lambda loc pc fv tm''
+  open (RST.Semi loc rep ns xt subst t) = do
+    subst' <- open subst
+    t' <- open t
+    pure $ RST.Semi loc rep ns xt subst' t'
+  open (RST.Dtor loc rep ns xt t subst) = do
+    t' <- open t
+    subst' <- open subst
+    pure $ RST.Dtor loc rep ns xt t' subst'
+  open (RST.CaseOf loc rep ns t cases) = do
+    t' <- open t
+    cases' <- mapM open cases
+    pure $ RST.CaseOf loc rep ns t' cases'
+  open (RST.CocaseOf loc rep ns t cases) = do
+    t' <- open t
+    cases' <- mapM open cases
+    pure $ RST.CocaseOf loc rep ns t' cases'
+  open (RST.CaseI loc rep ns cases) = do
+    cases' <- mapM open cases
+    pure $ RST.CaseI loc rep ns cases'
+  open (RST.CocaseI loc rep ns cocases) = do
+    cocases' <- mapM open cocases
+    pure $ RST.CocaseI loc rep ns cocases'
+  open (RST.Lambda loc pc fv tm) = do
+    tm' <- open tm
+    let tm'' = case pc of PrdRep -> LN.open (RST.MkSubstitution [RST.PrdTerm (RST.FreeVar defaultLoc PrdRep fv)]) tm'
+                          CnsRep -> LN.open (RST.MkSubstitution [RST.CnsTerm (RST.FreeVar defaultLoc CnsRep fv)]) tm'
+    pure $ RST.Lambda loc pc fv tm''
   -- Primitive constructs
   open (RST.PrimLitI64 loc i) =
-    RST.PrimLitI64 loc i
+    pure $ RST.PrimLitI64 loc i
   open (RST.PrimLitF64 loc d) =
-    RST.PrimLitF64 loc d
+    pure $ RST.PrimLitF64 loc d
   open (RST.PrimLitChar loc d) =
-    RST.PrimLitChar loc d
+    pure $ RST.PrimLitChar loc d
   open (RST.PrimLitString loc d) =
-    RST.PrimLitString loc d
+    pure $ RST.PrimLitString loc d
 
 instance CreateNames (RST.Term pc) where
   createNames :: RST.Term pc -> UnresolveM (RST.Term pc)
@@ -501,36 +525,53 @@ instance EmbedRST (RST.Term pc) CST.Term where
 
 instance Unresolve (RST.Term pc) CST.Term where
   unresolve :: RST.Term pc -> UnresolveM CST.Term
-  unresolve tm = embedRST (open (runUnresolveM (createNames tm)))
+  unresolve tm = do
+    tm' <- open (runUnresolveM (createNames tm))
+    embedRST tm'
 
 -- Command
 
 instance Open RST.Command where
-  open :: RST.Command -> RST.Command
-  open (RST.Apply loc t1 t2) =
-    RST.Apply loc (open t1) (open t2)
-  open (RST.Print loc t cmd) =
-    RST.Print loc (open t) (open cmd)
-  open (RST.Read loc cns) =
-    RST.Read loc (open cns)
+  open :: RST.Command -> UnresolveM RST.Command
+  open (RST.Apply loc t1 t2) = do
+    t1' <- open t1
+    t2' <- open t2
+    pure $ RST.Apply loc t1' t2'
+  open (RST.Print loc t cmd) = do
+    t' <- open t
+    cmd' <- open cmd
+    pure $ RST.Print loc t' cmd'
+  open (RST.Read loc cns) = do
+    cns' <- open cns
+    pure $ RST.Read loc cns'
   open (RST.Jump loc fv) =
-    RST.Jump loc fv
-  open (RST.Method loc mn cn subst) =
-    RST.Method loc mn cn (open subst)
+    pure $ RST.Jump loc fv
+  open (RST.Method loc mn cn subst) = do
+    subst' <- open subst
+    pure $ RST.Method loc mn cn subst'
   open (RST.ExitSuccess loc) =
-    RST.ExitSuccess loc
+    pure $ RST.ExitSuccess loc
   open (RST.ExitFailure loc) =
-    RST.ExitFailure loc
-  open (RST.PrimOp loc op subst) =
-    RST.PrimOp loc op (open subst)
-  open (RST.CaseOfCmd loc ns tm cases) =
-    RST.CaseOfCmd loc ns (open tm) (open <$> cases)
-  open (RST.CocaseOfCmd loc ns tm cases) =
-    RST.CocaseOfCmd loc ns (open tm) (open <$> cases)
-  open (RST.CaseOfI loc rep ns tm cases) =
-    RST.CaseOfI loc rep ns (open tm) (open <$> cases)
-  open (RST.CocaseOfI loc rep ns tm cases) =
-    RST.CocaseOfI loc rep ns (open tm) (open <$> cases)
+    pure $ RST.ExitFailure loc
+  open (RST.PrimOp loc op subst) = do
+    subst' <- open subst
+    pure $ RST.PrimOp loc op subst'
+  open (RST.CaseOfCmd loc ns tm cases) = do
+    tm' <- open tm
+    cases' <- mapM open cases
+    pure $ RST.CaseOfCmd loc ns tm' cases'
+  open (RST.CocaseOfCmd loc ns tm cases) = do
+    tm' <- open tm
+    cases' <- mapM open cases
+    pure $ RST.CocaseOfCmd loc ns tm' cases'
+  open (RST.CaseOfI loc rep ns tm cases) = do
+    tm' <- open tm
+    cases' <- mapM open cases
+    pure $ RST.CaseOfI loc rep ns tm' cases'
+  open (RST.CocaseOfI loc rep ns tm cases) = do
+    tm' <- open tm
+    cases' <- mapM open cases
+    pure $ RST.CocaseOfI loc rep ns tm' cases'
 
 instance CreateNames RST.Command where
   createNames :: RST.Command -> UnresolveM RST.Command
@@ -619,7 +660,9 @@ instance EmbedRST RST.Command CST.Term where
 
 instance Unresolve RST.Command CST.Term where
   unresolve :: RST.Command -> UnresolveM CST.Term
-  unresolve cmd = embedRST (open (runUnresolveM (createNames cmd)))
+  unresolve cmd = do
+    cmd' <- (open (runUnresolveM (createNames cmd)))
+    embedRST cmd'
 
 ---------------------------------------------------------------------------------
 -- Unresolving types
