@@ -25,9 +25,12 @@ newtype UnresolveM a =
   MkUnresolveM { unUnresolveM :: State ([FreeVarName],[FreeVarName]) a }
     deriving (Functor, Applicative,Monad, MonadState ([FreeVarName],[FreeVarName]))
 
-names :: ([FreeVarName], [FreeVarName])
-names =  ((\y -> MkFreeVarName ("x" <> T.pack (show y))) <$> [(1 :: Int)..]
-         ,(\y -> MkFreeVarName ("k" <> T.pack (show y))) <$> [(1 :: Int)..])
+runUnresolveM :: UnresolveM a -> a
+runUnresolveM m = evalState (unUnresolveM m) names
+  where
+    names :: ([FreeVarName], [FreeVarName])
+    names =  ((\y -> MkFreeVarName ("x" <> T.pack (show y))) <$> [(1 :: Int)..]
+             ,(\y -> MkFreeVarName ("k" <> T.pack (show y))) <$> [(1 :: Int)..])
 
 fresh :: PrdCns -> UnresolveM FreeVarName
 fresh Prd = do
@@ -211,8 +214,7 @@ instance EmbedRST RST.CmdCase CST.TermCase where
 
 instance Unresolve RST.CmdCase CST.TermCase where
   unresolve :: RST.CmdCase -> CST.TermCase
-  unresolve cmdcase =
-    embedRST (evalState (unUnresolveM (createNames cmdcase)) names)
+  unresolve cmdcase = embedRST (runUnresolveM (createNames cmdcase))
 
 -- TermCase
 
@@ -240,8 +242,7 @@ instance EmbedRST (RST.TermCase pc) CST.TermCase where
 
 instance Unresolve (RST.TermCase pc) CST.TermCase where
   unresolve :: RST.TermCase pc -> CST.TermCase
-  unresolve termcase =
-    embedRST (evalState (unUnresolveM (createNames termcase)) names)
+  unresolve termcase = embedRST (runUnresolveM (createNames termcase))
 
 -- TermCaseI
 
@@ -270,8 +271,7 @@ instance EmbedRST (RST.TermCaseI pc) CST.TermCase where
 
 instance Unresolve (RST.TermCaseI pc) CST.TermCase where
   unresolve :: RST.TermCaseI pc -> CST.TermCase
-  unresolve termcasei =
-    embedRST (evalState (unUnresolveM (createNames termcasei)) names)
+  unresolve termcasei = embedRST (runUnresolveM (createNames termcasei))
 
 -- InstanceCase
 
@@ -300,8 +300,7 @@ instance EmbedRST RST.InstanceCase CST.TermCase where
 
 instance Unresolve RST.InstanceCase CST.TermCase where
   unresolve :: RST.InstanceCase -> CST.TermCase
-  unresolve instancecase =
-    embedRST (open (evalState (unUnresolveM (createNames instancecase)) names))
+  unresolve instancecase = embedRST (open (runUnresolveM (createNames instancecase)))
 
 -- Term
 
@@ -455,7 +454,7 @@ instance EmbedRST (RST.Term pc) CST.Term where
 
 instance Unresolve (RST.Term pc) CST.Term where
   unresolve :: RST.Term pc -> CST.Term
-  unresolve tm = embedRST (open (evalState (unUnresolveM (createNames tm)) names))
+  unresolve tm = embedRST (open (runUnresolveM (createNames tm)))
 
 -- Command
 
@@ -557,8 +556,7 @@ instance EmbedRST RST.Command CST.Term where
 
 instance Unresolve RST.Command CST.Term where
   unresolve :: RST.Command -> CST.Term
-  unresolve cmd =
-    embedRST (open (evalState (unUnresolveM (createNames cmd)) names))
+  unresolve cmd = embedRST (open (runUnresolveM (createNames cmd)))
 
 ---------------------------------------------------------------------------------
 -- Unresolving types
