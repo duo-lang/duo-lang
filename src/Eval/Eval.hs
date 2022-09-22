@@ -59,21 +59,21 @@ evalApplyOnce _ prd@(XCase _ _ PrdRep _ _  cases) cns@(Xtor _ _ CnsRep _ _ xt ar
   return (Just (LN.open args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
 evalApplyOnce (CBox CBV) (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
-  return (Just (LN.open [CnsTerm cns] cmd))
+  return (Just (LN.open (MkSubstitution [CnsTerm cns]) cmd))
 evalApplyOnce I64Rep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
-  return (Just (LN.open [CnsTerm cns] cmd))
+  return (Just (LN.open (MkSubstitution [CnsTerm cns]) cmd))
 evalApplyOnce F64Rep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
-  return (Just (LN.open [CnsTerm cns] cmd))
+  return (Just (LN.open (MkSubstitution [CnsTerm cns]) cmd))
 evalApplyOnce CharRep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
-  return (Just (LN.open [CnsTerm cns] cmd))
+  return (Just (LN.open (MkSubstitution [CnsTerm cns]) cmd))
 evalApplyOnce StringRep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
-  return (Just (LN.open [CnsTerm cns] cmd))
+  return (Just (LN.open (MkSubstitution [CnsTerm cns]) cmd))
 evalApplyOnce (CBox CBN) prd@(MuAbs _ _ PrdRep _ _ _) (MuAbs _ _ CnsRep _ _ cmd) =
-  return (Just (LN.open [PrdTerm prd] cmd))
+  return (Just (LN.open (MkSubstitution [PrdTerm prd]) cmd))
 evalApplyOnce _ (MuAbs _ _ PrdRep _ _ cmd) cns =
-  return (Just (LN.open [CnsTerm cns] cmd))
+  return (Just (LN.open (MkSubstitution [CnsTerm cns]) cmd))
 evalApplyOnce _ prd (MuAbs _ _ CnsRep _ _ cmd) =
-  return (Just (LN.open [PrdTerm prd] cmd))
+  return (Just (LN.open (MkSubstitution [PrdTerm prd]) cmd))
 -- Bound variables should not occur at the toplevel during evaluation.
 evalApplyOnce _ (BoundVar _ PrdRep _ i) _ =
   throwEvalError defaultLoc ["Found bound variable during evaluation. Index: " <> T.pack (show i)]

@@ -143,6 +143,7 @@ library
       Sugar.Core
       Sugar.TST
       Syntax.LocallyNameless
+      Syntax.NMap
       Syntax.TST.Program
       Syntax.TST.Terms
       Syntax.TST.Types
