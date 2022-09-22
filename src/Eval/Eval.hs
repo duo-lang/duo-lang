@@ -2,6 +2,7 @@
 module Eval.Eval
   ( eval
   , evalSteps
+  , EvalMWrapper(..)
   ) where
 
 import Control.Monad.Except

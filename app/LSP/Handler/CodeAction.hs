@@ -21,7 +21,7 @@ import Driver.Driver ( inferProgramIO )
 import Dualize.Program (dualDataDecl)
 import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
 import LSP.Definition ( LSPMonad )
-import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
+import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange, locToStartRange )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( moduleP )
 import Pretty.Pretty ( ppPrint )
@@ -30,6 +30,12 @@ import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, rese
 import Syntax.CST.Names ( FreeVarName(..) )
 import Translate.Focusing ( Focus(..) )
 import Loc
+import Eval.Eval (eval, EvalMWrapper (..))
+import qualified Syntax.TST.Terms as TST
+import Errors (Error)
+import Data.List.NonEmpty (NonEmpty)
+import Control.Monad.State.Strict (StateT, execStateT)
+import Control.Monad.Writer.Strict (Writer, execWriter)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -76,11 +82,12 @@ generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_
 generateCodeActionCommandDeclaration :: TextDocumentIdentifier -> TST.CommandDeclaration -> [Command |? CodeAction]
 generateCodeActionCommandDeclaration ident decl@TST.MkCommandDeclaration {cmddecl_cmd } =
   let
-    desugar = [ generateCmdDesugarCodeAction ident decl | not (isDesugaredCommand cmddecl_cmd)]
+    desugar  = [ generateCmdDesugarCodeAction ident decl | not (isDesugaredCommand cmddecl_cmd)]
     cbvfocus = [ generateCmdFocusCodeAction ident CBV decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBV cmddecl_cmd)]
     cbnfocus = [ generateCmdFocusCodeAction ident CBN decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
+    eval     = [ generateCmdEvalCodeAction ident decl ]
   in
-    desugar ++ cbvfocus ++ cbnfocus
+    desugar ++ cbvfocus ++ cbnfocus ++ eval
 
 generateCodeAction :: TextDocumentIdentifier -> Range -> TST.Declaration -> [Command |? CodeAction]
 generateCodeAction ident Range {_start = start } (TST.PrdCnsDecl _ decl) | lookupPos start (TST.pcdecl_loc decl) =
@@ -284,3 +291,29 @@ generateCmdDesugarEdit (TextDocumentIdentifier uri) decl =
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing
                   }
+
+generateCmdEvalCodeAction ::  TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
+generateCmdEvalCodeAction ident decl =
+  InR $ CodeAction { _title = "Eval " <> unFreeVarName (TST.cmddecl_name decl)
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just (generateCmdEvalEdit ident decl)
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
+
+generateCmdEvalEdit :: TextDocumentIdentifier -> TST.CommandDeclaration -> WorkspaceEdit
+generateCmdEvalEdit (TextDocumentIdentifier uri) decl =
+  let
+    evalEnv = undefined
+    result = execWriter $ flip execStateT [] $ unEvalMWrapper (eval (TST.cmddecl_cmd decl) evalEnv :: EvalMWrapper (StateT [Int] (Writer [String])) (Either (NonEmpty Error) TST.Command))
+    replacement = T.pack $ unlines result ++ "\n"
+    edit = TextEdit {_range = locToStartRange (TST.cmddecl_loc decl), _newText = replacement }
+  in
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing
+                  }
+
