@@ -23,7 +23,7 @@ import qualified Syntax.LocallyNameless as LN
 ---------------------------------------------------------------------------------
 
 -- | Returns Nothing if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
-evalTermOnce :: Command -> EvalM (Maybe Command)
+evalTermOnce :: Command -> EvalM IO (Maybe Command)
 evalTermOnce (ExitSuccess _) = return Nothing
 evalTermOnce (ExitFailure _) = return Nothing
 evalTermOnce (Print _ prd cmd) = do
@@ -40,7 +40,7 @@ evalTermOnce Method {} = return Nothing
 evalTermOnce (Apply _ _ kind prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ op args) = evalPrimOp op args
 
-evalApplyOnce :: MonoKind -> Term Prd -> Term Cns -> EvalM  (Maybe Command)
+evalApplyOnce :: Monad m => MonoKind -> Term Prd -> Term Cns -> EvalM m  (Maybe Command)
 -- Free variables have to be looked up in the environment.
 evalApplyOnce kind (FreeVar _ PrdRep _ fv) cns = do
   prd <- lookupTerm PrdRep fv
@@ -87,7 +87,7 @@ evalApplyOnce _ prd cns =
                             ]
 
 -- | Return just the final evaluation result
-evalM :: Command -> EvalM Command
+evalM :: Command -> EvalM IO Command
 evalM cmd = do
   cmd' <- evalTermOnce cmd
   case cmd' of
@@ -95,10 +95,10 @@ evalM cmd = do
     Just cmd' -> evalM cmd'
 
 -- | Return all intermediate evaluation results
-evalStepsM :: Command -> EvalM [Command]
+evalStepsM :: Command -> EvalM IO [Command]
 evalStepsM cmd = evalSteps' [cmd] cmd
   where
-    evalSteps' :: [Command] -> Command -> EvalM [Command]
+    evalSteps' :: [Command] -> Command -> EvalM IO [Command]
     evalSteps' cmds cmd = do
       cmd' <- evalTermOnce cmd
       case cmd' of

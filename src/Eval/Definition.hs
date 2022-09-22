@@ -27,17 +27,17 @@ import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 
 type EvalEnv = (Map FreeVarName (Term Prd), Map FreeVarName (Term Cns), Map FreeVarName Command)
 
-newtype EvalM a = EvalM { unEvalM :: ReaderT EvalEnv (ExceptT (NonEmpty Error) IO) a }
+newtype EvalM m a = EvalM { unEvalM :: ReaderT EvalEnv (ExceptT (NonEmpty Error) m) a }
   deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadReader EvalEnv, MonadIO)
 
-runEval :: EvalM a -> EvalEnv -> IO (Either (NonEmpty Error) a)
+runEval :: EvalM m a -> EvalEnv -> m (Either (NonEmpty Error) a)
 runEval e env = runExceptT (runReaderT (unEvalM e) env)
 
 ---------------------------------------------------------------------------------
 -- Helper functions
 ---------------------------------------------------------------------------------
 
-lookupMatchCase :: XtorName -> [CmdCase] -> EvalM CmdCase
+lookupMatchCase :: Monad m => XtorName -> [CmdCase] -> EvalM m CmdCase
 lookupMatchCase xt cases = case find (\MkCmdCase { cmdcase_pat = XtorPat _ xt' _ } -> xt == xt') cases of
   Just pmcase -> return pmcase
   Nothing -> throwEvalError defaultLoc ["Error during evaluation. The xtor: "
@@ -45,7 +45,7 @@ lookupMatchCase xt cases = case find (\MkCmdCase { cmdcase_pat = XtorPat _ xt' _
                                        , "doesn't occur in match."
                                        ]
 
-checkArgs :: Command -> [(PrdCns,a)] -> Substitution -> EvalM ()
+checkArgs :: Monad m => Command -> [(PrdCns,a)] -> Substitution -> EvalM m ()
 checkArgs cmd args (MkSubstitution subst) = checkArgs' args subst
   where
     checkArgs' [] [] = return ()
@@ -73,14 +73,14 @@ readInt = do
     Just i | i < 0 -> putStrLn "Incorrect input." >> readInt
     Just i         -> pure (convertInt i)
 
-lookupCommand :: FreeVarName -> EvalM Command
+lookupCommand :: Monad m => FreeVarName -> EvalM m Command
 lookupCommand fv = do
   (_,_,env) <- ask
   case M.lookup fv env of
     Nothing -> throwEvalError defaultLoc ["Consumer " <> ppPrint fv <> " not in environment."]
     Just cmd -> pure cmd
 
-lookupTerm :: PrdCnsRep pc -> FreeVarName -> EvalM (Term pc)
+lookupTerm :: Monad m => PrdCnsRep pc -> FreeVarName -> EvalM m (Term pc)
 lookupTerm PrdRep fv = do
   (env,_,_) <- ask
   case M.lookup fv env of
