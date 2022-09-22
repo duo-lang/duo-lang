@@ -20,6 +20,8 @@ import Syntax.TST.Types qualified as TST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
+import Control.Monad.Writer (MonadWriter)
+import Control.Monad.State (MonadState)
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad
@@ -28,7 +30,7 @@ import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 type EvalEnv = (Map FreeVarName (Term Prd), Map FreeVarName (Term Cns), Map FreeVarName Command)
 
 newtype EvalM m a = EvalM { unEvalM :: ReaderT EvalEnv (ExceptT (NonEmpty Error) m) a }
-  deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadReader EvalEnv, MonadIO)
+  deriving (Functor, Applicative, Monad, MonadWriter w, MonadState s, MonadError (NonEmpty Error), MonadReader EvalEnv, MonadIO)
 
 runEval :: EvalM m a -> EvalEnv -> m (Either (NonEmpty Error) a)
 runEval e env = runExceptT (runReaderT (unEvalM e) env)

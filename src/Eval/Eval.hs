@@ -1,3 +1,4 @@
+{-# LANGUAGE UndecidableInstances #-}
 module Eval.Eval
   ( eval
   , evalSteps
@@ -17,20 +18,44 @@ import Eval.Definition
 import Eval.Primitives
 import Loc
 import qualified Syntax.LocallyNameless as LN
+import Control.Monad.Writer (MonadWriter)
+import Control.Monad.State (MonadState (..))
+
+class EvalMonad m where
+  printM :: PrettyAnn a => a -> EvalM m ()
+  readM  :: EvalM m (Term 'Prd)
+
+instance EvalMonad IO where
+  printM = liftIO . ppPrintIO
+  readM  = liftIO readInt
+
+-- this wrapper is only needed to avoid overlapping EvalMonad instances for IO
+newtype EvalMWrapper m a = MkEvalMWrapper { unEvalMWrapper :: m a }
+  deriving (Functor, Applicative, Monad, MonadWriter w, MonadState s, MonadIO)
+
+instance (MonadState [Int] m, MonadWriter [String] m) => EvalMonad (EvalMWrapper m) where
+  printM = ppPrintWriter
+  readM  = do
+    is <- get
+    case is of
+      []      -> return $ convertInt 0
+      (i:is)  -> do
+        put is
+        return $ convertInt i
 
 ---------------------------------------------------------------------------------
 -- Terms
 ---------------------------------------------------------------------------------
 
 -- | Returns Nothing if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
-evalTermOnce :: Command -> EvalM IO (Maybe Command)
+evalTermOnce :: (Monad m, EvalMonad m) => Command -> EvalM m (Maybe Command)
 evalTermOnce (ExitSuccess _) = return Nothing
 evalTermOnce (ExitFailure _) = return Nothing
 evalTermOnce (Print _ prd cmd) = do
-  liftIO $ ppPrintIO prd
+  printM prd
   return (Just cmd)
 evalTermOnce (Read _ cns) = do
-  tm <- liftIO readInt
+  tm <- readM
   return (Just (Apply defaultLoc ApplyAnnotOrig (CBox CBV) tm cns))
 evalTermOnce (Jump _ fv) = do
   cmd <- lookupCommand fv
@@ -87,7 +112,7 @@ evalApplyOnce _ prd cns =
                             ]
 
 -- | Return just the final evaluation result
-evalM :: Command -> EvalM IO Command
+evalM :: (Monad m, EvalMonad m) => Command -> EvalM m Command
 evalM cmd = do
   cmd' <- evalTermOnce cmd
   case cmd' of
@@ -95,10 +120,10 @@ evalM cmd = do
     Just cmd' -> evalM cmd'
 
 -- | Return all intermediate evaluation results
-evalStepsM :: Command -> EvalM IO [Command]
+evalStepsM :: (Monad m, EvalMonad m) => Command -> EvalM m [Command]
 evalStepsM cmd = evalSteps' [cmd] cmd
   where
-    evalSteps' :: [Command] -> Command -> EvalM IO [Command]
+    evalSteps' :: (Monad m, EvalMonad m) => [Command] -> Command -> EvalM m [Command]
     evalSteps' cmds cmd = do
       cmd' <- evalTermOnce cmd
       case cmd' of
