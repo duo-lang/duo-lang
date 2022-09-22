@@ -42,8 +42,16 @@ fresh Cns = do
   modify (second tail)
   pure var
 
-freeVarNamesToXtorArgs :: [(PrdCns, Maybe FreeVarName)] -> RST.Substitution
-freeVarNamesToXtorArgs bs = RST.MkSubstitution (f <$> bs)
+patternToSubst :: RST.Pattern -> RST.Substitution
+patternToSubst (RST.XtorPat _loc _xt bs) = RST.MkSubstitution (f <$> bs)
+  where
+    f (Prd, Nothing) = error "Create Names first!"
+    f (Prd, Just fv) = RST.PrdTerm $ RST.FreeVar defaultLoc PrdRep fv
+    f (Cns, Nothing) = error "Create Names first!"
+    f (Cns, Just fv) = RST.CnsTerm $ RST.FreeVar defaultLoc CnsRep fv
+
+patternIToSubst :: RST.PatternI -> RST.Substitution
+patternIToSubst (RST.XtorPatI _loc _xt (as1,(),as2)) = RST.MkSubstitution (f <$> (as1 <> [(Cns, Nothing)] <> as2))
   where
     f (Prd, Nothing) = error "Create Names first!"
     f (Prd, Just fv) = RST.PrdTerm $ RST.FreeVar defaultLoc PrdRep fv
@@ -201,10 +209,10 @@ instance EmbedRST RST.PatternI CST.Pattern where
 
 instance Open RST.CmdCase where
   open :: RST.CmdCase -> RST.CmdCase
-  open RST.MkCmdCase { cmdcase_loc, cmdcase_pat = RST.XtorPat loc xt args, cmdcase_cmd } =
+  open RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
     RST.MkCmdCase { cmdcase_loc = cmdcase_loc
-                  , cmdcase_pat = RST.XtorPat loc xt args
-                  , cmdcase_cmd = LN.open (freeVarNamesToXtorArgs args) (open cmdcase_cmd)
+                  , cmdcase_pat = cmdcase_pat
+                  , cmdcase_cmd = LN.open (patternToSubst cmdcase_pat) (open cmdcase_cmd)
                   }
 
 instance CreateNames RST.CmdCase where
@@ -232,11 +240,11 @@ instance Unresolve RST.CmdCase CST.TermCase where
 
 instance Open (RST.TermCase pc) where
   open :: RST.TermCase pc -> RST.TermCase pc
-  open RST.MkTermCase { tmcase_loc, tmcase_pat = RST.XtorPat loc xt args , tmcase_term } =
+  open RST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } =
       RST.MkTermCase { tmcase_loc = tmcase_loc
-                    , tmcase_pat = RST.XtorPat loc xt args
-                    , tmcase_term = LN.open (freeVarNamesToXtorArgs args) (open tmcase_term)
-                    }
+                     , tmcase_pat = tmcase_pat
+                     , tmcase_term = LN.open (patternToSubst tmcase_pat) (open tmcase_term)
+                     }
 
 instance CreateNames (RST.TermCase pc) where
   createNames :: RST.TermCase pc -> UnresolveM (RST.TermCase pc)
@@ -263,10 +271,10 @@ instance Unresolve (RST.TermCase pc) CST.TermCase where
 
 instance Open (RST.TermCaseI pc) where
   open :: RST.TermCaseI pc -> RST.TermCaseI pc
-  open RST.MkTermCaseI { tmcasei_loc, tmcasei_pat = RST.XtorPatI loc xt (as1, (), as2), tmcasei_term } =
+  open RST.MkTermCaseI { tmcasei_loc, tmcasei_pat, tmcasei_term } =
     RST.MkTermCaseI { tmcasei_loc = tmcasei_loc
-                    , tmcasei_pat = RST.XtorPatI loc xt (as1, (), as2)
-                    , tmcasei_term = LN.open (freeVarNamesToXtorArgs (as1 ++ [(Cns, Nothing)] ++ as2)) (open tmcasei_term)
+                    , tmcasei_pat = tmcasei_pat
+                    , tmcasei_term = LN.open (patternIToSubst tmcasei_pat) (open tmcasei_term)
                     }
 
 instance CreateNames (RST.TermCaseI pc) where
@@ -294,11 +302,11 @@ instance Unresolve (RST.TermCaseI pc) CST.TermCase where
 
 instance Open RST.InstanceCase where
   open :: RST.InstanceCase -> RST.InstanceCase
-  open RST.MkInstanceCase { instancecase_loc, instancecase_pat = pat@(RST.XtorPat _loc _xt args), instancecase_cmd } =
+  open RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } =
     RST.MkInstanceCase { instancecase_loc = instancecase_loc
-                      , instancecase_pat = pat
-                      , instancecase_cmd = LN.open (freeVarNamesToXtorArgs args) (open instancecase_cmd)
-                      }
+                       , instancecase_pat = instancecase_pat
+                       , instancecase_cmd = LN.open (patternToSubst instancecase_pat) (open instancecase_cmd)
+                       }
 
 instance CreateNames RST.InstanceCase where
   createNames :: RST.InstanceCase -> UnresolveM RST.InstanceCase
@@ -619,8 +627,8 @@ instance Unresolve RST.Command CST.Term where
 
 instance Unresolve (RST.PrdCnsType pol) CST.PrdCnsTyp where
   unresolve :: RST.PrdCnsType pol -> UnresolveM CST.PrdCnsTyp
-  unresolve (RST.PrdCnsType PrdRep ty) = CST.PrdType <$> (unresolve ty)
-  unresolve (RST.PrdCnsType CnsRep ty) = CST.CnsType <$> (unresolve ty)
+  unresolve (RST.PrdCnsType PrdRep ty) = CST.PrdType <$> unresolve ty
+  unresolve (RST.PrdCnsType CnsRep ty) = CST.CnsType <$> unresolve ty
 
 instance Unresolve (RST.LinearContext pol) CST.LinearContext where
   unresolve :: RST.LinearContext pol -> UnresolveM CST.LinearContext
