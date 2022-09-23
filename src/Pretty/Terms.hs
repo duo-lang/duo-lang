@@ -50,12 +50,12 @@ instance PrettyAnn TST.CmdCase where
   prettyAnn cmdcase = prettyAnn (embedTST cmdcase)
 
 instance PrettyAnn RST.CmdCase where
-  prettyAnn cmdcase = prettyAnn (unresolve cmdcase)
+  prettyAnn cmdcase = prettyAnn (runUnresolveM (unresolve cmdcase))
 
 -- TermCase
 
 instance PrettyAnn (RST.TermCase pc) where
-  prettyAnn termcase = prettyAnn (unresolve termcase)
+  prettyAnn termcase = prettyAnn (runUnresolveM (unresolve termcase))
 
 instance PrettyAnn CST.TermCase where
   prettyAnn CST.MkTermCase{ tmcase_pat, tmcase_term } =
@@ -64,7 +64,7 @@ instance PrettyAnn CST.TermCase where
       prettyAnn tmcase_term
 
 instance PrettyAnn (RST.TermCaseI pc) where
-  prettyAnn termcasei = prettyAnn (unresolve termcasei)
+  prettyAnn termcasei = prettyAnn (runUnresolveM (unresolve termcasei))
 
 instance PrettyAnn CST.TermOrStar  where
   prettyAnn (CST.ToSTerm t) = prettyAnn t
@@ -80,7 +80,7 @@ instance PrettyAnn TST.PrdCnsTerm where
   prettyAnn pcterm = prettyAnn (embedCore (embedTST pcterm))
 
 instance PrettyAnn RST.PrdCnsTerm where
-  prettyAnn pcterm = prettyAnn (unresolve pcterm)
+  prettyAnn pcterm = prettyAnn (runUnresolveM (unresolve pcterm))
 
 -- Substitution
 
@@ -88,7 +88,7 @@ instance {-# OVERLAPPING #-} PrettyAnn TST.Substitution where
   prettyAnn subst = prettyAnn (embedCore (embedTST subst))
 
 instance {-# OVERLAPPING #-} PrettyAnn RST.Substitution where
-  prettyAnn subst = prettyAnn (unresolve subst)
+  prettyAnn subst = prettyAnn (runUnresolveM (unresolve subst))
 
 instance PrettyAnn CST.Substitution where
   prettyAnn (CST.MkSubstitution subst) = parens' comma (prettyAnn <$> subst)
@@ -96,7 +96,7 @@ instance PrettyAnn CST.Substitution where
 -- SubstitutionI
 
 instance PrettyAnn (RST.SubstitutionI pc) where
-  prettyAnn substi = prettyAnn (unresolve substi)
+  prettyAnn substi = prettyAnn (runUnresolveM (unresolve substi))
 
 instance PrettyAnn CST.SubstitutionI where
   prettyAnn (CST.MkSubstitutionI substi) = parens' comma (prettyAnn <$> substi)
@@ -110,7 +110,7 @@ instance PrettyAnn (TST.Term pc) where
   prettyAnn tm = prettyAnn (embedTST tm)
 
 instance PrettyAnn (RST.Term pc) where
-  prettyAnn tm = prettyAnn (unresolve tm)
+  prettyAnn tm = prettyAnn (runUnresolveM (unresolve tm))
 
 instance PrettyAnn (Core.Term pc) where
   prettyAnn tm = prettyAnn (embedCore tm)
@@ -204,7 +204,7 @@ instance PrettyAnn TST.Command where
   prettyAnn cmd = prettyAnn (embedTST cmd)
 
 instance PrettyAnn RST.Command where
-  prettyAnn cmd = prettyAnn (unresolve cmd)
+  prettyAnn cmd = prettyAnn (runUnresolveM (unresolve cmd))
 
 instance PrettyAnn Core.Command where
   prettyAnn cmd = prettyAnn (embedCore cmd)
