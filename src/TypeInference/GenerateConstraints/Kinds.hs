@@ -194,9 +194,14 @@ annotTy (RST.TyInter loc ty1 ty2) = do
     return $ TST.TyInter loc knd ty1' ty2'
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
-annotTy (RST.TyRec loc pol tv ty) = do 
-  ty' <- annotTy ty
-  return (TST.TyRec loc pol tv ty')
+annotTy (RST.TyRec loc _ _ ty) = case ty of 
+  RST.TyDataRefined loc pol tyn xtors -> do 
+    xtors' <- mapM annotXtor xtors
+    return $ TST.TyDataRefined loc pol (CBox CBV) tyn xtors'
+  RST.TyCodataRefined loc pol tyn xtors -> do
+    xtors' <- mapM annotXtor xtors 
+    return $ TST.TyCodataRefined loc pol (CBox CBV) tyn xtors'
+  _ -> throwOtherError loc ["TyRec can only appear inside Refinement Declaration"]
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
 annotTy (RST.TyF64 loc pol) = return $ TST.TyF64 loc pol
 annotTy (RST.TyChar loc pol) = return $ TST.TyChar loc pol
