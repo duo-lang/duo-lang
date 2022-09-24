@@ -162,17 +162,19 @@ annotTy (RST.TyCodata loc pol xtors) = do
 annotTy (RST.TyDataRefined loc pol tyn xtors) =  do 
   tyn' <- gets declTyName
   if tyn == tyn' then do
+    let xtorNames = map RST.sig_name xtors
+    xtors' <- getXtors pol xtorNames 
     polyknd <- gets declKind
-    xtors' <- mapM annotXtor xtors
     return $ TST.TyDataRefined loc pol (CBox $ returnKind polyknd) tyn xtors' 
   else do 
     decl <- lookupTypeName loc tyn
     let xtors = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) $ TST.data_xtors decl
     return $ TST.TyDataRefined loc pol (CBox $ returnKind $ TST.data_kind decl) tyn xtors
-annotTy (RST.TyCodataRefined loc pol tyn xtors) = do 
+annotTy (RST.TyCodataRefined loc pol tyn xtors) = do  
   tyn' <- gets declTyName
   if tyn == tyn' then do 
-    xtors' <- mapM annotXtor xtors
+    let xtorNames = map RST.sig_name xtors
+    xtors' <- getXtors (RST.flipPolarityRep pol) xtorNames 
     polyknd <- gets declKind
     return $ TST.TyCodataRefined loc pol (CBox $ returnKind polyknd) tyn xtors'
   else do
@@ -210,14 +212,18 @@ annotTy (RST.TyInter loc ty1 ty2) = do
     return $ TST.TyInter loc knd ty1' ty2'
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
-annotTy (RST.TyRec loc _ _ ty) = case ty of 
-  RST.TyDataRefined loc pol tyn xtors -> do 
-    let xtorNames = map RST.sig_name xtors
-    xtors' <- getXtors pol xtorNames
-    return $ TST.TyDataRefined loc pol (CBox CBV) tyn xtors'
-  RST.TyCodataRefined loc pol tyn xtors -> do
-    xtors' <- mapM annotXtor xtors 
-    return $ TST.TyCodataRefined loc pol (CBox CBV) tyn xtors'
+annotTy (RST.TyRec loc pol rv ty) = case ty of 
+  RST.TyDataRefined{}  -> do 
+    ty' <- annotTy ty 
+    return $ TST.TyRec loc pol rv ty'
+    --let xtorNames = map RST.sig_name xtors
+    --xtors' <- getXtors pol xtorNames
+    --return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' (CBox CBV) tyn xtors')
+  RST.TyCodataRefined{} -> do
+    ty' <- annotTy ty 
+    return $ TST.TyRec loc pol rv ty'
+    --xtors' <- mapM annotXtor xtors 
+    --return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' (CBox CBV) tyn xtors')
   _ -> throwOtherError loc ["TyRec can only appear inside Refinement Declaration"]
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
 annotTy (RST.TyF64 loc pol) = return $ TST.TyF64 loc pol
