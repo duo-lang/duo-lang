@@ -91,7 +91,7 @@ addXtors newXtors =  modify (\s@DataDeclState{refXtors = xtors} ->
 
 getXtors :: RST.PolarityRep pol -> [XtorName] -> DataDeclM [TST.XtorSig pol]
 getXtors pl names = do
-  cached <- gets refXtors 
+  cached <- gets refXtors
   let f = filter (\(x::TST.XtorSig RST.Pos) -> TST.sig_name x `elem` names)
   let g = filter (\(x::TST.XtorSig RST.Neg) -> TST.sig_name x `elem` names)
   case pl of 
@@ -127,10 +127,7 @@ annotTy (RST.TySkolemVar loc pol tv) = do
   return $ TST.TySkolemVar loc pol (getKindSkolem polyknd tv) tv 
 -- uni vars should not appear in data declarations
 annotTy (RST.TyUniVar loc _ _) = throwOtherError loc ["UniVar should not appear in data declaration"]
-annotTy (RST.TyRecVar loc pol tv) = do 
-  polyknd <- gets declKind
-  -- not sure if this is correct
-  return $ TST.TyRecVar loc pol (CBox $ returnKind polyknd) tv
+annotTy (RST.TyRecVar loc _ tv) = throwOtherError loc ["Unbound RecVar " <> ppPrint tv <> " in data declaration"]
 annotTy (RST.TyData loc pol xtors) = do 
   let xtnms = map RST.sig_name xtors
   xtorKinds <- mapM lookupXtorKind xtnms
@@ -216,14 +213,9 @@ annotTy (RST.TyRec loc pol rv ty) = case ty of
   RST.TyDataRefined{}  -> do 
     ty' <- annotTy ty 
     return $ TST.TyRec loc pol rv ty'
-    --let xtorNames = map RST.sig_name xtors
-    --xtors' <- getXtors pol xtorNames
-    --return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' (CBox CBV) tyn xtors')
   RST.TyCodataRefined{} -> do
     ty' <- annotTy ty 
     return $ TST.TyRec loc pol rv ty'
-    --xtors' <- mapM annotXtor xtors 
-    --return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' (CBox CBV) tyn xtors')
   _ -> throwOtherError loc ["TyRec can only appear inside Refinement Declaration"]
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
 annotTy (RST.TyF64 loc pol) = return $ TST.TyF64 loc pol
@@ -264,15 +256,15 @@ annotateDataDecl RST.RefinementDecl {
   data_xtors = xtors,
   data_xtors_refined = xtorsref
   } = do
-    emptPos <- annotTy (fst empt)
-    emptNeg <- annotTy (snd empt)
-    fulPos <- annotTy (fst ful) 
-    fulNeg <- annotTy (snd ful)
     xtorsPos <- mapM annotXtor (fst xtors)
     xtorsNeg <- mapM annotXtor (snd xtors)
     addXtors (xtorsPos,xtorsNeg)
     xtorsRefPos <- mapM annotXtor (fst xtorsref)
     xtorsRefNeg <- mapM annotXtor (snd xtorsref)
+    emptPos <- annotTy (fst empt)
+    emptNeg <- annotTy (snd empt)
+    fulPos <- annotTy (fst ful) 
+    fulNeg <- annotTy (snd ful)
     return TST.RefinementDecl {
       data_loc = loc,
       data_doc = doc,
