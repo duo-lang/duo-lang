@@ -22,6 +22,7 @@ import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Foldable (find)
+import Data.Bifunctor (bimap)
 
 --------------------------------------------------------------------------------------------
 -- Helpers
@@ -63,13 +64,15 @@ newKVar = do
 data DataDeclState = DataDeclState
   {
     declKind :: PolyKind,
-    declTyName :: RnTypeName
+    declTyName :: RnTypeName,
+    refXtors :: ([TST.XtorSig RST.Pos], [TST.XtorSig RST.Neg])
   }
 
 createDataDeclState :: PolyKind -> RnTypeName -> DataDeclState
 createDataDeclState polyknd tyn = DataDeclState 
   { declKind = polyknd,
-    declTyName = tyn
+    declTyName = tyn,
+    refXtors = ([],[])
   }
 
 type DataDeclM a = (ReaderT (M.Map ModuleName Environment, ()) (StateT DataDeclState (Except (NonEmpty Error)))) a
@@ -81,6 +84,19 @@ resolveDataDecl :: RST.DataDecl -> M.Map ModuleName Environment ->  Either (NonE
 resolveDataDecl decl env = do
   (decl', _) <- runDataDeclM (annotateDataDecl decl) env (createDataDeclState (RST.data_kind decl) (RST.data_name decl))
   return decl' 
+
+addXtors :: ([TST.XtorSig RST.Pos],[TST.XtorSig RST.Neg]) -> DataDeclM ()
+addXtors newXtors =  modify (\s@DataDeclState{refXtors = xtors} -> 
+                                s {refXtors = Data.Bifunctor.bimap (fst xtors ++ ) (snd xtors ++) newXtors })
+
+getXtors :: RST.PolarityRep pol -> [XtorName] -> DataDeclM [TST.XtorSig pol]
+getXtors pl names = do
+  cached <- gets refXtors 
+  let f = filter (\(x::TST.XtorSig RST.Pos) -> TST.sig_name x `elem` names)
+  let g = filter (\(x::TST.XtorSig RST.Neg) -> TST.sig_name x `elem` names)
+  case pl of 
+    RST.PosRep -> return (f (fst cached))
+    RST.NegRep -> return (g (snd cached))
   
 annotXtor :: RST.XtorSig pol -> DataDeclM (TST.XtorSig pol)
 annotXtor (RST.MkXtorSig nm ctxt) =
@@ -196,7 +212,8 @@ annotTy (RST.TyInter loc ty1 ty2) = do
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
 annotTy (RST.TyRec loc _ _ ty) = case ty of 
   RST.TyDataRefined loc pol tyn xtors -> do 
-    xtors' <- mapM annotXtor xtors
+    let xtorNames = map RST.sig_name xtors
+    xtors' <- getXtors pol xtorNames
     return $ TST.TyDataRefined loc pol (CBox CBV) tyn xtors'
   RST.TyCodataRefined loc pol tyn xtors -> do
     xtors' <- mapM annotXtor xtors 
@@ -247,6 +264,7 @@ annotateDataDecl RST.RefinementDecl {
     fulNeg <- annotTy (snd ful)
     xtorsPos <- mapM annotXtor (fst xtors)
     xtorsNeg <- mapM annotXtor (snd xtors)
+    addXtors (xtorsPos,xtorsNeg)
     xtorsRefPos <- mapM annotXtor (fst xtorsref)
     xtorsRefNeg <- mapM annotXtor (snd xtorsref)
     return TST.RefinementDecl {
