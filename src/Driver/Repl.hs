@@ -9,11 +9,14 @@ module Driver.Repl
   , runCmd
     -- ":subsume"
   , subsumeRepl
+  , desugarEnv
   ) where
 
 import Control.Monad (forM_)
 import Control.Monad.State (gets)
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
+import Data.Foldable (fold)
+import Data.Map qualified as M
 import Data.Text (Text)
 import Data.Text qualified as T
 
@@ -24,6 +27,8 @@ import Driver.Definition
       liftEitherErr,
       liftEitherErrLoc)
 import Driver.Driver ( inferDecl, runCompilationModule )
+import Driver.Environment (Environment(..))
+import Eval.Definition ( EvalEnv )
 import Eval.Eval ( eval, evalSteps )
 import Parser.Definition ( runInteractiveParser )
 import Parser.Parser ( subtypingProblemP )
@@ -32,8 +37,8 @@ import Parser.Terms ( termP )
 import Pretty.Pretty ( ppPrintString )
 import Resolution.Definition ( runResolverM, ResolveReader (ResolveReader) )
 import Resolution.Types ( resolveTypeScheme )
-import Sugar.Desugar ( desugarCmd, desugarEnvironment,  desugarDecl )
-import Translate.Focusing ( focusCmd, focusEnvironment )
+import Sugar.Desugar ( Desugar(..))
+import Translate.Focusing ( Focus(..))
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
@@ -84,7 +89,7 @@ letRepl txt = do
     decl <- runInteractiveParser declarationP txt
     sts <- getSymbolTables
     resolvedDecl <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveDecl decl))
-    _ <- inferDecl interactiveModule (desugarDecl resolvedDecl)
+    _ <- inferDecl interactiveModule (desugar resolvedDecl)
     pure ()
 
 ---------------------------------------------------------------------------------
@@ -93,16 +98,23 @@ letRepl txt = do
 
 data EvalSteps = Steps | NoSteps
 
+desugarEnv :: Environment -> EvalEnv
+desugarEnv MkEnvironment { prdEnv, cnsEnv, cmdEnv } = (prd,cns,cmd)
+  where
+    prd = (\(tm,_,_) -> tm) <$> prdEnv
+    cns = (\(tm,_,_) -> tm) <$> cnsEnv
+    cmd = fst <$> cmdEnv
+
 runCmd :: Text -> EvalSteps ->  DriverM ()
 runCmd txt steps = do
     parsedCommand <- runInteractiveParser termP txt
     sts <- getSymbolTables
     resolvedDecl <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveCommand parsedCommand))
-    let cmdDecl = Core.MkCommandDeclaration defaultLoc Nothing (MkFreeVarName "main") (desugarCmd resolvedDecl)
+    let cmdDecl = Core.MkCommandDeclaration defaultLoc Nothing (MkFreeVarName "main") (desugar resolvedDecl)
     (TST.CmdDecl TST.MkCommandDeclaration { cmddecl_cmd }) <- inferDecl interactiveModule (Core.CmdDecl cmdDecl)
     env <- gets drvEnv
-    let compiledCmd = focusCmd CBV cmddecl_cmd
-    let compiledEnv = focusEnvironment CBV (desugarEnvironment env)
+    let compiledCmd = focus CBV cmddecl_cmd
+    let compiledEnv = focus CBV ((\map -> fold $ desugarEnv <$> M.elems map) env)
     case steps of
         NoSteps -> do
             resE <- liftIO $ eval compiledCmd compiledEnv

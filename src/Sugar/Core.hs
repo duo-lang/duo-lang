@@ -5,7 +5,7 @@ module Sugar.Core(
   RST.PatternI (..),
   pattern CaseOfI,
   pattern CocaseOfI,
-  SubstitutionI,
+  SubstitutionI(..),
   pattern Semi,
   pattern Dtor,
   TermCase (..),
@@ -130,11 +130,11 @@ pattern RawApply loc t1 t2 = Apply loc ApplyAnnotOrig t1 t2
 {-# COMPLETE RawApply, CocaseOfI, CaseOfI, CocaseOfCmd, CaseOfCmd , Print, Read, Jump, ExitSuccess, ExitFailure, PrimOp #-}
 
 
-type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
+newtype SubstitutionI (pc :: PrdCns) = MkSubstitutionI { unSubstitutionI :: ([PrdCnsTerm], PrdCnsRep pc, [PrdCnsTerm]) }
 
 resugarSubst ::  PrdCnsRep pc -> Int -> Substitution -> SubstitutionI pc
-resugarSubst rep n x = (a, rep, tail b)
-  where (a,b) = splitAt n x
+resugarSubst rep n x = MkSubstitutionI (a, rep, tail b)
+  where (a,b) = splitAt n $ unSubstitution x
 
 resVar :: FreeVarName
 resVar = MkFreeVarName "$result"
@@ -147,16 +147,16 @@ pattern Semi :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> XtorName -> Subs
 pattern Semi loc rep ns xt substi t <-
     MuAbs loc MuAnnotSemi rep _ (LN.shift ShiftDown -> Apply _ ApplyAnnotSemi (Xtor _ (XtorAnnotSemi i) PrdRep ns xt (resugarSubst rep i -> substi)) t)
     where 
-        Semi loc PrdRep ns xt (args1, PrdRep, args2) t = 
+        Semi loc PrdRep ns xt (MkSubstitutionI (args1, PrdRep, args2)) t = 
             let
                 args = args1 ++ [CnsTerm $ FreeVar loc CnsRep resVar] ++ args2
-                cmd = Apply loc ApplyAnnotSemi  (Xtor loc (XtorAnnotSemi (length args1)) PrdRep ns xt args) t
+                cmd = Apply loc ApplyAnnotSemi  (Xtor loc (XtorAnnotSemi (length args1)) PrdRep ns xt (MkSubstitution args)) t
             in
             MuAbs loc MuAnnotSemi PrdRep Nothing $ LN.close [(Cns, resVar)] $ LN.shift ShiftUp cmd
-        Semi loc CnsRep ns xt (args1, CnsRep, args2) t =  
+        Semi loc CnsRep ns xt (MkSubstitutionI (args1, CnsRep, args2)) t =  
             let
                 args = args1 ++ [PrdTerm $ FreeVar loc PrdRep resVar] ++ args2
-                cmd = Apply loc ApplyAnnotSemi  (Xtor loc (XtorAnnotSemi (length args1)) PrdRep ns xt args) t
+                cmd = Apply loc ApplyAnnotSemi  (Xtor loc (XtorAnnotSemi (length args1)) PrdRep ns xt (MkSubstitution args)) t
             in
             MuAbs loc MuAnnotSemi CnsRep Nothing $ LN.close [(Prd, resVar)] $ LN.shift ShiftUp cmd
 
@@ -168,16 +168,16 @@ pattern Dtor :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> XtorName -> Term
 pattern Dtor loc rep ns xt t substi <-
     MuAbs loc MuAnnotDtor rep _ (LN.shift ShiftDown -> Apply _ ApplyAnnotDtor t (Xtor _ (XtorAnnotDtor i) CnsRep ns xt (resugarSubst rep i -> substi)) )
     where 
-        Dtor loc PrdRep ns xt t (args1, PrdRep, args2)  = 
+        Dtor loc PrdRep ns xt t (MkSubstitutionI (args1, PrdRep, args2))  = 
             let
                 args = args1 ++ [CnsTerm $ FreeVar loc CnsRep resVar] ++ args2
-                cmd = Apply loc ApplyAnnotDtor t (Xtor loc (XtorAnnotDtor (length args1)) CnsRep ns xt args) 
+                cmd = Apply loc ApplyAnnotDtor t (Xtor loc (XtorAnnotDtor (length args1)) CnsRep ns xt (MkSubstitution args))
             in
             MuAbs loc MuAnnotDtor PrdRep Nothing $ LN.close [(Cns, resVar)] $ LN.shift ShiftUp cmd
-        Dtor loc CnsRep ns xt t (args1, CnsRep, args2)  =  
+        Dtor loc CnsRep ns xt t (MkSubstitutionI (args1, CnsRep, args2))  =  
             let
                 args = args1 ++ [PrdTerm $ FreeVar loc PrdRep resVar] ++ args2
-                cmd = Apply loc ApplyAnnotDtor  t (Xtor loc (XtorAnnotDtor (length args1)) CnsRep ns xt args) 
+                cmd = Apply loc ApplyAnnotDtor  t (Xtor loc (XtorAnnotDtor (length args1)) CnsRep ns xt (MkSubstitution args))
             in
             MuAbs loc MuAnnotDtor CnsRep Nothing $ LN.close [(Prd, resVar)] $ LN.shift ShiftUp cmd
 

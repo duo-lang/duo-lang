@@ -5,7 +5,7 @@ module Sugar.TST (
   PatternI (..),
   pattern CaseOfI,
   pattern CocaseOfI,
-  SubstitutionI,
+  SubstitutionI(..),
   pattern Semi,
   pattern Dtor,
   TermCase (..),
@@ -34,6 +34,7 @@ import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Terms qualified as CST
 import qualified Syntax.LocallyNameless as LN
+import Syntax.NMap ((<¢>))
 
 -- CaseOfCmd:
 --   [[case e of { Ctor(xs) => cmd }]] = < [[e]] | case { Ctor(xs) => [[cmd]] } >
@@ -110,11 +111,11 @@ pattern RawApply loc kind t1 t2 = Apply loc ApplyAnnotOrig kind t1 t2
 -- SubstitutionI Prd = ... [*] ...
 -- SubstitutionI Cns = ... (*) ...
 
-type SubstitutionI (pc :: PrdCns) = (Substitution, PrdCnsRep pc, Substitution)
+newtype SubstitutionI (pc :: PrdCns) = MkSubstitutionI { unSubstitutionI :: ([PrdCnsTerm], PrdCnsRep pc, [PrdCnsTerm]) }
 
 resugarSubst ::  PrdCnsRep pc -> Int -> Substitution -> SubstitutionI pc
-resugarSubst rep n x = (a, rep, tail b)
-  where (a,b) = splitAt n x
+resugarSubst rep n x = MkSubstitutionI (a, rep, tail b)
+  where (a,b) = splitAt n $ unSubstitution x
 
 -- Semi:
 --   [[Ctor(as,*,bs) ;; e]] = mu k. <  Ctor([[as]],k,[[bs]])  |  [[e]]  >
@@ -224,9 +225,9 @@ isDesugaredTerm Dtor {} = False
 isDesugaredTerm Semi {} = False
 isDesugaredTerm Lambda {} = False
 isDesugaredTerm (RawCase _ _ _ _ cases) =
-  and $ (\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) <$> cases
+  all (\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) cases
 isDesugaredTerm (RawXtor _ _ _ _ _ subst) =
-  and $ isDesugaredPCTerm <$> subst
+  all isDesugaredPCTerm $ unSubstitution subst
 isDesugaredTerm (RawMuAbs _ _ _ _ cmd) = isDesugaredCommand cmd
 isDesugaredTerm _ = True
 
@@ -236,7 +237,7 @@ isDesugaredCommand CaseOfI {} = False
 isDesugaredCommand CocaseOfCmd {} = False
 isDesugaredCommand CaseOfCmd {} = False
 isDesugaredCommand (PrimOp _ _ subst) =
-  and (isDesugaredPCTerm <$> subst)
+  all isDesugaredPCTerm $ unSubstitution subst
 isDesugaredCommand (RawApply _ _ prd cns) =
   isDesugaredTerm prd && isDesugaredTerm cns
 isDesugaredCommand (Print _ prd cmd) =
@@ -254,14 +255,14 @@ resetAnnotationPC (PrdTerm t) = PrdTerm (resetAnnotationTerm t)
 resetAnnotationPC (CnsTerm t) = CnsTerm (resetAnnotationTerm t)
 
 resetAnnotationTerm :: Term pc -> Term pc
-resetAnnotationTerm (Xtor loc _ rep ns ty xt subst) = Xtor loc XtorAnnotOrig rep ns ty xt (resetAnnotationPC <$> subst)
+resetAnnotationTerm (Xtor loc _ rep ns ty xt subst) = Xtor loc XtorAnnotOrig rep ns ty xt (resetAnnotationPC <¢> subst)
 resetAnnotationTerm (MuAbs loc _ rep ty fn cmd) = MuAbs loc MuAnnotOrig rep ty fn (resetAnnotationCmd cmd)
 resetAnnotationTerm (XCase loc _ pc ty ns cases) = XCase loc MatchAnnotOrig pc ty ns ((\(MkCmdCase a b cmd) -> MkCmdCase a b (resetAnnotationCmd cmd) ) <$> cases )
 resetAnnotationTerm t = t
 
 resetAnnotationCmd :: Command -> Command
 resetAnnotationCmd (PrimOp a op subst) =
-  PrimOp a op (resetAnnotationPC <$> subst)
+  PrimOp a op (resetAnnotationPC <¢> subst)
 resetAnnotationCmd (Apply l _ kind t1 t2) = Apply l ApplyAnnotOrig kind (resetAnnotationTerm t1) (resetAnnotationTerm t2)
 resetAnnotationCmd (Print loc t cmd) = Print loc (resetAnnotationTerm t) (resetAnnotationCmd cmd)
 resetAnnotationCmd (Read loc t) = Read loc (resetAnnotationTerm t)

@@ -28,7 +28,7 @@ import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
 import Syntax.CST.Names ( FreeVarName(..) )
-import Translate.Focusing ( isFocusedTerm, isFocusedCmd, focusPrdCnsDeclaration, focusCommandDeclaration)
+import Translate.Focusing ( Focus(..) )
 import Loc
 
 ---------------------------------------------------------------------------------
@@ -67,8 +67,8 @@ generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_
 generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _, pcdecl_term } =
   let
     desugar  = [ generateDesugarCodeAction ident decl | not (isDesugaredTerm pcdecl_term)]
-    cbvfocus = [ generateFocusCodeAction ident CBV decl | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBV pcdecl_term)]
-    cbnfocus = [ generateFocusCodeAction ident CBN decl | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBN pcdecl_term)]
+    cbvfocus = [ generateFocusCodeAction ident CBV decl | isDesugaredTerm pcdecl_term, isNothing (isFocused CBV pcdecl_term)]
+    cbnfocus = [ generateFocusCodeAction ident CBN decl | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
     dualize  = [ generateDualizeCodeAction ident decl]
   in
     desugar ++ cbvfocus ++ cbnfocus ++ dualize
@@ -77,8 +77,8 @@ generateCodeActionCommandDeclaration :: TextDocumentIdentifier -> TST.CommandDec
 generateCodeActionCommandDeclaration ident decl@TST.MkCommandDeclaration {cmddecl_cmd } =
   let
     desugar = [ generateCmdDesugarCodeAction ident decl | not (isDesugaredCommand cmddecl_cmd)]
-    cbvfocus = [ generateCmdFocusCodeAction ident CBV decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBV cmddecl_cmd)]
-    cbnfocus = [ generateCmdFocusCodeAction ident CBN decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBN cmddecl_cmd)]
+    cbvfocus = [ generateCmdFocusCodeAction ident CBV decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBV cmddecl_cmd)]
+    cbnfocus = [ generateCmdFocusCodeAction ident CBN decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
   in
     desugar ++ cbvfocus ++ cbnfocus
 
@@ -200,7 +200,7 @@ generateFocusEdit :: forall pc.TextDocumentIdentifier -> EvaluationOrder -> TST.
 generateFocusEdit (TextDocumentIdentifier uri) eo decl =
   let
     newDecl :: TST.Declaration
-    newDecl = TST.PrdCnsDecl (TST.pcdecl_pc decl) (focusPrdCnsDeclaration eo decl)
+    newDecl = TST.PrdCnsDecl (TST.pcdecl_pc decl) (focus eo decl)
     replacement = ppPrint newDecl
     edit = TextEdit {_range = locToRange (TST.pcdecl_loc decl), _newText = replacement }
   in
@@ -224,7 +224,7 @@ generateCmdFocusCodeAction ident eo decl =
 generateCmdFocusEdit :: TextDocumentIdentifier -> EvaluationOrder -> TST.CommandDeclaration -> WorkspaceEdit
 generateCmdFocusEdit (TextDocumentIdentifier uri) eo decl =
   let
-    newDecl = TST.CmdDecl (focusCommandDeclaration eo decl)
+    newDecl = TST.CmdDecl (focus eo decl)
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange (TST.cmddecl_loc decl), _newText= replacement }
   in

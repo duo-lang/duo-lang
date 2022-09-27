@@ -2,19 +2,18 @@ module Spec.Focusing (spec) where
 
 import Control.Monad
 import Data.List.NonEmpty ( NonEmpty )
-import Test.Hspec
+import Test.Hspec hiding (focus)
 import Pretty.Pretty
 import Pretty.Program ()
 
 import Driver.Definition
 import Driver.Driver (inferProgramIO)
-
+import Sugar.Desugar (Desugar(..))
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
 import Translate.Focusing
-import Translate.EmbedRST
-import Translate.EmbedCore (EmbedCore(..))
+import Resolution.Unresolve
 import Translate.EmbedTST (EmbedTST(..))
 import Errors
 
@@ -31,14 +30,14 @@ testHelper (example,decls) cbx = describe (show cbx ++ " Focusing the program in
       case decls of
         Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
         Right decls -> do
-          let focusedDecls :: CST.Module = reparseModule $ embedCore $ embedTST $ focusModule cbx decls
+          let focusedDecls :: CST.Module = runUnresolveM $ unresolve $ embedCore $ embedTST $ focus cbx decls
           res <- runIO $ inferProgramIO defaultDriverState focusedDecls
           case res of
             (Left err,_) -> do
               let msg = unlines [ "---------------------------------"
                                 , "Prettyprinted declarations:"
                                 , ""
-                                ,  ppPrintString (focusModule cbx decls)
+                                ,  ppPrintString (focus cbx decls)
                                 , ""
                                 , "Show instance of declarations:"
                                 , ""

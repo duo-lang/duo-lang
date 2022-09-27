@@ -200,7 +200,7 @@ instance ToHoverMap (Term pc) where
     M.unions $ xcaseToHoverMap loc pc ty ns : (toHoverMap <$> cases)
   toHoverMap (RawMuAbs loc pc ty _ cmd) =
     M.unions [muAbsToHoverMap loc pc ty, toHoverMap cmd]
-  toHoverMap (Dtor loc _ ty ns _ e (s1,_,s2)) =
+  toHoverMap (Dtor loc _ ty ns _ e (MkSubstitutionI (s1,_,s2))) =
     M.unions $ [dtorToHoverMap loc ty ns] <> (toHoverMap <$> (PrdTerm e:(s1 ++ s2)))
   toHoverMap (CaseOf loc _ ty ns e cases) =
     M.unions $ [caseToHoverMap loc ty ns] <> (toHoverMap <$> cases) <> [toHoverMap e]
@@ -226,7 +226,7 @@ instance ToHoverMap (Term pc) where
                                ]
   toHoverMap (XCaseI loc _pcrep CnsRep ty ns tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
-  toHoverMap (Semi loc _ ty ns _ (s1,_,s2) t) =
+  toHoverMap (Semi loc _ ty ns _ (MkSubstitutionI (s1,_,s2)) t) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> (CnsTerm t:(s1 ++ s2)))
   toHoverMap (CocaseOf loc _ ty ns t tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI) <> [toHoverMap t]
@@ -259,7 +259,7 @@ instance ToHoverMap TST.Command where
     M.unions $ toHoverMap t : map toHoverMap tmcasesI
 
 instance ToHoverMap Substitution where
-  toHoverMap subst = M.unions (toHoverMap <$> subst)
+  toHoverMap subst = M.unions (toHoverMap <$> unSubstitution subst)
 
 ---------------------------------------------------------------------------------
 -- Converting a type to a HoverMap
