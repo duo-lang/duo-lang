@@ -42,10 +42,14 @@ data SolverState = SolverState
 
 createInitState :: ConstraintSet -> SolverState
 createInitState (ConstraintSet _ uvs kuvs) =
-  SolverState { sst_bounds =  M.fromList [(fst uv,emptyVarState (KindVar (MkKVar "TODO"))) | uv <- uvs]
+  SolverState { sst_bounds =  M.fromList $ getsst_bounds uvs
               , sst_cache = S.empty
               , sst_kvars = [([kv],Nothing) | kv <- kuvs]
               }
+  where 
+    getsst_bounds :: [(UniTVar, UVarProvenance, KVar)] -> [(UniTVar, VariableState)]
+    getsst_bounds [] = []
+    getsst_bounds ((uv,_,kv):rst) = (uv,emptyVarState (KindVar kv)):getsst_bounds rst
 
 
 type SolverM a = (ReaderT (Map ModuleName Environment, ()) (StateT SolverState (Except (NE.NonEmpty Error)))) a
