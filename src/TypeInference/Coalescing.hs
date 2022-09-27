@@ -14,7 +14,8 @@ import Syntax.RST.Types (PolarityRep(..),Polarity(..))
 import Syntax.CST.Names
 import TypeInference.Constraints
 import Loc ( defaultLoc )
-
+import Syntax.CST.Kinds
+import Pretty.Pretty
 ---------------------------------------------------------------------------------
 -- Coalescing
 ---------------------------------------------------------------------------------
@@ -181,4 +182,12 @@ coalesceXtor :: XtorSig pol -> CoalesceM (XtorSig pol)
 coalesceXtor (MkXtorSig name ctxt) = do
     ctxt' <- coalesceCtxt ctxt
     return $ MkXtorSig name ctxt'
+
+coalesceKind :: MonoKind -> CoalesceM MonoKind
+coalesceKind (KindVar kv) = do
+  mp <- asks (kvarSolution . r_result)
+  case M.lookup kv mp of
+    Nothing -> error ("Kind Variable " <> show kv <> " does not have an assigned kind")
+    Just mk -> return mk
+coalesceKind mk = return mk
 
