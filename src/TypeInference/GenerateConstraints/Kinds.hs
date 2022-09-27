@@ -131,12 +131,12 @@ annotTy (RST.TyRecVar loc _ tv) = throwOtherError loc ["Unbound RecVar " <> ppPr
 annotTy (RST.TyData loc pol xtors) = do 
   let xtnms = map RST.sig_name xtors
   xtorKinds <- mapM lookupXtorKind xtnms
+  xtors' <- mapM (flip (lookupXtorSig loc) pol) xtnms
   let allEq = compXtorKinds xtorKinds  
   case allEq of 
     Nothing -> throwOtherError loc ["Not all xtors have the same return kind"]
     Just mk -> do 
-      xtors' <- mapM (\x -> lookupXtorSig loc x pol) xtnms
-      return $ TST.TyData loc pol mk xtors' 
+      return $ TST.TyData loc pol mk xtors'
   where 
     compXtorKinds :: [MonoKind] -> Maybe MonoKind
     compXtorKinds [] = Nothing 
@@ -145,11 +145,11 @@ annotTy (RST.TyData loc pol xtors) = do
 annotTy (RST.TyCodata loc pol xtors) = do 
   let xtnms = map RST.sig_name xtors
   xtorKinds <- mapM lookupXtorKind xtnms
+  xtors' <- mapM (flip (lookupXtorSig loc) (RST.flipPolarityRep pol)) xtnms
   let allEq = compXtorKinds xtorKinds  
   case allEq of 
     Nothing -> throwOtherError loc ["Not all xtors have the same return kind"]
     Just mk -> do 
-      xtors' <- mapM (\x -> lookupXtorSig loc x (RST.flipPolarityRep pol)) xtnms
       return $ TST.TyCodata loc pol mk xtors' 
   where 
     compXtorKinds :: [MonoKind] -> Maybe MonoKind
