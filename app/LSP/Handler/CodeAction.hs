@@ -1,12 +1,19 @@
 {-# LANGUAGE TypeOperators #-}
-module LSP.Handler.CodeAction (codeActionHandler) where
+{-# LANGUAGE DeriveAnyClass #-}
+{-# LANGUAGE DeriveGeneric #-}
 
+module LSP.Handler.CodeAction (codeActionHandler
+                              , evalHandler
+                              ) where
+
+import GHC.Generics
 import Control.Monad (join)
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe ( fromMaybe, isNothing )
 import Data.Text qualified as T
 import Language.LSP.Types
+import qualified Language.LSP.Types as TDI (TextDocumentIdentifier(..))
 import Language.LSP.Server
 import Language.LSP.VFS
 import System.Log.Logger ( debugM )
@@ -17,7 +24,7 @@ import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Types (PrdCnsRep(..))
 import Driver.Definition
-import Driver.Driver ( inferProgramIO )
+import Driver.Driver ( inferProgramIO, runCompilationModule )
 import Dualize.Program (dualDataDecl)
 import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
 import LSP.Definition ( LSPMonad )
@@ -27,15 +34,25 @@ import Parser.Program ( moduleP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
-import Syntax.CST.Names ( FreeVarName(..) )
+import Syntax.CST.Names ( FreeVarName(..), ModuleName (MkModuleName) )
 import Translate.Focusing ( Focus(..) )
 import Loc
 import Eval.Eval (eval, EvalMWrapper (..))
 import qualified Syntax.TST.Terms as TST
 import Errors (Error)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty ((:|)))
 import Control.Monad.State.Strict (StateT, execStateT)
 import Control.Monad.Writer.Strict (Writer, execWriter)
+import Data.Coerce (coerce)
+import qualified Data.Aeson as J
+import Control.Exception (throw)
+import System.Directory (getCurrentDirectory, makeRelativeToCurrentDirectory)
+import Data.List (stripPrefix)
+import Eval.Definition (EvalEnv)
+import Data.Foldable (fold)
+import Driver.Repl (desugarEnv)
+import qualified Data.Map as M
+import System.FilePath (splitFileName)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -95,7 +112,7 @@ generateCodeAction ident Range {_start = start } (TST.PrdCnsDecl _ decl) | looku
 generateCodeAction ident Range {_start = start} (TST.CmdDecl decl) | lookupPos start (TST.cmddecl_loc decl) =
   generateCodeActionCommandDeclaration ident decl
 generateCodeAction ident Range {_start = _start} (TST.DataDecl decl) = dualizeDecl
-  where     
+  where
     dualizeDecl = [generateDualizeDeclCodeAction ident (RST.data_loc decl) decl]
 generateCodeAction _ _ _ = []
 
@@ -292,28 +309,83 @@ generateCmdDesugarEdit (TextDocumentIdentifier uri) decl =
                   , _changeAnnotations = Nothing
                   }
 
+data EvalCmdArgs = MkEvalCmdArgs  { evalArgs_loc :: Range
+                                  , evalArgs_uri :: TextDocumentIdentifier
+                                  , evalArgs_cmd :: FreeVarName
+                                  } 
+  deriving (Show, Generic, J.FromJSON, J.ToJSON)
+
 generateCmdEvalCodeAction ::  TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
 generateCmdEvalCodeAction ident decl =
-  InR $ CodeAction { _title = "Eval " <> unFreeVarName (TST.cmddecl_name decl)
-                   , _kind = Just CodeActionQuickFix
-                   , _diagnostics = Nothing
-                   , _isPreferred = Nothing
-                   , _disabled = Nothing
-                   , _edit = Just (generateCmdEvalEdit ident decl)
-                   , _command = Nothing
-                   , _xdata = Nothing
-                   }
+  let cmd = TST.cmddecl_name decl
+      args = MkEvalCmdArgs  { evalArgs_loc = locToRange (TST.cmddecl_loc decl)
+                            , evalArgs_uri = ident
+                            , evalArgs_cmd = cmd
+                            }
+  in InR $ CodeAction { _title = "Eval " <> unFreeVarName (TST.cmddecl_name decl)
+                      , _kind = Just CodeActionQuickFix
+                      , _diagnostics = Nothing
+                      , _isPreferred = Nothing
+                      , _disabled = Nothing
+                      --  , _edit = Just (generateCmdEvalEdit ident decl)
+                      , _edit = Nothing
+                      , _command = Just $ Command { _title = "eval", _command = "duo-inline-eval", _arguments = Just $ List [J.toJSON args] }
+                      , _xdata = Nothing
+                      }
 
-generateCmdEvalEdit :: TextDocumentIdentifier -> TST.CommandDeclaration -> WorkspaceEdit
-generateCmdEvalEdit (TextDocumentIdentifier uri) decl =
-  let
-    evalEnv = undefined
-    result = execWriter $ flip execStateT [] $ unEvalMWrapper (eval (TST.cmddecl_cmd decl) evalEnv :: EvalMWrapper (StateT [Int] (Writer [String])) (Either (NonEmpty Error) TST.Command))
-    replacement = T.pack $ unlines result ++ "\n"
-    edit = TextEdit {_range = locToStartRange (TST.cmddecl_loc decl), _newText = replacement }
-  in
-    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
-                  , _documentChanges = Nothing
-                  , _changeAnnotations = Nothing
-                  }
+stopHandler :: (Either ResponseError b -> LSPMonad ()) -> String -> String -> LSPMonad a
+stopHandler responder s e = responder (Left $ ResponseError InvalidRequest (T.pack e) Nothing) >> liftIO (debugM s e >> fail e)
+
+evalHandler :: Handlers LSPMonad
+evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params} responder -> do
+  let source = "lspserver.evalHandler" 
+  liftIO $ debugM source "Received eval request"
+  let ExecuteCommandParams{_command, _arguments} = _params
+  if _command == "duo-inline-eval"
+    then do
+      let getJSON :: List J.Value -> LSPMonad EvalCmdArgs
+          getJSON (List xs) = case xs of
+                                [] -> stopHandler responder source "Arguments should not be empty"
+                                [args] -> case J.fromJSON args :: J.Result EvalCmdArgs of
+                                            J.Success ea -> return ea
+                                            J.Error e    -> do
+                                                responder (Left $ ResponseError InvalidRequest ("Request " <> _command <> " is invalid") Nothing)
+                                                liftIO $ fail e
+                                _xs -> stopHandler responder source "Specified more than one argument!"
+      args <- maybe (stopHandler responder source "No arguments") getJSON _arguments
+      liftIO $ debugM source $ "Running " <> T.unpack _command <> " with args " <> show args
+
+      -- get Module name
+      let uri = TDI._uri $ evalArgs_uri args
+      let fullPath = fromMaybe "" $ uriToFilePath uri
+      liftIO $ debugM source $ "Running " <> T.unpack _command <> " with filepath " <> show fullPath
+      --  relPath <- liftIO $ makeRelativeToCurrentDirectory fullPath
+      let relPath = snd $ splitFileName fullPath
+      liftIO $ debugM source $ "Running " <> T.unpack _command <> " with relativefilepath " <> show relPath
+      let mn = MkModuleName $ T.pack relPath
+
+      -- execute command
+      (res, _warnings) <- liftIO $ execDriverM defaultDriverState (runCompilationModule mn >> queryTypecheckedModule mn)
+      (_, MkDriverState { drvEnv }) <- case res of
+                  Left errs -> stopHandler responder source $ unlines $ (\(x :| xs) -> x:xs) $ show <$> errs
+                  Right drvEnv -> return drvEnv
+      let compiledEnv :: EvalEnv = focus CBV ((\map -> fold $ desugarEnv <$> M.elems map) drvEnv)
+      let res = execWriter $ flip execStateT [] $ unEvalMWrapper $ eval (TST.Jump defaultLoc (evalArgs_cmd args)) compiledEnv
+      liftIO $ debugM source $ "Running " <> T.unpack _command <> " with result " <> unlines res
+
+      -- create edit
+      let toComments = fmap ("-- " ++)
+      let rangeToStartRange Range { _start } = Range {_start = _start, _end = _start}
+      let edit = TextEdit { _range = rangeToStartRange (evalArgs_loc args), _newText = T.pack $ unlines $ toComments res}
+      let wedit = WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                                , _documentChanges = Nothing
+                                , _changeAnnotations = Nothing
+                                }
+      let weditP = ApplyWorkspaceEditParams { _label = Nothing, _edit = wedit }
+      let responder' x = case x of
+                          Left e  -> responder (Left e)
+                          Right x -> return ()
+      _ <- sendRequest SWorkspaceApplyEdit weditP responder'
+      responder (Right $ J.toJSON ())
+    else responder (Left $ ResponseError InvalidRequest ("Request " <> _command <> " is invalid") Nothing)
 

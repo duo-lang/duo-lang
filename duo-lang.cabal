@@ -39,6 +39,7 @@ common shared-build-depends
     , sorted-list
     , hslogger
     , unordered-containers
+    , aeson
 
 common app-build-depends
   build-depends:
