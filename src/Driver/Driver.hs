@@ -224,7 +224,7 @@ inferDecl mn (Core.DataDecl decl) = do
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
   let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
   modifyEnvironment mn f
-  pure (TST.DataDecl decl)
+  pure (TST.DataDecl decl')
   where 
     insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
     insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do

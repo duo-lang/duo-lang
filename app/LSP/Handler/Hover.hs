@@ -32,6 +32,7 @@ import Syntax.RST.Types (PolarityRep(..))
 import Loc (Loc)
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
+import Translate.EmbedTST (embedTST)
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
@@ -490,6 +491,10 @@ instance ToHoverMap RST.ClassDeclaration where
 instance ToHoverMap TST.InstanceDeclaration where
   toHoverMap TST.MkInstanceDeclaration { instancedecl_cases } =
     M.unions $! toHoverMap <$> instancedecl_cases
+
+--change this to actually show kinds
+instance ToHoverMap TST.DataDecl where 
+  toHoverMap decl = toHoverMap (embedTST decl)
 
 ---------------------------------------------------------------------------------
 -- Converting a program to a HoverMap

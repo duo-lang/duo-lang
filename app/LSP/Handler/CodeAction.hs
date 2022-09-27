@@ -30,6 +30,7 @@ import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, rese
 import Syntax.CST.Names ( FreeVarName(..) )
 import Translate.Focusing ( isFocusedTerm, isFocusedCmd, Focus(..) )
 import Loc
+import Translate.EmbedTST (embedTST)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -89,7 +90,7 @@ generateCodeAction ident Range {_start = start} (TST.CmdDecl decl) | lookupPos s
   generateCodeActionCommandDeclaration ident decl
 generateCodeAction ident Range {_start = _start} (TST.DataDecl decl) = dualizeDecl
   where     
-    dualizeDecl = [generateDualizeDeclCodeAction ident (RST.data_loc decl) decl]
+    dualizeDecl = [generateDualizeDeclCodeAction ident (TST.data_loc decl) (embedTST decl)]
 generateCodeAction _ _ _ = []
 
 ---------------------------------------------------------------------------------
@@ -171,7 +172,7 @@ generateDualizeDeclEdit :: Uri -> Loc -> RST.DataDecl -> WorkspaceEdit
 generateDualizeDeclEdit uri loc decl =
   let
     decl' = dualDataDecl decl
-    replacement = ppPrint (TST.DataDecl decl')
+    replacement = ppPrint (RST.DataDecl  decl')
     edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))

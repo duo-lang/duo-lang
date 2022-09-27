@@ -246,7 +246,7 @@ instance EmbedTST TST.Declaration Core.Declaration where
   embedTST (TST.CmdDecl decl) =
       Core.CmdDecl (embedTST decl)
   embedTST (TST.DataDecl decl) =
-      Core.DataDecl decl
+      Core.DataDecl (embedTST decl)
   embedTST (TST.XtorDecl decl) =
       Core.XtorDecl decl
   embedTST (TST.ImportDecl decl) =
