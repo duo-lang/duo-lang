@@ -162,12 +162,15 @@ unifyKinds (CBox cc1) (CBox cc2) =
 unifyKinds (KindVar kv1) (KindVar kv2) = do
   sets <- getKVars
   ((kvset1,mk1),rest1) <- partitionM sets kv1
-  ((kvset2,mk2),rest2) <- partitionM sets kv2
-  let newSet = kvset1 ++ kvset2
-  case (mk1,mk2) of
-    (mk1, Nothing) -> putKVars $ (newSet,mk1):rest2
-    (Nothing, mk2) -> putKVars $ (newSet,mk2):rest1
-    (Just mk1, Just mk2) | mk1 == mk2 -> putKVars $ (newSet, Just mk1) :rest2
+  part2 <- partitionM rest1 kv2
+  case part2 of 
+    (([],_),_) -> return ()
+    ((kvset2,mk2), rest2) -> do
+      let newSet = kvset1 ++ kvset2
+      case (mk1,mk2) of
+        (mk1, Nothing) -> putKVars $ (newSet,mk1):rest2
+        (Nothing, mk2) -> putKVars $ (newSet,mk2):rest1
+        (Just mk1, Just mk2) | mk1 == mk2 -> putKVars $ (newSet, Just mk1) :rest2
                          | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint mk1 <> " and " <> ppPrint mk2]
 unifyKinds (KindVar kv) kind = do
   sets <- getKVars
