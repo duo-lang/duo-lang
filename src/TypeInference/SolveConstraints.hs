@@ -102,9 +102,18 @@ addLowerBound uv ty = do
   let ubs = vst_upperbounds bounds
   return [SubType LowerBoundConstraint ty ub | ub <- ubs]
 
-addTypeClassConstraint :: PolarityRep pol -> UniTVar -> ClassName -> SolverM ()
-addTypeClassConstraint PosRep uv cn = modifyBounds (\(VariableState ubs lbs poscns negcns kind) -> VariableState ubs lbs (cn:poscns) negcns kind) uv
-addTypeClassConstraint NegRep uv cn = modifyBounds (\(VariableState ubs lbs poscns negcns kind) -> VariableState ubs lbs poscns (cn:negcns) kind) uv
+-- | Add and propagate type class constraints (might be superfluous).
+addTypeClassConstraint :: PolarityRep pol -> UniTVar -> ClassName -> SolverM [Constraint ConstraintInfo]
+addTypeClassConstraint PosRep uv cn = do
+  modifyBounds (\(VariableState ubs lbs poscns negcns kind) -> VariableState ubs lbs (cn:poscns) negcns kind) uv
+  bounds <- getBounds uv
+  let lbs = vst_lowerbounds bounds
+  return [TypeClassPos (TypeClassConstraint defaultLoc) cn lb | lb <- lbs]
+addTypeClassConstraint NegRep uv cn = do
+  modifyBounds (\(VariableState ubs lbs poscns negcns kind) -> VariableState ubs lbs poscns (cn:negcns) kind) uv
+  bounds <- getBounds uv
+  let ubs = vst_upperbounds bounds
+  return [TypeClassNeg (TypeClassConstraint defaultLoc) cn ub | ub <- ubs]
 
 -- lookupKVar :: KVar -> Map (Maybe MonoKind) (Set KVar) -> SolverM (Maybe MonoKind, Set KVar)
 -- lookupKVar kv mp = case M.toList (M.filter (\x -> kv `elem` x) mp) of 
