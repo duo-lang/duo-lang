@@ -37,7 +37,7 @@ runRun DebugFlags { df_debug, df_printGraphs } mn = do
       evalCmd <- liftIO $ eval (TST.Jump defaultLoc (MkFreeVarName "main")) compiledEnv
       case evalCmd of
           Left errs -> mapM_ printLocatedReport errs
-          Right res -> ppPrintIO res
+          Right _res -> return ()
     where
       driverState = defaultDriverState { drvOpts = infOpts }
       infOpts = (if df_printGraphs then setPrintGraphOpts else id) infOpts'

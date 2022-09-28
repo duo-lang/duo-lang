@@ -23,12 +23,16 @@ import Control.Monad.Writer (MonadWriter)
 import Control.Monad.State (MonadState (..))
 
 class EvalMonad m where
-  printM :: PrettyAnn a => a -> EvalM m ()
-  readM  :: EvalM m (Term 'Prd)
+  printM   :: PrettyAnn a => a -> EvalM m ()
+  readM    :: EvalM m (Term 'Prd)
+  failM    :: EvalM m ()
+  successM :: EvalM m ()
 
 instance EvalMonad IO where
-  printM = liftIO . ppPrintIO
-  readM  = liftIO readInt
+  printM   = liftIO . ppPrintIO
+  readM    = liftIO readInt
+  failM    = liftIO (ppPrintIO $ ExitFailure defaultLoc)
+  successM = liftIO (ppPrintIO $ ExitSuccess defaultLoc)
 
 -- this wrapper is only needed to avoid overlapping EvalMonad instances for IO
 newtype EvalMWrapper m a = MkEvalMWrapper { unEvalMWrapper :: m a }
@@ -43,6 +47,8 @@ instance (MonadState [Int] m, MonadWriter [String] m) => EvalMonad (EvalMWrapper
       (i:is)  -> do
         put is
         return $ convertInt i
+  failM    = ppPrintWriter $ ExitFailure defaultLoc
+  successM = ppPrintWriter $ ExitSuccess defaultLoc
 
 ---------------------------------------------------------------------------------
 -- Terms
@@ -50,8 +56,8 @@ instance (MonadState [Int] m, MonadWriter [String] m) => EvalMonad (EvalMWrapper
 
 -- | Returns Nothing if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
 evalTermOnce :: (Monad m, EvalMonad m) => Command -> EvalM m (Maybe Command)
-evalTermOnce (ExitSuccess _) = return Nothing
-evalTermOnce (ExitFailure _) = return Nothing
+evalTermOnce (ExitSuccess _) = successM >> return Nothing
+evalTermOnce (ExitFailure _) = failM >> return Nothing
 evalTermOnce (Print _ prd cmd) = do
   printM prd
   return (Just cmd)
