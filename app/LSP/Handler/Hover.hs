@@ -32,7 +32,6 @@ import Syntax.RST.Types (PolarityRep(..))
 import Loc (Loc)
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
-import Translate.EmbedTST (embedTST)
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
@@ -447,11 +446,11 @@ instance ToHoverMap TST.CommandDeclaration where
   toHoverMap TST.MkCommandDeclaration { cmddecl_cmd } =
     toHoverMap cmddecl_cmd
 
-instance ToHoverMap RST.DataDecl where
-  toHoverMap RST.NominalDecl { data_loc, data_polarity } = mkHoverMap data_loc msg
+instance ToHoverMap TST.DataDecl where
+  toHoverMap TST.NominalDecl { data_loc, data_polarity } = mkHoverMap data_loc msg
     where
       msg = T.unlines [ "#### Nominal " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" ]
-  toHoverMap RST.RefinementDecl { data_loc, data_polarity, data_refinement_empty, data_refinement_full } = mkHoverMap data_loc msg
+  toHoverMap TST.RefinementDecl { data_loc, data_polarity, data_refinement_empty, data_refinement_full } = mkHoverMap data_loc msg
     where
       msg = T.unlines [ "#### Refinement " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" 
                       , " - Empty refinement type: " <> ppPrint (fst data_refinement_empty)
@@ -491,10 +490,6 @@ instance ToHoverMap RST.ClassDeclaration where
 instance ToHoverMap TST.InstanceDeclaration where
   toHoverMap TST.MkInstanceDeclaration { instancedecl_cases } =
     M.unions $! toHoverMap <$> instancedecl_cases
-
---change this to actually show kinds
-instance ToHoverMap TST.DataDecl where 
-  toHoverMap decl = toHoverMap (embedTST decl)
 
 ---------------------------------------------------------------------------------
 -- Converting a program to a HoverMap
