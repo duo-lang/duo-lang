@@ -10,8 +10,7 @@ import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types qualified as CST
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
-import Translate.EmbedRST
-import Translate.EmbedCore ()
+import Resolution.Unresolve (Unresolve (..), runUnresolveM)
 import Translate.EmbedTST (EmbedTST(..))
 
 ---------------------------------------------------------------------------------
@@ -87,10 +86,10 @@ instance PrettyAnn CST.DataCodata where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (RST.VariantType pol) where
-  prettyAnn varType = prettyAnn (embedRST varType)
+  prettyAnn varType = prettyAnn (runUnresolveM (unresolve varType))
 
 instance PrettyAnn (RST.PrdCnsType pol) where
-  prettyAnn pctype = prettyAnn (embedRST pctype)
+  prettyAnn pctype = prettyAnn (runUnresolveM (unresolve pctype))
 
 instance PrettyAnn (TST.PrdCnsType pol) where 
   prettyAnn pctype = prettyAnn (embedTST pctype)
@@ -100,7 +99,7 @@ instance PrettyAnn CST.PrdCnsTyp where
   prettyAnn (CST.CnsType ty) = returnKw <+> prettyAnn ty
 
 instance {-# OVERLAPPING #-} PrettyAnn (RST.LinearContext pol) where
-  prettyAnn ctxt = prettyAnn (embedRST ctxt)
+  prettyAnn ctxt = prettyAnn (runUnresolveM (unresolve ctxt))
 
 instance {-# OVERLAPPING #-} PrettyAnn CST.LinearContext where
   prettyAnn ctxt = parens' comma (prettyAnn <$> ctxt)
@@ -109,7 +108,7 @@ instance {-# OVERLAPPING #-} PrettyAnn (TST.LinearContext pol) where
   prettyAnn ctxt = parens' comma (prettyAnn <$> ctxt)
 
 instance PrettyAnn (RST.XtorSig pol) where
-  prettyAnn xtorSig = prettyAnn (embedRST xtorSig)
+  prettyAnn xtorSig = prettyAnn (runUnresolveM (unresolve xtorSig))
 
 instance PrettyAnn (TST.XtorSig pol) where
   prettyAnn xtorSig = prettyAnn (embedTST xtorSig)
@@ -122,7 +121,7 @@ instance PrettyAnn CST.XtorSig where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (RST.Typ pol) where
-  prettyAnn typ = prettyAnn (embedRST typ)
+  prettyAnn typ = prettyAnn (runUnresolveM (unresolve typ))
 
 instance PrettyAnn (TST.Typ pol) where
   prettyAnn typ = prettyAnn (embedTST typ)
@@ -170,7 +169,7 @@ instance PrettyAnn CST.Typ where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn (RST.TypeScheme pol) where
-  prettyAnn tys = prettyAnn (embedRST tys)
+  prettyAnn tys = prettyAnn (runUnresolveM (unresolve tys))
 
 instance PrettyAnn (TST.TypeScheme pol) where
   prettyAnn tys = prettyAnn (embedTST tys)

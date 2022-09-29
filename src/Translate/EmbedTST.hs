@@ -46,7 +46,7 @@ instance EmbedTST TST.PrdCnsTerm Core.PrdCnsTerm where
 
 instance EmbedTST TST.Substitution Core.Substitution where
   embedTST  :: TST.Substitution -> Core.Substitution
-  embedTST  = fmap embedTST 
+  embedTST  = Core.MkSubstitution . fmap embedTST . TST.unSubstitution
 
 instance EmbedTST (TST.Term pc) (Core.Term pc) where
   embedTST :: TST.Term pc -> Core.Term pc

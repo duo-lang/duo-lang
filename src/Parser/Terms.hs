@@ -35,13 +35,13 @@ termOrStarP = starP <|> nonStarP
       sc
       pure (CST.ToSTerm tm)
 
-substitutionIP :: Parser ([CST.TermOrStar], SourcePos)
+substitutionIP :: Parser (CST.SubstitutionI, SourcePos)
 substitutionIP = do
      s <- optional $ do
       (args,_) <- parensP (termOrStarP `sepBy` (symbolP SymComma >> sc))
-      pure args
+      pure (CST.MkSubstitutionI args)
      pos <- getSourcePos
-     return (Data.Maybe.fromMaybe [] s,pos)
+     return (Data.Maybe.fromMaybe (CST.MkSubstitutionI []) s,pos)
 
 
 --------------------------------------------------------------------------------------------
@@ -60,9 +60,9 @@ primTermP = do
   (nm, _pos) <- primNameP
   subst <- optional $ do
     (args,_) <- parensP ( (fst <$> term3P) `sepBy` (symbolP SymComma >> sc))
-    pure args
+    pure (CST.MkSubstitution args)
   endPos <- getSourcePos
-  pure (CST.PrimTerm (Loc startPos endPos) nm (Data.Maybe.fromMaybe [] subst), endPos)
+  pure (CST.PrimTerm (Loc startPos endPos) nm (Data.Maybe.fromMaybe (CST.MkSubstitution []) subst), endPos)
 
 xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
@@ -366,7 +366,7 @@ term0P =
 -------------------------------------------------------------------------------------------
 
 -- | Parses "D(t3,..*.,t3)"
-destructorP :: Parser (XtorName, [CST.TermOrStar], SourcePos)
+destructorP :: Parser (XtorName, CST.SubstitutionI, SourcePos)
 destructorP = do
   (xt, _) <- xtorNameP
   (substi, endPos) <- substitutionIP

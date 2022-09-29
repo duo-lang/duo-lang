@@ -136,12 +136,14 @@ library
       Resolution.SymbolTable
       Resolution.Terms
       Resolution.Types
+      Resolution.Unresolve
       Dualize.Terms
       Dualize.Program
       Sugar.Desugar
       Sugar.Core
       Sugar.TST
       Syntax.LocallyNameless
+      Syntax.NMap
       Syntax.TST.Program
       Syntax.TST.Terms
       Syntax.TST.Types
@@ -175,8 +177,6 @@ library
       TypeInference.SolveConstraints
       TypeInference.Constraints
       Translate.Focusing
-      Translate.EmbedRST
-      Translate.EmbedCore
       Translate.EmbedTST
       Utils
   other-modules:

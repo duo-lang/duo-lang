@@ -3,7 +3,7 @@ module Syntax.Core.Terms
   ( -- Terms
     Term(..)
   , PrdCnsTerm(..)
-  , Substitution
+  , Substitution(..)
   , RST.Pattern(..)
   , CmdCase(..)
   , InstanceCase(..)
@@ -25,6 +25,7 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.LocallyNameless (LocallyNameless (..), Shiftable (..))
+import Syntax.NMap (NMap (..), (<¢>))
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -48,8 +49,12 @@ data PrdCnsTerm where
 --deriving instance Eq PrdCnsTerm 
 deriving instance Show PrdCnsTerm
 
-type Substitution = [PrdCnsTerm]
+newtype Substitution = MkSubstitution { unSubstitution :: [PrdCnsTerm] }
+  deriving (Show)
 
+instance NMap Substitution PrdCnsTerm where
+  nmap f = MkSubstitution . fmap f . unSubstitution
+  nmapM f = fmap MkSubstitution . mapM f . unSubstitution
 
 -- | Represents one case in a pattern match or copattern match.
 --
@@ -149,14 +154,14 @@ pctermOpeningRec k subst (PrdTerm tm) = PrdTerm $ termOpeningRec k subst tm
 pctermOpeningRec k subst (CnsTerm tm) = CnsTerm $ termOpeningRec k subst tm
 
 termOpeningRec :: Int -> Substitution -> Term pc -> Term pc
-termOpeningRec k subst bv@(BoundVar _ pcrep(i,j)) | i == k    = case (pcrep, subst !! j) of
+termOpeningRec k subst bv@(BoundVar _ pcrep(i,j)) | i == k    = case (pcrep, unSubstitution subst !! j) of
                                                                      (PrdRep, PrdTerm tm) -> tm
                                                                      (CnsRep, CnsTerm tm) -> tm
                                                                      _                    -> error "termOpeningRec BOOM"
                                                   | otherwise = bv
 termOpeningRec _ _ fv@FreeVar{} = fv
 termOpeningRec k args (Xtor loc annot rep ns xt subst) =
-  Xtor loc annot rep ns xt (pctermOpeningRec k args <$> subst)
+  Xtor loc annot rep ns xt (pctermOpeningRec k args <¢> subst)
 termOpeningRec k args (XCase loc annot rep ns cases) =
   XCase loc annot rep ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
 termOpeningRec k args (MuAbs loc annot rep fv cmd) =
@@ -179,11 +184,11 @@ commandOpeningRec k args (Read loc cns) =
 commandOpeningRec _ _ (Jump loc fv) =
   Jump loc fv
 commandOpeningRec k args (Method loc mn cn subst) =
-  Method loc mn cn (pctermOpeningRec k args <$> subst)
+  Method loc mn cn (pctermOpeningRec k args <¢> subst)
 commandOpeningRec k args (Apply loc annot t1 t2) =
   Apply loc annot (termOpeningRec k args t1) (termOpeningRec k args t2)
 commandOpeningRec k args (PrimOp loc op subst) =
-  PrimOp loc op (pctermOpeningRec k args <$> subst)
+  PrimOp loc op (pctermOpeningRec k args <¢> subst)
 
 ---------------------------------------------------------------------------------
 -- Variable Closing
@@ -200,7 +205,7 @@ termClosingRec k vars (FreeVar loc PrdRep v) | isJust ((Prd,v) `elemIndex` vars)
 termClosingRec k vars (FreeVar loc CnsRep v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep (k, fromJust ((Cns,v) `elemIndex` vars))
                                              | otherwise = FreeVar loc CnsRep v
 termClosingRec k vars (Xtor loc annot pc ns xt subst) =
-  Xtor loc annot pc ns xt (pctermClosingRec k vars <$> subst)
+  Xtor loc annot pc ns xt (pctermClosingRec k vars <¢> subst)
 termClosingRec k vars (XCase loc annot pc sn cases) =
   XCase loc annot pc sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
 termClosingRec k vars (MuAbs loc annot pc fv cmd) =
@@ -218,7 +223,7 @@ commandClosingRec _ _ (ExitFailure ext) =
 commandClosingRec _ _ (Jump ext fv) =
   Jump ext fv
 commandClosingRec k args (Method loc mn cn subst) =
-  Method loc mn cn (pctermClosingRec k args <$> subst)
+  Method loc mn cn (pctermClosingRec k args <¢> subst)
 commandClosingRec k args (Print ext t cmd) =
   Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
 commandClosingRec k args (Read ext cns) =
@@ -226,7 +231,7 @@ commandClosingRec k args (Read ext cns) =
 commandClosingRec k args (Apply ext annot t1 t2) =
   Apply ext annot (termClosingRec k args t1) (termClosingRec k args t2)
 commandClosingRec k args (PrimOp ext op subst) =
-  PrimOp ext op (pctermClosingRec k args <$> subst)
+  PrimOp ext op (pctermClosingRec k args <¢> subst)
 
 instance LocallyNameless Substitution [(PrdCns, FreeVarName)] Command where
   openRec  = commandOpeningRec
@@ -266,7 +271,7 @@ termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either Error ()
 termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
 termLocallyClosedRec _ FreeVar{} = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
-  sequence_ (pctermLocallyClosedRec env <$> subst)
+  sequence_ (pctermLocallyClosedRec env <$> unSubstitution subst)
 termLocallyClosedRec env (XCase _ _ _ _ cases) = do
   sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_pat = RST.XtorPat _ _ args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase_cmd) <$> cases)
 termLocallyClosedRec env (MuAbs _ _ PrdRep _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
@@ -280,11 +285,11 @@ commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either Error ()
 commandLocallyClosedRec _ (ExitSuccess _) = Right ()
 commandLocallyClosedRec _ (ExitFailure _) = Right ()
 commandLocallyClosedRec _ (Jump _ _) = Right ()
-commandLocallyClosedRec env (Method _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
+commandLocallyClosedRec env (Method _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> unSubstitution subst
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
-commandLocallyClosedRec env (PrimOp _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
+commandLocallyClosedRec env (PrimOp _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> unSubstitution subst
 
 termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
@@ -309,7 +314,7 @@ instance Shiftable (Term pc) where
                                                   | otherwise = BoundVar loc pcrep (i    , j)                                        
   shiftRec _ _ var@FreeVar {} = var
   shiftRec dir n (Xtor loc annot pcrep ns xt subst) =
-    Xtor loc annot pcrep ns xt (shiftRec dir n <$> subst)
+    Xtor loc annot pcrep ns xt (shiftRec dir n <¢> subst)
   shiftRec dir n (XCase loc annot pcrep ns cases) =
     XCase loc annot pcrep ns (shiftRec dir (n + 1) <$> cases)
   shiftRec dir n (MuAbs loc annot pcrep bs cmd) =
@@ -331,5 +336,5 @@ instance Shiftable Command where
   shiftRec dir n (Print ext prd cmd) = Print ext (shiftRec dir n prd) (shiftRec dir n cmd)
   shiftRec dir n (Read ext cns) = Read ext (shiftRec dir n cns)
   shiftRec _ _ (Jump ext fv) = Jump ext fv
-  shiftRec dir n (Method ext mn cn subst) = Method ext mn cn (shiftRec dir n <$> subst)
-  shiftRec dir n (PrimOp ext op subst) = PrimOp ext op (shiftRec dir n <$> subst)
+  shiftRec dir n (Method ext mn cn subst) = Method ext mn cn (shiftRec dir n <¢> subst)
+  shiftRec dir n (PrimOp ext op subst) = PrimOp ext op (shiftRec dir n <¢> subst)
