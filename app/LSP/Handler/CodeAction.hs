@@ -329,7 +329,7 @@ generateCmdDesugarEdit (TextDocumentIdentifier uri) decl =
 data EvalCmdArgs = MkEvalCmdArgs  { evalArgs_loc :: Range
                                   , evalArgs_uri :: TextDocumentIdentifier
                                   , evalArgs_cmd :: FreeVarName
-                                  } 
+                                  }
   deriving (Show, Generic, J.FromJSON, J.ToJSON)
 
 generateCmdEvalCodeAction ::  TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
@@ -353,56 +353,84 @@ generateCmdEvalCodeAction ident decl =
 stopHandler :: (Either ResponseError b -> LSPMonad ()) -> String -> String -> LSPMonad a
 stopHandler responder s e = responder (Left $ ResponseError InvalidRequest (T.pack e) Nothing) >> liftIO (debugM s e >> fail e)
 
+uriToModuleName :: Uri -> ModuleName
+uriToModuleName uri =
+      let fullPath = fromMaybe "" $ uriToFilePath uri
+          relPath = dropExtension $ snd $ splitFileName fullPath
+      in MkModuleName $ T.pack relPath
+
+evalArgsFromJSON  :: LSPMonad EvalCmdArgs
+                  -> LSPMonad EvalCmdArgs
+                  -> (String -> LSPMonad EvalCmdArgs)
+                  -> Maybe (List J.Value)
+                  -> LSPMonad EvalCmdArgs
+evalArgsFromJSON emptyFail tooManyFail errFail = maybe emptyFail getJSON
+  where
+    getJSON :: List J.Value -> LSPMonad EvalCmdArgs
+    getJSON (List xs) = case xs of
+                          [] -> emptyFail
+                          [args] -> case J.fromJSON args :: J.Result EvalCmdArgs of
+                                      J.Success ea -> return ea
+                                      J.Error e    -> do
+                                          errFail e
+                          _xs -> tooManyFail
+
+evalInModule  :: MonadIO m
+              => ModuleName
+              -> FreeVarName
+              -> (String -> m (TST.Module, DriverState))
+              -> m [String]
+evalInModule mn cmd stop = do
+      (res, _warnings) <- liftIO $ execDriverM defaultDriverState (runCompilationModule mn >> queryTypecheckedModule mn)
+      (_, MkDriverState { drvEnv }) <- case res of
+                  Left errs -> stop $ unlines $ (\(x :| xs) -> x:xs) $ show <$> errs
+                  Right drvEnv -> return drvEnv
+      let compiledEnv :: EvalEnv = focus CBV ((\map -> fold $ desugarEnv <$> M.elems map) drvEnv)
+      return $ execWriter $ flip execStateT [] $ unEvalMWrapper $ eval (TST.Jump defaultLoc cmd) compiledEnv
+
+addCommentedAbove :: Foldable t => Range -> Uri -> t String -> ApplyWorkspaceEditParams
+addCommentedAbove range uri content =
+      let toComments = unlines . fmap ("-- " ++) . concatMap lines
+          rangeToStartRange Range { _start } = Range {_start = _start, _end = _start}
+          tedit = TextEdit { _range = rangeToStartRange range, _newText = T.pack $ toComments content}
+          wedit = WorkspaceEdit { _changes = Just (Map.singleton uri (List [tedit]))
+                                , _documentChanges = Nothing
+                                , _changeAnnotations = Nothing
+                                }
+      in  ApplyWorkspaceEditParams { _label = Nothing, _edit = wedit }
+
 evalHandler :: Handlers LSPMonad
 evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params} responder -> do
-  let source = "lspserver.evalHandler" 
+  let source = "lspserver.evalHandler"
   liftIO $ debugM source "Received eval request"
   let ExecuteCommandParams{_command, _arguments} = _params
-  if _command == "duo-inline-eval"
-    then do
-      let getJSON :: List J.Value -> LSPMonad EvalCmdArgs
-          getJSON (List xs) = case xs of
-                                [] -> stopHandler responder source "Arguments should not be empty"
-                                [args] -> case J.fromJSON args :: J.Result EvalCmdArgs of
-                                            J.Success ea -> return ea
-                                            J.Error e    -> do
-                                                responder (Left $ ResponseError InvalidRequest ("Request " <> _command <> " is invalid") Nothing)
-                                                liftIO $ fail e
-                                _xs -> stopHandler responder source "Specified more than one argument!"
-      args <- maybe (stopHandler responder source "No arguments") getJSON _arguments
+  case _command of
+    "duo-inline-eval" -> do
+      -- parse arguments back from JSON
+      args <- evalArgsFromJSON
+                (stopHandler responder source "Arguments should not be empty")
+                (stopHandler responder source "Specified more than one argument!")
+                (\e -> stopHandler responder source ("Request " <> T.unpack _command <> " is invalid with error " <> e))
+                _arguments
       liftIO $ debugM source $ "Running " <> T.unpack _command <> " with args " <> show args
 
       -- get Module name
       let uri = _uri $ evalArgs_uri args
-      let fullPath = fromMaybe "" $ uriToFilePath uri
-      liftIO $ debugM source $ "Running " <> T.unpack _command <> " with filepath " <> show fullPath
-      --  relPath <- liftIO $ makeRelativeToCurrentDirectory fullPath
-      let relPath = dropExtension $ snd $ splitFileName fullPath
-      liftIO $ debugM source $ "Running " <> T.unpack _command <> " with relativefilepath " <> show relPath
-      let mn = MkModuleName $ T.pack relPath
+      let mn  = uriToModuleName uri
+      liftIO $ debugM source $ "Running " <> T.unpack _command <> " with module " <> show mn
 
       -- execute command
-      (res, _warnings) <- liftIO $ execDriverM defaultDriverState (runCompilationModule mn >> queryTypecheckedModule mn)
-      (_, MkDriverState { drvEnv }) <- case res of
-                  Left errs -> stopHandler responder source $ unlines $ (\(x :| xs) -> x:xs) $ show <$> errs
-                  Right drvEnv -> return drvEnv
-      let compiledEnv :: EvalEnv = focus CBV ((\map -> fold $ desugarEnv <$> M.elems map) drvEnv)
-      let res = execWriter $ flip execStateT [] $ unEvalMWrapper $ eval (TST.Jump defaultLoc (evalArgs_cmd args)) compiledEnv
+      res <- evalInModule mn (evalArgs_cmd args) (stopHandler responder source)
       liftIO $ debugM source $ "Running " <> T.unpack _command <> " with result " <> unlines res
 
       -- create edit
-      let toComments = fmap ("-- " ++) . concatMap lines
-      let rangeToStartRange Range { _start } = Range {_start = _start, _end = _start}
-      let edit = TextEdit { _range = rangeToStartRange (evalArgs_loc args), _newText = T.pack $ unlines $ toComments res}
-      let wedit = WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
-                                , _documentChanges = Nothing
-                                , _changeAnnotations = Nothing
-                                }
-      let weditP = ApplyWorkspaceEditParams { _label = Nothing, _edit = wedit }
+      let weditP = addCommentedAbove (evalArgs_loc args) uri res
       let responder' x = case x of
                           Left e  -> responder (Left e)
                           Right x -> return ()
       _ <- sendRequest SWorkspaceApplyEdit weditP responder'
+
+      -- signal success
       responder (Right $ J.toJSON ())
-    else responder (Left $ ResponseError InvalidRequest ("Request " <> _command <> " is invalid") Nothing)
+    _ -> responder (Left $ ResponseError InvalidRequest ("Request " <> _command <> " is invalid") Nothing)
 
