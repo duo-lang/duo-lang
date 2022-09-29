@@ -1,0 +1,35 @@
+import Function;
+import Cofunction;
+import NegationP; 
+import NegationN; 
+import Unit; 
+import VoidN;
+
+def prd contrap : ∀ a. a -> Notp(a) -> ⊥ := 
+  cocase { Ap(x1,k1) => (cocase {Ap(x2,k2) => (x2) >> case {MkNotp(k3) => (x1) >> k3}}) >> k1};
+
+def cns contran : ∀ a.  a -< ( Notn(a) -< ⊤ )  := case {
+   CoAp(k1,x1) => (x1) >> case {CoAp(k2,x2) => (cocase {MkNotn(x3) => (x3) >> k1}) >> k2}};
+
+def prd cofun2fun: forall a b. Notp(a -< b) -> (b -> a) := 
+  cocase { Ap(x,k) => x >> case { MkNotp(ku) => cocase { Ap(y,k2) => CoAp(k2,y) >> ku  } >> k  }};
+
+def cns fun2cofunx : ∀ a b.  Notn(a -> b)  -<  (b -< a)   := case {
+   CoAp(k1,x1) => 
+      (cocase {MkNotn(x2) => (x1) >> case {CoAp(k2,x3) => (x2) >> Ap( x3 , k2 )}})
+      >>
+      k1};  
+
+def prd funcofunNeg : forall a b. Notp(a -< b) -> Notp(b -> a) -> ⊥ := 
+  cocase {Ap(x,k) => cocase {Ap(y,k2) => contrap (cofun2fun x) y >> MkVoidN } >> k };
+
+def cns cofuncofunNeg : ∀ a b. ( Notn( (a -> b) ) -<  Notn(  b -< a  ) -< ⊤ ) := case {
+   CoAp(k1,x1) => (x1) >> case {CoAp(k2,x2) => (MkUnit) >> ((contran (fun2cofunx k1)) k2)}};
+
+def prd funcofun : forall a b. (a -< b) -> (b -> a) -> ⊥ :=  cocase { Ap(x,k) => cocase {Ap(y,k2) => MkUnit >> cofuncofunNeg MkNotn(y) MkNotn(x) } >> k};
+
+def prd cofun2fun2: forall x y z. Notp(x -< (y -< z) -< z) -> (z -> (z -> y) -> x) := 
+  cocase { Ap(f,k) => f >> case { MkNotp(ku) => cocase { Ap(z,k2) => cocase { Ap(zy,k3) => CoAp(k3,CoAp(fun2cofunx MkNotn(zy),z)) >> ku } >> k2  } >> k  }};  
+
+
+
