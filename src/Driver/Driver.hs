@@ -39,16 +39,14 @@ import TypeInference.GenerateConstraints.Definition
     ( runGenM )
 import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
-    ( genConstraintsTerm,
-      genConstraintsCommand,
-      genConstraintsTermRecursive,
-      genConstraintsInstance )
+    ( GenConstraints(..),
+      genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints)
 import Loc ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program (prdCnsToPol)
-import Sugar.Desugar (desugarModule)
+import Sugar.Desugar (Desugar(..))
 import qualified Data.Set as S
 import Data.Maybe (catMaybes)
 import Pretty.Common (Header(..))
@@ -88,7 +86,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 1. Generate the constraints.
   let genFun = case pcdecl_isRec of
         CST.Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
-        CST.NonRecursive -> genConstraintsTerm pcdecl_term
+        CST.NonRecursive -> genConstraints pcdecl_term
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName pcdecl_name))
@@ -112,8 +110,9 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  annot <- liftEitherErrLoc pcdecl_loc (fst $ runGenM pcdecl_loc env (annotateMaybeTypeScheme pcdecl_annot) )
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified (fst annot) pcdecl_loc
+  --  annot <- liftEitherErrLoc pcdecl_loc (fst $ runGenM pcdecl_loc env (annotateMaybeTypeScheme pcdecl_annot) )
+  annot <- maybe (return Nothing) (Just . fst <$>) $ liftEitherErrLoc pcdecl_loc . fst . runGenM pcdecl_loc env . annotateKind <$> pcdecl_annot
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annot pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
@@ -146,7 +145,7 @@ inferCommandDeclaration :: ModuleName
 inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } = do
   env <- gets drvEnv
   -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErr (runGenM cmddecl_loc env (genConstraintsCommand cmddecl_cmd))
+  (cmdInferred,constraints) <- liftEitherErr (runGenM cmddecl_loc env (genConstraints cmddecl_cmd))
   -- Solve the constraints
   solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env
   guardVerbose $ do
@@ -171,7 +170,7 @@ inferInstanceDeclaration :: ModuleName
 inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_name, instancedecl_typ } = do
   env <- gets drvEnv
   -- Generate the constraints
-  (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraintsInstance decl))
+  (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraints decl))
   -- Solve the constraints
   solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
   guardVerbose $ do
@@ -224,7 +223,7 @@ inferDecl mn (Core.DataDecl decl) = do
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
   let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
   modifyEnvironment mn f
-  pure (TST.DataDecl decl)
+  pure (TST.DataDecl decl')
   where 
     insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
     insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do
@@ -335,7 +334,7 @@ runCompilationPlan compilationOrder = do
       sts <- getSymbolTables
       resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveModule decls))
       -- 4. Desugar the program
-      let desugaredProg = desugarModule resolvedDecls
+      let desugaredProg = desugar resolvedDecls
       -- 5. Infer the declarations
       inferredDecls <- inferProgram desugaredProg
       -- 6. Add the resolved AST to the cache

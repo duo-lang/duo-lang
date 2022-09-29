@@ -28,8 +28,9 @@ import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
 import Syntax.CST.Names ( FreeVarName(..) )
-import Translate.Focusing ( isFocusedTerm, isFocusedCmd, focusPrdCnsDeclaration, focusCommandDeclaration)
+import Translate.Focusing ( isFocusedTerm, isFocusedCmd, Focus(..) )
 import Loc
+import Translate.EmbedTST (embedTST)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -89,7 +90,7 @@ generateCodeAction ident Range {_start = start} (TST.CmdDecl decl) | lookupPos s
   generateCodeActionCommandDeclaration ident decl
 generateCodeAction ident Range {_start = _start} (TST.DataDecl decl) = dualizeDecl
   where     
-    dualizeDecl = [generateDualizeDeclCodeAction ident (RST.data_loc decl) decl]
+    dualizeDecl = [generateDualizeDeclCodeAction ident (TST.data_loc decl) (embedTST decl)]
 generateCodeAction _ _ _ = []
 
 ---------------------------------------------------------------------------------
@@ -171,7 +172,7 @@ generateDualizeDeclEdit :: Uri -> Loc -> RST.DataDecl -> WorkspaceEdit
 generateDualizeDeclEdit uri loc decl =
   let
     decl' = dualDataDecl decl
-    replacement = ppPrint (TST.DataDecl decl')
+    replacement = ppPrint (RST.DataDecl  decl')
     edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
@@ -200,7 +201,7 @@ generateFocusEdit :: forall pc.TextDocumentIdentifier -> EvaluationOrder -> TST.
 generateFocusEdit (TextDocumentIdentifier uri) eo decl =
   let
     newDecl :: TST.Declaration
-    newDecl = TST.PrdCnsDecl (TST.pcdecl_pc decl) (focusPrdCnsDeclaration eo decl)
+    newDecl = TST.PrdCnsDecl (TST.pcdecl_pc decl) (focus eo decl)
     replacement = ppPrint newDecl
     edit = TextEdit {_range = locToRange (TST.pcdecl_loc decl), _newText = replacement }
   in
@@ -224,7 +225,7 @@ generateCmdFocusCodeAction ident eo decl =
 generateCmdFocusEdit :: TextDocumentIdentifier -> EvaluationOrder -> TST.CommandDeclaration -> WorkspaceEdit
 generateCmdFocusEdit (TextDocumentIdentifier uri) eo decl =
   let
-    newDecl = TST.CmdDecl (focusCommandDeclaration eo decl)
+    newDecl = TST.CmdDecl (focus eo decl)
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange (TST.cmddecl_loc decl), _newText= replacement }
   in

@@ -115,6 +115,7 @@ data DataDecl =
     -- ^ The constructors/destructors of the declaration,
     -- with recursive occurrences replaced by the refinement type.
   }
+deriving instance Show DataDecl
 ---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
@@ -122,7 +123,7 @@ data DataDecl =
 data Declaration where
   PrdCnsDecl     :: PrdCnsRep pc -> PrdCnsDeclaration pc -> Declaration
   CmdDecl        :: CommandDeclaration                   -> Declaration
-  DataDecl       :: RST.DataDecl                         -> Declaration
+  DataDecl       :: DataDecl                             -> Declaration
   XtorDecl       :: RST.StructuralXtorDeclaration        -> Declaration
   ImportDecl     :: CST.ImportDeclaration                -> Declaration
   SetDecl        :: CST.SetDeclaration                   -> Declaration

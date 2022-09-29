@@ -76,7 +76,9 @@ common shared-lang-options
                      ViewPatterns,
                      MultiWayIf,
                      PatternSynonyms,
-                     InstanceSigs
+                     InstanceSigs,
+                     MultiParamTypeClasses,
+                     FunctionalDependencies
 
 common shared-ghc-opts
   ghc-options:
@@ -139,6 +141,7 @@ library
       Sugar.Desugar
       Sugar.Core
       Sugar.TST
+      Syntax.LocallyNameless
       Syntax.TST.Program
       Syntax.TST.Terms
       Syntax.TST.Types
@@ -172,8 +175,9 @@ library
       TypeInference.SolveConstraints
       TypeInference.Constraints
       Translate.Focusing
-      Translate.Reparse
-      Translate.Embed
+      Translate.EmbedRST
+      Translate.EmbedCore
+      Translate.EmbedTST
       Utils
   other-modules:
       Paths_duo_lang
