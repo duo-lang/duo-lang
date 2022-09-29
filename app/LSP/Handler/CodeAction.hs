@@ -14,7 +14,6 @@ import Syntax.TST.Types qualified as TST ( TopAnnot(..))
 import Syntax.RST.Types ( PolarityRep(..))
 import Syntax.CST.Kinds ( EvaluationOrder(..) )
 import Syntax.TST.Program qualified as TST
-import Syntax.RST.Program qualified as RST
 import Syntax.CST.Types (PrdCnsRep(..))
 import Driver.Definition
 import Driver.Driver ( inferProgramIO )
@@ -30,7 +29,6 @@ import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, rese
 import Syntax.CST.Names ( FreeVarName(..) )
 import Translate.Focusing ( Focus(..) )
 import Loc
-import Translate.EmbedTST (embedTST)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -90,7 +88,7 @@ generateCodeAction ident Range {_start = start} (TST.CmdDecl decl) | lookupPos s
   generateCodeActionCommandDeclaration ident decl
 generateCodeAction ident Range {_start = _start} (TST.DataDecl decl) = dualizeDecl
   where     
-    dualizeDecl = [generateDualizeDeclCodeAction ident (TST.data_loc decl) (embedTST decl)]
+    dualizeDecl = [generateDualizeDeclCodeAction ident (TST.data_loc decl) decl]
 generateCodeAction _ _ _ = []
 
 ---------------------------------------------------------------------------------
@@ -155,9 +153,9 @@ generateDualizeEdit uri (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Annot
                   , _changeAnnotations = Nothing }
 generateDualizeEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Inferred _ } = error "Should not occur"
 
-generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> RST.DataDecl -> Command |? CodeAction
+generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> TST.DataDecl -> Command |? CodeAction
 generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl =
-  InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (RST.data_name decl)
+  InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (TST.data_name decl)
                    , _kind = Just CodeActionQuickFix
                    , _diagnostics = Nothing
                    , _isPreferred = Nothing
@@ -168,11 +166,11 @@ generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl =
                    }
 
 
-generateDualizeDeclEdit :: Uri -> Loc -> RST.DataDecl -> WorkspaceEdit
+generateDualizeDeclEdit :: Uri -> Loc -> TST.DataDecl -> WorkspaceEdit
 generateDualizeDeclEdit uri loc decl =
   let
     decl' = dualDataDecl decl
-    replacement = ppPrint (RST.DataDecl  decl')
+    replacement = ppPrint (TST.DataDecl  decl')
     edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
