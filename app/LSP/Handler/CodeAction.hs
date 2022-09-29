@@ -52,7 +52,7 @@ import Eval.Definition (EvalEnv)
 import Data.Foldable (fold)
 import Driver.Repl (desugarEnv)
 import qualified Data.Map as M
-import System.FilePath (splitFileName)
+import System.FilePath (splitFileName, dropExtension)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -360,7 +360,7 @@ evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params}
       let fullPath = fromMaybe "" $ uriToFilePath uri
       liftIO $ debugM source $ "Running " <> T.unpack _command <> " with filepath " <> show fullPath
       --  relPath <- liftIO $ makeRelativeToCurrentDirectory fullPath
-      let relPath = snd $ splitFileName fullPath
+      let relPath = dropExtension $ snd $ splitFileName fullPath
       liftIO $ debugM source $ "Running " <> T.unpack _command <> " with relativefilepath " <> show relPath
       let mn = MkModuleName $ T.pack relPath
 
