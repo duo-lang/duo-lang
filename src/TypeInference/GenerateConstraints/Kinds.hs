@@ -46,12 +46,10 @@ getXtorKinds loc (fst:rst) = do
 getTyNameKind ::  Loc -> RnTypeName -> GenM MonoKind
 getTyNameKind loc tyn = do
   decl <- lookupTypeName loc tyn
-  getKindDecl decl
+  pure (getKindDecl decl)
   
-getKindDecl ::  TST.DataDecl -> GenM MonoKind
-getKindDecl decl = do
-  let polyknd = TST.data_kind decl
-  return (CBox (returnKind polyknd))
+getKindDecl ::  TST.DataDecl -> MonoKind
+getKindDecl decl = CBox (returnKind (TST.data_kind decl))
 
 newKVar :: GenM KVar
 newKVar = do
