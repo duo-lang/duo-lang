@@ -1,4 +1,4 @@
-module Dualize.Dualize (dualDataDecl, dualTerm, dualTypeScheme, dualFVName) where
+module Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration) where
 
 import Data.Text qualified as T
 import Data.Text (Text)
@@ -28,6 +28,7 @@ data DualizeError
  | DualRead Loc Text
  | DualPrimOp Loc PrimitiveOp Text
  | DualMethod Loc Text
+ | DualNotAnnotated Loc
  deriving Show
 
 flipPC :: PrdCns -> PrdCns
@@ -241,8 +242,17 @@ dualTypeScheme :: PolarityRep pol -> TST.TypeScheme pol -> TST.TypeScheme (FlipP
 dualTypeScheme pol (TST.TypeScheme _  ts_vars ty) = TST.TypeScheme defaultLoc ts_vars (dualType pol ty)
 
 ------------------------------------------------------------------------------
--- Data Declarations
+-- Declarations
 ------------------------------------------------------------------------------
+
+dualPrdCnsDeclaration :: TST.PrdCnsDeclaration pc -> DualizeM (TST.PrdCnsDeclaration (FlipPrdCns pc))
+dualPrdCnsDeclaration (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Annotated tys) tm) = do
+  tm' <- dualTerm tm
+  case rep of
+    PrdRep -> pure (TST.MkPrdCnsDeclaration loc doc CnsRep isrec (dualFVName fv) (TST.Annotated (dualTypeScheme PosRep tys)) tm')
+    CnsRep -> pure (TST.MkPrdCnsDeclaration loc doc PrdRep isrec (dualFVName fv) (TST.Annotated (dualTypeScheme NegRep tys)) tm')
+dualPrdCnsDeclaration (TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_annot = TST.Inferred _ }) =
+  throwDualizeError (DualNotAnnotated pcdecl_loc)
 
 dualDataDecl :: TST.DataDecl -> TST.DataDecl
 dualDataDecl TST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors = (sigsPos,sigsNeg) } =
