@@ -374,7 +374,7 @@ evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params}
       liftIO $ debugM source $ "Running " <> T.unpack _command <> " with result " <> unlines res
 
       -- create edit
-      let toComments = fmap ("-- " ++)
+      let toComments = fmap ("-- " ++) . concatMap lines
       let rangeToStartRange Range { _start } = Range {_start = _start, _end = _start}
       let edit = TextEdit { _range = rangeToStartRange (evalArgs_loc args), _newText = T.pack $ unlines $ toComments res}
       let wedit = WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
