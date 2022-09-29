@@ -36,10 +36,8 @@ import Language.LSP.Server
 import Language.LSP.VFS ( VirtualFile, virtualFileText )
 import System.Log.Logger ( debugM )
 import Syntax.TST.Types qualified as TST ( TopAnnot(..))
-import Syntax.RST.Types ( PolarityRep(..))
 import Syntax.CST.Kinds ( EvaluationOrder(..) )
 import Syntax.TST.Program qualified as TST
-import Syntax.RST.Program qualified as RST
 import Syntax.CST.Types (PrdCnsRep(..))
 import Driver.Definition
     ( DriverState(MkDriverState, drvEnv),
@@ -47,8 +45,8 @@ import Driver.Definition
       execDriverM,
       queryTypecheckedModule )
 import Driver.Driver ( inferProgramIO, runCompilationModule )
-import Dualize.Program (dualDataDecl)
-import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
+import Driver.Driver ( inferProgramIO )
+import Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration)
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Parser.Definition ( runFileParser )
@@ -129,8 +127,8 @@ generateCodeAction ident Range {_start = start } (TST.PrdCnsDecl _ decl) | looku
 generateCodeAction ident Range {_start = start} (TST.CmdDecl decl) | lookupPos start (TST.cmddecl_loc decl) =
   generateCodeActionCommandDeclaration ident decl
 generateCodeAction ident Range {_start = _start} (TST.DataDecl decl) = dualizeDecl
-  where
-    dualizeDecl = [generateDualizeDeclCodeAction ident (RST.data_loc decl) decl]
+  where     
+    dualizeDecl = [generateDualizeDeclCodeAction ident (TST.data_loc decl) decl]
 generateCodeAction _ _ _ = []
 
 ---------------------------------------------------------------------------------
@@ -180,24 +178,22 @@ generateDualizeCodeAction (TextDocumentIdentifier uri) decl =
 
 
 generateDualizeEdit :: forall pc. Uri -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
-generateDualizeEdit uri (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Annotated tys) tm) =
+generateDualizeEdit uri decl@(TST.MkPrdCnsDeclaration loc _ rep _ _ _ _) =
   let
-    tm' = dualTerm rep tm
-    replacement = case tm' of
+    replacement = case dualPrdCnsDeclaration decl of
       (Left error) -> ppPrint $ T.pack (show error)
-      (Right tm'') -> case rep of
-        PrdRep -> ppPrint (TST.PrdCnsDecl CnsRep (TST.MkPrdCnsDeclaration loc doc CnsRep isrec (dualFVName fv) (TST.Annotated (dualTypeScheme PosRep tys)) tm''))
-        CnsRep -> ppPrint (TST.PrdCnsDecl PrdRep (TST.MkPrdCnsDeclaration loc doc PrdRep isrec (dualFVName fv) (TST.Annotated (dualTypeScheme NegRep tys)) tm''))
+      (Right decl') -> case rep of
+        PrdRep -> ppPrint (TST.PrdCnsDecl CnsRep decl')
+        CnsRep -> ppPrint (TST.PrdCnsDecl PrdRep decl')
     edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing }
-generateDualizeEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Inferred _ } = error "Should not occur"
 
-generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> RST.DataDecl -> Command |? CodeAction
+generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> TST.DataDecl -> Command |? CodeAction
 generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl =
-  InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (RST.data_name decl)
+  InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (TST.data_name decl)
                    , _kind = Just CodeActionQuickFix
                    , _diagnostics = Nothing
                    , _isPreferred = Nothing
@@ -208,11 +204,11 @@ generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl =
                    }
 
 
-generateDualizeDeclEdit :: Uri -> Loc -> RST.DataDecl -> WorkspaceEdit
+generateDualizeDeclEdit :: Uri -> Loc -> TST.DataDecl -> WorkspaceEdit
 generateDualizeDeclEdit uri loc decl =
   let
     decl' = dualDataDecl decl
-    replacement = ppPrint (TST.DataDecl decl')
+    replacement = ppPrint (TST.DataDecl  decl')
     edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
