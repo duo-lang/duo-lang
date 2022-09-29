@@ -65,14 +65,16 @@ data DataDeclState = DataDeclState
   {
     declKind :: PolyKind,
     declTyName :: RnTypeName,
-    refXtors :: ([TST.XtorSig RST.Pos], [TST.XtorSig RST.Neg])
+    refXtors :: ([TST.XtorSig RST.Pos], [TST.XtorSig RST.Neg]),
+    refRecVars :: M.Map RecTVar MonoKind
   }
 
 createDataDeclState :: PolyKind -> RnTypeName -> DataDeclState
 createDataDeclState polyknd tyn = DataDeclState 
   { declKind = polyknd,
     declTyName = tyn,
-    refXtors = ([],[])
+    refXtors = ([],[]), 
+    refRecVars = M.empty
   }
 
 type DataDeclM a = (ReaderT (M.Map ModuleName Environment, ()) (StateT DataDeclState (Except (NonEmpty Error)))) a
@@ -88,6 +90,10 @@ resolveDataDecl decl env = do
 addXtors :: ([TST.XtorSig RST.Pos],[TST.XtorSig RST.Neg]) -> DataDeclM ()
 addXtors newXtors =  modify (\s@DataDeclState{refXtors = xtors} -> 
                                 s {refXtors = Data.Bifunctor.bimap (fst xtors ++ ) (snd xtors ++) newXtors })
+
+addRecVar :: RecTVar -> MonoKind -> DataDeclM ()
+addRecVar rv mk = modify (\s@DataDeclState{refRecVars = recVarMap} -> 
+                              s {refRecVars = M.insert rv mk recVarMap})
 
 getXtors :: RST.PolarityRep pol -> [XtorName] -> DataDeclM [TST.XtorSig pol]
 getXtors pl names = do
@@ -127,7 +133,11 @@ annotTy (RST.TySkolemVar loc pol tv) = do
   return $ TST.TySkolemVar loc pol (getKindSkolem polyknd tv) tv 
 -- uni vars should not appear in data declarations
 annotTy (RST.TyUniVar loc _ _) = throwOtherError loc ["UniVar should not appear in data declaration"]
-annotTy (RST.TyRecVar loc _ tv) = throwOtherError loc ["Unbound RecVar " <> ppPrint tv <> " in data declaration"]
+annotTy (RST.TyRecVar loc pol tv) = do
+  rVarMap <- gets refRecVars
+  case M.lookup tv rVarMap of 
+    Nothing -> throwOtherError loc ["Unbound RecVar " <> ppPrint tv <> " in data declaration"]
+    Just mk -> return $ TST.TyRecVar loc pol mk tv
 annotTy (RST.TyData loc pol xtors) = do 
   let xtnms = map RST.sig_name xtors
   xtorKinds <- mapM lookupXtorKind xtnms
@@ -210,12 +220,36 @@ annotTy (RST.TyInter loc ty1 ty2) = do
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
 annotTy (RST.TyRec loc pol rv ty) = case ty of 
-  RST.TyDataRefined{}  -> do 
-    ty' <- annotTy ty 
-    return $ TST.TyRec loc pol rv ty'
-  RST.TyCodataRefined{} -> do
-    ty' <- annotTy ty 
-    return $ TST.TyRec loc pol rv ty'
+  -- recursive types can only appear inside Refinement declarations
+  -- when they do, the recvars always represent the type that is being refined
+  RST.TyDataRefined loc' pol' tyn xtors -> do 
+    tyn' <- gets declTyName
+    if tyn == tyn' then do
+     polyknd <- gets declKind
+     let retKnd = CBox $ returnKind polyknd
+     addRecVar rv retKnd
+     xtors' <- mapM annotXtor xtors
+     return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' retKnd tyn xtors')
+    else do
+     decl <- lookupTypeName loc' tyn
+     let retKnd = CBox $ returnKind . TST.data_kind $ decl
+     addRecVar rv retKnd
+     xtors' <- mapM annotXtor xtors
+     return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' retKnd tyn xtors')
+  RST.TyCodataRefined loc' pol' tyn xtors -> do
+    tyn' <- gets declTyName
+    if tyn == tyn' then do
+     polyknd <- gets declKind
+     let retKnd = CBox $ returnKind polyknd
+     addRecVar rv retKnd
+     xtors' <- mapM annotXtor xtors
+     return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' retKnd tyn xtors')
+    else do
+     decl <- lookupTypeName loc' tyn
+     let retKnd = CBox $ returnKind . TST.data_kind $ decl
+     addRecVar rv retKnd
+     xtors' <- mapM annotXtor xtors
+     return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' retKnd tyn xtors')
   _ -> throwOtherError loc ["TyRec can only appear inside Refinement Declaration"]
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
 annotTy (RST.TyF64 loc pol) = return $ TST.TyF64 loc pol
