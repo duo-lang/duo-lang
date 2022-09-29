@@ -17,8 +17,7 @@ import Syntax.TST.Program qualified as TST
 import Syntax.CST.Types (PrdCnsRep(..))
 import Driver.Definition
 import Driver.Driver ( inferProgramIO )
-import Dualize.Program (dualDataDecl)
-import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
+import Dualize.Dualize (dualDataDecl, dualTerm, dualTypeScheme, dualFVName)
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Parser.Definition ( runFileParser )
