@@ -6,12 +6,13 @@ import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Types qualified as RST
+import Syntax.RST.Program qualified as RST
 import qualified Data.Bifunctor as BF (bimap)
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
 ---------------------------------------------------------------------------------
--- A typeclass for embedTST ding TST.X into Core.X
+-- A typeclass for embedding TST.X into Core.X
 ---------------------------------------------------------------------------------
 
 class EmbedTST a b | a -> b where
@@ -202,6 +203,41 @@ instance EmbedTST TST.InstanceDeclaration Core.InstanceDeclaration where
                                  , instancedecl_cases = embedTST <$> instancedecl_cases
                                  }
 
+instance EmbedTST TST.DataDecl RST.DataDecl where
+  embedTST :: TST.DataDecl -> RST.DataDecl
+  embedTST TST.NominalDecl { data_loc = loc
+                           , data_doc = doc
+                           , data_name = tyn
+                           , data_polarity = pol
+                           , data_kind = polyknd
+                           , data_xtors = xtors } = 
+    RST.NominalDecl { data_loc = loc
+                    , data_doc = doc
+                    , data_name= tyn
+                    , data_polarity = pol
+                    , data_kind = polyknd
+                    , data_xtors = BF.bimap (map embedTST) (map embedTST) xtors
+                    }
+
+  embedTST TST.RefinementDecl { data_loc = loc
+                              , data_doc = doc
+                              , data_name = tyn
+                              , data_polarity = pol
+                              , data_refinement_empty = empt
+                              , data_refinement_full = ful
+                              , data_kind = polyknd
+                              , data_xtors = xtors
+                              , data_xtors_refined = xtors' } =
+    RST.RefinementDecl { data_loc = loc
+                       , data_doc = doc
+                       , data_name = tyn
+                       , data_polarity = pol
+                       , data_refinement_empty = BF.bimap embedTST embedTST empt
+                       , data_refinement_full = BF.bimap embedTST embedTST ful
+                       , data_kind = polyknd
+                       , data_xtors = BF.bimap (map embedTST) (map embedTST) xtors
+                       , data_xtors_refined = BF.bimap (map embedTST) (map embedTST) xtors'
+                       }
 
 instance EmbedTST TST.Declaration Core.Declaration where
   embedTST :: TST.Declaration -> Core.Declaration
@@ -210,7 +246,7 @@ instance EmbedTST TST.Declaration Core.Declaration where
   embedTST (TST.CmdDecl decl) =
       Core.CmdDecl (embedTST decl)
   embedTST (TST.DataDecl decl) =
-      Core.DataDecl decl
+      Core.DataDecl (embedTST decl)
   embedTST (TST.XtorDecl decl) =
       Core.XtorDecl decl
   embedTST (TST.ImportDecl decl) =

@@ -53,6 +53,7 @@ import Data.Maybe (catMaybes)
 import Pretty.Common (Header(..))
 import Pretty.Program ()
 
+
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
            -> Maybe (TST.TypeScheme pol) -- ^ Annotated type
@@ -218,10 +219,12 @@ inferDecl mn (Core.CmdDecl decl) = do
 --
 inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
-  let f env = env { declEnv = (RST.data_loc decl,decl) : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
-
+  let loc = RST.data_loc decl
+  env <- gets drvEnv
+  decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
+  let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
   modifyEnvironment mn f
-  pure (TST.DataDecl decl)
+  pure (TST.DataDecl decl')
   where 
     insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
     insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do

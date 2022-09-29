@@ -4,10 +4,11 @@ module Syntax.TST.Program where
 import Syntax.TST.Terms( Command, Term, InstanceCase )
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
-import Syntax.TST.Types ( TopAnnot, Typ )
+import Syntax.TST.Types ( TopAnnot, Typ, XtorSig)
 import Syntax.RST.Types (Polarity(..))
-import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
-import Syntax.CST.Names ( ClassName, DocComment, FreeVarName, ModuleName )
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..), DataCodata(..))
+import Syntax.CST.Kinds
+import Syntax.CST.Names ( ClassName, DocComment, FreeVarName, ModuleName, RnTypeName )
 import Loc ( Loc )
 
 
@@ -73,6 +74,48 @@ data InstanceDeclaration = MkInstanceDeclaration
 
 deriving instance Show InstanceDeclaration
 
+------------------------------------------------------------------------------
+-- Data Type declarations
+------------------------------------------------------------------------------
+
+data DataDecl =
+    NominalDecl
+  { data_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , data_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , data_name :: RnTypeName
+    -- ^ The name of the type. E.g. "List".
+  , data_polarity :: DataCodata
+    -- ^ Whether a data or codata type is declared.
+  , data_kind :: PolyKind
+    -- ^ The kind of the type constructor.
+  , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
+    -- The constructors/destructors of the declaration.
+  }
+  | RefinementDecl
+  { data_loc :: Loc
+    -- ^ The source code location of the declaration.
+  , data_doc :: Maybe DocComment
+    -- ^ The documentation string of the declaration.
+  , data_name :: RnTypeName
+    -- ^ The name of the type. E.g. "List".
+  , data_polarity :: DataCodata
+    -- ^ Whether a data or codata type is declared.
+  , data_refinement_empty :: (Typ Pos, Typ Neg)
+    -- ^ The lower bound of the refinement type. E.g. `< Nat | >`
+  , data_refinement_full :: (Typ Pos, Typ Neg)
+    -- ^ The upper bound of the refinement type. E.g. `mu alpha. < Nat | Z, S(alpha) >`
+  , data_kind :: PolyKind
+    -- ^ The kind of the type constructor.
+  , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
+    -- ^ The constructors/destructors of the declaration,
+    -- as written by the user.
+  , data_xtors_refined :: ([XtorSig Pos], [XtorSig Neg])
+    -- ^ The constructors/destructors of the declaration,
+    -- with recursive occurrences replaced by the refinement type.
+  }
+deriving instance Show DataDecl
 ---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
@@ -80,7 +123,7 @@ deriving instance Show InstanceDeclaration
 data Declaration where
   PrdCnsDecl     :: PrdCnsRep pc -> PrdCnsDeclaration pc -> Declaration
   CmdDecl        :: CommandDeclaration                   -> Declaration
-  DataDecl       :: RST.DataDecl                         -> Declaration
+  DataDecl       :: DataDecl                             -> Declaration
   XtorDecl       :: RST.StructuralXtorDeclaration        -> Declaration
   ImportDecl     :: CST.ImportDeclaration                -> Declaration
   SetDecl        :: CST.SetDeclaration                   -> Declaration

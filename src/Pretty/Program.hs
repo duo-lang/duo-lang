@@ -44,6 +44,9 @@ instance PrettyAnn CST.DataDecl where
 instance PrettyAnn RST.DataDecl where
   prettyAnn decl = prettyAnn (runUnresolveM (unresolve decl))
 
+instance PrettyAnn TST.DataDecl where 
+  prettyAnn decl = prettyAnn (embedTST decl)
+
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declarations
 ---------------------------------------------------------------------------------
