@@ -61,7 +61,7 @@ newKVar = do
 -- Annotating Data Declarations 
 --------------------------------------------------------------------------------------------
 
-data DataDeclState = DataDeclState
+data DataDeclState = MkDataDeclState
   {
     declKind :: PolyKind,
     declTyName :: RnTypeName,
@@ -70,7 +70,7 @@ data DataDeclState = DataDeclState
   }
 
 createDataDeclState :: PolyKind -> RnTypeName -> DataDeclState
-createDataDeclState polyknd tyn = DataDeclState 
+createDataDeclState polyknd tyn = MkDataDeclState 
   { declKind = polyknd,
     declTyName = tyn,
     refXtors = ([],[]), 
@@ -88,11 +88,11 @@ resolveDataDecl decl env = do
   return decl' 
 
 addXtors :: ([TST.XtorSig RST.Pos],[TST.XtorSig RST.Neg]) -> DataDeclM ()
-addXtors newXtors =  modify (\s@DataDeclState{refXtors = xtors} -> 
+addXtors newXtors =  modify (\s@MkDataDeclState{refXtors = xtors} -> 
                                 s {refXtors = Data.Bifunctor.bimap (fst xtors ++ ) (snd xtors ++) newXtors })
 
 addRecVar :: RecTVar -> MonoKind -> DataDeclM ()
-addRecVar rv mk = modify (\s@DataDeclState{refRecVars = recVarMap} -> 
+addRecVar rv mk = modify (\s@MkDataDeclState{refRecVars = recVarMap} -> 
                               s {refRecVars = M.insert rv mk recVarMap})
 
 getXtors :: RST.PolarityRep pol -> [XtorName] -> DataDeclM [TST.XtorSig pol]
