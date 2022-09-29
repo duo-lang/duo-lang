@@ -1,6 +1,8 @@
-{-# LANGUAGE FunctionalDependencies #-}
-
-module TypeInference.GenerateConstraints.Kinds where
+module TypeInference.GenerateConstraints.Kinds
+  ( AnnotateKind(..)
+  , getKindDecl
+  , resolveDataDecl
+  ) where
 
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
@@ -324,12 +326,6 @@ instance AnnotateKind  (RST.Typ RST.Pos, RST.Typ RST.Neg) (TST.Typ RST.Pos, TST.
     ty1' <- annotateKind ty1
     ty2' <- annotateKind ty2
     return (ty1', ty2')
-
-annotateMaybeTypeScheme ::  Maybe (RST.TypeScheme pol) -> GenM (Maybe (TST.TypeScheme pol))
-annotateMaybeTypeScheme Nothing = return Nothing 
-annotateMaybeTypeScheme (Just ty) = do
-  ty' <- annotateKind ty 
-  return (Just ty')
 
 instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
   annotateKind ::  RST.TypeScheme pol -> GenM (TST.TypeScheme pol)
