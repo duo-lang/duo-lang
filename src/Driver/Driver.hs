@@ -25,7 +25,7 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind(CBox))
+import Syntax.CST.Kinds (MonoKind(CBox),PolyKind(..))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
@@ -221,21 +221,20 @@ inferDecl mn (Core.DataDecl decl) = do
   let loc = RST.data_loc decl
   env <- gets drvEnv
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
-  let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
+  let f env = env { declEnv = (loc, decl') : declEnv env} --, kindEnv = insertKinds decl (kindEnv env)}
   modifyEnvironment mn f
   pure (TST.DataDecl decl')
   where 
-    insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
-    insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do
-      let names = map RST.sig_name (fst xtors)
+    insertKinds :: TST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
+    insertKinds TST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do
+      let names = map TST.sig_name (fst xtors)
       let mk = CBox (returnKind knd)
       foldr (`M.insert`mk) mp names
-    insertKinds RST.RefinementDecl{data_kind = knd, data_xtors = xtors} mp = do
-      let names = map RST.sig_name (fst xtors)
+    insertKinds TST.RefinementDecl{data_kind = knd, data_xtors = xtors} mp = do
+      let names = map TST.sig_name (fst xtors)
       let mk = CBox (returnKind knd)
       foldr (`M.insert`mk) mp names
  
->>>>>>> 13555c6c (changed Environment to TST DataDecl)
 --
 -- XtorDecl
 --
