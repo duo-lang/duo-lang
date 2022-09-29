@@ -139,7 +139,7 @@ generateDualizeCodeAction (TextDocumentIdentifier uri) decl =
 generateDualizeEdit :: forall pc. Uri -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
 generateDualizeEdit uri (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Annotated tys) tm) =
   let
-    tm' = dualTerm rep tm
+    tm' = dualTerm tm
     replacement = case tm' of
       (Left error) -> ppPrint $ T.pack (show error)
       (Right tm'') -> case rep of

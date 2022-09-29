@@ -1,4 +1,4 @@
-module Dualize.Dualize where
+module Dualize.Dualize (dualDataDecl, dualTerm, dualTypeScheme, dualFVName) where
 
 import Data.Text qualified as T
 import Data.Text (Text)
