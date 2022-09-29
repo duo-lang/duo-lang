@@ -6,16 +6,34 @@ module LSP.Handler.CodeAction (codeActionHandler
                               , evalHandler
                               ) where
 
-import GHC.Generics
+import GHC.Generics ( Generic )
 import Control.Monad (join)
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe ( fromMaybe, isNothing )
 import Data.Text qualified as T
-import Language.LSP.Types
-import qualified Language.LSP.Types as TDI (TextDocumentIdentifier(..))
+import Language.LSP.Types ( TextDocumentIdentifier(..)
+                          , RequestMessage (..)
+                          , CodeActionParams (..)
+                          , Range (..)
+                          , List (..)
+                          , Command (..)
+                          , type (|?) (..)
+                          , CodeAction (..)
+                          , Uri
+                          , WorkspaceEdit (..)
+                          , TextEdit (..)
+                          , ResponseError (..)
+                          , ExecuteCommandParams (..)
+                          , ApplyWorkspaceEditParams (..)
+                          , SMethod (..)
+                          , toNormalizedUri
+                          , uriToFilePath
+                          , CodeActionKind (..)
+                          , ErrorCode (..) )
 import Language.LSP.Server
-import Language.LSP.VFS
+    ( getVirtualFile, requestHandler, sendRequest, Handlers )
+import Language.LSP.VFS ( VirtualFile, virtualFileText )
 import System.Log.Logger ( debugM )
 import Syntax.TST.Types qualified as TST ( TopAnnot(..))
 import Syntax.RST.Types ( PolarityRep(..))
@@ -24,11 +42,15 @@ import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Types (PrdCnsRep(..))
 import Driver.Definition
+    ( DriverState(MkDriverState, drvEnv),
+      defaultDriverState,
+      execDriverM,
+      queryTypecheckedModule )
 import Driver.Driver ( inferProgramIO, runCompilationModule )
 import Dualize.Program (dualDataDecl)
 import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
 import LSP.Definition ( LSPMonad )
-import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange, locToStartRange )
+import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( moduleP )
 import Pretty.Pretty ( ppPrint )
@@ -36,18 +58,13 @@ import Pretty.Program ()
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
 import Syntax.CST.Names ( FreeVarName(..), ModuleName (MkModuleName) )
 import Translate.Focusing ( Focus(..) )
-import Loc
+import Loc ( Loc, defaultLoc )
 import Eval.Eval (eval, EvalMWrapper (..))
 import qualified Syntax.TST.Terms as TST
-import Errors (Error)
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Control.Monad.State.Strict (StateT, execStateT)
-import Control.Monad.Writer.Strict (Writer, execWriter)
-import Data.Coerce (coerce)
+import Control.Monad.State.Strict (execStateT)
+import Control.Monad.Writer.Strict (execWriter)
 import qualified Data.Aeson as J
-import Control.Exception (throw)
-import System.Directory (getCurrentDirectory, makeRelativeToCurrentDirectory)
-import Data.List (stripPrefix)
 import Eval.Definition (EvalEnv)
 import Data.Foldable (fold)
 import Driver.Repl (desugarEnv)
@@ -356,7 +373,7 @@ evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params}
       liftIO $ debugM source $ "Running " <> T.unpack _command <> " with args " <> show args
 
       -- get Module name
-      let uri = TDI._uri $ evalArgs_uri args
+      let uri = _uri $ evalArgs_uri args
       let fullPath = fromMaybe "" $ uriToFilePath uri
       liftIO $ debugM source $ "Running " <> T.unpack _command <> " with filepath " <> show fullPath
       --  relPath <- liftIO $ makeRelativeToCurrentDirectory fullPath
