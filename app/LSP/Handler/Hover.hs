@@ -447,12 +447,15 @@ instance ToHoverMap TST.CommandDeclaration where
     toHoverMap cmddecl_cmd
 
 instance ToHoverMap TST.DataDecl where
-  toHoverMap TST.NominalDecl { data_loc, data_polarity } = mkHoverMap data_loc msg
+  toHoverMap TST.NominalDecl { data_loc, data_polarity, data_kind} = mkHoverMap data_loc msg
     where
-      msg = T.unlines [ "#### Nominal " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" ]
-  toHoverMap TST.RefinementDecl { data_loc, data_polarity, data_refinement_empty, data_refinement_full } = mkHoverMap data_loc msg
+      msg = T.unlines [ "#### Nominal " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration",
+                        "with polykind " <> ppPrint data_kind
+                      ]
+  toHoverMap TST.RefinementDecl { data_loc, data_polarity, data_kind, data_refinement_empty, data_refinement_full } = mkHoverMap data_loc msg
     where
       msg = T.unlines [ "#### Refinement " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" 
+                      , "with polykind " <> ppPrint data_kind
                       , " - Empty refinement type: " <> ppPrint (fst data_refinement_empty)
                       , " - Full refinement type: " <> ppPrint (fst data_refinement_full)
                       ]
