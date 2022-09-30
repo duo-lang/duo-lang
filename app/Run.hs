@@ -9,7 +9,6 @@ import Driver.Driver ( runCompilationModule )
 import Driver.Repl (desugarEnv)
 import Eval.Definition (EvalEnv)
 import Eval.Eval (eval)
-import Pretty.Pretty (ppPrintIO)
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST

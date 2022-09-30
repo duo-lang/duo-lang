@@ -45,7 +45,6 @@ import Driver.Definition
       execDriverM,
       queryTypecheckedModule )
 import Driver.Driver ( inferProgramIO, runCompilationModule )
-import Driver.Driver ( inferProgramIO )
 import Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration)
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
@@ -423,7 +422,7 @@ evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params}
       let weditP = addCommentedAbove (evalArgs_loc args) uri res
       let responder' x = case x of
                           Left e  -> responder (Left e)
-                          Right x -> return ()
+                          Right _ -> return ()
       _ <- sendRequest SWorkspaceApplyEdit weditP responder'
 
       -- signal success
