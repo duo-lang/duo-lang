@@ -1,7 +1,3 @@
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DeriveAnyClass #-}
-{-# LANGUAGE DeriveGeneric #-}
-
 module LSP.Handler.CodeAction (codeActionHandler
                               , evalHandler
                               ) where
@@ -325,7 +321,10 @@ data EvalCmdArgs = MkEvalCmdArgs  { evalArgs_loc :: Range
                                   , evalArgs_uri :: TextDocumentIdentifier
                                   , evalArgs_cmd :: FreeVarName
                                   }
-  deriving (Show, Generic, J.FromJSON, J.ToJSON)
+  deriving (Show, Generic)
+
+deriving anyclass instance J.FromJSON EvalCmdArgs
+deriving anyclass instance J.ToJSON EvalCmdArgs
 
 generateCmdEvalCodeAction ::  TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
 generateCmdEvalCodeAction ident decl =

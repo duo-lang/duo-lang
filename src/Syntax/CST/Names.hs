@@ -1,4 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
 module Syntax.CST.Names where
 
 import Data.Text (Text)
