@@ -1,6 +1,8 @@
+{-# LANGUAGE UndecidableInstances #-}
 module Eval.Eval
   ( eval
   , evalSteps
+  , EvalMWrapper(..)
   ) where
 
 import Control.Monad.Except
@@ -17,20 +19,50 @@ import Eval.Definition
 import Eval.Primitives
 import Loc
 import qualified Syntax.LocallyNameless as LN
+import Control.Monad.Writer (MonadWriter)
+import Control.Monad.State (MonadState (..))
+
+class EvalMonad m where
+  printM   :: PrettyAnn a => a -> EvalM m ()
+  readM    :: EvalM m (Term 'Prd)
+  failM    :: EvalM m ()
+  successM :: EvalM m ()
+
+instance EvalMonad IO where
+  printM   = liftIO . ppPrintIO
+  readM    = liftIO readInt
+  failM    = liftIO (ppPrintIO $ ExitFailure defaultLoc)
+  successM = liftIO (ppPrintIO $ ExitSuccess defaultLoc)
+
+-- this wrapper is only needed to avoid overlapping EvalMonad instances for IO
+newtype EvalMWrapper m a = MkEvalMWrapper { unEvalMWrapper :: m a }
+  deriving newtype (Functor, Applicative, Monad, MonadWriter w, MonadState s, MonadIO)
+
+instance (MonadState [Int] m, MonadWriter [String] m) => EvalMonad (EvalMWrapper m) where
+  printM = ppPrintWriter
+  readM  = do
+    is <- get
+    case is of
+      []      -> return $ convertInt 0
+      (i:is)  -> do
+        put is
+        return $ convertInt i
+  failM    = ppPrintWriter $ ExitFailure defaultLoc
+  successM = ppPrintWriter $ ExitSuccess defaultLoc
 
 ---------------------------------------------------------------------------------
 -- Terms
 ---------------------------------------------------------------------------------
 
 -- | Returns Nothing if command was in normal form, Just cmd' if cmd reduces to cmd' in one step
-evalTermOnce :: Command -> EvalM (Maybe Command)
-evalTermOnce (ExitSuccess _) = return Nothing
-evalTermOnce (ExitFailure _) = return Nothing
+evalTermOnce :: (Monad m, EvalMonad m) => Command -> EvalM m (Maybe Command)
+evalTermOnce (ExitSuccess _) = successM >> return Nothing
+evalTermOnce (ExitFailure _) = failM >> return Nothing
 evalTermOnce (Print _ prd cmd) = do
-  liftIO $ ppPrintIO prd
+  printM prd
   return (Just cmd)
 evalTermOnce (Read _ cns) = do
-  tm <- liftIO readInt
+  tm <- readM
   return (Just (Apply defaultLoc ApplyAnnotOrig (CBox CBV) tm cns))
 evalTermOnce (Jump _ fv) = do
   cmd <- lookupCommand fv
@@ -40,7 +72,7 @@ evalTermOnce Method {} = return Nothing
 evalTermOnce (Apply _ _ kind prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ op args) = evalPrimOp op args
 
-evalApplyOnce :: MonoKind -> Term Prd -> Term Cns -> EvalM  (Maybe Command)
+evalApplyOnce :: Monad m => MonoKind -> Term Prd -> Term Cns -> EvalM m  (Maybe Command)
 -- Free variables have to be looked up in the environment.
 evalApplyOnce kind (FreeVar _ PrdRep _ fv) cns = do
   prd <- lookupTerm PrdRep fv
@@ -87,7 +119,7 @@ evalApplyOnce _ prd cns =
                             ]
 
 -- | Return just the final evaluation result
-evalM :: Command -> EvalM Command
+evalM :: (Monad m, EvalMonad m) => Command -> EvalM m Command
 evalM cmd = do
   cmd' <- evalTermOnce cmd
   case cmd' of
@@ -95,10 +127,10 @@ evalM cmd = do
     Just cmd' -> evalM cmd'
 
 -- | Return all intermediate evaluation results
-evalStepsM :: Command -> EvalM [Command]
+evalStepsM :: (Monad m, EvalMonad m) => Command -> EvalM m [Command]
 evalStepsM cmd = evalSteps' [cmd] cmd
   where
-    evalSteps' :: [Command] -> Command -> EvalM [Command]
+    evalSteps' :: (Monad m, EvalMonad m) => [Command] -> Command -> EvalM m [Command]
     evalSteps' cmds cmd = do
       cmd' <- evalTermOnce cmd
       case cmd' of
@@ -109,8 +141,8 @@ evalStepsM cmd = evalSteps' [cmd] cmd
 -- The Eval Monad
 ---------------------------------------------------------------------------------
 
-eval :: Command -> EvalEnv -> IO (Either (NonEmpty Error) Command)
+eval :: (Monad m, EvalMonad m) => Command -> EvalEnv -> m (Either (NonEmpty Error) Command)
 eval cmd = runEval (evalM cmd)
 
-evalSteps :: Command -> EvalEnv -> IO (Either (NonEmpty Error) [Command])
+evalSteps :: (Monad m, EvalMonad m) => Command -> EvalEnv -> m (Either (NonEmpty Error) [Command])
 evalSteps cmd = runEval (evalStepsM cmd)
