@@ -35,10 +35,10 @@ getInstanceCases TST.MkModule { mod_decls } = go mod_decls []
     go ((TST.InstanceDecl (TST.MkInstanceDeclaration _ _ _ _ cases)):rest) acc = go rest (cases++acc)
     go (_:rest) acc = go rest acc
 
-spec :: [(FilePath, Either (NonEmpty Error) TST.Module)] -> Spec
+spec :: [((FilePath, ModuleName), Either (NonEmpty Error) TST.Module)] -> Spec
 spec examples = do
   describe "All examples are locally closed." $ do
-    forM_ examples $ \(example, eitherEnv) -> do
+    forM_ examples $ \((example, _mn), eitherEnv) -> do
       case example `lookup` pendingFiles of
         Just reason -> it "" $ pendingWith $ "Could check local closure of file " ++ example ++ "\nReason: " ++ reason
         Nothing     -> describe ("Examples in " ++ example ++ " are locally closed") $ do

@@ -58,7 +58,7 @@ import TypeInference.GenerateConstraints.Definition (runGenM)
 ---------------------------------------------------------------------------------
 
 interactiveModule :: ModuleName
-interactiveModule = MkModuleName "<Interactive>"
+interactiveModule = MkModuleName [] "<Interactive>"
 
 ---------------------------------------------------------------------------------
 -- ":load" and ":reload" commands
@@ -67,7 +67,7 @@ interactiveModule = MkModuleName "<Interactive>"
 load :: Text -> DriverM ()
 load txt = if T.isSuffixOf ".duo" txt
            then loadFromFile (T.unpack txt)
-           else loadFromModule (MkModuleName txt)
+           else loadFromModule (MkModuleName [] txt)
 
 -- | The user has called ":load" with a filepath.
 loadFromFile :: FilePath -> DriverM ()

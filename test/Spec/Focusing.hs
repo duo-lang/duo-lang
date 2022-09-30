@@ -16,14 +16,15 @@ import Translate.Focusing
 import Resolution.Unresolve
 import Translate.EmbedTST (EmbedTST(..))
 import Errors
+import Syntax.CST.Names (ModuleName)
 
 type Reason = String
 
 pendingFiles :: [(FilePath, Reason)]
 pendingFiles = []
 
-testHelper :: (FilePath, Either (NonEmpty Error) TST.Module) -> EvaluationOrder -> SpecWith ()
-testHelper (example,decls) cbx = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") $ 
+testHelper :: ((FilePath, ModuleName), Either (NonEmpty Error) TST.Module) -> EvaluationOrder -> SpecWith ()
+testHelper ((example, _mn),decls) cbx = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") $ 
   case example `lookup` pendingFiles of
     Just reason -> it "" $ pendingWith $ "Could not focus file " ++ example ++ "\nReason: " ++ reason
     Nothing     -> 
@@ -51,7 +52,7 @@ testHelper (example,decls) cbx = describe (show cbx ++ " Focusing the program in
               it "Could not load examples" $ expectationFailure msg
             (Right _env,_) -> pure ()
 
-spec :: [(FilePath,Either (NonEmpty Error) TST.Module)] -> Spec
+spec :: [((FilePath, ModuleName),Either (NonEmpty Error) TST.Module)] -> Spec
 spec examples = do
     describe "Focusing an entire program still typechecks" $ do
       forM_ examples $ \example -> do

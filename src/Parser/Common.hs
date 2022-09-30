@@ -46,8 +46,11 @@ typeNameP = try $ do
 
 moduleNameP :: Parser (ModuleName, SourcePos)
 moduleNameP = try $ do
-  (name, pos) <- upperCaseIdL
-  return (MkModuleName name, pos)
+  --  path <- many (upperCaseIdL <* symbolP SymDot)
+  path <- upperCaseIdL `sepBy1` symbolP SymDot
+  let (name, pos) = last path
+  --  (name, pos) <- upperCaseIdL
+  return (MkModuleName (fst <$> init path) name, pos)
 
 classNameP :: Parser (ClassName, SourcePos)
 classNameP = try $ do

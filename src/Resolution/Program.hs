@@ -391,9 +391,9 @@ resolveDecl CST.ParseErrorDecl =
   throwOtherError defaultLoc ["Unreachable: ParseErrorDecl cannot be parsed"]
 
 resolveModule :: CST.Module -> ResolverM RST.Module
-resolveModule CST.MkModule { mod_name, mod_fp, mod_decls } = do
+resolveModule CST.MkModule { mod_name, mod_libpath, mod_decls } = do
   decls' <- mapM resolveDecl mod_decls
   pure RST.MkModule { mod_name = mod_name
-                    , mod_fp = mod_fp
+                    , mod_libpath = mod_libpath
                     , mod_decls = decls'
                     }

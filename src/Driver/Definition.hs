@@ -158,7 +158,7 @@ getModuleDeclarations mn = do
           Nothing -> do
             fp <- findModule mn defaultLoc
             file <- liftIO $ T.readFile fp
-            mod <- runFileParser fp (moduleP fp) file
+            mod <- runFileParser fp (moduleP fp mn) file
             addModule mod
             pure mod
 
@@ -205,14 +205,17 @@ guardVerbose action = do
 
 -- | Given the Library Paths contained in the inference options and a module name,
 -- try to find a filepath which corresponds to the given module name.
+-- TODO: Fix
 findModule :: ModuleName -> Loc ->  DriverM FilePath
-findModule (MkModuleName mod) loc = do
+findModule (MkModuleName _path mod) loc = do
   let modString = T.unpack mod
   libpaths <- gets $ infOptsLibPath . drvOpts
   duoFiles <- concat <$> forM libpaths (liftIO . listRecursiveDuoFiles)
-  let duoFilesMatched = filter (\fp -> takeFileName fp == modString || takeBaseName fp == modString) duoFiles
+  -- TODO: fst is a hack here
+  let duoFilesMatched = filter (\fp -> takeFileName fp == modString || takeBaseName fp == modString) $ fst <$> duoFiles
   case duoFilesMatched of
-    [] -> throwOtherError loc $ ["Could not locate library: " <> mod, "Paths searched:"] <> (T.pack <$> duoFiles)
+  -- TODO: and here as well
+    [] -> throwOtherError loc $ ["Could not locate library: " <> mod, "Paths searched:"] <> (T.pack . fst <$> duoFiles)
     (fp:_fps) -> liftIO $ makeAbsolute fp
       
 

@@ -382,15 +382,15 @@ instance Desugar RST.Declaration Core.Declaration where
 
 instance Desugar RST.Module Core.Module where
   desugar :: RST.Module -> Core.Module
-  desugar RST.MkModule { mod_name, mod_fp, mod_decls } =
+  desugar RST.MkModule { mod_name, mod_libpath, mod_decls } =
     Core.MkModule { mod_name = mod_name
-                  , mod_fp = mod_fp
+                  , mod_libpath = mod_libpath
                   , mod_decls = desugar <$> mod_decls
                   }
 
   embedCore :: Core.Module -> RST.Module
-  embedCore Core.MkModule { mod_name, mod_fp, mod_decls } =
+  embedCore Core.MkModule { mod_name, mod_libpath, mod_decls } =
     RST.MkModule { mod_name = mod_name
-                 , mod_fp = mod_fp
+                 , mod_libpath = mod_libpath
                  , mod_decls = embedCore <$> mod_decls
                  }

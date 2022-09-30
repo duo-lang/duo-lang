@@ -283,12 +283,12 @@ inferDecl mn (Core.InstanceDecl decl) = do
   pure (TST.InstanceDecl decl')
 
 inferProgram :: Core.Module -> DriverM TST.Module
-inferProgram Core.MkModule { mod_name, mod_fp, mod_decls } = do
+inferProgram Core.MkModule { mod_name, mod_libpath, mod_decls } = do
   let inferDecl' :: Core.Declaration -> DriverM (Maybe TST.Declaration)
       inferDecl' d = catchError (Just <$> inferDecl mod_name d) (addErrorsNonEmpty mod_name Nothing)
   newDecls <- catMaybes <$> mapM inferDecl' mod_decls
   pure TST.MkModule { mod_name = mod_name
-                    , mod_fp = mod_fp
+                    , mod_libpath = mod_libpath
                     , mod_decls = newDecls
                     }
 

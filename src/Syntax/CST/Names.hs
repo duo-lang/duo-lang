@@ -5,12 +5,17 @@ import Data.Text (Text)
 import Loc ( Loc, defaultLoc )
 import Data.Aeson (ToJSON, FromJSON)
 import GHC.Generics (Generic)
+import System.FilePath ((</>))
+import qualified Data.Text as T
 
 ---------------------------------------------------------------------------------
 -- Names
 ---------------------------------------------------------------------------------
 
-newtype ModuleName = MkModuleName { unModuleName :: Text } deriving (Eq, Ord, Show)
+data ModuleName = MkModuleName { mn_path :: [Text], mn_base :: Text } deriving (Eq, Ord, Show)
+
+assembleFilePath :: FilePath -> ModuleName -> FilePath
+assembleFilePath libp mn = libp </> foldr (</>) (T.unpack $ mn_base mn) (T.unpack <$> mn_path mn)
 
 -- | Name of a primitive operation. Starts with a '#' followed by an uppercase letter.
 newtype PrimName = MkPrimName { unPrimName :: Text } deriving (Eq, Ord, Show)
@@ -86,7 +91,7 @@ peanoNm :: RnTypeName
 peanoNm = MkRnTypeName { rnTnLoc    = defaultLoc
                        , rnTnDoc    = Nothing
                        , rnTnFp     = Nothing 
-                       , rnTnModule = MkModuleName "Peano"
+                       , rnTnModule = MkModuleName ["Data"] "Peano" 
                        , rnTnName   = MkTypeName "Nat"
                        }
 
