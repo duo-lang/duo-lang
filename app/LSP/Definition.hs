@@ -14,10 +14,10 @@ import Data.Text qualified as T
 
 type HoverMap   = Map Range Hover
 type HoverCache = Map Uri HoverMap
-data LSPConfig = MkLSPConfig (IORef HoverCache)
+newtype LSPConfig = MkLSPConfig (IORef HoverCache)
 
-newtype LSPMonad a = MkLSPMonad { unLSPMonad :: (LspT LSPConfig IO a) }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, MonadLsp LSPConfig)
+newtype LSPMonad a = MkLSPMonad { unLSPMonad :: LspT LSPConfig IO a }
+  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, MonadLsp LSPConfig)
 
 sendInfo :: T.Text -> LSPMonad ()
 sendInfo msg = sendNotification SWindowShowMessage (ShowMessageParams MtInfo msg)
