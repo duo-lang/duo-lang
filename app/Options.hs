@@ -8,7 +8,6 @@ import Data.Foldable (fold)
 import Options.Applicative
 
 data Options where
-    OptRepl :: Options
     OptLSP :: Maybe FilePath -> Options
     OptRun :: FilePath -> DebugFlags -> Options
     OptTypecheck :: FilePath -> DebugFlags -> Options
@@ -30,22 +29,6 @@ debugFlagParser = DebugFlags <$> switch modsDebug <*> switch modsGraph
     modsGraph = fold  [ long "XPrintGraph"
                       , help "Print simplification automata graphs."
                       ]
-
----------------------------------------------------------------------------------
--- Commandline options for starting a REPL
----------------------------------------------------------------------------------
-
-replParser :: Parser Options
-replParser = pure OptRepl
-
-replParserInfo :: ParserInfo Options
-replParserInfo = info (helper <*> replParser) mods
-  where
-    mods = fold [ fullDesc
-                , header "duo repl - Start an interactive REPL"
-                , progDesc "Start an interactive REPL."
-                ]
-
 
 ---------------------------------------------------------------------------------
 -- Commandline options for starting a LSP session
@@ -138,8 +121,7 @@ versionParser = OptVersion <$ flag' () (long "version" <> short 'v' <> help "Sho
 ---------------------------------------------------------------------------------
 
 commandParser :: Parser Options
-commandParser = subparser $ fold [ command "repl" replParserInfo
-                                 , command "run" runParserInfo
+commandParser = subparser $ fold [ command "run" runParserInfo
                                  , command "deps" depsParserInfo
                                  , command "lsp" lspParserInfo
                                  , command "check" typecheckParserInfo
