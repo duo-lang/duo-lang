@@ -36,7 +36,7 @@ instance EvalMonad IO where
 
 -- this wrapper is only needed to avoid overlapping EvalMonad instances for IO
 newtype EvalMWrapper m a = MkEvalMWrapper { unEvalMWrapper :: m a }
-  deriving (Functor, Applicative, Monad, MonadWriter w, MonadState s, MonadIO)
+  deriving newtype (Functor, Applicative, Monad, MonadWriter w, MonadState s, MonadIO)
 
 instance (MonadState [Int] m, MonadWriter [String] m) => EvalMonad (EvalMWrapper m) where
   printM = ppPrintWriter

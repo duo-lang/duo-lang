@@ -30,7 +30,7 @@ import Control.Monad.State (MonadState)
 type EvalEnv = (Map FreeVarName (Term Prd), Map FreeVarName (Term Cns), Map FreeVarName Command)
 
 newtype EvalM m a = EvalM { unEvalM :: ReaderT EvalEnv (ExceptT (NonEmpty Error) m) a }
-  deriving (Functor, Applicative, Monad, MonadWriter w, MonadState s, MonadError (NonEmpty Error), MonadReader EvalEnv, MonadIO)
+  deriving newtype (Functor, Applicative, Monad, MonadWriter w, MonadState s, MonadError (NonEmpty Error), MonadReader EvalEnv, MonadIO)
 
 runEval :: EvalM m a -> EvalEnv -> m (Either (NonEmpty Error) a)
 runEval e env = runExceptT (runReaderT (unEvalM e) env)

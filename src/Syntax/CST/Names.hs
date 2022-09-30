@@ -91,7 +91,9 @@ peanoNm = MkRnTypeName { rnTnLoc    = defaultLoc
                        }
 
 -- | Name of a free variable. Starts with a lowercase letter.
-newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text } deriving (Eq, Ord, Show, Generic, FromJSON, ToJSON)
+newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text }
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving newtype (FromJSON, ToJSON)
 
 -- | Type variables
 newtype UniTVar = MkUniTVar { unUniTVar :: Text } deriving (Eq, Show, Ord)

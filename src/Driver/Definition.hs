@@ -86,7 +86,7 @@ defaultDriverState = MkDriverState
 ---------------------------------------------------------------------------------
 
 newtype DriverM a = DriverM { unDriverM :: (StateT DriverState  (ExceptT (NonEmpty Error) (WriterT [Warning] IO))) a }
-  deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadState DriverState, MonadIO, MonadWriter [Warning])
+  deriving newtype (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadState DriverState, MonadIO, MonadWriter [Warning])
 
 instance MonadFail DriverM where
   fail str = throwOtherError defaultLoc [T.pack str]

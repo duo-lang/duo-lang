@@ -17,7 +17,7 @@ type HoverCache = Map Uri HoverMap
 newtype LSPConfig = MkLSPConfig (IORef HoverCache)
 
 newtype LSPMonad a = MkLSPMonad { unLSPMonad :: LspT LSPConfig IO a }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, MonadLsp LSPConfig)
+  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, MonadLsp LSPConfig)
 
 sendInfo :: T.Text -> LSPMonad ()
 sendInfo msg = sendNotification SWindowShowMessage (ShowMessageParams MtInfo msg)
