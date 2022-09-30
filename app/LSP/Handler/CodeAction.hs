@@ -41,7 +41,7 @@ import Driver.Definition
       execDriverM,
       queryTypecheckedModule )
 import Driver.Driver ( inferProgramIO, runCompilationModule )
-import Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration)
+import Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration, dualCmdDeclaration)
 import LSP.Definition ( LSPMonad, getModuleFromFilePath )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Pretty.Pretty ( ppPrint )
@@ -58,7 +58,7 @@ import Control.Monad.Writer.Strict (execWriter)
 import qualified Data.Aeson as J
 import Eval.Definition (EvalEnv)
 import Data.Foldable (fold)
-import Driver.Repl (desugarEnv)
+import Run (desugarEnv)
 import qualified Data.Map as M
 import Utils (filePathToModuleName)
 import System.Directory (makeRelativeToCurrentDirectory)
@@ -103,7 +103,7 @@ generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_
     cbnfocus = [ generateFocusCodeAction ident CBN decl | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
     dualize  = [ generateDualizeCodeAction ident decl]
   in
-    desugar ++ cbvfocus ++ cbnfocus ++ dualize
+    desugar <> cbvfocus <> cbnfocus <> dualize
 
 generateCodeActionCommandDeclaration :: TextDocumentIdentifier -> TST.CommandDeclaration -> [Command |? CodeAction]
 generateCodeActionCommandDeclaration ident decl@TST.MkCommandDeclaration {cmddecl_cmd } =
@@ -112,8 +112,9 @@ generateCodeActionCommandDeclaration ident decl@TST.MkCommandDeclaration {cmddec
     cbvfocus = [ generateCmdFocusCodeAction ident CBV decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBV cmddecl_cmd)]
     cbnfocus = [ generateCmdFocusCodeAction ident CBN decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
     eval     = [ generateCmdEvalCodeAction ident decl ]
+    dualize  = [ generateDualizeCommandAction ident decl ]
   in
-    desugar ++ cbvfocus ++ cbnfocus ++ eval
+    desugar <> cbvfocus <> cbnfocus <> dualize <> eval
 
 generateCodeAction :: TextDocumentIdentifier -> Range -> TST.Declaration -> [Command |? CodeAction]
 generateCodeAction ident Range {_start = start } (TST.PrdCnsDecl _ decl) | lookupPos start (TST.pcdecl_loc decl) =
@@ -157,6 +158,30 @@ generateAnnotEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _ } =
 ---------------------------------------------------------------------------------
 -- Provide Dualize Action
 ---------------------------------------------------------------------------------
+
+generateDualizeCommandAction :: TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
+generateDualizeCommandAction (TextDocumentIdentifier uri) decl =
+  InR $ CodeAction { _title = "Dualize command " <> ppPrint (TST.cmddecl_name decl)
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just (generateDualizeCommandEdit uri decl)
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
+
+generateDualizeCommandEdit :: Uri -> TST.CommandDeclaration -> WorkspaceEdit
+generateDualizeCommandEdit uri decl@(TST.MkCommandDeclaration loc _ _ _) =
+  let
+    replacement = case dualCmdDeclaration decl of
+      (Left error) -> ppPrint $ T.pack (show error)
+      (Right decl') -> ppPrint (TST.CmdDecl decl')
+    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
+  in
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing }
 
 generateDualizeCodeAction :: forall pc. TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> Command |? CodeAction
 generateDualizeCodeAction (TextDocumentIdentifier uri) decl =
