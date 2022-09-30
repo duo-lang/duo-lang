@@ -1,4 +1,4 @@
-module Run (runRun) where
+module Run (runRun, desugarEnv) where
 
 import Control.Monad.IO.Class (liftIO)
 import Data.Map qualified as M
@@ -8,7 +8,6 @@ import Driver.Environment
 import Driver.Driver ( runCompilationModule )
 import Eval.Definition (EvalEnv)
 import Eval.Eval (eval)
-import Pretty.Pretty (ppPrintIO)
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
@@ -42,7 +41,7 @@ runRun DebugFlags { df_debug, df_printGraphs } mn = do
       evalCmd <- liftIO $ eval (TST.Jump defaultLoc (MkFreeVarName "main")) compiledEnv
       case evalCmd of
           Left errs -> mapM_ printLocatedReport errs
-          Right res -> ppPrintIO res
+          Right _res -> return ()
     where
       driverState = defaultDriverState { drvOpts = infOpts }
       infOpts = (if df_printGraphs then setPrintGraphOpts else id) infOpts'

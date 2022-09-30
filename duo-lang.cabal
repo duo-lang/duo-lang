@@ -37,6 +37,7 @@ common shared-build-depends
     , sorted-list
     , hslogger
     , unordered-containers
+    , aeson
 
 common app-build-depends
   build-depends:
@@ -69,6 +70,9 @@ common shared-lang-options
                      GeneralizedNewtypeDeriving,
                      LambdaCase,
                      DeriveFunctor,
+                     DeriveGeneric,
+                     DeriveAnyClass,
+                     DerivingStrategies,
                      OverloadedStrings,
                      ImportQualifiedPost,
                      ViewPatterns,

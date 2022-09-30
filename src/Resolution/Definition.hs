@@ -28,7 +28,7 @@ data ResolveReader = ResolveReader { rr_modules :: Map ModuleName SymbolTable, r
 type WarningWriter = Writer [Warning]
 
 newtype ResolverM a = MkResolverM { unResolverM :: (ReaderT ResolveReader (ExceptT (NonEmpty Error) WarningWriter)) a }
-  deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadReader ResolveReader, MonadWriter [Warning])
+  deriving newtype (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadReader ResolveReader, MonadWriter [Warning])
 
 instance MonadFail ResolverM where
   fail str = throwOtherError defaultLoc [T.pack str]

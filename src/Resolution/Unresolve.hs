@@ -23,7 +23,7 @@ import qualified Syntax.LocallyNameless as LN
 
 newtype UnresolveM a =
   MkUnresolveM { unUnresolveM :: State ([FreeVarName],[FreeVarName]) a }
-    deriving (Functor, Applicative,Monad, MonadState ([FreeVarName],[FreeVarName]))
+    deriving newtype (Functor, Applicative,Monad, MonadState ([FreeVarName],[FreeVarName]))
 
 runUnresolveM :: UnresolveM a -> a
 runUnresolveM m = evalState (unUnresolveM m) names

@@ -1,4 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
 module Syntax.Core.Terms
   ( -- Terms
     Term(..)
