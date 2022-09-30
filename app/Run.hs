@@ -1,4 +1,4 @@
-module Run (runRun) where
+module Run (runRun, desugarEnv) where
 
 import Control.Monad.IO.Class (liftIO)
 import Data.Map qualified as M

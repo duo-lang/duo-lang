@@ -60,7 +60,7 @@ import Control.Monad.Writer.Strict (execWriter)
 import qualified Data.Aeson as J
 import Eval.Definition (EvalEnv)
 import Data.Foldable (fold)
-import Driver.Repl (desugarEnv)
+import Run (desugarEnv)
 import qualified Data.Map as M
 import System.FilePath (splitFileName, dropExtension)
 
