@@ -124,11 +124,11 @@ xcaseToHoverMap loc pc ty ns = mkHoverMap loc msg
     msg = case pc of
       PrdRep -> T.unlines [ "#### " <> ppPrint ns <> " cocase"
                           , "- **Right-Intro**"
-                          , "- Type: `" <> ppPrint ty <> "`"
+                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
       CnsRep -> T.unlines [ "#### " <> ppPrint ns <> " case"
                           , "- **Left-Intro**"
-                          , "- Type: `" <> ppPrint ty <> "`"
+                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
 
 muAbsToHoverMap :: Loc -> PrdCnsRep pc -> TST.Typ pol -> HoverMap
@@ -137,10 +137,10 @@ muAbsToHoverMap loc pc ty = mkHoverMap loc msg
     msg :: Text
     msg = case pc of
       PrdRep -> T.unlines [ "#### μ-Abstraction"
-                          , "- Type: `" <> ppPrint ty <> "`"
+                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
       CnsRep -> T.unlines [ "#### ~μ-Abstraction"
-                          , "- Type: `" <> ppPrint ty <> "`"
+                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                 ]
 
 
@@ -159,7 +159,7 @@ lambdaToHoverMap loc ty = mkHoverMap loc msg
     msg :: Text
     msg = T.unlines [ "#### " <>  " lambda"
                     , "- **Right-Elim**"
-                    , "- Type: `" <> ppPrint ty <> "`"
+                    , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                     ]
 
 
@@ -169,7 +169,7 @@ caseToHoverMap loc ty ns = mkHoverMap loc msg
     msg :: Text
     msg = T.unlines [ "#### " <> ppPrint ns <> " case-of"
                     , "- **Right-Elim**"
-                    , "- Type: `" <> ppPrint ty <> "`"
+                    , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                     ]
 
 cocaseToHoverMap :: Loc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
@@ -178,7 +178,7 @@ cocaseToHoverMap loc ty ns = mkHoverMap loc msg
     msg :: Text
     msg = T.unlines [ "#### " <> ppPrint ns <> " cocase"
                     , "- **Right-Intro**"
-                    , "- Type: `" <> ppPrint ty <> "`"
+                    , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                     ]
 
 
