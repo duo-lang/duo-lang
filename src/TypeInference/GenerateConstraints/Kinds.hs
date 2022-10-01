@@ -86,8 +86,6 @@ data DataDeclState = MkDataDeclState
     declKind :: PolyKind,
     declTyName :: RnTypeName,
     boundRecVars :: M.Map RecTVar MonoKind,
-    usedKindVars :: [KVar],
-    kvCount :: Int,
     refXtors :: ([TST.XtorSig RST.Pos], [TST.XtorSig RST.Neg]),
     refRecVars :: M.Map RecTVar MonoKind
   }
@@ -97,8 +95,6 @@ createDataDeclState polyknd tyn = MkDataDeclState
   { declKind = polyknd,
     declTyName = tyn,
     boundRecVars = M.empty, 
-    usedKindVars = [], 
-    kvCount = 0,
     refXtors = ([],[]), 
     refRecVars = M.empty
   }
@@ -321,12 +317,13 @@ annotateDataDecl RST.RefinementDecl {
   data_xtors = xtors,
   data_xtors_refined = xtorsref
   } = do
+    xtorsPos <- mapM annotXtor (fst xtors)
+    xtorsNeg <- mapM annotXtor (snd xtors)
+    addXtors (xtorsPos,xtorsNeg)
     emptPos <- annotTy (fst empt)
     emptNeg <- annotTy (snd empt)
     fulPos <- annotTy (fst ful) 
     fulNeg <- annotTy (snd ful)
-    xtorsPos <- mapM annotXtor (fst xtors)
-    xtorsNeg <- mapM annotXtor (snd xtors)
     xtorsRefPos <- mapM annotXtor (fst xtorsref)
     xtorsRefNeg <- mapM annotXtor (snd xtorsref)
     return TST.RefinementDecl {
