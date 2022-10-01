@@ -25,6 +25,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
+import Data.Bifunctor (bimap)
 
 --------------------------------------------------------------------------------------------
 -- Helpers
@@ -58,7 +59,7 @@ getXtorKinds loc (xtor:xtors) = do
 getTyNameKind ::  Loc -> RnTypeName -> GenM (MonoKind,[MonoKind])
 getTyNameKind loc tyn = do
   decl <- lookupTypeName loc tyn
-  pure (getKindDecl decl)
+  getKindDecl decl
   
 getKindDecl ::  TST.DataDecl -> GenM (MonoKind,[MonoKind])
 getKindDecl decl = do
@@ -113,11 +114,6 @@ resolveDataDecl decl env = do
   return decl' 
 
 
-addRecVar :: RecTVar ->  MonoKind -> DataDeclM () 
-addRecVar rv mk =   modify (\(DataDeclState{declKind = knd, declTyName = tyn, boundRecVars = rvs, usedKindVars = kvs,kvCount = cnt }) 
-          -> DataDeclState { declKind = knd, declTyName = tyn, boundRecVars = M.insert rv mk rvs, usedKindVars = kvs, kvCount = cnt+1})
-
-
 addXtors :: ([TST.XtorSig RST.Pos],[TST.XtorSig RST.Neg]) -> DataDeclM ()
 addXtors newXtors =  modify (\s@MkDataDeclState{refXtors = xtors} -> 
                                 s {refXtors = Data.Bifunctor.bimap (fst xtors ++ ) (snd xtors ++) newXtors })
@@ -134,7 +130,6 @@ getXtors pl names = do
   case pl of 
     RST.PosRep -> return (f (fst cached))
     RST.NegRep -> return (g (snd cached))
->>>>>>> main
   
 annotXtor :: RST.XtorSig pol -> DataDeclM (TST.XtorSig pol)
 annotXtor (RST.MkXtorSig nm ctxt) = do 
@@ -236,8 +231,8 @@ annotTy (RST.TyNominal loc pol tyn vartys) = do
 annotTy (RST.TySyn loc pol tyn ty) =  do 
   ty' <- annotTy ty
   return $ TST.TySyn loc pol tyn ty'
-annotTy (RST.TyBot loc) = do TST.TyBot loc . KindVar <$> newDeclKVar
-annotTy (RST.TyTop loc) = do TST.TyTop loc . KindVar <$> newDeclKVar
+annotTy (RST.TyBot loc) = throwOtherError loc ["TyBot should not be contained in a data declaration"]
+annotTy (RST.TyTop loc) = throwOtherError loc ["TyTop should not be contained in a data declaration"]
 annotTy (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
