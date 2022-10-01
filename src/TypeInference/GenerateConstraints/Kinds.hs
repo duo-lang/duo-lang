@@ -26,6 +26,8 @@ import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Bifunctor (bimap)
+import Data.List (foldr)
+
 
 --------------------------------------------------------------------------------------------
 -- Helpers
@@ -437,8 +439,30 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
 
   annotateKind (RST.TyNominal loc pol tyn vartys) = do
     vartys' <- mapM annotateKind vartys
+    decl <- lookupTypeName loc tyn
+    checkVartys vartys' decl
     knd <- getTyNameKind loc tyn
     return (TST.TyNominal loc pol (fst knd) tyn vartys')
+    where 
+      checkVartys :: [TST.VariantType pol] -> TST.DataDecl -> GenM ()
+      checkVartys vartys decl = do 
+        let xtors = TST.data_xtors decl
+        let compared = compArgs vartys xtors
+        if or compared then
+          return ()
+        else throwOtherError defaultLoc ["Could not check Vartys"]
+      compArgs :: [TST.VariantType pol] -> ([TST.XtorSig RST.Pos], [TST.XtorSig RST.Neg]) -> [Bool]
+      compArgs vartys (xtorsPos, xtorsNeg) = 
+        case pol of 
+          RST.PosRep -> map (correctApp vartys . TST.sig_args) xtorsPos
+          RST.NegRep -> map (correctApp vartys . TST.sig_args) xtorsNeg
+      correctApp :: [TST.VariantType pol] -> TST.LinearContext pol -> Bool
+      correctApp [] [] = True
+      correctApp (_:_) [] = False
+      correctApp [] (_:_) = False
+      correctApp (fstVarty:rstVarty) (fstArg:rstArgs) = getKind fstVarty == getKind fstArg && correctApp rstVarty rstArgs
+
+          
 
   annotateKind (RST.TySyn loc pol tn ty) = do 
     ty' <- annotateKind ty 
