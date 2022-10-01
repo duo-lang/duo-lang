@@ -198,22 +198,26 @@ annotTy (RST.TyCodata loc pol xtors) = do
     compXtorKinds [mk] = Just mk
     compXtorKinds (xtor1:xtor2:rst) = if xtor1==xtor2 then compXtorKinds (xtor2:rst) else Nothing
 annotTy (RST.TyDataRefined loc pol tyn xtors) =  do 
-  xtors' <- mapM annotXtor xtors
   tyn' <- gets declTyName
   if tyn == tyn' then do
+    let xtorNames = map RST.sig_name xtors
+    xtors' <- getXtors pol xtorNames
     polyknd <- gets declKind
     return $ TST.TyDataRefined loc pol (CBox $ returnKind polyknd) tyn xtors' 
   else do 
     decl <- lookupTypeName loc tyn
+    let xtors' = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) $ TST.data_xtors decl
     return $ TST.TyDataRefined loc pol (CBox $ returnKind $ TST.data_kind decl) tyn xtors' 
 annotTy (RST.TyCodataRefined loc pol tyn xtors) = do 
-  xtors' <- mapM annotXtor xtors
   tyn' <- gets declTyName
   if tyn == tyn' then do 
+    let xtorNames = map RST.sig_name xtors
+    xtors' <- getXtors (RST.flipPolarityRep pol) xtorNames
     polyknd <- gets declKind
     return $ TST.TyCodataRefined loc pol (CBox $ returnKind polyknd) tyn xtors'
   else do
     decl <- lookupTypeName loc tyn
+    let xtors' = (case pol of RST.PosRep -> snd; RST.NegRep -> fst) $ TST.data_xtors decl
     return $ TST.TyCodataRefined loc pol (CBox $ returnKind (TST.data_kind decl)) tyn xtors'
 annotTy (RST.TyNominal loc pol tyn vartys) = do 
   tyn' <- gets declTyName
