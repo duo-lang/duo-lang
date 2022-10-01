@@ -26,6 +26,7 @@ import Loc
 import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
+import Syntax.TST.Terms (Substitution(..))
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -40,7 +41,7 @@ instance GenConstraints Core.PrdCnsTerm TST.PrdCnsTerm where
 instance GenConstraints Core.Substitution TST.Substitution where
   genConstraints :: Core.Substitution
                  -> GenM TST.Substitution
-  genConstraints = mapM genConstraints
+  genConstraints = fmap MkSubstitution . mapM genConstraints . Core.unSubstitution
 
 genConstraintsCtxts :: TST.LinearContext Pos -> TST.LinearContext Neg -> ConstraintInfo -> GenM ()
 genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = do
@@ -129,7 +130,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- Then we generate constraints between the inferred types of the substitution
     -- and the types we looked up, i.e. the types declared in the XtorSig.
     genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
-    knd <- getKindDecl decl
+    let knd = getKindDecl decl
     case rep of
       PrdRep -> return (TST.Xtor loc annot rep (TST.TyNominal defaultLoc PosRep (fst knd) (TST.data_name decl) args) CST.Nominal xt substInferred)
       CnsRep -> return (TST.Xtor loc annot rep (TST.TyNominal defaultLoc NegRep (fst knd) (TST.data_name decl) args) CST.Nominal xt substInferred)
@@ -147,7 +148,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- Then we generate constraints between the inferred types of the substitution
     -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
     genConstraintsCtxts substTypes (TST.sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
-    knd <- getKindDecl decl
+    let knd = getKindDecl decl
     case rep of
       PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep (fst knd) (TST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
       CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep (fst knd) (TST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
@@ -202,7 +203,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                     -- with the types from the signature.
                     cmdInferred <- withContext posTypes' (genConstraints cmdcase_cmd)
                     return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc' xt args) cmdInferred, TST.MkXtorSig xt negTypes'))
-    knd <- getKindDecl decl
+    let knd = getKindDecl decl
     case rep of
       PrdRep -> return $ TST.XCase loc annot rep (TST.TyNominal defaultLoc PosRep (fst knd) (TST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
       CnsRep -> return $ TST.XCase loc annot rep (TST.TyNominal defaultLoc NegRep (fst knd) (TST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
@@ -236,7 +237,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- For the type, we return the unification variables which are now bounded by the least
                         -- and greatest type translation.
                         return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
-    knd <- getKindDecl decl
+    let knd = getKindDecl decl
     case rep of
       PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep (fst knd) (TST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
       CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep (fst knd) (TST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)

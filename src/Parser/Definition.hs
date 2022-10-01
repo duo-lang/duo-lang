@@ -23,8 +23,8 @@ import Loc ( Loc(..) )
 -------------------------------------------------------------------------------------------
 
 newtype Parser a = Parser { unParser :: Parsec Void Text a }
-  deriving (Functor, Applicative, Monad, MonadFail, Alternative, MonadPlus
-           , MonadParsec Void Text)
+  deriving newtype (Functor, Applicative, Monad, MonadFail, Alternative, MonadPlus
+                   , MonadParsec Void Text)
 
 -------------------------------------------------------------------------------------------
 -- Debugging Support 

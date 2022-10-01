@@ -11,7 +11,6 @@ import Run (runRun)
 import Syntax.CST.Names
 import Typecheck (runTypecheck)
 import Deps (runDeps)
-import Repl.Run (runRepl)
 import LSP.LSP (runLSP)
 import Paths_duo_lang (version)
 import Utils (trimStr)
@@ -25,7 +24,6 @@ filepathToModuleName :: FilePath -> ModuleName
 filepathToModuleName fp = MkModuleName . T.pack . trimStr . replaceFileName fp $ takeBaseName fp
 
 dispatch :: Options -> IO ()
-dispatch OptRepl                = runRepl
 dispatch (OptLSP log)           = runLSP log
 dispatch (OptRun fp opts)       = runRun opts $ filepathToModuleName fp
 dispatch (OptDeps fp)           = runDeps $ filepathToModuleName fp

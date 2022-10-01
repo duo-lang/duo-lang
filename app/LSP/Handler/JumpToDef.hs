@@ -30,11 +30,11 @@ import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupInRangeMap )
 import Parser.Definition ( runFileParser )
 import Parser.Program ( moduleP )
+import Sugar.Desugar (Desugar(..))
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
-import Translate.EmbedCore (EmbedCore(..))
 import Translate.EmbedTST(EmbedTST(..))
 
 jumpToDefHandler :: Handlers LSPMonad
@@ -84,10 +84,10 @@ instance ToJumpMap RST.PrdCnsTerm where
   toJumpMap (RST.CnsTerm tm) = toJumpMap tm
 
 instance ToJumpMap RST.Substitution where
-  toJumpMap subst = M.unions (toJumpMap <$> subst)
+  toJumpMap (RST.MkSubstitution subst) = M.unions (toJumpMap <$> subst)
 
 instance ToJumpMap (RST.SubstitutionI pc) where
-  toJumpMap (subst1,_,subst2) =
+  toJumpMap (RST.MkSubstitutionI (subst1,_,subst2)) =
     M.unions ((toJumpMap <$> subst1) ++ (toJumpMap <$> subst2))
 
 instance ToJumpMap RST.CmdCase where

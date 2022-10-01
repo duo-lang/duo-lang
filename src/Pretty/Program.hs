@@ -9,6 +9,7 @@ import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()
 import Pretty.Common
+import Sugar.Desugar (Desugar(..))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..))
@@ -17,8 +18,7 @@ import Syntax.CST.Names
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
-import Translate.EmbedCore (EmbedCore(..))
-import Translate.EmbedRST
+import Resolution.Unresolve
 import Translate.EmbedTST (EmbedTST(..))
 import Syntax.CST.Program (PrdCnsDeclaration(pcdecl_term))
 
@@ -42,7 +42,7 @@ instance PrettyAnn CST.DataDecl where
     semi
 
 instance PrettyAnn RST.DataDecl where
-  prettyAnn decl = prettyAnn (embedRST decl)
+  prettyAnn decl = prettyAnn (runUnresolveM (unresolve decl))
 
 instance PrettyAnn TST.DataDecl where 
   prettyAnn decl = prettyAnn (embedTST decl)
@@ -195,7 +195,7 @@ instance PrettyAnn TST.Declaration where
   prettyAnn decl = prettyAnn (embedTST decl)
 
 instance PrettyAnn RST.Declaration where
-  prettyAnn decl = prettyAnn (reparse decl)
+  prettyAnn decl = prettyAnn (runUnresolveM (unresolve decl))
 
     
 instance PrettyAnn CST.Declaration where

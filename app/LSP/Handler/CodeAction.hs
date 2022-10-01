@@ -1,25 +1,47 @@
-{-# LANGUAGE TypeOperators #-}
-module LSP.Handler.CodeAction (codeActionHandler) where
+module LSP.Handler.CodeAction (codeActionHandler
+                              , evalHandler
+                              ) where
 
+import GHC.Generics ( Generic )
 import Control.Monad (join)
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe ( fromMaybe, isNothing )
 import Data.Text qualified as T
-import Language.LSP.Types
+import Language.LSP.Types ( TextDocumentIdentifier(..)
+                          , RequestMessage (..)
+                          , CodeActionParams (..)
+                          , Range (..)
+                          , List (..)
+                          , Command (..)
+                          , type (|?) (..)
+                          , CodeAction (..)
+                          , Uri
+                          , WorkspaceEdit (..)
+                          , TextEdit (..)
+                          , ResponseError (..)
+                          , ExecuteCommandParams (..)
+                          , ApplyWorkspaceEditParams (..)
+                          , SMethod (..)
+                          , toNormalizedUri
+                          , uriToFilePath
+                          , CodeActionKind (..)
+                          , ErrorCode (..) )
 import Language.LSP.Server
-import Language.LSP.VFS
+    ( getVirtualFile, requestHandler, sendRequest, Handlers )
+import Language.LSP.VFS ( VirtualFile, virtualFileText )
 import System.Log.Logger ( debugM )
 import Syntax.TST.Types qualified as TST ( TopAnnot(..))
-import Syntax.RST.Types ( PolarityRep(..))
 import Syntax.CST.Kinds ( EvaluationOrder(..) )
 import Syntax.TST.Program qualified as TST
-import Syntax.RST.Program qualified as RST
 import Syntax.CST.Types (PrdCnsRep(..))
 import Driver.Definition
-import Driver.Driver ( inferProgramIO )
-import Dualize.Program (dualDataDecl)
-import Dualize.Terms (dualTerm, dualTypeScheme, dualFVName)
+    ( DriverState(MkDriverState, drvEnv),
+      defaultDriverState,
+      execDriverM,
+      queryTypecheckedModule )
+import Driver.Driver ( inferProgramIO, runCompilationModule )
+import Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration, dualCmdDeclaration)
 import LSP.Definition ( LSPMonad )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Parser.Definition ( runFileParser )
@@ -27,10 +49,20 @@ import Parser.Program ( moduleP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
-import Syntax.CST.Names ( FreeVarName(..) )
-import Translate.Focusing ( isFocusedTerm, isFocusedCmd, Focus(..) )
-import Loc
-import Translate.EmbedTST (embedTST)
+import Syntax.CST.Names ( FreeVarName(..), ModuleName (MkModuleName) )
+import Translate.Focusing ( Focus(..) )
+import Loc ( Loc, defaultLoc )
+import Eval.Eval (eval, EvalMWrapper (..))
+import qualified Syntax.TST.Terms as TST
+import Data.List.NonEmpty (NonEmpty ((:|)))
+import Control.Monad.State.Strict (execStateT)
+import Control.Monad.Writer.Strict (execWriter)
+import qualified Data.Aeson as J
+import Eval.Definition (EvalEnv)
+import Data.Foldable (fold)
+import Run (desugarEnv)
+import qualified Data.Map as M
+import System.FilePath (splitFileName, dropExtension)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -68,20 +100,22 @@ generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_
 generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _, pcdecl_term } =
   let
     desugar  = [ generateDesugarCodeAction ident decl | not (isDesugaredTerm pcdecl_term)]
-    cbvfocus = [ generateFocusCodeAction ident CBV decl | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBV pcdecl_term)]
-    cbnfocus = [ generateFocusCodeAction ident CBN decl | isDesugaredTerm pcdecl_term, isNothing (isFocusedTerm CBN pcdecl_term)]
+    cbvfocus = [ generateFocusCodeAction ident CBV decl | isDesugaredTerm pcdecl_term, isNothing (isFocused CBV pcdecl_term)]
+    cbnfocus = [ generateFocusCodeAction ident CBN decl | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
     dualize  = [ generateDualizeCodeAction ident decl]
   in
-    desugar ++ cbvfocus ++ cbnfocus ++ dualize
+    desugar <> cbvfocus <> cbnfocus <> dualize
 
 generateCodeActionCommandDeclaration :: TextDocumentIdentifier -> TST.CommandDeclaration -> [Command |? CodeAction]
 generateCodeActionCommandDeclaration ident decl@TST.MkCommandDeclaration {cmddecl_cmd } =
   let
-    desugar = [ generateCmdDesugarCodeAction ident decl | not (isDesugaredCommand cmddecl_cmd)]
-    cbvfocus = [ generateCmdFocusCodeAction ident CBV decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBV cmddecl_cmd)]
-    cbnfocus = [ generateCmdFocusCodeAction ident CBN decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocusedCmd CBN cmddecl_cmd)]
+    desugar  = [ generateCmdDesugarCodeAction ident decl | not (isDesugaredCommand cmddecl_cmd)]
+    cbvfocus = [ generateCmdFocusCodeAction ident CBV decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBV cmddecl_cmd)]
+    cbnfocus = [ generateCmdFocusCodeAction ident CBN decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
+    eval     = [ generateCmdEvalCodeAction ident decl ]
+    dualize  = [ generateDualizeCommandAction ident decl ]
   in
-    desugar ++ cbvfocus ++ cbnfocus
+    desugar <> cbvfocus <> cbnfocus <> dualize <> eval
 
 generateCodeAction :: TextDocumentIdentifier -> Range -> TST.Declaration -> [Command |? CodeAction]
 generateCodeAction ident Range {_start = start } (TST.PrdCnsDecl _ decl) | lookupPos start (TST.pcdecl_loc decl) =
@@ -90,7 +124,7 @@ generateCodeAction ident Range {_start = start} (TST.CmdDecl decl) | lookupPos s
   generateCodeActionCommandDeclaration ident decl
 generateCodeAction ident Range {_start = _start} (TST.DataDecl decl) = dualizeDecl
   where     
-    dualizeDecl = [generateDualizeDeclCodeAction ident (TST.data_loc decl) (embedTST decl)]
+    dualizeDecl = [generateDualizeDeclCodeAction ident (TST.data_loc decl) decl]
 generateCodeAction _ _ _ = []
 
 ---------------------------------------------------------------------------------
@@ -126,6 +160,30 @@ generateAnnotEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _ } =
 -- Provide Dualize Action
 ---------------------------------------------------------------------------------
 
+generateDualizeCommandAction :: TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
+generateDualizeCommandAction (TextDocumentIdentifier uri) decl =
+  InR $ CodeAction { _title = "Dualize command " <> ppPrint (TST.cmddecl_name decl)
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just (generateDualizeCommandEdit uri decl)
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
+
+generateDualizeCommandEdit :: Uri -> TST.CommandDeclaration -> WorkspaceEdit
+generateDualizeCommandEdit uri decl@(TST.MkCommandDeclaration loc _ _ _) =
+  let
+    replacement = case dualCmdDeclaration decl of
+      (Left error) -> ppPrint $ T.pack (show error)
+      (Right decl') -> ppPrint (TST.CmdDecl decl')
+    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
+  in
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing }
+
 generateDualizeCodeAction :: forall pc. TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> Command |? CodeAction
 generateDualizeCodeAction (TextDocumentIdentifier uri) decl =
   InR $ CodeAction { _title = "Dualize term " <> ppPrint (TST.pcdecl_name decl)
@@ -140,24 +198,22 @@ generateDualizeCodeAction (TextDocumentIdentifier uri) decl =
 
 
 generateDualizeEdit :: forall pc. Uri -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
-generateDualizeEdit uri (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Annotated tys) tm) =
+generateDualizeEdit uri decl@(TST.MkPrdCnsDeclaration loc _ rep _ _ _ _) =
   let
-    tm' = dualTerm rep tm
-    replacement = case tm' of
+    replacement = case dualPrdCnsDeclaration decl of
       (Left error) -> ppPrint $ T.pack (show error)
-      (Right tm'') -> case rep of
-        PrdRep -> ppPrint (TST.PrdCnsDecl CnsRep (TST.MkPrdCnsDeclaration loc doc CnsRep isrec (dualFVName fv) (TST.Annotated (dualTypeScheme PosRep tys)) tm''))
-        CnsRep -> ppPrint (TST.PrdCnsDecl PrdRep (TST.MkPrdCnsDeclaration loc doc PrdRep isrec (dualFVName fv) (TST.Annotated (dualTypeScheme NegRep tys)) tm''))
+      (Right decl') -> case rep of
+        PrdRep -> ppPrint (TST.PrdCnsDecl CnsRep decl')
+        CnsRep -> ppPrint (TST.PrdCnsDecl PrdRep decl')
     edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing }
-generateDualizeEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Inferred _ } = error "Should not occur"
 
-generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> RST.DataDecl -> Command |? CodeAction
+generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> TST.DataDecl -> Command |? CodeAction
 generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl =
-  InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (RST.data_name decl)
+  InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (TST.data_name decl)
                    , _kind = Just CodeActionQuickFix
                    , _diagnostics = Nothing
                    , _isPreferred = Nothing
@@ -168,11 +224,11 @@ generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl =
                    }
 
 
-generateDualizeDeclEdit :: Uri -> Loc -> RST.DataDecl -> WorkspaceEdit
+generateDualizeDeclEdit :: Uri -> Loc -> TST.DataDecl -> WorkspaceEdit
 generateDualizeDeclEdit uri loc decl =
   let
     decl' = dualDataDecl decl
-    replacement = ppPrint (RST.DataDecl  decl')
+    replacement = ppPrint (TST.DataDecl  decl')
     edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
@@ -285,3 +341,115 @@ generateCmdDesugarEdit (TextDocumentIdentifier uri) decl =
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing
                   }
+
+data EvalCmdArgs = MkEvalCmdArgs  { evalArgs_loc :: Range
+                                  , evalArgs_uri :: TextDocumentIdentifier
+                                  , evalArgs_cmd :: FreeVarName
+                                  }
+  deriving (Show, Generic)
+
+deriving anyclass instance J.FromJSON EvalCmdArgs
+deriving anyclass instance J.ToJSON EvalCmdArgs
+
+generateCmdEvalCodeAction ::  TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
+generateCmdEvalCodeAction ident decl =
+  let cmd = TST.cmddecl_name decl
+      args = MkEvalCmdArgs  { evalArgs_loc = locToRange (TST.cmddecl_loc decl)
+                            , evalArgs_uri = ident
+                            , evalArgs_cmd = cmd
+                            }
+  in InR $ CodeAction { _title = "Eval " <> unFreeVarName (TST.cmddecl_name decl)
+                      , _kind = Just CodeActionQuickFix
+                      , _diagnostics = Nothing
+                      , _isPreferred = Nothing
+                      , _disabled = Nothing
+                      --  , _edit = Just (generateCmdEvalEdit ident decl)
+                      , _edit = Nothing
+                      , _command = Just $ Command { _title = "eval", _command = "duo-inline-eval", _arguments = Just $ List [J.toJSON args] }
+                      , _xdata = Nothing
+                      }
+
+stopHandler :: (Either ResponseError b -> LSPMonad ()) -> String -> String -> LSPMonad a
+stopHandler responder s e = responder (Left $ ResponseError InvalidRequest (T.pack e) Nothing) >> liftIO (debugM s e >> fail e)
+
+uriToModuleName :: Uri -> ModuleName
+uriToModuleName uri =
+      let fullPath = fromMaybe "" $ uriToFilePath uri
+          relPath = dropExtension $ snd $ splitFileName fullPath
+      in MkModuleName $ T.pack relPath
+
+evalArgsFromJSON  :: LSPMonad EvalCmdArgs
+                  -> LSPMonad EvalCmdArgs
+                  -> (String -> LSPMonad EvalCmdArgs)
+                  -> Maybe (List J.Value)
+                  -> LSPMonad EvalCmdArgs
+evalArgsFromJSON emptyFail tooManyFail errFail = maybe emptyFail getJSON
+  where
+    getJSON :: List J.Value -> LSPMonad EvalCmdArgs
+    getJSON (List xs) = case xs of
+                          [] -> emptyFail
+                          [args] -> case J.fromJSON args :: J.Result EvalCmdArgs of
+                                      J.Success ea -> return ea
+                                      J.Error e    -> do
+                                          errFail e
+                          _xs -> tooManyFail
+
+evalInModule  :: MonadIO m
+              => ModuleName
+              -> FreeVarName
+              -> (String -> m (TST.Module, DriverState))
+              -> m [String]
+evalInModule mn cmd stop = do
+      (res, _warnings) <- liftIO $ execDriverM defaultDriverState (runCompilationModule mn >> queryTypecheckedModule mn)
+      (_, MkDriverState { drvEnv }) <- case res of
+                  Left errs -> stop $ unlines $ (\(x :| xs) -> x:xs) $ show <$> errs
+                  Right drvEnv -> return drvEnv
+      let compiledEnv :: EvalEnv = focus CBV ((\map -> fold $ desugarEnv <$> M.elems map) drvEnv)
+      return $ execWriter $ flip execStateT [] $ unEvalMWrapper $ eval (TST.Jump defaultLoc cmd) compiledEnv
+
+addCommentedAbove :: Foldable t => Range -> Uri -> t String -> ApplyWorkspaceEditParams
+addCommentedAbove range uri content =
+      let toComments = unlines . fmap ("-- " ++) . concatMap lines
+          rangeToStartRange Range { _start } = Range {_start = _start, _end = _start}
+          tedit = TextEdit { _range = rangeToStartRange range, _newText = T.pack $ toComments content}
+          wedit = WorkspaceEdit { _changes = Just (Map.singleton uri (List [tedit]))
+                                , _documentChanges = Nothing
+                                , _changeAnnotations = Nothing
+                                }
+      in  ApplyWorkspaceEditParams { _label = Nothing, _edit = wedit }
+
+evalHandler :: Handlers LSPMonad
+evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params} responder -> do
+  let source = "lspserver.evalHandler"
+  liftIO $ debugM source "Received eval request"
+  let ExecuteCommandParams{_command, _arguments} = _params
+  case _command of
+    "duo-inline-eval" -> do
+      -- parse arguments back from JSON
+      args <- evalArgsFromJSON
+                (stopHandler responder source "Arguments should not be empty")
+                (stopHandler responder source "Specified more than one argument!")
+                (\e -> stopHandler responder source ("Request " <> T.unpack _command <> " is invalid with error " <> e))
+                _arguments
+      liftIO $ debugM source $ "Running " <> T.unpack _command <> " with args " <> show args
+
+      -- get Module name
+      let uri = _uri $ evalArgs_uri args
+      let mn  = uriToModuleName uri
+      liftIO $ debugM source $ "Running " <> T.unpack _command <> " with module " <> show mn
+
+      -- execute command
+      res <- evalInModule mn (evalArgs_cmd args) (stopHandler responder source)
+      liftIO $ debugM source $ "Running " <> T.unpack _command <> " with result " <> unlines res
+
+      -- create edit
+      let weditP = addCommentedAbove (evalArgs_loc args) uri res
+      let responder' x = case x of
+                          Left e  -> responder (Left e)
+                          Right _ -> return ()
+      _ <- sendRequest SWorkspaceApplyEdit weditP responder'
+
+      -- signal success
+      responder (Right $ J.toJSON ())
+    _ -> responder (Left $ ResponseError InvalidRequest ("Request " <> _command <> " is invalid") Nothing)
+

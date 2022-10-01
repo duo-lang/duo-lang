@@ -32,7 +32,6 @@ import Syntax.RST.Types (PolarityRep(..))
 import Loc (Loc)
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
-import Translate.EmbedTST (embedTST)
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
@@ -201,7 +200,7 @@ instance ToHoverMap (Term pc) where
     M.unions $ xcaseToHoverMap loc pc ty ns : (toHoverMap <$> cases)
   toHoverMap (RawMuAbs loc pc ty _ cmd) =
     M.unions [muAbsToHoverMap loc pc ty, toHoverMap cmd]
-  toHoverMap (Dtor loc _ ty ns _ e (s1,_,s2)) =
+  toHoverMap (Dtor loc _ ty ns _ e (MkSubstitutionI (s1,_,s2))) =
     M.unions $ [dtorToHoverMap loc ty ns] <> (toHoverMap <$> (PrdTerm e:(s1 ++ s2)))
   toHoverMap (CaseOf loc _ ty ns e cases) =
     M.unions $ [caseToHoverMap loc ty ns] <> (toHoverMap <$> cases) <> [toHoverMap e]
@@ -227,7 +226,7 @@ instance ToHoverMap (Term pc) where
                                ]
   toHoverMap (XCaseI loc _pcrep CnsRep ty ns tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI)
-  toHoverMap (Semi loc _ ty ns _ (s1,_,s2) t) =
+  toHoverMap (Semi loc _ ty ns _ (MkSubstitutionI (s1,_,s2)) t) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> (CnsTerm t:(s1 ++ s2)))
   toHoverMap (CocaseOf loc _ ty ns t tmcasesI) =
     M.unions $ [cocaseToHoverMap loc ty ns] <> (toHoverMap <$> tmcasesI) <> [toHoverMap t]
@@ -260,7 +259,7 @@ instance ToHoverMap TST.Command where
     M.unions $ toHoverMap t : map toHoverMap tmcasesI
 
 instance ToHoverMap Substitution where
-  toHoverMap subst = M.unions (toHoverMap <$> subst)
+  toHoverMap subst = M.unions (toHoverMap <$> unSubstitution subst)
 
 ---------------------------------------------------------------------------------
 -- Converting a type to a HoverMap
@@ -447,11 +446,11 @@ instance ToHoverMap TST.CommandDeclaration where
   toHoverMap TST.MkCommandDeclaration { cmddecl_cmd } =
     toHoverMap cmddecl_cmd
 
-instance ToHoverMap RST.DataDecl where
-  toHoverMap RST.NominalDecl { data_loc, data_polarity } = mkHoverMap data_loc msg
+instance ToHoverMap TST.DataDecl where
+  toHoverMap TST.NominalDecl { data_loc, data_polarity } = mkHoverMap data_loc msg
     where
       msg = T.unlines [ "#### Nominal " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" ]
-  toHoverMap RST.RefinementDecl { data_loc, data_polarity, data_refinement_empty, data_refinement_full } = mkHoverMap data_loc msg
+  toHoverMap TST.RefinementDecl { data_loc, data_polarity, data_refinement_empty, data_refinement_full } = mkHoverMap data_loc msg
     where
       msg = T.unlines [ "#### Refinement " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" 
                       , " - Empty refinement type: " <> ppPrint (fst data_refinement_empty)
@@ -491,10 +490,6 @@ instance ToHoverMap RST.ClassDeclaration where
 instance ToHoverMap TST.InstanceDeclaration where
   toHoverMap TST.MkInstanceDeclaration { instancedecl_cases } =
     M.unions $! toHoverMap <$> instancedecl_cases
-
---change this to actually show kinds
-instance ToHoverMap TST.DataDecl where 
-  toHoverMap decl = toHoverMap (embedTST decl)
 
 ---------------------------------------------------------------------------------
 -- Converting a program to a HoverMap
