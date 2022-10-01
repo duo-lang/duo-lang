@@ -21,7 +21,7 @@ import Pretty.Types ()
 import Pretty.Terms ()
 import Syntax.CST.Names
 import Syntax.CST.Kinds
-import Syntax.CST.Types ( PrdCnsRep(..), DataCodata(..))
+import Syntax.CST.Types ( PrdCnsRep(..), DataCodata(..), PrdCns(..))
 import Syntax.TST.Terms hiding (Command)
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
@@ -32,6 +32,7 @@ import Syntax.RST.Types (PolarityRep(..))
 import Loc (Loc)
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
+import Syntax.RST.Program (StructuralXtorDeclaration(strxtordecl_evalOrder))
 
 ---------------------------------------------------------------------------------
 -- Handle Type on Hover
@@ -109,11 +110,11 @@ xtorToHoverMap loc pc ty ns =  mkHoverMap loc msg
     msg = case pc of
       PrdRep -> T.unlines [ "#### " <> ppPrint ns <> " constructor"
                           , "- **Right-Intro**"
-                          , "- Type: `" <> ppPrint ty <> "`"
+                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
       CnsRep -> T.unlines [ "#### " <> ppPrint ns <> " destructor"
                           , "- **Left-Intro**"
-                          , "- Type: `" <> ppPrint ty <> "`"
+                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
 
 xcaseToHoverMap :: Loc -> PrdCnsRep pc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
@@ -149,7 +150,7 @@ dtorToHoverMap loc ty ns = mkHoverMap loc msg
     msg :: Text
     msg = T.unlines [ "#### " <> ppPrint ns <> " destructor application"
                     , "- **Right-Elim**"
-                    , "- Type: `" <> ppPrint ty <> "`"
+                    , "- Type: `" <> ppPrint ty <> ":"<> ppPrint (TST.getKind ty) <> "`"
                     ]
 
 lambdaToHoverMap :: Loc -> TST.Typ pol -> HoverMap
@@ -474,9 +475,15 @@ instance ToHoverMap TST.DataDecl where
                       ]
       
 instance ToHoverMap RST.StructuralXtorDeclaration where
-  toHoverMap RST.MkStructuralXtorDeclaration { strxtordecl_loc, strxtordecl_xdata } = mkHoverMap strxtordecl_loc msg
+  toHoverMap RST.MkStructuralXtorDeclaration { strxtordecl_loc, strxtordecl_xdata, strxtordecl_arity, strxtordecl_evalOrder } = mkHoverMap strxtordecl_loc msg
     where
-      msg = T.unlines [ "#### Structural " <> case strxtordecl_xdata of { Data -> "constructor"; Codata -> "destructor"} <> " declaration"]
+      msg = T.unlines [ "#### Structural " <> case strxtordecl_xdata of { Data -> "constructor"; Codata -> "destructor"} <> " declaration"
+                      , "with Arguments" <> argsToStr strxtordecl_arity <> " and return Kind " <> ppPrint strxtordecl_evalOrder
+                      ]
+      argsToStr :: [(PrdCns,MonoKind)] -> Text
+      argsToStr [] = ""
+      argsToStr ((Prd, mk):rst) = "Producer " <> ppPrint mk <> ", " <> argsToStr rst
+      argsToStr ((Cns, mk):rst) = "Consumer " <> ppPrint mk <> ", " <> argsToStr rst
 
 instance ToHoverMap CST.ImportDeclaration where
   toHoverMap CST.MkImportDeclaration { imprtdecl_loc } = mkHoverMap imprtdecl_loc msg
