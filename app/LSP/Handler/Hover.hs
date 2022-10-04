@@ -275,6 +275,9 @@ instance ToHoverMap (TST.LinearContext pol) where
 instance ToHoverMap (TST.XtorSig pol) where
   toHoverMap TST.MkXtorSig { sig_args } = toHoverMap sig_args
 
+instance ToHoverMap [TST.XtorSig pol] where 
+  toHoverMap lst = M.unions (map toHoverMap lst)
+
 instance ToHoverMap (TST.VariantType pol) where
   toHoverMap (TST.CovariantType ty) = toHoverMap ty
   toHoverMap (TST.ContravariantType ty) = toHoverMap ty
@@ -461,7 +464,7 @@ instance ToHoverMap TST.CommandDeclaration where
     toHoverMap cmddecl_cmd
 
 instance ToHoverMap TST.DataDecl where
-  toHoverMap TST.NominalDecl { data_loc, data_polarity, data_kind} = mkHoverMap data_loc msg
+  toHoverMap TST.NominalDecl { data_loc, data_polarity, data_kind, data_xtors} = M.union (mkHoverMap data_loc msg) (toHoverMap $ fst data_xtors)
     where
       msg = T.unlines [ "#### Nominal " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration",
                         "with polykind " <> ppPrint data_kind
