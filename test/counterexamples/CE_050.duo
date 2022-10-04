@@ -1,3 +1,5 @@
+module CE_050;
+
 -- Type missmatch in InstanceDeclaration and implementations fails.
 import Bool;
 import Peano;

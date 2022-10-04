@@ -1,3 +1,5 @@
+module CE_052;
+
 -- wrong variance in method types
 class Eq(+a : CBV, +b : CBN) {
   Equals(a, a, return b),

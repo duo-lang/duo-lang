@@ -1,3 +1,5 @@
+module Maybe;
+
 import Function;
 import Bool;
 

@@ -1,3 +1,5 @@
+module Tensor;
+
 import Function;
 
 -- | Conjunction as a data type.

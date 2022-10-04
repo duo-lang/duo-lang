@@ -1,3 +1,5 @@
+module CE_017;
+
 -- Pattern match destructee has incorrect type
 
 data Bool : CBV { True, False };

@@ -1,3 +1,5 @@
+module CE_043;
+
 -- Refinement type cannot be used like a nominal type
 
 refinement data Bool {
