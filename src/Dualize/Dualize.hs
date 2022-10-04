@@ -1,4 +1,4 @@
-module Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration) where
+module Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration, dualCmdDeclaration) where
 
 import Data.Text qualified as T
 import Data.Text (Text)
@@ -253,6 +253,15 @@ dualPrdCnsDeclaration (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Annotat
     CnsRep -> pure (TST.MkPrdCnsDeclaration loc doc PrdRep isrec (dualFVName fv) (TST.Annotated (dualTypeScheme NegRep tys)) tm')
 dualPrdCnsDeclaration (TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_annot = TST.Inferred _ }) =
   throwDualizeError (DualNotAnnotated pcdecl_loc)
+
+dualCmdDeclaration :: TST.CommandDeclaration -> DualizeM TST.CommandDeclaration
+dualCmdDeclaration (TST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd }) = do
+  cmd' <- dualCmd cmddecl_cmd
+  pure TST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
+                                , cmddecl_doc = cmddecl_doc
+                                , cmddecl_name = dualFVName cmddecl_name
+                                , cmddecl_cmd = cmd'
+                                }
 
 dualDataDecl :: TST.DataDecl -> TST.DataDecl
 dualDataDecl TST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors = (sigsPos,sigsNeg) } =
