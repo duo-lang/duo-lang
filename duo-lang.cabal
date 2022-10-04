@@ -198,6 +198,7 @@ executable duo
       Deps
       LSP.Definition
       LSP.Handler.CodeAction
+      LSP.Handler.CodeLenses
       LSP.Handler.Completion
       LSP.Handler.Hover
       LSP.Handler.JumpToDef

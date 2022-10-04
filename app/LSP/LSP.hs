@@ -31,6 +31,7 @@ import Errors
 import LSP.Definition
 import LSP.Handler.Hover ( hoverHandler, updateHoverCache )
 import LSP.Handler.CodeAction ( codeActionHandler, evalHandler )
+import LSP.Handler.CodeLenses ( codeLensesHandler )
 import LSP.Handler.Completion ( completionHandler )
 import LSP.Handler.JumpToDef ( jumpToDefHandler )
 import LSP.MegaparsecToLSP ( locToRange )
@@ -111,6 +112,7 @@ handlers = mconcat [ initializedHandler
                    , codeActionHandler
                    , completionHandler
                    , evalHandler
+                   , codeLensesHandler
                    ]
 
 -- Initialization Handlers
