@@ -1,3 +1,5 @@
+module CE_041;
+
 -- Case is not a producer
 
 def prd foo := case {};

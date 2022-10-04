@@ -1,3 +1,5 @@
+module CE_025;
+
 -- We can only use a definition with the annotated type, not the inferred type.
 
 destructor Ap : CBN;

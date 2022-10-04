@@ -21,6 +21,8 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CST.Names
 import Loc
+import qualified Data.Text as T
+import System.FilePath (takeBaseName)
 
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
@@ -335,9 +337,29 @@ declarationP = do
   doc <- optional ((fst <$> docCommentP) <* eol)
   docDeclarationP doc
 
+moduleDeclP :: Parser ModuleName
+moduleDeclP = do
+    --  startPos <- getSourcePos
+    void $ keywordP KwModule
+    sc
+    (mn, _endPos) <- moduleNameP
+    sc
+    symbolP SymSemi
+    sc
+    return mn
+
+checkModuleName :: FilePath -> ModuleName -> Parser ()
+checkModuleName fp mn =
+    let mod = mn_base mn
+    in if takeBaseName fp == T.unpack mod
+        then return ()
+        else customFailure $ "found module name " <> mod <> " but path is " <> T.pack fp
+
 moduleP :: FilePath -> ModuleName -> Parser Module
 moduleP libp mn = do
   sc
+  mn <- moduleDeclP
+  checkModuleName libp mn
   decls <- many declarationP
   eof
   pure MkModule { mod_name = mn

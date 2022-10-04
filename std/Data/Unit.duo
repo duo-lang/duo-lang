@@ -1,2 +1,4 @@
+module Unit;
+
 -- | The singleton type as a data type.
 data Unit { MkUnit };

@@ -1,3 +1,5 @@
+module CE_020;
+
 -- Should not typecheck due to incorrect return type of comatch case
 
 data Nat : CBV { Z, S(Nat) };

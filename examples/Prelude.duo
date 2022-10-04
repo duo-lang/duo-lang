@@ -1,3 +1,5 @@
+module Prelude;
+
 -- Standard Prelude
 
 def cmd impossibleCmd := #ExitSuccess;

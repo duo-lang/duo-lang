@@ -245,6 +245,7 @@ data Keyword where
   KwCodata      :: Keyword
   KwSet         :: Keyword
   KwImport      :: Keyword
+  KwModule      :: Keyword
   KwPrd         :: Keyword
   KwCns         :: Keyword
   KwCmd         :: Keyword
@@ -289,6 +290,7 @@ instance Show Keyword where
   show KwCodata      = "codata"
   show KwSet         = "set"
   show KwImport      = "import"
+  show KwModule      = "module"
   show KwPrd         = "prd"
   show KwCns         = "cns"
   show KwCmd         = "cmd"
@@ -335,6 +337,7 @@ isDeclarationKw KwData        = True
 isDeclarationKw KwCodata      = True
 isDeclarationKw KwSet         = True
 isDeclarationKw KwImport      = True
+isDeclarationKw KwModule      = True
 isDeclarationKw KwPrd         = False
 isDeclarationKw KwCns         = False
 isDeclarationKw KwCmd         = False

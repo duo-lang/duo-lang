@@ -1,3 +1,5 @@
+module NegationN;
+
 -- negative negation
 
 codata Notn: (-a : CBV) -> CBV {

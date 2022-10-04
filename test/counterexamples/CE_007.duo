@@ -1,3 +1,5 @@
+module CE_007;
+
 -- Should not typecheck because Ap is nominal and not predeclared.
 constructor True : CBV;
 def prd fail := cocase { Ap(x,*) => True };

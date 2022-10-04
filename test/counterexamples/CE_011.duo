@@ -1,3 +1,5 @@
+module CE_011;
+
 -- Dtor called with incorrect arg type
 
 data Nat : CBV { Z, S(Nat) };

@@ -1,3 +1,5 @@
+module CE_018;
+
 -- Match acase arg usage does not fit type
 
 data Nat : CBV { Z, S(Nat) };

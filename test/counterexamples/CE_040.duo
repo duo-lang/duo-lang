@@ -1,3 +1,5 @@
+module CE_040;
+
 -- Constructor is applied to too many arguments in match
 destructor A(CBV) : CBV;
 

@@ -1,3 +1,5 @@
+module CE_016;
+
 -- Comatch is not correct
 
 data Nat : CBV { Z, S(Nat) };
