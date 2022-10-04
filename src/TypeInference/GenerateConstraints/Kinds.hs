@@ -25,6 +25,8 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Foldable (find)
 import Data.Bifunctor (bimap)
+import qualified Syntax.CST.Types as CST
+import Syntax.RST.Types (Polarity(..), PolarityRep (..))
 
 --------------------------------------------------------------------------------------------
 -- Helpers
@@ -260,6 +262,47 @@ annotTy (RST.TyFlipPol pol ty) = do
   return $ TST.TyFlipPol pol ty'
 
 
+-- | Given the polarity (data/codata) and the name of a type, compute the empty refinement of that type.
+-- Example:
+--
+--   computeEmptyRefinementType Data   Nat = < Nat | >
+--   computeEmptyRefinementType Codata Foo = { Foo | }
+-- 
+computeEmptyRefinementType :: CST.DataCodata
+                           -> RnTypeName
+                           -> DataDeclM (RST.Typ Pos, RST.Typ Neg)
+computeEmptyRefinementType CST.Data   tn =
+  pure (RST.TyDataRefined   defaultLoc PosRep tn [], RST.TyDataRefined   defaultLoc NegRep tn [])
+computeEmptyRefinementType CST.Codata tn =
+  pure (RST.TyCodataRefined defaultLoc PosRep tn [], RST.TyCodataRefined defaultLoc NegRep tn [])
+
+-- | Given the polarity (data/codata), the name and the constructors/destructors of a type, compute the
+-- full refinement of that type.
+-- Example:
+--
+--   computeFullRefinementType Data Nat [Z,S(Nat)] = mu a. < Nat | Z, S(a) >
+--
+computeFullRefinementType :: CST.DataCodata
+                          -> RnTypeName
+                          -> ([RST.XtorSig Pos], [RST.XtorSig Neg])
+                          -> DataDeclM (RST.Typ Pos, RST.Typ Neg)
+computeFullRefinementType dc tn (xtorsPos, xtorsNeg) = do
+  -- Define the variable that stands for the recursive occurrences in the translation.
+  let recVar = MkRecTVar "α"
+  let recVarPos = RST.TyRecVar defaultLoc PosRep recVar
+  let recVarNeg = RST.TyRecVar defaultLoc NegRep recVar
+  -- Replace all the recursive occurrences of the type by the variable "α" in the constructors/destructors.
+  let xtorsReplacedPos :: [RST.XtorSig Pos] = RST.replaceNominal recVarPos recVarNeg tn <$> xtorsPos
+  let xtorsReplacedNeg :: [RST.XtorSig Neg] = RST.replaceNominal recVarPos recVarNeg tn <$> xtorsNeg
+  -- Assemble the 
+  let fullRefinementTypePos :: RST.Typ Pos = case dc of
+                   CST.Data   -> RST.TyRec defaultLoc PosRep recVar (RST.TyDataRefined   defaultLoc PosRep tn xtorsReplacedPos)
+                   CST.Codata -> RST.TyRec defaultLoc PosRep recVar (RST.TyCodataRefined defaultLoc PosRep tn xtorsReplacedNeg)
+  let fullRefinementTypeNeg :: RST.Typ Neg = case dc of
+                   CST.Data   -> RST.TyRec defaultLoc NegRep recVar (RST.TyDataRefined defaultLoc NegRep tn   xtorsReplacedNeg)
+                   CST.Codata -> RST.TyRec defaultLoc NegRep recVar (RST.TyCodataRefined defaultLoc NegRep tn xtorsReplacedPos)
+  pure (fullRefinementTypePos, fullRefinementTypeNeg)
+
 annotateDataDecl :: RST.DataDecl -> DataDeclM TST.DataDecl 
 annotateDataDecl RST.NominalDecl {
   data_loc = loc, 
@@ -268,7 +311,7 @@ annotateDataDecl RST.NominalDecl {
   data_polarity = pol,
   data_kind = polyknd,
   data_xtors = (xtorsPos, xtorsNeg)
-  } =do 
+  } = do 
     xtorsPos' <- mapM annotXtor xtorsPos
     xtorsNeg' <- mapM annotXtor xtorsNeg
     return TST.NominalDecl { 
@@ -284,28 +327,33 @@ annotateDataDecl RST.RefinementDecl {
   data_doc = doc,
   data_name = tyn,
   data_polarity = pol ,
-  data_refinement_empty = empt,
-  data_refinement_full = ful,
   data_kind = polyknd,
-  data_xtors = xtors,
-  data_xtors_refined = xtorsref
+  data_xtors = xtors
   } = do
+    -- Compute the full and empty refinement types:
+    (emptyPos, emptyNeg) <- computeEmptyRefinementType pol tyn
+    emptPos' <- annotTy emptyPos
+    emptNeg' <- annotTy emptyNeg
+    (fulPos, fulNeg) <- computeFullRefinementType pol tyn xtors
+    fulPos' <- annotTy fulPos
+    fulNeg' <- annotTy fulNeg
+    -- Compute the annotated xtors (without refinement)
     xtorsPos <- mapM annotXtor (fst xtors)
     xtorsNeg <- mapM annotXtor (snd xtors)
     addXtors (xtorsPos,xtorsNeg)
-    xtorsRefPos <- mapM annotXtor (fst xtorsref)
-    xtorsRefNeg <- mapM annotXtor (snd xtorsref)
-    emptPos <- annotTy (fst empt)
-    emptNeg <- annotTy (snd empt)
-    fulPos <- annotTy (fst ful) 
-    fulNeg <- annotTy (snd ful)
+    -- Compute the refined xtors:
+    let xtorsRefinedPos = RST.replaceNominal emptyPos emptyNeg tyn <$> (fst xtors)
+    -- The negative ones are called by `getXtorSigsUpper` which are used as upper bounds to Xtors!
+    let xtorsRefinedNeg = RST.replaceNominal fulPos fulNeg tyn <$> (snd xtors)
+    xtorsRefPos <- mapM annotXtor xtorsRefinedPos
+    xtorsRefNeg <- mapM annotXtor xtorsRefinedNeg
     return TST.RefinementDecl {
       data_loc = loc,
       data_doc = doc,
       data_name = tyn,
       data_polarity = pol ,
-      data_refinement_empty = (emptPos, emptNeg), 
-      data_refinement_full = (fulPos, fulNeg), 
+      data_refinement_empty = (emptPos', emptNeg'), 
+      data_refinement_full = (fulPos', fulNeg'), 
       data_kind = polyknd,
       data_xtors = (xtorsPos, xtorsNeg),
       data_xtors_refined = (xtorsRefPos, xtorsRefNeg) 
