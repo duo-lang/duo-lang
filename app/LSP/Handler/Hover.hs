@@ -469,7 +469,7 @@ instance ToHoverMap TST.DataDecl where
       msg = T.unlines [ "#### Nominal " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration",
                         "with polykind " <> ppPrint data_kind
                       ]
-  toHoverMap TST.RefinementDecl { data_loc, data_polarity, data_kind, data_refinement_empty, data_refinement_full } = mkHoverMap data_loc msg
+  toHoverMap TST.RefinementDecl { data_loc, data_polarity, data_kind, data_refinement_empty, data_refinement_full, data_xtors } = M.union (mkHoverMap data_loc msg) (toHoverMap $ fst data_xtors)
     where
       msg = T.unlines [ "#### Refinement " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" 
                       , "with polykind " <> ppPrint data_kind
