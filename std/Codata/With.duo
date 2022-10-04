@@ -1,3 +1,5 @@
+module With;
+
 import Function;
 
 -- | Conjunction defined as a codata type.

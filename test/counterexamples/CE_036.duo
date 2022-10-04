@@ -1,3 +1,5 @@
+module CE_036;
+
 -- Destructor is applied to too many arguments.
 
 constructor A : CBV;

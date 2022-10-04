@@ -1,3 +1,5 @@
+module BoolRefinement;
+
 -- Booleans (Refinement)
 
 import Function;

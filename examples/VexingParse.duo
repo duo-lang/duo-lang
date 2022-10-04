@@ -1,3 +1,5 @@
+module VexingParse;
+
 -- Regression test. See issue #387 and issue #217.
 --
 -- The problem has to do with the expression

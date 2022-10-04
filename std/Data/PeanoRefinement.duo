@@ -1,3 +1,5 @@
+module PeanoRefinement;
+
 -- Peano Natural Numbers (Refinement)
 
 import Function;

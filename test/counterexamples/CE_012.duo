@@ -1,3 +1,5 @@
+module CE_012;
+
 -- Dtor is called on value of incorrect type
 
 data Nat : CBV { Z, S(Nat) };

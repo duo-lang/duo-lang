@@ -1,3 +1,5 @@
+module Peano;
+
 -- Peano Natural Numbers (Nominal)
 
 import Function;

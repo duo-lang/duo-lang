@@ -1,3 +1,5 @@
+module CE_037;
+
 -- Constructor is applied to too few arguments in match
 constructor A(CBV) : CBV;
 

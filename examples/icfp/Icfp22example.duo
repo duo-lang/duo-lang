@@ -1,3 +1,5 @@
+module Icfp22example;
+
 import Function;
 import With;
 import Unit;

@@ -1,3 +1,5 @@
+module ParsimoniousFilter;
+
 import Function;
 import List;
 import Bool;

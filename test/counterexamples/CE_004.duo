@@ -1,3 +1,5 @@
+module CE_004;
+
 -- Match cases not exhaustive
 data Nat : CBV { Z, S(Nat) };
 destructor Ap : CBN;

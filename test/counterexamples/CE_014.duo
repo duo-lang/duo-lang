@@ -1,3 +1,5 @@
+module CE_014;
+
 -- Comatch is not exhaustive
 
 data Nat : CBV { Z, S(Nat) };
