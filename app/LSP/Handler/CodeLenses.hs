@@ -12,6 +12,8 @@ import System.Log.Logger (debugM)
 import Driver.Definition
 import Driver.Driver
 import Syntax.TST.Program
+import LSP.MegaparsecToLSP 
+import Pretty.Pretty
 
 ---------------------------------------------------------------------------------
 -- The code lens handler
@@ -50,4 +52,35 @@ instance ToCodeLenses Module where
 
 instance ToCodeLenses Declaration where
     toCodeLenses :: Declaration -> List CodeLens
-    toCodeLenses _ = mempty
+    toCodeLenses (PrdCnsDecl _ decl) = toCodeLenses decl
+    toCodeLenses (CmdDecl decl) = toCodeLenses decl
+    toCodeLenses (DataDecl decl) = toCodeLenses decl
+    toCodeLenses (XtorDecl _) = mempty
+    toCodeLenses (ImportDecl _) = mempty
+    toCodeLenses (SetDecl _) = mempty
+    toCodeLenses (TyOpDecl _) = mempty
+    toCodeLenses (TySynDecl _) = mempty
+    toCodeLenses (ClassDecl _) = mempty
+    toCodeLenses (InstanceDecl _) = mempty
+
+instance ToCodeLenses (PrdCnsDeclaration pol) where
+    toCodeLenses :: PrdCnsDeclaration pol -> List CodeLens
+    toCodeLenses = mempty
+
+instance ToCodeLenses CommandDeclaration where
+    toCodeLenses :: CommandDeclaration -> List CodeLens
+    toCodeLenses = mempty
+
+instance ToCodeLenses DataDecl where
+    toCodeLenses :: DataDecl -> List CodeLens
+    toCodeLenses (NominalDecl loc _doc nm _dc _knd _xtors) = do
+      let cmd = Command { _title = "Dualize " <> ppPrint nm
+                        , _command = "dualize-data-decl"
+                        , _arguments = Nothing 
+                        }
+      let lens = CodeLens { _range = locToStartRange loc
+                          , _command = Just cmd
+                          , _xdata = Nothing
+                          }
+      List [lens]
+    toCodeLenses RefinementDecl {} = mempty
