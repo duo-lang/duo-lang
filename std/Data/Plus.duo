@@ -1,3 +1,5 @@
+module Plus;
+
 import Function;
 
 -- | Disjunction as a data type.

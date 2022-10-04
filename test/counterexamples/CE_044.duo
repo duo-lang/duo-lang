@@ -1,3 +1,5 @@
+module CE_044;
+
 -- The variance of the CoFun declaration is wrong
 data CoFun : (+f : CBV, -e : CBV) -> CBV {
     CoAp(return f,e)

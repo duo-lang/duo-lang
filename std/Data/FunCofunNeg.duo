@@ -1,3 +1,5 @@
+module FunCofunNeg;
+
 import Function;
 import Cofunction;
 import NegationP; 

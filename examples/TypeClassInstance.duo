@@ -1,3 +1,5 @@
+module TypeClassInstance;
+
 
 import Bool;
 import Peano;

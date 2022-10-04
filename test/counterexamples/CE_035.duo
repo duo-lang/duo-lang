@@ -1,3 +1,5 @@
+module CE_035;
+
 -- Constructor is applied to too many arguments.
 
 constructor A : CBV;

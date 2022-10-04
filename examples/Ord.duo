@@ -1,3 +1,5 @@
+module Ord;
+
 import Bool;
 
 data Ordering : CBV {

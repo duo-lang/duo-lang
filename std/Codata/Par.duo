@@ -1,3 +1,5 @@
+module Par;
+
 import Function;
 
 -- | Disjunction as a codata type.

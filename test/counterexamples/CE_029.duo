@@ -1,3 +1,5 @@
+module CE_029;
+
 -- Destructor should not be recognized as constructor
 
 destructor A : CBV;

@@ -341,9 +341,29 @@ declarationP = do
 filePathToModuleName :: FilePath -> ModuleName
 filePathToModuleName fp = MkModuleName (T.pack (takeBaseName fp))
 
+moduleDeclP :: Parser ModuleName
+moduleDeclP = do
+    --  startPos <- getSourcePos
+    void $ keywordP KwModule
+    sc
+    (mn, _endPos) <- moduleNameP
+    sc
+    symbolP SymSemi
+    sc
+    return mn
+
+checkModuleName :: FilePath -> ModuleName -> Parser ()
+checkModuleName fp mn =
+    let mod = unModuleName mn
+    in if takeBaseName fp == T.unpack mod
+        then return ()
+        else customFailure $ "found module name " <> unModuleName mn <> " but path is " <> T.pack fp
+
 moduleP :: FilePath -> Parser Module
 moduleP fp = do
   sc
+  mn <- moduleDeclP
+  checkModuleName fp mn
   decls <- many declarationP
   eof
   pure MkModule { mod_name = filePathToModuleName fp
