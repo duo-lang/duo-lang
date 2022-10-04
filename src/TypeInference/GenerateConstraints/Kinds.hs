@@ -4,6 +4,8 @@ module TypeInference.GenerateConstraints.Kinds
   , resolveDataDecl
   ) where
 
+import Debug.Trace
+
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
@@ -26,7 +28,6 @@ import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Bifunctor (bimap)
-import Data.List (foldr)
 
 
 --------------------------------------------------------------------------------------------
@@ -429,39 +430,45 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
 
   annotateKind (RST.TyDataRefined loc pol tyn xtors) = do 
     xtors' <- mapM annotateKind xtors
+    decl <- lookupTypeName loc tyn
     knd <- getTyNameKind loc tyn
+    checkXtors loc xtors' decl
     return (TST.TyDataRefined loc pol (fst knd) tyn xtors')
+    where 
+      checkXtors :: Loc -> [TST.XtorSig pol] -> TST.DataDecl -> GenM ()
+      checkXtors _ [] _ = return ()
+      checkXtors loc (fst:rst) decl = do
+        let retKnd = CBox $ returnKind $ TST.data_kind decl
+        let retKnds = map getKind (TST.sig_args fst)
+        if all (==retKnd) retKnds then
+          checkXtors loc rst decl 
+        else 
+          throwOtherError loc ["Xtors do not have the correct kinds"]
 
   annotateKind (RST.TyCodataRefined loc pol tyn xtors) = do
     xtors' <- mapM annotateKind xtors
+    decl <- lookupTypeName loc tyn
     knd <- getTyNameKind loc tyn
+    checkXtors loc xtors' decl
     return (TST.TyCodataRefined loc pol (fst knd) tyn xtors')
+    where 
+      checkXtors :: Loc -> [TST.XtorSig (RST.FlipPol pol)] -> TST.DataDecl -> GenM ()
+      checkXtors _ [] _ = return ()
+      checkXtors loc (fst:rst) decl = do
+        let retKnd = CBox $ returnKind $ TST.data_kind decl
+        let retKnds = map getKind (TST.sig_args fst)
+        if all (==retKnd) retKnds then
+          checkXtors loc rst decl 
+        else 
+          throwOtherError loc ["Xtors do not have the correct kinds"]
+
 
   annotateKind (RST.TyNominal loc pol tyn vartys) = do
     vartys' <- mapM annotateKind vartys
-    decl <- lookupTypeName loc tyn
-    checkVartys vartys' decl
+    --decl <- lookupTypeName loc tyn
+    --checkVartys vartys' decl
     knd <- getTyNameKind loc tyn
     return (TST.TyNominal loc pol (fst knd) tyn vartys')
-    where 
-      checkVartys :: [TST.VariantType pol] -> TST.DataDecl -> GenM ()
-      checkVartys vartys decl = do 
-        let xtors = TST.data_xtors decl
-        let compared = compArgs vartys xtors
-        if or compared then
-          return ()
-        else throwOtherError defaultLoc ["Could not check Vartys"]
-      compArgs :: [TST.VariantType pol] -> ([TST.XtorSig RST.Pos], [TST.XtorSig RST.Neg]) -> [Bool]
-      compArgs vartys (xtorsPos, xtorsNeg) = 
-        case pol of 
-          RST.PosRep -> map (correctApp vartys . TST.sig_args) xtorsPos
-          RST.NegRep -> map (correctApp vartys . TST.sig_args) xtorsNeg
-      correctApp :: [TST.VariantType pol] -> TST.LinearContext pol -> Bool
-      correctApp [] [] = True
-      correctApp (_:_) [] = False
-      correctApp [] (_:_) = False
-      correctApp (fstVarty:rstVarty) (fstArg:rstArgs) = getKind fstVarty == getKind fstArg && correctApp rstVarty rstArgs
-
           
 
   annotateKind (RST.TySyn loc pol tn ty) = do 
