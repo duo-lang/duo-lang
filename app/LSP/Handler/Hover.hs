@@ -288,7 +288,7 @@ instance ToHoverMap (TST.Typ pol) where
     let
       msg = T.unlines [ "### Skolem Variable "
                         , "- Name: `" <> ppPrint var <> "`"
-                        , "-Polarity: " <> prettyPolRep rep
+                        , "- Polarity: " <> prettyPolRep rep
                         , "- Kind: " <> ppPrint _knd
                       ]
     in
