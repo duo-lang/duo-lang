@@ -444,8 +444,29 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
 
   annotateKind (RST.TyCodata loc pol xtors) = do 
     xtors' <- mapM annotateKind xtors
+    let xtorNames = map TST.sig_name xtors'
+    xtorKnds <- mapM lookupXtorKind xtorNames
+    compXtorKinds loc xtors' xtorKnds
     knd <- getXtorKinds loc xtors'
     return (TST.TyCodata loc pol knd xtors')
+    where 
+      compXtorKinds :: Loc -> [TST.XtorSig (RST.FlipPol pol)] -> [(MonoKind,[MonoKind])] -> GenM ()
+      compXtorKinds _ [] [] = return ()
+      compXtorKinds _ [] (_:_) = error "too many xtor kinds (should not happen)"
+      compXtorKinds _ (_:_) [] = error "not all xtor kinds found (should already fail during lookup)"
+      compXtorKinds loc (fstXtor:rstXtors) ((mk,_):rstKinds) = do
+        let argKnds = map getKind (TST.sig_args fstXtor)
+        allEq <- mapM (compMonoKind mk) argKnds
+        if and allEq then 
+          compXtorKinds loc rstXtors rstKinds 
+        else 
+          throwOtherError loc ["Kind of Xtor " <> ppPrint argKnds <> " does not match declaration kind " <> ppPrint mk]
+      compMonoKind:: MonoKind -> MonoKind -> GenM Bool
+      compMonoKind mk (KindVar kv) = do 
+        addConstraint $ KindEq KindConstraint mk (KindVar kv) 
+        return True
+      compMonoKind mk mk' = return (mk == mk')
+
 
   annotateKind (RST.TyDataRefined loc pol tyn xtors) = do 
     xtors' <- mapM annotateKind xtors
