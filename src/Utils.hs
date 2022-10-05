@@ -13,6 +13,7 @@ module Utils
   , filePathToModuleName
   , moduleNameToFilePath
   , moduleNameToFullPath
+  , listRecursiveDuoFiles
   , isModuleFile) where
 
 import Data.Char (isSpace)
@@ -24,9 +25,10 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
-import System.FilePath (takeExtension, splitFileName, splitDirectories, dropExtension, takeBaseName, (</>), joinPath, (<.>))
+import System.FilePath (takeExtension, splitFileName, splitDirectories, dropExtension, takeBaseName, (</>), joinPath, (<.>), takeFileName, makeRelative)
 import Syntax.CST.Names (ModuleName (..))
-import System.Directory (doesFileExist)
+import System.Directory (doesFileExist, doesDirectoryExist, listDirectory)
+import Control.Monad (forM)
 
 ----------------------------------------------------------------------------------
 -- Helper Functions
@@ -65,7 +67,7 @@ mapAppend k a = M.alter (\case
 ----------------------------------------------------------------------------------
 
 filePathToModuleName :: FilePath -> ModuleName
-filePathToModuleName fp = 
+filePathToModuleName fp =
     let name = T.pack (takeBaseName fp)
         path = T.pack <$> case init $ splitDirectories fp of
                             []     -> []
@@ -90,6 +92,33 @@ isModuleFile mn fp = doesFileExist (moduleNameToFullPath mn fp)
 isDuoFile :: FilePath -> Bool
 isDuoFile fp = takeExtension fp == ".duo"
 
+isHidden :: FilePath -> Bool
+isHidden [] = False
+isHidden (c:_) = c == '.'
+
+listRecursiveFiles :: FilePath -> IO [FilePath]
+listRecursiveFiles topdir = do
+  names <- listDirectory topdir
+  let names' = filter (not. isHidden) names
+  paths <- forM names' $ \name -> do
+    let path = topdir </> name
+    isDirectory <- doesDirectoryExist path
+    if isDirectory
+      then listRecursiveFiles path
+      else if isDuoFile path && not (isHidden $ takeFileName path)
+            then pure [path]
+            else pure []
+  pure (concat paths)
+
+
+listRecursiveDuoFiles :: FilePath -> IO [ModuleName]
+listRecursiveDuoFiles fp = do
+  exists <- doesDirectoryExist fp
+  if exists
+  then do
+    files <- listRecursiveFiles fp
+    pure $ map (filePathToModuleName . makeRelative fp) files
+  else pure []
 
 -- | Analyzes a filepath to a .duo file. Only call on arguments for which 
 -- the `isDuoFile` function returns true.

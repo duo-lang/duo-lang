@@ -155,6 +155,13 @@ checkModuleName mn CST.MkModule { mod_name } =
     then pure ()
     else throwOtherError defaultLoc [ "Wrong module declaration: Found declaration " <> T.pack (ppPrintString mod_name) <> " in module " <> T.pack (ppPrintString mn) ]
 
+parseAndCheckModule :: (MonadError (NonEmpty Error) m, MonadIO m) => FilePath -> ModuleName -> FilePath -> m CST.Module
+parseAndCheckModule fullFp mn fp = do
+  file <- liftIO $ T.readFile fullFp
+  mod <- runFileParser fullFp (moduleP fp) file
+  checkModuleName mn mod
+  pure mod
+
 getModuleDeclarations :: ModuleName -> DriverM CST.Module
 getModuleDeclarations mn = do
         moduleMap <- gets drvFiles
@@ -163,9 +170,10 @@ getModuleDeclarations mn = do
           Nothing -> do
             fp <- findModule mn defaultLoc
             let fullFp = moduleNameToFullPath mn fp
-            file <- liftIO $ T.readFile fullFp
-            mod <- runFileParser fullFp (moduleP fp) file
-            checkModuleName mn mod
+            mod <- parseAndCheckModule fullFp mn fp
+            --  file <- liftIO $ T.readFile fullFp
+            --  mod <- runFileParser fullFp (moduleP fp) file
+            --  checkModuleName mn mod
             addModule mod
             pure mod
 

@@ -1,6 +1,6 @@
 module Main where
 
-import Control.Monad.Except (runExcept, forM)
+import Control.Monad.Except (runExcept, runExceptT, forM)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Either (isRight)
 import Data.List (sort)
@@ -10,7 +10,7 @@ import Test.Hspec
 import Test.Hspec.Runner
 import Test.Hspec.Formatters
 
-import Driver.Definition (defaultDriverState)
+import Driver.Definition (defaultDriverState, parseAndCheckModule)
 import Driver.Driver (inferProgramIO)
 import Errors
 import Parser.Definition (runFileParser)
@@ -24,7 +24,7 @@ import Syntax.CST.Program qualified as CST
 import Syntax.CST.Names
 import Syntax.TST.Program qualified as TST
 import Options.Applicative
-import Utils (listRecursiveDuoFiles, filePathToModuleName)
+import Utils (listRecursiveDuoFiles, filePathToModuleName, moduleNameToFullPath)
 
 data Options where
   OptEmpty  :: Options
@@ -41,24 +41,30 @@ filterP = some (argument str (metavar "FILES..." <> help "Specify files which sh
 
 getAvailableCounterExamples :: IO [(FilePath, ModuleName)]
 getAvailableCounterExamples = do
-  examples <- listRecursiveDuoFiles "test/counterexamples/"
-  pure  $ sort (filter (\s -> head (fst s) /= '.') examples)
+  let counterExFp = "test/counterexamples/"
+  examples <- listRecursiveDuoFiles counterExFp
+  pure  $ zip (repeat counterExFp) $ sort examples
 
-excluded :: [FilePath]
-excluded = ["fix.duo"]
+excluded :: [ModuleName]
+excluded = []
 
 getAvailableExamples :: IO [(FilePath, ModuleName)]
 getAvailableExamples = do
-  examples <- listRecursiveDuoFiles "examples/"
-  examples' <- listRecursiveDuoFiles "std/"
-  return (filter (\s -> head (fst s) /= '.' && notElem (fst s) excluded) (examples <> examples'))
+  let examplesFp  = "examples/"
+  let examplesFp' = "std/"
+  examples <- listRecursiveDuoFiles examplesFp
+  examples' <- listRecursiveDuoFiles examplesFp'
+  let examplesFiltered  = filter filterFun examples
+  let examplesFiltered' = filter filterFun examples'
+  return $ zip (repeat examplesFp) examplesFiltered ++ zip (repeat examplesFp') examplesFiltered'
+    where
+      filterFun s = s `notElem` excluded
 
 getParsedDeclarations :: FilePath -> ModuleName -> IO (Either (NonEmpty Error) CST.Module)
 getParsedDeclarations fp mn = do
-  s <- T.readFile fp
-  case runExcept (runFileParser fp (moduleP fp mn) s) of
-    Left err -> pure (Left err)
-    Right prog -> pure (pure prog)
+  let fullFp = moduleNameToFullPath mn fp
+  print fullFp
+  runExceptT (parseAndCheckModule fullFp mn fp)
 
 getTypecheckedDecls :: FilePath -> ModuleName -> IO (Either (NonEmpty Error) TST.Module)
 getTypecheckedDecls fp mn = do
