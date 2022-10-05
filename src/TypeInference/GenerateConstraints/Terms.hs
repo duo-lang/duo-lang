@@ -159,7 +159,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     inferredCases <- forM cases (\Core.MkCmdCase{ cmdcase_pat = Core.XtorPat loc xt args, cmdcase_loc, cmdcase_cmd} -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
-                        (uvarsPos, uvarsNeg) <- freshTVars args
+                        (uvarsPos, uvarsNeg) <- freshTVars (map (\(x,y) -> (x,y,Nothing)) args)
                         -- Check the command in the context extended with the positive unification variables
                         cmdInferred <- withContext uvarsPos (genConstraints cmdcase_cmd)
                         -- Return the negative unification variables in the returned type.
@@ -222,7 +222,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc xt args , cmdcase_cmd} -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
-                        (uvarsPos, uvarsNeg) <- freshTVars args
+                        (uvarsPos, uvarsNeg) <- freshTVars (map (\(x,y) -> (x,y,Nothing)) args)
                         -- Check the command in the context extended with the positive unification variables
                         cmdInferred <- withContext uvarsPos (genConstraints cmdcase_cmd)
                         -- We have to bound the unification variables with the lower and upper bounds generated
@@ -245,11 +245,11 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
   -- Mu and TildeMu abstractions:
   --
   genConstraints (Core.MuAbs loc annot PrdRep bs cmd) = do
-    (uvpos, uvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
+    (uvpos, uvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs)) Nothing
     cmdInferred <- withContext [TST.PrdCnsType CnsRep uvneg] (genConstraints cmd)
     return (TST.MuAbs loc annot PrdRep uvpos bs cmdInferred)
   genConstraints (Core.MuAbs loc annot CnsRep bs cmd) = do
-    (uvpos, uvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs))
+    (uvpos, uvneg) <- freshTVar (ProgramVariable (fromMaybeVar bs)) Nothing
     cmdInferred <- withContext [TST.PrdCnsType PrdRep uvpos] (genConstraints cmd)
     return (TST.MuAbs loc annot CnsRep uvneg bs cmdInferred)
   genConstraints (Core.PrimLitI64 loc i) = pure $ TST.PrimLitI64 loc i
@@ -350,12 +350,12 @@ genConstraintsTermRecursive :: ModuleName
                             -> PrdCnsRep pc -> Core.Term pc
                             -> GenM (TST.Term pc)
 genConstraintsTermRecursive mn loc fv PrdRep tm = do
-  (x,y) <- freshTVar (RecursiveUVar fv)
+  (x,y) <- freshTVar (RecursiveUVar fv) Nothing
   tm <- withTerm mn PrdRep fv (TST.FreeVar loc PrdRep x fv) loc (TST.TypeScheme loc [] x) (genConstraints tm)
   addConstraint (SubType RecursionConstraint (TST.getTypeTerm tm) y)
   return tm
 genConstraintsTermRecursive mn loc fv CnsRep tm = do
-  (x,y) <- freshTVar (RecursiveUVar fv)
+  (x,y) <- freshTVar (RecursiveUVar fv) Nothing
   tm <- withTerm mn CnsRep fv (TST.FreeVar loc CnsRep y fv) loc (TST.TypeScheme loc [] y) (genConstraints tm)
   addConstraint (SubType RecursionConstraint x (TST.getTypeTerm tm))
 

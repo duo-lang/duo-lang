@@ -125,29 +125,31 @@ class GenConstraints a b | a -> b where
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
 
-freshTVar :: UVarProvenance -> GenM (TST.Typ Pos, TST.Typ Neg)
-freshTVar uvp = do
+freshTVar :: UVarProvenance -> Maybe MonoKind -> GenM (TST.Typ Pos, TST.Typ Neg)
+freshTVar uvp kv = do
   uVarC <- gets uVarCount
   kVarC <- gets kVarCount
   uniVMap <- gets usedUniVars
   let tVar = MkUniTVar ("u" <> T.pack (show uVarC))
-  let kVar = MkKVar ("k" <> T.pack (show kVarC))
-  -- We need to increment the counter:
-  modify (\gs@GenerateState{} -> gs { uVarCount = uVarC + 1, kVarCount = kVarC + 1, usedUniVars = M.insert tVar (KindVar kVar) uniVMap })
+  let newKVar = MkKVar ("k" <> T.pack (show kVarC))
+  let knd = case kv of Nothing -> KindVar newKVar; Just kv' -> kv'
+  let inc = case kv of Nothing -> 1; Just _ -> 0;
+  -- We need to increment the counter
+  modify (\gs@GenerateState{} -> gs { uVarCount = uVarC + 1, kVarCount = kVarC + inc, usedUniVars = M.insert tVar knd uniVMap })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars,cs_kvars } } ->
-            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tVar, uvp,kVar)], cs_kvars = cs_kvars ++ [kVar] } })
-  return (TST.TyUniVar defaultLoc PosRep (KindVar kVar) tVar, TST.TyUniVar defaultLoc NegRep (KindVar kVar) tVar)
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tVar, uvp,knd)], cs_kvars = cs_kvars ++ case kv of Nothing -> [newKVar];Just _->[] } })
+  return (TST.TyUniVar defaultLoc PosRep knd tVar, TST.TyUniVar defaultLoc NegRep knd tVar)
 
-freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
+freshTVars :: [(PrdCns, Maybe FreeVarName, Maybe MonoKind)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
 freshTVars [] = return ([],[])
-freshTVars ((Prd,fv):rest) = do
+freshTVars ((Prd,fv,kv):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
-  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) kv
   return (TST.PrdCnsType PrdRep tp:lctxtP, TST.PrdCnsType PrdRep tn:lctxtN)
-freshTVars ((Cns,fv):rest) = do
+freshTVars ((Cns,fv,kv):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
-  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) kv
   return (TST.PrdCnsType CnsRep tn:lctxtP, TST.PrdCnsType CnsRep tp:lctxtN)
 
 freshTVarsForTypeParams :: forall pol. PolarityRep pol -> TST.DataDecl -> GenM ([TST.VariantType pol], TST.Bisubstitution TST.SkolemVT)
@@ -165,7 +167,7 @@ freshTVarsForTypeParams rep decl =
    freshTVars _ [] = pure ([],[])
    freshTVars tn ((tv,variance) : vs) = do
     (vartypes,vs') <- freshTVars tn vs
-    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv)
+    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv) Nothing
     case (variance, rep) of
       (Covariant, PosRep)     -> pure (TST.CovariantType tyPos     : vartypes, (tyPos, tyNeg) : vs')
       (Covariant, NegRep)     -> pure (TST.CovariantType tyNeg     : vartypes, (tyPos, tyNeg) : vs')
@@ -184,7 +186,7 @@ createMethodSubst loc decl =
    freshTVars _ [] = pure []
    freshTVars cn ((tv,variance) : vs) = do
     vs' <- freshTVars cn vs
-    (tyPos, tyNeg) <- freshTVar (TypeClassInstance cn tv)
+    (tyPos, tyNeg) <- freshTVar (TypeClassInstance cn tv) Nothing
     addConstraint $ case variance of
        Covariant -> TypeClassPos (InstanceConstraint loc) cn tyPos
        Contravariant -> TypeClassPos (InstanceConstraint loc) cn tyPos
@@ -227,7 +229,7 @@ lookupContext loc rep idx@(i,j) = do
 --
 instantiateTypeScheme :: FreeVarName -> Loc -> TST.TypeScheme pol -> GenM (TST.Typ pol)
 instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do
-  freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
+  freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) Nothing >>= \ty -> return (tv, ty))
   forM_ freshVars (\(_,ty) -> addConstraint (KindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ fst ty)))
   forM_ freshVars (\(_,ty) -> addConstraint (KindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ snd ty)))
   pure $ TST.zonk TST.SkolemRep (TST.MkBisubstitution (M.fromList freshVars)) ts_monotype

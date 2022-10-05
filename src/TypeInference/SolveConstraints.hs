@@ -46,9 +46,9 @@ createInitState (ConstraintSet _ uvs kuvs) =
               , sst_kvars = [([kv],Nothing) | kv <- kuvs]
               }
   where 
-    getsst_bounds :: [(UniTVar, UVarProvenance, KVar)] -> [(UniTVar, VariableState)]
+    getsst_bounds :: [(UniTVar, UVarProvenance, MonoKind)] -> [(UniTVar, VariableState)]
     getsst_bounds [] = []
-    getsst_bounds ((uv,_,kv):rst) = (uv,emptyVarState (KindVar kv)):getsst_bounds rst
+    getsst_bounds ((uv,_,mk):rst) = (uv,emptyVarState mk):getsst_bounds rst
 
 
 type SolverM a = (ReaderT (Map ModuleName Environment, ()) (StateT SolverState (Except (NE.NonEmpty Error)))) a

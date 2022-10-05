@@ -60,7 +60,7 @@ instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (TypeClassNeg ann cn typ) =
     prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
 
-printUVar :: (UniTVar, UVarProvenance,KVar) -> Doc Annotation
+printUVar :: (UniTVar, UVarProvenance,MonoKind) -> Doc Annotation
 printUVar (tv,prov,kv) = prettyAnn tv <> ":" <> prettyAnn kv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
