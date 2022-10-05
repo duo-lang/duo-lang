@@ -8,15 +8,13 @@ module Utils
   , mapAppend
     -- Verbosity
   , Verbosity(..)
-    -- Directory helper functions
-  , listRecursiveFiles
-  , listRecursiveDuoFiles
   , isDuoFile
   , analyzeDuoFilepath
   , filePathToModuleName
-  ) where
+  , moduleNameToFilePath
+  , moduleNameToFullPath
+  , isModuleFile) where
 
-import Control.Monad (forM)
 import Data.Char (isSpace)
 import Data.Foldable (foldl')
 import Data.List.NonEmpty (NonEmpty(..))
@@ -26,10 +24,9 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text (Text)
 import Data.Text qualified as T
-import System.Directory ( listDirectory, doesDirectoryExist)
-import System.FilePath (takeExtension, splitFileName, splitDirectories, dropExtension, takeBaseName)
+import System.FilePath (takeExtension, splitFileName, splitDirectories, dropExtension, takeBaseName, (</>), joinPath, (<.>))
 import Syntax.CST.Names (ModuleName (..))
-import Control.Arrow (second)
+import System.Directory (doesFileExist)
 
 ----------------------------------------------------------------------------------
 -- Helper Functions
@@ -76,31 +73,18 @@ filePathToModuleName fp =
                             xs     -> xs
     in  MkModuleName path name
 
+moduleNameToFilePath :: ModuleName -> FilePath
+moduleNameToFilePath MkModuleName{ mn_path, mn_base } =
+  let filename = T.unpack mn_base <.> "duo"
+  in joinPath $ (T.unpack <$> mn_path) ++ [filename]
 
--- | Given a filepath pointing to a directory, list all files which are recursively
--- reachable from that directory.
--- The output contains a list of only files, not directories.
--- Special directories "." and ".." are not contained in the output.
-listRecursiveFiles :: FilePath -> IO [(FilePath, FilePath)]
-listRecursiveFiles topdir = do
-  names <- listDirectory topdir
-  paths <- forM names $ \name -> do
-    isDirectory <- doesDirectoryExist topdir
-    if isDirectory
-      then listRecursiveFiles topdir
-      else pure [(topdir, name)]
-  pure (concat paths)
+moduleNameToFullPath :: ModuleName -> FilePath -> FilePath
+moduleNameToFullPath mn fp =
+  let relPath = moduleNameToFilePath mn
+  in fp </> relPath
 
-
-listRecursiveDuoFiles :: FilePath -> IO [(FilePath, ModuleName)]
-listRecursiveDuoFiles fp = do
-  exists <- doesDirectoryExist fp
-  if exists
-  then do
-    files <- listRecursiveFiles fp
-    let duoFiles = filter (isDuoFile . snd) files
-    pure $ second filePathToModuleName <$> duoFiles
-  else pure []
+isModuleFile :: ModuleName -> FilePath -> IO Bool
+isModuleFile mn fp = doesFileExist (moduleNameToFullPath mn fp)
 
 -- | Checks whether given filepath ends in ".duo"
 isDuoFile :: FilePath -> Bool

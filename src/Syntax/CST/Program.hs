@@ -10,7 +10,7 @@ import Syntax.CST.Names
       ClassName,
       DocComment,
       FreeVarName,
-      ModuleName,
+      ModuleName (..),
       Precedence,
       SkolemTVar,
       TyOpName,
@@ -18,7 +18,14 @@ import Syntax.CST.Names
       XtorName )
 import Syntax.CST.Kinds
     ( EvaluationOrder, MonoKind, PolyKind, Variance )
-import Loc ( HasLoc(..), Loc )
+import Loc ( HasLoc(..), Loc, defaultLoc )
+import Errors (Error, throwOtherError)
+import qualified Data.List.NonEmpty as NE
+import qualified Data.Text as T
+import Data.List
+import System.FilePath (joinPath, splitDirectories, dropExtension)
+import Pretty.Pretty (ppPrintString)
+import Pretty.Common ()
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declaration
@@ -298,3 +305,24 @@ data Module = MkModule
   }
 
 deriving instance Show Module
+
+adjustModulePath :: Module -> FilePath -> Either (NE.NonEmpty Error) Module
+adjustModulePath mod fp =
+  let fp'  = fpToList fp
+      mFp  = fpToList $ mod_libpath mod
+      mn   = mod_name mod
+      mp   = T.unpack <$> mn_path mn ++ [mn_base mn]
+  in do
+    prefix <- reverse <$> dropModulePart (reverse mp) (reverse mFp)
+    if prefix `isPrefixOf` fp'
+    then pure mod { mod_libpath = joinPath prefix } 
+    else throwOtherError defaultLoc [ ]
+  where
+    fpToList :: FilePath -> [String]
+    fpToList = splitDirectories . dropExtension
+
+    dropModulePart :: [String] -> [String] -> Either (NE.NonEmpty Error) [String]
+    dropModulePart mp mFp =
+      case stripPrefix mp mFp of
+        Just mFp' -> pure mFp'
+        Nothing   -> throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString (mod_name mod)) <> " is not a suffix of path " <> T.pack (mod_libpath mod)  ]

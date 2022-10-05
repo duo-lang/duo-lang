@@ -10,11 +10,12 @@ import Language.LSP.Types
 import Data.Text qualified as T
 import qualified Data.List.NonEmpty as NE
 import Errors (Error)
-import Syntax.CST.Names (ModuleName(..))
 import Control.Monad.Except (runExcept)
 import Parser.Definition (runFileParser)
 import Parser.Parser (moduleP)
 import qualified Syntax.CST.Program as CST
+import Syntax.CST.Program (adjustModulePath)
+
 ---------------------------------------------------------------------------------
 -- LSPMonad and Utility Functions
 ---------------------------------------------------------------------------------
@@ -36,7 +37,7 @@ sendError :: T.Text -> LSPMonad ()
 sendError msg = sendNotification SWindowShowMessage (ShowMessageParams MtError msg)
 
 getModuleFromFilePath :: FilePath -> T.Text -> Either (NE.NonEmpty Error) CST.Module
-getModuleFromFilePath fp file = 
-      let mn = MkModuleName [] "TODO"
-      in  runExcept (runFileParser fp (moduleP fp mn) file)
+getModuleFromFilePath fp file = do
+  mod <- runExcept (runFileParser fp (moduleP fp) file)
+  adjustModulePath mod fp
 
