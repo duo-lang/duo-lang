@@ -1,9 +1,0 @@
-import PeanoRefinement;
-
-
-data Bool : CBN {
-    True,
-    False
-};
-
-def prd notTwo := S(True);
