@@ -143,9 +143,9 @@ freshTVar uvp kv = do
 
 freshTVars :: [(PrdCns, Maybe FreeVarName, Maybe MonoKind)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
 freshTVars [] = return ([],[])
-freshTVars ((Prd,fv,kv):rest) = do
+freshTVars ((Prd,fv,mk):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
-  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) kv
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) mk
   return (TST.PrdCnsType PrdRep tp:lctxtP, TST.PrdCnsType PrdRep tn:lctxtN)
 freshTVars ((Cns,fv,kv):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
@@ -157,17 +157,17 @@ freshTVarsForTypeParams rep decl =
   let MkPolyKind { kindArgs } = TST.data_kind decl
       tn = TST.data_name decl
   in do
-    (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
+    (varTypes, vars) <- freshTVars tn kindArgs
     let map = paramsMap kindArgs vars
     case rep of
       PosRep -> pure (varTypes, map)
       NegRep -> pure (varTypes, map)
   where
-   freshTVars :: RnTypeName -> [(SkolemTVar, Variance)] -> GenM ([TST.VariantType pol],[(TST.Typ Pos, TST.Typ Neg)])
+   freshTVars :: RnTypeName -> [(Variance, SkolemTVar, MonoKind)] -> GenM ([TST.VariantType pol],[(TST.Typ Pos, TST.Typ Neg)])
    freshTVars _ [] = pure ([],[])
-   freshTVars tn ((tv,variance) : vs) = do
+   freshTVars tn ((variance,tv,mk) : vs) = do
     (vartypes,vs') <- freshTVars tn vs
-    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv) Nothing
+    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv) (Just mk)
     case (variance, rep) of
       (Covariant, PosRep)     -> pure (TST.CovariantType tyPos     : vartypes, (tyPos, tyNeg) : vs')
       (Covariant, NegRep)     -> pure (TST.CovariantType tyNeg     : vartypes, (tyPos, tyNeg) : vs')
@@ -179,14 +179,14 @@ createMethodSubst loc decl =
   let kindArgs = classdecl_kinds decl
       cn = classdecl_name decl
   in do
-    vars <- freshTVars cn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
+    vars <- freshTVars cn kindArgs
     pure $ paramsMap kindArgs vars
    where
-   freshTVars ::  ClassName -> [(SkolemTVar, Variance)] -> GenM [(TST.Typ Pos, TST.Typ Neg)]
+   freshTVars ::  ClassName -> [(Variance,SkolemTVar, MonoKind)] -> GenM [(TST.Typ Pos, TST.Typ Neg)]
    freshTVars _ [] = pure []
-   freshTVars cn ((tv,variance) : vs) = do
+   freshTVars cn ((variance,tv,mk) : vs) = do
     vs' <- freshTVars cn vs
-    (tyPos, tyNeg) <- freshTVar (TypeClassInstance cn tv) Nothing
+    (tyPos, tyNeg) <- freshTVar (TypeClassInstance cn tv) (Just mk)
     addConstraint $ case variance of
        Covariant -> TypeClassPos (InstanceConstraint loc) cn tyPos
        Contravariant -> TypeClassPos (InstanceConstraint loc) cn tyPos
