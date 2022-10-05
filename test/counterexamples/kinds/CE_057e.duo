@@ -1,0 +1,1 @@
+def cns i3 : #I64 := mu i. ExitSuccess;
