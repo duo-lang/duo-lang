@@ -287,7 +287,9 @@ instance GenConstraints Core.Command TST.Command where
     cns' <- genConstraints cns
     peanoDecl <- lookupTypeName loc peanoNm
     let peanoKnd = CBox (returnKind (TST.data_kind peanoDecl))
-    addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm []) (TST.getTypeTerm cns'))
+    let cnsTy = TST.getTypeTerm cns'
+    addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm []) cnsTy)
+    addConstraint (KindEq KindConstraint peanoKnd (TST.getKind cnsTy))
     return (TST.Read loc cns')
   genConstraints (Core.Apply loc annot t1 t2) = do
     t1' <- genConstraints t1
@@ -295,6 +297,7 @@ instance GenConstraints Core.Command TST.Command where
     let ty1 = TST.getTypeTerm t1'
     let ty2 = TST.getTypeTerm t2'
     addConstraint (SubType (CommandConstraint loc) ty1 ty2)
+    addConstraint (KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2))
     pure (TST.Apply loc annot (TST.getKind ty1) t1' t2')
   genConstraints (Core.PrimOp loc op subst) = do
     substInferred <- genConstraints subst
@@ -352,11 +355,15 @@ genConstraintsTermRecursive :: ModuleName
 genConstraintsTermRecursive mn loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv) Nothing
   tm <- withTerm mn PrdRep fv (TST.FreeVar loc PrdRep x fv) loc (TST.TypeScheme loc [] x) (genConstraints tm)
-  addConstraint (SubType RecursionConstraint (TST.getTypeTerm tm) y)
+  let xTy = TST.getTypeTerm tm
+  addConstraint (SubType RecursionConstraint xTy y)
+  addConstraint (KindEq KindConstraint (TST.getKind xTy) (TST.getKind y))
   return tm
 genConstraintsTermRecursive mn loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv) Nothing
   tm <- withTerm mn CnsRep fv (TST.FreeVar loc CnsRep y fv) loc (TST.TypeScheme loc [] y) (genConstraints tm)
-  addConstraint (SubType RecursionConstraint x (TST.getTypeTerm tm))
+  let yTy = TST.getTypeTerm tm
+  addConstraint (SubType RecursionConstraint x yTy)
+  addConstraint (KindEq KindConstraint (TST.getKind x) (TST.getKind yTy))
 
   return tm
