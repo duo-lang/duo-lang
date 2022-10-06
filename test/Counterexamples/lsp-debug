@@ -1,0 +1,4 @@
+2022-10-06 23:12:15.496239701 [ThreadId 27] DEBUG lspserver:	Starting LSP Server
+2022-10-06 23:12:15.56341088 [ThreadId 27] DEBUG lspserver:	LSP Server Initialized
+2022-10-06 23:12:15.564743175 [ThreadId 27] DEBUG lspserver.didOpenHandler:	Opened file: Uri {getUri = "file:///home/ingo/playground/algebraic-subtyping/implementation/test/Counterexamples/CE_053.duo"}
+2022-10-06 23:12:21.020646022 [ThreadId 27] DEBUG lspserver.didChangeHandler:	Changed file: Uri {getUri = "file:///home/ingo/playground/algebraic-subtyping/implementation/test/Counterexamples/CE_053.duo"}

@@ -1,10 +1,10 @@
 module CE_057;
 
 -- make  sure idLRec is not typechecked as List(⊤) -> List(⊥)
-import Function;
-import List;
-import Bool;
-import Unit;
+import Codata.Function;
+import Data.List;
+import Data.Bool;
+import Data.Unit;
 
 def rec prd idLRec := \l => case l of {
     Nil => Nil,

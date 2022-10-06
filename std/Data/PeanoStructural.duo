@@ -1,9 +1,9 @@
-module PeanoStructural;
+module Data.PeanoStructural;
 
 -- Peano Natural Numbers (Structural)
 
-import Function;
-import Bool;
+import Codata.Function;
+import Data.Bool;
 
 -- | The type of Peano natural numbers.
 constructor Z;

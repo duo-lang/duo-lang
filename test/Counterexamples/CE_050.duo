@@ -1,9 +1,9 @@
 module CE_050;
 
 -- Type missmatch in InstanceDeclaration and implementations fails.
-import Bool;
-import Peano;
-import List;
+import Data.Bool;
+import Data.Peano;
+import Data.List;
 
 -- | Class definition.
 class Eq(+a : CBV) {

@@ -1,13 +1,13 @@
 module Sorting;
 
-import Function;
-import Bool;
-import List;
-import Peano;
+import Codata.Function;
+import Data.Bool;
+import Data.List;
+import Data.Peano;
 import Prelude;
-import Void;
-import Tensor;
-import NegationP;
+import Data.Void;
+import Data.Tensor;
+import Data.NegationP;
 
 data Ordering {
     LT,

@@ -1,8 +1,8 @@
 module CE_049;
 
 -- Type checking in instance definition fails.
-import Bool;
-import List;
+import Data.Bool;
+import Data.List;
 
 class Eq(+a : CBV) {
   Equals(a, a, return Bool),

@@ -1,8 +1,8 @@
-module CE_056b;
+module Subsumption.CE_056b;
 
-import Function;
-import Bool;
-import Peano;
+import Codata.Function;
+import Data.Bool;
+import Data.Peano;
 
 -- Subsumptions which shouldn't hold
 

@@ -1,6 +1,6 @@
-module Tensor;
+module Data.Tensor;
 
-import Function;
+import Codata.Function;
 
 -- | Conjunction as a data type.
 data Tensor : (+a : CBV, +b : CBV) -> CBV {

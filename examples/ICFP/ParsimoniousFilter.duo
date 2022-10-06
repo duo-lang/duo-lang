@@ -1,10 +1,10 @@
-module ParsimoniousFilter;
+module ICFP.ParsimoniousFilter;
 
-import Function;
-import List;
-import Bool;
-import Unit;
-import Par;
+import Codata.Function;
+import Data.List;
+import Data.Bool;
+import Data.Unit;
+import Codata.Par;
 
 def rec prd filterHelper := \p l => case l of {
     Nil => cocase {

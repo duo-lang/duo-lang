@@ -2,8 +2,8 @@ module CE_048;
 
 -- Not all class methods are being implemented.
 
-import Bool;
-import List;
+import Data.Bool;
+import Data.List;
 
 class Eq(+a : CBV) {
   Equals(a, a, return Bool),

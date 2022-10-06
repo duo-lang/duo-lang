@@ -1,8 +1,8 @@
 module Subsumption;
 
-import Function;
-import Peano;
-import Bool;
+import Codata.Function;
+import Data.Peano;
+import Data.Bool;
 
 -- Subsumptions which should hold
 
