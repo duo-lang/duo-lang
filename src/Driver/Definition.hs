@@ -221,13 +221,10 @@ guardVerbose action = do
 -- | Given the Library Paths contained in the inference options and a module name,
 -- try to find a filepath which corresponds to the given module name.
 findModule :: ModuleName -> Loc ->  DriverM FilePath
-findModule mn@(MkModuleName path mod) loc = do
+findModule mn@(MkModuleName _path mod) loc = do
   libpaths <- gets $ infOptsLibPath . drvOpts
   isDuoFileMask <- liftIO $ mapM (isModuleFile mn) libpaths
   let duoFiles = catMaybes $ zipWith (\b fp -> if b then Just fp else Nothing) isDuoFileMask libpaths
-  --  duoFiles <- concat <$> forM libpaths (liftIO . listRecursiveDuoFiles)
-  --  guardVerbose $ putStrLn "in findModule"
-  --  let duoFilesMatched = fmap fst . filter ((== mod) . mn_base . snd) $ duoFiles
   case duoFiles of
     [] -> throwOtherError loc $ ["Could not locate library: " <> mod, "Paths searched:"] <> (T.pack <$> libpaths)
     (fp:_fps) -> liftIO $ makeAbsolute fp

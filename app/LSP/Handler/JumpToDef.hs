@@ -28,8 +28,6 @@ import Driver.Definition ( defaultDriverState )
 import Driver.Driver ( inferProgramIO )
 import LSP.Definition ( LSPMonad, getModuleFromFilePath )
 import LSP.MegaparsecToLSP ( locToRange, lookupInRangeMap )
-import Parser.Definition ( runFileParser )
-import Parser.Program ( moduleP )
 import Sugar.Desugar (Desugar(..))
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names

@@ -4,7 +4,6 @@ import Control.Monad.Except (runExcept, runExceptT, forM)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Either (isRight)
 import Data.List (sort)
-import Data.Text.IO qualified as T
 import System.Environment (withArgs)
 import Test.Hspec
 import Test.Hspec.Runner
@@ -13,8 +12,6 @@ import Test.Hspec.Formatters
 import Driver.Definition (defaultDriverState, parseAndCheckModule)
 import Driver.Driver (inferProgramIO)
 import Errors
-import Parser.Definition (runFileParser)
-import Parser.Program (moduleP)
 import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified

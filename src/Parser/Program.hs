@@ -21,9 +21,6 @@ import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CST.Names
 import Loc
-import qualified Data.Text as T
-import System.FilePath (takeBaseName)
-import Pretty.Pretty (ppPrintString)
 
 
 recoverDeclaration :: Parser Declaration -> Parser Declaration
