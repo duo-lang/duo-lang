@@ -12,6 +12,7 @@ import Syntax.TST.Types (getKind)
 import Syntax.CST.Kinds
 import Syntax.CST.Names 
 import Pretty.Pretty
+import Pretty.Types()
 import Lookup
 import Errors
 import Loc
@@ -484,10 +485,29 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
 
   annotateKind (RST.TyNominal loc pol tyn vartys) = do
     vartys' <- mapM annotateKind vartys
-    --decl <- lookupTypeName loc tyn
-    --checkVartys vartys' decl
+    decl <- lookupTypeName loc tyn
+    let argKnds = map (\(_, _, mk) -> mk) (kindArgs $ TST.data_kind decl)
+    checkArgKnds loc vartys' argKnds
     knd <- getTyNameKind loc tyn
     return (TST.TyNominal loc pol (fst knd) tyn vartys')
+    where
+      checkArgKnds :: Loc -> [TST.VariantType pol] -> [MonoKind] -> GenM () 
+      checkArgKnds _ [] [] = return () 
+      checkArgKnds loc (_:_) [] = throwOtherError loc ["Too many type Arguments"]
+      checkArgKnds loc [] (_:_) = throwOtherError loc ["Too few type Arguments"]
+      checkArgKnds loc (fstVarty:rstVarty) (fstMk:rstMk) = 
+        case TST.getKind fstVarty of 
+          (KindVar kv) -> do 
+            addConstraint (KindEq KindConstraint (KindVar kv) fstMk)
+            checkArgKnds loc rstVarty rstMk 
+          mk -> 
+            if mk == fstMk then 
+              checkArgKnds loc rstVarty rstMk 
+            else do 
+              throwOtherError loc ["Kind of VariantType: " <> ppPrint fstVarty <> " does not match kind of declaration " <> ppPrint fstMk]
+
+            
+
           
 
   annotateKind (RST.TySyn loc pol tn ty) = do 
