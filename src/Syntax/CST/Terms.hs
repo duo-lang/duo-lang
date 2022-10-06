@@ -36,6 +36,9 @@ data Pattern where
   PatStar     :: Loc -> Pattern
   PatWildcard :: Loc -> Pattern
 
+overlap :: [Pattern] -> Maybe String 
+overlap = undefined
+
 deriving instance Show Pattern
 deriving instance Eq Pattern
 
