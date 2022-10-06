@@ -13,10 +13,11 @@ import Syntax.CST.Names
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Errors ( Error )
 import Data.Either (isRight)
+import Utils (moduleNameToFullPath)
 
 type Reason = String
 
-pendingFiles :: [(FilePath, Reason)]
+pendingFiles :: [(ModuleName, Reason)]
 pendingFiles = []
 
 getProducers :: TST.Module -> [(FreeVarName, Term Prd)]
@@ -38,10 +39,11 @@ getInstanceCases TST.MkModule { mod_decls } = go mod_decls []
 spec :: [((FilePath, ModuleName), Either (NonEmpty Error) TST.Module)] -> Spec
 spec examples = do
   describe "All examples are locally closed." $ do
-    forM_ examples $ \((example, _mn), eitherEnv) -> do
-      case example `lookup` pendingFiles of
-        Just reason -> it "" $ pendingWith $ "Could check local closure of file " ++ example ++ "\nReason: " ++ reason
-        Nothing     -> describe ("Examples in " ++ example ++ " are locally closed") $ do
+    forM_ examples $ \((example, mn), eitherEnv) -> do
+      let fullName = moduleNameToFullPath mn example
+      case mn `lookup` pendingFiles of
+        Just reason -> it "" $ pendingWith $ "Could check local closure of file " ++ fullName ++ "\nReason: " ++ reason
+        Nothing     -> describe ("Examples in " ++ fullName ++ " are locally closed") $ do
           case eitherEnv of
             Left err -> it "Could not load examples." $ expectationFailure (ppPrintString err)
             Right env -> do

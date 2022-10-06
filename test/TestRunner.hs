@@ -41,7 +41,7 @@ filterP = some (argument str (metavar "FILES..." <> help "Specify files which sh
 
 getAvailableCounterExamples :: IO [(FilePath, ModuleName)]
 getAvailableCounterExamples = do
-  let counterExFp = "test/counterexamples/"
+  let counterExFp = "test/Counterexamples/"
   examples <- listRecursiveDuoFiles counterExFp
   pure  $ zip (repeat counterExFp) $ sort examples
 
@@ -63,7 +63,6 @@ getAvailableExamples = do
 getParsedDeclarations :: FilePath -> ModuleName -> IO (Either (NonEmpty Error) CST.Module)
 getParsedDeclarations fp mn = do
   let fullFp = moduleNameToFullPath mn fp
-  print fullFp
   runExceptT (parseAndCheckModule fullFp mn fp)
 
 getTypecheckedDecls :: FilePath -> ModuleName -> IO (Either (NonEmpty Error) TST.Module)

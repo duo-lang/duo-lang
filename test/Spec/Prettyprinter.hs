@@ -15,10 +15,11 @@ import Driver.Definition
 import Driver.Driver
 import Errors
 import Syntax.CST.Names (ModuleName(..))
+import Utils (moduleNameToFullPath)
 
 type Reason = String
 
-pendingFiles :: [(FilePath, Reason)]
+pendingFiles :: [(ModuleName, Reason)]
 pendingFiles = []
 
 -- Check that all the examples in `examples/..` can be:
@@ -32,7 +33,8 @@ spec :: [((FilePath, ModuleName), Either (NonEmpty Error) CST.Module)] -- ^ exam
 spec parseExamples typeCheckExamples = do
   describe "All the examples in the \"examples/\" folder can be parsed after prettyprinting." $ do
     forM_ parseExamples $ \((example, mn) ,prog) -> do
-      describe ("The example " ++ example ++ " can be parsed after prettyprinting.") $ do
+      let fullName = moduleNameToFullPath mn example
+      describe ("The example " ++ fullName ++ " can be parsed after prettyprinting.") $ do
         it "Can be parsed again." $
           case prog of
             Left err -> expectationFailure (ppPrintString err)
@@ -40,16 +42,17 @@ spec parseExamples typeCheckExamples = do
 
   describe "All the examples in the \"examples/\" folder can be parsed and typechecked after prettyprinting." $ do
     forM_ typeCheckExamples $ \((example, mn), prog) -> do
-      case example `lookup` pendingFiles of
-         Just reason -> it "" $ pendingWith $ "Could not focus file " ++ example ++ "\nReason: " ++ reason
-         Nothing     -> describe ("The example " ++ example ++ " can be parsed and typechecked after prettyprinting.") $ do
+      let fullName = moduleNameToFullPath mn example
+      case mn `lookup` pendingFiles of
+         Just reason -> it "" $ pendingWith $ "Could not focus file " ++ fullName ++ "\nReason: " ++ reason
+         Nothing     -> describe ("The example " ++ fullName ++ " can be parsed and typechecked after prettyprinting.") $ do
+            let msg = it "Can be parsed and typechecked again." 
             case prog of
-                Left err -> it "Can be parsed and typechecked again." $ expectationFailure (ppPrintString err)
+                Left err -> msg $ expectationFailure (ppPrintString err)
                 Right decls -> case runFileParser example (moduleP example) (ppPrint decls) of
-                  Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
+                  Left _ -> msg $ expectationFailure "Could not be parsed"
                   Right decls -> do
                     res <- runIO $ inferProgramIO defaultDriverState decls
-                    it "Can be parsed and typechecked again." $
-                        fst res `shouldSatisfy` isRight
+                    msg $ fst res `shouldSatisfy` isRight
 
 

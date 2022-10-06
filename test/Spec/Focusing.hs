@@ -5,6 +5,7 @@ import Data.List.NonEmpty ( NonEmpty )
 import Test.Hspec hiding (focus)
 import Pretty.Pretty
 import Pretty.Program ()
+import Utils (moduleNameToFullPath)
 
 import Driver.Definition
 import Driver.Driver (inferProgramIO)
@@ -20,13 +21,14 @@ import Syntax.CST.Names (ModuleName)
 
 type Reason = String
 
-pendingFiles :: [(FilePath, Reason)]
+pendingFiles :: [(ModuleName, Reason)]
 pendingFiles = []
 
 testHelper :: ((FilePath, ModuleName), Either (NonEmpty Error) TST.Module) -> EvaluationOrder -> SpecWith ()
-testHelper ((example, _mn),decls) cbx = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") $ 
-  case example `lookup` pendingFiles of
-    Just reason -> it "" $ pendingWith $ "Could not focus file " ++ example ++ "\nReason: " ++ reason
+testHelper ((example, mn),decls) cbx = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") $ 
+  let fullName = moduleNameToFullPath mn example in
+  case mn `lookup` pendingFiles of
+    Just reason -> it "" $ pendingWith $ "Could not focus file " ++ fullName ++ "\nReason: " ++ reason
     Nothing     -> 
       case decls of
         Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
@@ -50,7 +52,7 @@ testHelper ((example, _mn),decls) cbx = describe (show cbx ++ " Focusing the pro
                                 , "---------------------------------"
                                 ]
               it "Could not load examples" $ expectationFailure msg
-            (Right _env,_) -> pure ()
+            (Right _env,_) -> it ("Focused " ++ fullName ++ " succesfully") $ () `shouldBe` ()
 
 spec :: [((FilePath, ModuleName),Either (NonEmpty Error) TST.Module)] -> Spec
 spec examples = do
