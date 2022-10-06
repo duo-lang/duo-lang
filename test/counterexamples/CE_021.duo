@@ -1,3 +1,5 @@
+module CE_021;
+
 data Nat : CBV { Z, S(Nat) };
 codata Fun : CBN { Ap(Nat,Nat, return Nat) };
 

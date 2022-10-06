@@ -1,3 +1,5 @@
+module CE_049;
+
 -- Type checking in instance definition fails.
 import Bool;
 import List;

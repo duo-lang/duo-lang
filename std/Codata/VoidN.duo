@@ -1,2 +1,4 @@
+module VoidN;
+
 -- | The empty type as a codata type.
 codata VoidN : CBV { MkVoidN };

@@ -1,3 +1,5 @@
+module PeanoStructural;
+
 -- Peano Natural Numbers (Structural)
 
 import Function;

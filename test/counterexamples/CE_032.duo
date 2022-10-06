@@ -1,3 +1,5 @@
+module CE_032;
+
 -- Type constructor is applied to too many arguments.
 data Bool { True, False };
 data A : (+a : CBV) -> CBV {};

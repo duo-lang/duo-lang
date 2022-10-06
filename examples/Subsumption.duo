@@ -1,3 +1,5 @@
+module Subsumption;
+
 import Function;
 import PeanoStructural;
 import BoolStructural;

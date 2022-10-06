@@ -1,3 +1,5 @@
+module DeMorgan;
+
 import Function;
 import Cofunction;
 import Par;

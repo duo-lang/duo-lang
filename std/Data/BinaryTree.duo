@@ -1,3 +1,5 @@
+module BinaryTree;
+
 import Peano;
 import Bool;
 import List;

@@ -1,3 +1,5 @@
+module Void;
+
 -- | The empty type as a data type.
 data Void {};
 

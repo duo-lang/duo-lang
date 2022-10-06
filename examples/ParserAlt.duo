@@ -1,3 +1,5 @@
+module ParserAlt;
+
 import Bool;
 import Function;
 import List;

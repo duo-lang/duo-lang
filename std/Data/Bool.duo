@@ -1,3 +1,5 @@
+module Bool;
+
 -- Booleans (Nominal)
 
 import Function;
