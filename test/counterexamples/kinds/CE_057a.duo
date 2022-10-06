@@ -1,3 +1,4 @@
+module CE_057a;
 -- functions of kind this kind cannot be curried:
 -- the kind of the return type is CBN, but it expects a CBV type
 codata Fun : (-a : CBV, +b : CBV) -> CBN {
