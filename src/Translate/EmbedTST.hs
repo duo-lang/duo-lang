@@ -223,20 +223,14 @@ instance EmbedTST TST.DataDecl RST.DataDecl where
                               , data_doc = doc
                               , data_name = tyn
                               , data_polarity = pol
-                              , data_refinement_empty = empt
-                              , data_refinement_full = ful
                               , data_kind = polyknd
-                              , data_xtors = xtors
-                              , data_xtors_refined = xtors' } =
+                              , data_xtors = xtors } =
     RST.RefinementDecl { data_loc = loc
                        , data_doc = doc
                        , data_name = tyn
                        , data_polarity = pol
-                       , data_refinement_empty = BF.bimap embedTST embedTST empt
-                       , data_refinement_full = BF.bimap embedTST embedTST ful
                        , data_kind = polyknd
                        , data_xtors = BF.bimap (map embedTST) (map embedTST) xtors
-                       , data_xtors_refined = BF.bimap (map embedTST) (map embedTST) xtors'
                        }
 
 instance EmbedTST TST.Declaration Core.Declaration where
