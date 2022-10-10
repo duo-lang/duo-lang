@@ -493,8 +493,29 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
 
   annotateKind (RST.TyCodata loc pol xtors) = do 
     xtors' <- mapM annotateKind xtors
+    let xtorNames = map TST.sig_name xtors'
+    xtorKnds <- mapM lookupXtorKind xtorNames
+    compXtorKinds loc xtors' xtorKnds
     knd <- getXtorKinds loc xtors'
     return (TST.TyCodata loc pol knd xtors')
+    where 
+      compXtorKinds :: Loc -> [TST.XtorSig (RST.FlipPol pol)] -> [(MonoKind,[MonoKind])] -> GenM ()
+      compXtorKinds _ [] [] = return ()
+      compXtorKinds _ [] (_:_) = error "too many xtor kinds (should not happen)"
+      compXtorKinds _ (_:_) [] = error "not all xtor kinds found (should already fail during lookup)"
+      compXtorKinds loc (fstXtor:rstXtors) ((mk,_):rstKinds) = do
+        let argKnds = map getKind (TST.sig_args fstXtor)
+        allEq <- mapM (compMonoKind mk) argKnds
+        if and allEq then 
+          compXtorKinds loc rstXtors rstKinds 
+        else 
+          throwOtherError loc ["Kind of Xtor " <> ppPrint argKnds <> " does not match declaration kind " <> ppPrint mk]
+      compMonoKind:: MonoKind -> MonoKind -> GenM Bool
+      compMonoKind mk (KindVar kv) = do 
+        addConstraint $ KindEq KindConstraint mk (KindVar kv) 
+        return True
+      compMonoKind mk mk' = return (mk == mk')
+
 
   annotateKind (RST.TyDataRefined loc pol tyn xtors) = do 
     xtors' <- mapM annotateKind xtors
@@ -531,7 +552,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
           throwOtherError loc ["Xtors do not have the correct kinds"]
 
 
-  annotateKind (RST.TyNominal loc pol tyn vartys) = do
+  annotateKind (RST.TyNominal loc pol tyn vartys) = do 
     vartys' <- mapM annotateKind vartys
     decl <- lookupTypeName loc tyn
     let argKnds = map (\(_, _, mk) -> mk) (kindArgs $ TST.data_kind decl)
@@ -549,7 +570,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
             addConstraint (KindEq KindConstraint (KindVar kv) fstMk)
             checkArgKnds loc rstVarty rstMk 
           mk -> 
-            if mk == fstMk then 
+            if mk == fstMk then do
               checkArgKnds loc rstVarty rstMk 
             else do 
               throwOtherError loc ["Kind of VariantType: " <> ppPrint fstVarty <> " does not match kind of declaration " <> ppPrint fstMk]
