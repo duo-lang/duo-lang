@@ -306,17 +306,22 @@ data Module = MkModule
 
 deriving instance Show Module
 
+-- when only given a filepath, parsing the file will result in the libpath of a module overlapping with the module name, e.g.
+-- module Codata.Function in std/Codata/Function.duo will have libpath `std/Codata`.
+-- Thus we have to adjust the libpath (to `std/` in the example above).
+-- Moreover, we need to check whether the new path and the original filepath are compatible.
 adjustModulePath :: Module -> FilePath -> Either (NE.NonEmpty Error) Module
 adjustModulePath mod fp =
   let fp'  = fpToList fp
-      mFp  = fpToList $ mod_libpath mod
+      mlp  = mod_libpath mod
+      mFp  = fpToList mlp
       mn   = mod_name mod
       mp   = T.unpack <$> mn_path mn ++ [mn_base mn]
   in do
     prefix <- reverse <$> dropModulePart (reverse mp) (reverse mFp)
     if prefix `isPrefixOf` fp'
     then pure mod { mod_libpath = joinPath prefix } 
-    else throwOtherError defaultLoc [ ]
+    else throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString mlp) <> " is not compatible with given filepath " <> T.pack fp ]
   where
     fpToList :: FilePath -> [String]
     fpToList = splitDirectories . dropExtension
