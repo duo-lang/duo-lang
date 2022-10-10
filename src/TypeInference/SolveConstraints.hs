@@ -172,7 +172,7 @@ unifyKinds (KindVar kv1) (KindVar kv2) = do
     let newSet = kvset1 ++ kvset2
     case (mk1,mk2) of
       (mk1, Nothing) -> putKVars $ (newSet,mk1):rest2
-      (Nothing, mk2) -> putKVars $ (newSet,mk2):rest1
+      (Nothing, mk2) -> putKVars $ (newSet,mk2):rest2
       (Just mk1, Just mk2) | mk1 == mk2 -> putKVars $ (newSet, Just mk1) :rest2
                            | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint mk1 <> " and " <> ppPrint mk2]
 unifyKinds (KindVar kv) kind = do
