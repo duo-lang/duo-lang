@@ -6,7 +6,6 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty ((:|)))
 import Data.Text qualified as T
-import System.FilePath ( takeFileName, takeBaseName)
 import System.Directory ( makeAbsolute )
 
 
@@ -15,7 +14,7 @@ import Errors
 import Pretty.Pretty
 import Pretty.Errors ( printLocatedReport )
 import Resolution.SymbolTable
-import Syntax.CST.Names ( ModuleName(MkModuleName) )
+import Syntax.CST.Names ( ModuleName(..) )
 import Syntax.TST.Program qualified as TST
 import Loc
 import Utils
@@ -24,7 +23,7 @@ import qualified Syntax.CST.Program as CST (Module(..))
 import qualified Data.Text.IO as T
 import Parser.Definition (runFileParser)
 import Parser.Parser (moduleP)
-import Data.Maybe ( fromMaybe )
+import Data.Maybe ( fromMaybe, catMaybes )
 import TypeAutomata.Definition (Nubable(nub))
 
 ------------------------------------------------------------------------------
@@ -150,6 +149,19 @@ getDependencies ds mn = nub $ directDeps ++ concatMap (getDependencies ds) direc
 
 -- Modules and declarations
 
+checkModuleName :: MonadError (NonEmpty Error) m => ModuleName -> CST.Module -> m ()
+checkModuleName mn CST.MkModule { mod_name } =
+  if mn == mod_name
+    then pure ()
+    else throwOtherError defaultLoc [ "Wrong module declaration: Found declaration " <> T.pack (ppPrintString mod_name) <> " in module " <> T.pack (ppPrintString mn) ]
+
+parseAndCheckModule :: (MonadError (NonEmpty Error) m, MonadIO m) => FilePath -> ModuleName -> FilePath -> m CST.Module
+parseAndCheckModule fullFp mn fp = do
+  file <- liftIO $ T.readFile fullFp
+  mod <- runFileParser fullFp (moduleP fp) file
+  checkModuleName mn mod
+  pure mod
+
 getModuleDeclarations :: ModuleName -> DriverM CST.Module
 getModuleDeclarations mn = do
         moduleMap <- gets drvFiles
@@ -157,8 +169,11 @@ getModuleDeclarations mn = do
           Just mod -> pure mod
           Nothing -> do
             fp <- findModule mn defaultLoc
-            file <- liftIO $ T.readFile fp
-            mod <- runFileParser fp (moduleP fp) file
+            let fullFp = moduleNameToFullPath mn fp
+            mod <- parseAndCheckModule fullFp mn fp
+            --  file <- liftIO $ T.readFile fullFp
+            --  mod <- runFileParser fullFp (moduleP fp) file
+            --  checkModuleName mn mod
             addModule mod
             pure mod
 
@@ -206,13 +221,12 @@ guardVerbose action = do
 -- | Given the Library Paths contained in the inference options and a module name,
 -- try to find a filepath which corresponds to the given module name.
 findModule :: ModuleName -> Loc ->  DriverM FilePath
-findModule (MkModuleName mod) loc = do
-  let modString = T.unpack mod
+findModule mn@(MkModuleName _path mod) loc = do
   libpaths <- gets $ infOptsLibPath . drvOpts
-  duoFiles <- concat <$> forM libpaths (liftIO . listRecursiveDuoFiles)
-  let duoFilesMatched = filter (\fp -> takeFileName fp == modString || takeBaseName fp == modString) duoFiles
-  case duoFilesMatched of
-    [] -> throwOtherError loc $ ["Could not locate library: " <> mod, "Paths searched:"] <> (T.pack <$> duoFiles)
+  isDuoFileMask <- liftIO $ mapM (isModuleFile mn) libpaths
+  let duoFiles = catMaybes $ zipWith (\b fp -> if b then Just fp else Nothing) isDuoFileMask libpaths
+  case duoFiles of
+    [] -> throwOtherError loc $ ["Could not locate library: " <> mod, "Paths searched:"] <> (T.pack <$> libpaths)
     (fp:_fps) -> liftIO $ makeAbsolute fp
       
 

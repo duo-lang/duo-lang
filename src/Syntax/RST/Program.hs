@@ -259,8 +259,8 @@ instance Show Declaration where
 data Module = MkModule
   { mod_name :: ModuleName
     -- ^ The name of the module.
-  , mod_fp :: FilePath
-    -- ^ The absolute filepath of the module.
+  , mod_libpath :: FilePath
+    -- ^ The absolute filepath of the library of the module.
   , mod_decls :: [Declaration]
     -- ^ The declarations contained in the module.
   }

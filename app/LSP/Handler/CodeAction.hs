@@ -42,14 +42,12 @@ import Driver.Definition
       queryTypecheckedModule )
 import Driver.Driver ( inferProgramIO, runCompilationModule )
 import Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration, dualCmdDeclaration)
-import LSP.Definition ( LSPMonad )
+import LSP.Definition ( LSPMonad, getModuleFromFilePath )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
-import Parser.Definition ( runFileParser )
-import Parser.Program ( moduleP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Sugar.TST (isDesugaredTerm, isDesugaredCommand, resetAnnotationTerm, resetAnnotationCmd)
-import Syntax.CST.Names ( FreeVarName(..), ModuleName (MkModuleName) )
+import Syntax.CST.Names ( FreeVarName(..), ModuleName )
 import Translate.Focusing ( Focus(..) )
 import Loc ( Loc, defaultLoc )
 import Eval.Eval (eval, EvalMWrapper (..))
@@ -62,7 +60,8 @@ import Eval.Definition (EvalEnv)
 import Data.Foldable (fold)
 import Run (desugarEnv)
 import qualified Data.Map as M
-import System.FilePath (splitFileName, dropExtension)
+import Utils (filePathToModuleName)
+import System.Directory (makeRelativeToCurrentDirectory)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -76,7 +75,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
   let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
   let file = virtualFileText vfile
   let fp = fromMaybe "fail" (uriToFilePath uri)
-  let decls = runFileParser fp (moduleP fp) file
+  let decls = getModuleFromFilePath  fp file
   case decls of
     Left _err -> do
       responder (Right (List []))
@@ -372,11 +371,11 @@ generateCmdEvalCodeAction ident decl =
 stopHandler :: (Either ResponseError b -> LSPMonad ()) -> String -> String -> LSPMonad a
 stopHandler responder s e = responder (Left $ ResponseError InvalidRequest (T.pack e) Nothing) >> liftIO (debugM s e >> fail e)
 
-uriToModuleName :: Uri -> ModuleName
-uriToModuleName uri =
+uriToModuleName :: Uri -> LSPMonad ModuleName
+uriToModuleName uri = do
       let fullPath = fromMaybe "" $ uriToFilePath uri
-          relPath = dropExtension $ snd $ splitFileName fullPath
-      in MkModuleName $ T.pack relPath
+      relPath <- liftIO $ makeRelativeToCurrentDirectory fullPath
+      return $ filePathToModuleName relPath
 
 evalArgsFromJSON  :: LSPMonad EvalCmdArgs
                   -> LSPMonad EvalCmdArgs
@@ -435,7 +434,7 @@ evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params}
 
       -- get Module name
       let uri = _uri $ evalArgs_uri args
-      let mn  = uriToModuleName uri
+      mn <- uriToModuleName uri
       liftIO $ debugM source $ "Running " <> T.unpack _command <> " with module " <> show mn
 
       -- execute command

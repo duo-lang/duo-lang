@@ -263,8 +263,8 @@ instance EmbedTST TST.Declaration Core.Declaration where
 
 instance EmbedTST TST.Module Core.Module where
   embedTST :: TST.Module -> Core.Module
-  embedTST TST.MkModule { mod_name, mod_fp, mod_decls } =
+  embedTST TST.MkModule { mod_name, mod_libpath, mod_decls } =
       Core.MkModule { mod_name = mod_name
-                    , mod_fp = mod_fp
+                    , mod_libpath = mod_libpath
                     , mod_decls = embedTST  <$> mod_decls
                     }

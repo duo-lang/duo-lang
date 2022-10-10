@@ -1,7 +1,6 @@
 {-# LANGUAGE ExplicitNamespaces #-}
 module LSP.LSP ( runLSP ) where
 
-import Control.Monad.Except (runExcept)
 import Control.Monad.IO.Class (liftIO)
 import Data.IORef
 import Data.List.NonEmpty qualified as NE
@@ -35,8 +34,6 @@ import LSP.Handler.Completion ( completionHandler )
 import LSP.Handler.JumpToDef ( jumpToDefHandler )
 import LSP.MegaparsecToLSP ( locToRange )
 import Paths_duo_lang (version)
-import Parser.Definition ( runFileParser )
-import Parser.Program ( moduleP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Loc
@@ -207,7 +204,7 @@ publishErrors uri = do
     Just vfile -> do
       let file = virtualFileText vfile
       let fp = fromMaybe "fail" (uriToFilePath uri)
-      let decls = runExcept (runFileParser fp (moduleP fp) file)
+      let decls = getModuleFromFilePath fp file
       case decls of
         Left errs -> do
           sendDiagnostics (toNormalizedUri uri) (NE.toList errs)

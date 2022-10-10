@@ -1,4 +1,4 @@
-module NegationN;
+module Codata.NegationN;
 
 -- negative negation
 

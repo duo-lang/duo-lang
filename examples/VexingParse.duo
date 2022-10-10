@@ -9,7 +9,7 @@ module VexingParse;
 -- instead of
 --   "add 1 (xs.Length(*))"
 
-import Peano;
+import Data.Peano;
 
 codata List2 : (+a : CBV) -> CBV {
     Nth(Nat, return a),

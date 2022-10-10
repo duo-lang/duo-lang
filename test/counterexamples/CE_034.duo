@@ -1,7 +1,0 @@
-module CE_034;
-
--- Constructor is applied to too few arguments.
-
-destructor B(CBV) : CBV;
-
-def cns foo := B;

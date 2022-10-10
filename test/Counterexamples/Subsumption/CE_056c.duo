@@ -1,0 +1,11 @@
+module Subsumption.CE_056c;
+
+import Codata.Function;
+import Data.Bool;
+import Data.Peano;
+
+-- Subsumptions which shouldn't hold
+
+def rec prd ex18    : { Ap(< True >,return < True , False >) }                              := ex18;
+def rec prd ex18sub : { Ap(< True >,return < True >) }                                      := ex18;
+

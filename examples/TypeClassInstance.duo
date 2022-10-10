@@ -1,8 +1,8 @@
 module TypeClassInstance;
 
 
-import Bool;
-import Peano;
+import Data.Bool;
+import Data.Peano;
 
 -- | Class definition.
 class Eq(+a : CBV) {

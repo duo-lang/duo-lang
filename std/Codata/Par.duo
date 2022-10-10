@@ -1,6 +1,6 @@
-module Par;
+module Codata.Par;
 
-import Function;
+import Codata.Function;
 
 -- | Disjunction as a codata type.
 codata Par : (+a : CBV, +b : CBV) -> CBV {

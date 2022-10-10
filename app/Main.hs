@@ -1,10 +1,8 @@
 {-# LANGUAGE TemplateHaskell #-}
 module Main where
 
-import Data.Text qualified as T
 import Data.Version (showVersion)
 import GitHash (tGitInfoCwd, giHash, giBranch)
-import System.FilePath (takeBaseName, replaceFileName)
 
 import Options (Options(..), parseOptions)
 import Run (runRun)
@@ -13,7 +11,7 @@ import Typecheck (runTypecheck)
 import Deps (runDeps)
 import LSP.LSP (runLSP)
 import Paths_duo_lang (version)
-import Utils (trimStr)
+import Utils (trimStr, filePathToModuleName)
 
 main :: IO ()
 main = do
@@ -21,7 +19,7 @@ main = do
     dispatch opts
 
 filepathToModuleName :: FilePath -> ModuleName
-filepathToModuleName fp = MkModuleName . T.pack . trimStr . replaceFileName fp $ takeBaseName fp
+filepathToModuleName = filePathToModuleName . trimStr 
 
 dispatch :: Options -> IO ()
 dispatch (OptLSP log)           = runLSP log
