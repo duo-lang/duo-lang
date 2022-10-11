@@ -158,6 +158,27 @@ overlap (x : xs) =
 
     --determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.
     overlapA2 :: Pattern -> Pattern -> Overlap
+    --An Overlap may occur for two De/Constructors if their Names match.
+    overlapA2 p1@(PatXtor _ xXtorName xPatterns) 
+              p2@(PatXtor _ yXtorName yPatterns) =
+                if (xXtorName != yXtorName)
+                  then Nothing
+                  else let  subPatternsOverlaps = (map overlapA2 xPatterns) <*> yPatterns
+                            subPatternsOverlap = concatOverlaps subPatternsOverlaps
+                        in case subPatternsOverlap of
+                              Nothing -> Nothing
+                              (Just subPatternsOverlapMsg) ->
+                                Just $
+                                  (overlapMsg p1 p2)
+                                  ++ "due to the following Subpattern Overlap:\n"
+                                  ++ subPatternsOverlapMsg
+    --If either p1 or p2 is no De/Constructor, they already overlap.
+    overlapA2 p1 p2 = Just $ overlapMsg p1 p2
+
+
+
+    --determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.
+    overlapA2 :: Pattern -> Pattern -> Overlap
     --Case 1: p1 is a Constructor Pattern.
     overlapA2 p1@(PatXtor _ xXtorName xPatterns) p2 =
       case p2 of
