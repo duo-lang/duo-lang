@@ -1,6 +1,6 @@
 module Syntax.CST.Terms where
 
-import Data.Text (pack)
+import Data.Text (Text, pack, unpack)
 import Loc (HasLoc (..), Loc, defaultLoc)
 import Syntax.CST.Names (FreeVarName (MkFreeVarName), PrimName, XtorName (MkXtorName))
 
@@ -39,7 +39,6 @@ data Pattern where
   PatWildcard :: Loc -> Pattern
 
 --------------------------------------------
-
 
 -- (1) Leaf x 
 -- (2) Branch (Leaf y) t2 
@@ -205,15 +204,15 @@ test8 = [PatXtor
             ]
           ]]
 
--- | An Overlap Message is a String
-type OverlapMsg = String
+-- | An Overlap Message is a Text
+type OverlapMsg = Text
 
 -- | An Overlap may be an Overlap Message.
 type Overlap = Maybe OverlapMsg
 
 -- | Helper for readable display of Overlap objects.
 printOverlap :: Overlap -> String
-printOverlap (Just msg) = msg 
+printOverlap (Just msg) = unpack msg 
 printOverlap Nothing    = "No Overlap found."
 
 -- | Generates the Overlap of Patterns between one another.
@@ -222,12 +221,12 @@ overlap :: [Pattern] -> Overlap
 overlap []        = Nothing
 overlap (x : xs)  =
   let xOverlaps = map (overlapA2 x) xs
-  in  concatOverlaps $ xOverlaps ++ [overlap xs]
+  in  concatOverlaps $ xOverlaps <> [overlap xs]
   where
     -- | Reduces multiple potential Overlap Messages into one potential Overlap Message.
     concatOverlaps :: [Overlap] -> Overlap
     concatOverlaps xs =
-      let concatRule = \x y -> x ++ "\n\n" ++ y
+      let concatRule = \x y -> x <> "\n\n" <> y
       in  foldr (liftm2 concatRule) Nothing xs
       where
         liftm2 :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a
@@ -238,16 +237,16 @@ overlap (x : xs)  =
     -- | Generates an Overlap Message for patterns p1 p2.
     overlapMsg :: Pattern -> Pattern -> OverlapMsg
     overlapMsg p1 p2 =
-      let p1Str = patternToStr p1
-          p2Str = patternToStr p2
-      in  "Overlap found:\n" ++ p1Str ++ " overlaps with " ++ p2Str ++ "\n"
+      let p1Str = patternToText p1
+          p2Str = patternToText p2
+      in  "Overlap found:\n" <> p1Str <> " overlaps with " <> p2Str <> "\n"
 
-    -- | Readable Conversion of Pattern to String.
-    patternToStr :: Pattern -> String
-    patternToStr (PatVar loc varName)     = "Variable Pattern " ++ (show varName) ++ "in: " ++ (show loc)
-    patternToStr (PatStar loc)            = "* Pattern in: " ++ (show loc)
-    patternToStr (PatWildcard loc)        = "Wildcard Pattern in: " ++ (show loc)
-    patternToStr (PatXtor loc xtorName _) = "Constructor Pattern " ++ (show xtorName) ++ "in: " ++ (show loc)
+    -- | Readable Conversion of Pattern to Text.
+    patternToText :: Pattern -> Text
+    patternToText (PatVar loc varName)     = pack $ "Variable Pattern " ++ (show varName) ++ "in: " ++ (show loc)
+    patternToText (PatStar loc)            = pack $ "* Pattern in: " ++ (show loc)
+    patternToText (PatWildcard loc)        = pack $ "Wildcard Pattern in: " ++ (show loc)
+    patternToText (PatXtor loc xtorName _) = pack $ "Constructor Pattern " ++ (show xtorName) ++ "in: " ++ (show loc)
 
     -- | Determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.
     overlapA2 :: Pattern -> Pattern -> Overlap
@@ -266,10 +265,10 @@ overlap (x : xs)  =
                             (Just subPatternsOverlapMsg)  ->
                               Just $
                                 (overlapMsg p1 p2)
-                                ++ "due to the all Subpatterns overlapping as follows:\n"
-                                ++ "--------------------------------->\n"
-                                ++ subPatternsOverlapMsg
-                                ++ "---------------------------------<\n"
+                                <> "due to the all Subpatterns overlapping as follows:\n"
+                                <> "--------------------------------->\n"
+                                <> subPatternsOverlapMsg
+                                <> "---------------------------------<\n"
                                     
     -- If either p1 or p2 is no De/Constructor, they already overlap.
     overlapA2 p1 p2 = Just $ overlapMsg p1 p2
