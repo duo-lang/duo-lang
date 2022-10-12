@@ -3,7 +3,6 @@ module LSP.Handler.CodeAction (codeActionHandler
                               ) where
 
 import GHC.Generics ( Generic )
-import Control.Monad (join)
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe ( fromMaybe, isNothing )
@@ -85,46 +84,74 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
         Left _err -> do
           responder (Right (List []))
         Right (_,prog) -> do
-          responder (Right (generateCodeActions ident range prog))
+          responder (Right (getCodeActions ident range prog))
 
-generateCodeActions :: TextDocumentIdentifier -> Range -> TST.Module -> List (Command  |? CodeAction)
-generateCodeActions ident rng TST.MkModule { mod_decls } = List (join ls)
-  where
-    ls = generateCodeAction ident rng <$> mod_decls
+---------------------------------------------------------------------------------
+-- Class for generating code actions
+---------------------------------------------------------------------------------
 
+class GetCodeActions a where
+  getCodeActions :: TextDocumentIdentifier
+                 -- ^ The document in which we are looking for available Code actions.
+                 -> Range
+                 -- ^ The range where we are looking for available code actions, i.e.
+                 --   the position of the mouse pointer.
+                 -> a 
+                 -- ^ The element in which we are searching for available code actions.
+                 -> List (Command |? CodeAction)
+                 -- ^ The available code actions and commands.
 
-generateCodeActionPrdCnsDeclaration :: TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> [Command |? CodeAction]
-generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Inferred _ } =
-  [generateAnnotCodeAction ident decl]
-generateCodeActionPrdCnsDeclaration ident decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _, pcdecl_term } =
-  let
-    desugar  = [ generateDesugarCodeAction ident decl | not (isDesugaredTerm pcdecl_term)]
-    cbvfocus = [ generateFocusCodeAction ident CBV decl | isDesugaredTerm pcdecl_term, isNothing (isFocused CBV pcdecl_term)]
-    cbnfocus = [ generateFocusCodeAction ident CBN decl | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
-    dualize  = [ generateDualizeCodeAction ident decl]
-  in
-    desugar <> cbvfocus <> cbnfocus <> dualize
+instance GetCodeActions TST.Module where
+  getCodeActions :: TextDocumentIdentifier -> Range -> TST.Module -> List (Command |? CodeAction)
+  getCodeActions id rng TST.MkModule { mod_decls } = mconcat (getCodeActions id rng <$> mod_decls)
+  
+instance GetCodeActions TST.Declaration where
+  getCodeActions :: TextDocumentIdentifier -> Range -> TST.Declaration -> List (Command |? CodeAction)
+  getCodeActions id rng (TST.PrdCnsDecl _ decl)  = getCodeActions id rng decl
+  getCodeActions id rng (TST.CmdDecl decl)       = getCodeActions id rng decl
+  getCodeActions id rng (TST.DataDecl decl)      = getCodeActions id rng decl
+  getCodeActions _ _ _                           = List []
 
-generateCodeActionCommandDeclaration :: TextDocumentIdentifier -> TST.CommandDeclaration -> [Command |? CodeAction]
-generateCodeActionCommandDeclaration ident decl@TST.MkCommandDeclaration {cmddecl_cmd } =
-  let
-    desugar  = [ generateCmdDesugarCodeAction ident decl | not (isDesugaredCommand cmddecl_cmd)]
-    cbvfocus = [ generateCmdFocusCodeAction ident CBV decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBV cmddecl_cmd)]
-    cbnfocus = [ generateCmdFocusCodeAction ident CBN decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
-    eval     = [ generateCmdEvalCodeAction ident decl ]
-    dualize  = [ generateDualizeCommandAction ident decl ]
-  in
-    desugar <> cbvfocus <> cbnfocus <> dualize <> eval
+instance GetCodeActions (TST.PrdCnsDeclaration pc) where
+  getCodeActions :: TextDocumentIdentifier -> Range -> TST.PrdCnsDeclaration pc -> List (Command |? CodeAction)
+  -- If we are not in the correct range, then don't generate code actions.
+  getCodeActions _ Range { _start = start } decl | not (lookupPos start (TST.pcdecl_loc decl)) =
+    List []
+  -- If the type is not already annotated, only generate the code action for annotating the type.
+  getCodeActions id _ decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Inferred _ } =
+    List [generateAnnotCodeAction id decl]
+  -- If the type is annotated, generate the remaining code actions.
+  getCodeActions id _ decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _, pcdecl_term } =
+    let
+      desugar  = [ generateDesugarCodeAction id decl | not (isDesugaredTerm pcdecl_term)]
+      cbvfocus = [ generateFocusCodeAction id CBV decl | isDesugaredTerm pcdecl_term, isNothing (isFocused CBV pcdecl_term)]
+      cbnfocus = [ generateFocusCodeAction id CBN decl | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
+      dualize  = [ generateDualizeCodeAction id decl]
+    in
+      List (desugar <> cbvfocus <> cbnfocus <> dualize)
 
-generateCodeAction :: TextDocumentIdentifier -> Range -> TST.Declaration -> [Command |? CodeAction]
-generateCodeAction ident Range {_start = start } (TST.PrdCnsDecl _ decl) | lookupPos start (TST.pcdecl_loc decl) =
-  generateCodeActionPrdCnsDeclaration ident decl
-generateCodeAction ident Range {_start = start} (TST.CmdDecl decl) | lookupPos start (TST.cmddecl_loc decl) =
-  generateCodeActionCommandDeclaration ident decl
-generateCodeAction ident Range {_start = _start} (TST.DataDecl decl) = dualizeDecl
-  where     
-    dualizeDecl = [generateDualizeDeclCodeAction ident (TST.data_loc decl) decl]
-generateCodeAction _ _ _ = []
+instance GetCodeActions TST.CommandDeclaration where
+  getCodeActions :: TextDocumentIdentifier -> Range -> TST.CommandDeclaration -> List (Command |? CodeAction)
+  -- If we are not in the correct range, then don't generate code actions.
+  getCodeActions _ Range { _start = start } decl | not (lookupPos start (TST.cmddecl_loc decl)) =
+    List []
+  getCodeActions id _ decl@TST.MkCommandDeclaration {cmddecl_cmd } =
+    let
+      desugar  = [ generateCmdDesugarCodeAction id decl | not (isDesugaredCommand cmddecl_cmd)]
+      cbvfocus = [ generateCmdFocusCodeAction id CBV decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBV cmddecl_cmd)]
+      cbnfocus = [ generateCmdFocusCodeAction id CBN decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
+      eval     = [ generateCmdEvalCodeAction id decl ]
+      dualize  = [ generateDualizeCommandAction id decl ]
+    in
+      List (desugar <> cbvfocus <> cbnfocus <> dualize <> eval)
+
+instance GetCodeActions TST.DataDecl where
+  getCodeActions :: TextDocumentIdentifier -> Range -> TST.DataDecl -> List (Command |? CodeAction)
+  -- If we are not in the correct range, then don't generate code actions.
+  getCodeActions _ Range {_start = start} decl | not (lookupPos start (TST.data_loc decl)) =
+    List []
+  getCodeActions id _ decl = 
+    List [generateDualizeDeclCodeAction id (TST.data_loc decl) decl]
 
 ---------------------------------------------------------------------------------
 -- Provide TypeAnnot Action
