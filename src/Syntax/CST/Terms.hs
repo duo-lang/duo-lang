@@ -67,6 +67,22 @@ test1 =
     PatVar defaultLoc (MkFreeVarName (pack "t"))
   ]
 
+-- (1) m
+-- (2) *
+-- (3) Nothing 
+-- (4) Maybe x 
+-- (5) _
+-- -> Overlap expected between:
+--    (1) and (2)
+--    (1) and (3)
+--    (1) and (4)
+--    (1) and (5)
+--    (2) and (3)
+--    (2) and (4)
+--    (2) and (5)
+--    (3) and (5)
+--    (4) and (5)
+
 test2 :: [Pattern]
 test2 =
   [ PatVar defaultLoc (MkFreeVarName (pack "m")),
@@ -76,12 +92,15 @@ test2 =
     PatWildcard defaultLoc
   ]
 
+-- No Overlap expected.
 test3 :: [Pattern]
 test3 = []
 
+-- No Overlap expected.
 test4 :: [Pattern]
 test4 = [PatStar defaultLoc]
 
+-- No Overlap expected.
 test5 :: [Pattern]
 test5 =
   [ PatXtor
@@ -93,6 +112,13 @@ test5 =
       ]
   ]
 
+-- (1) x
+-- (2) z
+-- (3) x
+-- -> Overlap expected between:
+--    (1) and (2)
+--    (1) and (3)
+--    (2) and (3)
 test6 :: [Pattern]
 test6 =
   [ PatVar defaultLoc (MkFreeVarName (pack "x")),
@@ -100,12 +126,19 @@ test6 =
     PatVar defaultLoc (MkFreeVarName (pack "x"))
   ]
 
+-- (1) (x:(y:(z:zs)))
+-- (2) (x:(y:(z:(m:ms))))
+-- bzw.
+-- (1) Cons x (Cons y (Cons z zs))
+-- (2) Cons x (Cons y (Cons z (Cons m ms)))
+-- -> Overlap expected between:
+-- (1) and (2) (due to Subpattern Overlap between x and x, (Cons y (Cons z zs)) and (Cons y (Cons z (Cons m ms))))
 test7 :: [Pattern]
 test7 = [PatXtor defaultLoc (MkXtorName (pack "Cons")) 
-          [PatVar defaultLoc (MkFreeVarName (pack "x")),
-          PatXtor defaultLoc (MkXtorName (pack "Cons")) 
-            [PatVar defaultLoc (MkFreeVarName (pack "y")),
-            PatXtor defaultLoc (MkXtorName (pack "Cons")) [PatVar defaultLoc (MkFreeVarName (pack "z")), PatVar defaultLoc (MkFreeVarName (pack "zs"))]]],
+          [ PatVar defaultLoc (MkFreeVarName (pack "x")),
+            PatXtor defaultLoc (MkXtorName (pack "Cons")) 
+              [ PatVar defaultLoc (MkFreeVarName (pack "y")),
+                PatXtor defaultLoc (MkXtorName (pack "Cons")) [PatVar defaultLoc (MkFreeVarName (pack "z")), PatVar defaultLoc (MkFreeVarName (pack "zs"))]]],
          PatXtor defaultLoc (MkXtorName (pack "Cons")) 
           [PatVar defaultLoc (MkFreeVarName (pack "x")),
           PatXtor defaultLoc (MkXtorName (pack "Cons")) 
@@ -114,89 +147,93 @@ test7 = [PatXtor defaultLoc (MkXtorName (pack "Cons"))
               [PatVar defaultLoc (MkFreeVarName (pack "z")),
                PatXtor defaultLoc (MkXtorName (pack "Cons")) [PatVar defaultLoc (MkFreeVarName (pack "m")), PatVar defaultLoc (MkFreeVarName (pack "ms"))]]]]]
 
+test8 :: [Pattern]
+test8 = [PatXtor
+          defaultLoc
+          (MkXtorName (pack "Branch"))
+          [ PatXtor defaultLoc (MkXtorName (pack "Leaf")) [PatVar defaultLoc (MkFreeVarName (pack "x"))],
+            PatXtor defaultLoc (MkXtorName (pack "Leaf")) [PatVar defaultLoc (MkFreeVarName (pack "y"))]
+          ],
+         PatXtor
+          defaultLoc
+          (MkXtorName (pack "Branch"))
+          [ PatXtor defaultLoc (MkXtorName (pack "Leaf")) [PatVar defaultLoc (MkFreeVarName (pack "x"))],
+            PatXtor
+            defaultLoc
+            (MkXtorName (pack "Branch"))
+            [ PatXtor defaultLoc (MkXtorName (pack "Leaf")) [PatVar defaultLoc (MkFreeVarName (pack "y1"))],
+              PatXtor defaultLoc (MkXtorName (pack "Leaf")) [PatVar defaultLoc (MkFreeVarName (pack "y2"))]
+            ]
+          ]]
 
---An Overlap Message is a String
+
+-- | An Overlap Message is a String
 type OverlapMsg = String
 
---An Overlap may be an Overlap Message.
+-- | An Overlap may be an Overlap Message.
 type Overlap = Maybe OverlapMsg
 
+-- | Helper for readable display of Overlap objects.
 printOverlap :: Overlap -> String
 printOverlap (Just msg) = msg 
-printOverlap Nothing = "No Overlap found."
+printOverlap Nothing    = "No Overlap found."
 
---Generates the Overlap of Patterns between one another.
+-- | Generates the Overlap of Patterns between one another.
+-- For testing purposes, best display via putStrLn $ printOverlap $ overlap test<X>...
 overlap :: [Pattern] -> Overlap
-overlap [] = Nothing
-overlap (x : xs) =
+overlap []        = Nothing
+overlap (x : xs)  =
   let xOverlaps = map (overlapA2 x) xs
-   in concatOverlaps $ xOverlaps ++ [overlap xs]
+  in  concatOverlaps $ xOverlaps ++ [overlap xs]
   where
-    --reduces multiple potential Overlap Messages into one potential Overlap Message.
+    -- | Reduces multiple potential Overlap Messages into one potential Overlap Message.
     concatOverlaps :: [Overlap] -> Overlap
     concatOverlaps xs =
       let concatRule = \x y -> x ++ "\n\n" ++ y
-       in foldr (liftm2 concatRule) Nothing xs
+      in  foldr (liftm2 concatRule) Nothing xs
       where
         liftm2 :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a
-        liftm2 _ x Nothing = x
-        liftm2 _ Nothing y = y
-        liftm2 f (Just x) (Just y) = Just $ (f x y)
+        liftm2 _ x          Nothing   = x
+        liftm2 _ Nothing    y         = y
+        liftm2 f (Just x)   (Just y)  = Just $ (f x y)
 
-    --generates an Overlap Message for patterns p1 p2.
+    -- | Generates an Overlap Message for patterns p1 p2.
     overlapMsg :: Pattern -> Pattern -> OverlapMsg
     overlapMsg p1 p2 =
       let p1Str = patternToStr p1
           p2Str = patternToStr p2
-       in "Overlap found:\n" ++ p1Str ++ " overlaps with " ++ p2Str ++ "\n"
+      in  "Overlap found:\n" ++ p1Str ++ " overlaps with " ++ p2Str ++ "\n"
 
+    -- | Readable Conversion of Pattern to String.
     patternToStr :: Pattern -> String
-    patternToStr (PatVar loc varName) = "Variable Pattern " ++ (show varName) ++ "in: " ++ (show loc)
-    patternToStr (PatStar loc) = "* Pattern in: " ++ (show loc)
-    patternToStr (PatWildcard loc) = "Wildcard Pattern in: " ++ (show loc)
+    patternToStr (PatVar loc varName)     = "Variable Pattern " ++ (show varName) ++ "in: " ++ (show loc)
+    patternToStr (PatStar loc)            = "* Pattern in: " ++ (show loc)
+    patternToStr (PatWildcard loc)        = "Wildcard Pattern in: " ++ (show loc)
     patternToStr (PatXtor loc xtorName _) = "Constructor Pattern " ++ (show xtorName) ++ "in: " ++ (show loc)
 
-    --determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.
+    -- | Determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.
     overlapA2 :: Pattern -> Pattern -> Overlap
-    --An Overlap may occur for two De/Constructors if their Names match.
+    -- An Overlap may occur for two De/Constructors if their Names match.
     overlapA2 p1@(PatXtor _ xXtorName xPatterns) 
               p2@(PatXtor _ yXtorName yPatterns) =
-                if (xXtorName != yXtorName)
-                  then Nothing
-                  else let  subPatternsOverlaps = (map overlapA2 xPatterns) <*> yPatterns
-                            subPatternsOverlap = concatOverlaps subPatternsOverlaps
-                        in case subPatternsOverlap of
-                              Nothing -> Nothing
-                              (Just subPatternsOverlapMsg) ->
-                                Just $
-                                  (overlapMsg p1 p2)
-                                  ++ "due to the following Subpattern Overlap:\n"
-                                  ++ subPatternsOverlapMsg
-    --If either p1 or p2 is no De/Constructor, they already overlap.
-    overlapA2 p1 p2 = Just $ overlapMsg p1 p2
-
-
-
-    --determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.
-    overlapA2 :: Pattern -> Pattern -> Overlap
-    --Case 1: p1 is a Constructor Pattern.
-    overlapA2 p1@(PatXtor _ xXtorName xPatterns) p2 =
-      case p2 of
-        --De/Constructor pattern p1 can only potentially overlap with another De/Constructor pattern of the same Name.
-        (PatXtor _ yXtorName yPatterns)
-          | (xXtorName == yXtorName) ->
-            let subPatternsOverlaps = (map overlapA2 xPatterns) <*> yPatterns
-                subPatternsOverlap = concatOverlaps subPatternsOverlaps
-             in case subPatternsOverlap of
-                  Nothing -> Nothing
-                  (Just subPatternsOverlapMsg) ->
-                    Just $
-                      (overlapMsg p1 p2)
-                      ++ "due to the following Subpattern Overlap:\n"
-                      ++ subPatternsOverlapMsg
-        -- ...and cannot overlap otherwise.
-        _ -> Nothing
-    --Case2: p1 is any other Pattern -> p1 already overlaps with p2!
+                if    xXtorName /= yXtorName
+                then  Nothing
+                else  let subPatternsOverlaps = (map overlapA2 xPatterns) <*> yPatterns
+                          --Only if all Pairs of Subpatterns truly overlap is an Overlap found.
+                          subPatternsOverlap =  if   (elem Nothing subPatternsOverlaps) 
+                                                then Nothing 
+                                                else concatOverlaps subPatternsOverlaps
+                      in  case subPatternsOverlap of
+                            Nothing                       -> Nothing
+                            (Just subPatternsOverlapMsg)  ->
+                              Just $
+                                (overlapMsg p1 p2)
+                                ++ "due to the all Subpatterns overlapping as follows:\n"
+                                ++ "--------------------------------->\n"
+                                ++ subPatternsOverlapMsg
+                                ++ "---------------------------------<\n"
+                                    
+    -- If either p1 or p2 is no De/Constructor, they already overlap.
     overlapA2 p1 p2 = Just $ overlapMsg p1 p2
 
 --------------------------------------------
