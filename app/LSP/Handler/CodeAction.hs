@@ -6,6 +6,7 @@ import GHC.Generics ( Generic )
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe ( fromMaybe, isNothing )
+import Data.Text (Text)
 import Data.Text qualified as T
 import Language.LSP.Types ( TextDocumentIdentifier(..)
                           , RequestMessage (..)
@@ -86,6 +87,19 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
         Right (_,prog) -> do
           responder (Right (getCodeActions ident range prog))
 
+
+workspaceEditToCodeAction :: WorkspaceEdit -> Text -> Command |? CodeAction
+workspaceEditToCodeAction edit descr =
+  InR $ CodeAction { _title = descr
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just edit
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
+
 ---------------------------------------------------------------------------------
 -- Class for generating code actions
 ---------------------------------------------------------------------------------
@@ -119,14 +133,14 @@ instance GetCodeActions (TST.PrdCnsDeclaration pc) where
     List []
   -- If the type is not already annotated, only generate the code action for annotating the type.
   getCodeActions id _ decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Inferred _ } =
-    List [generateAnnotCodeAction id decl]
+    List [workspaceEditToCodeAction (generateAnnotEdit id decl) ("Annotate type for " <> ppPrint (TST.pcdecl_name decl))]
   -- If the type is annotated, generate the remaining code actions.
   getCodeActions id _ decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _, pcdecl_term } =
     let
-      desugar  = [ generateDesugarCodeAction id decl | not (isDesugaredTerm pcdecl_term)]
-      cbvfocus = [ generateFocusCodeAction id CBV decl | isDesugaredTerm pcdecl_term, isNothing (isFocused CBV pcdecl_term)]
-      cbnfocus = [ generateFocusCodeAction id CBN decl | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
-      dualize  = [ generateDualizeCodeAction id decl]
+      desugar  = [ workspaceEditToCodeAction (generateDesugarEdit id decl) ("Desugar " <> unFreeVarName (TST.pcdecl_name decl)) | not (isDesugaredTerm pcdecl_term)]
+      cbvfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBV decl) ("Focus CBV " <> unFreeVarName (TST.pcdecl_name decl)) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBV pcdecl_term)]
+      cbnfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBN decl) ("Focus CBN " <> unFreeVarName (TST.pcdecl_name decl)) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
+      dualize  = [ workspaceEditToCodeAction (generateDualizeEdit id decl) ("Dualize term " <> ppPrint (TST.pcdecl_name decl)) ]
     in
       List (desugar <> cbvfocus <> cbnfocus <> dualize)
 
@@ -137,11 +151,11 @@ instance GetCodeActions TST.CommandDeclaration where
     List []
   getCodeActions id _ decl@TST.MkCommandDeclaration {cmddecl_cmd } =
     let
-      desugar  = [ generateCmdDesugarCodeAction id decl | not (isDesugaredCommand cmddecl_cmd)]
-      cbvfocus = [ generateCmdFocusCodeAction id CBV decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBV cmddecl_cmd)]
-      cbnfocus = [ generateCmdFocusCodeAction id CBN decl | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
+      desugar  = [ workspaceEditToCodeAction (generateCmdDesugarEdit id decl) ("Desugar " <> unFreeVarName (TST.cmddecl_name decl)) | not (isDesugaredCommand cmddecl_cmd)]
+      cbvfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBV decl) ("Focus CBV " <> unFreeVarName (TST.cmddecl_name decl)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBV cmddecl_cmd)]
+      cbnfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBN decl) ("Focus CBN " <> unFreeVarName (TST.cmddecl_name decl)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
       eval     = [ generateCmdEvalCodeAction id decl ]
-      dualize  = [ generateDualizeCommandAction id decl ]
+      dualize  = [ workspaceEditToCodeAction (generateDualizeCommandEdit id decl) ("Dualize command " <> ppPrint (TST.cmddecl_name decl)) ]
     in
       List (desugar <> cbvfocus <> cbnfocus <> dualize <> eval)
 
@@ -151,26 +165,15 @@ instance GetCodeActions TST.DataDecl where
   getCodeActions _ Range {_start = start} decl | not (lookupPos start (TST.data_loc decl)) =
     List []
   getCodeActions id _ decl = 
-    List [generateDualizeDeclCodeAction id (TST.data_loc decl) decl]
+    List [ workspaceEditToCodeAction (generateDualizeDeclEdit id (TST.data_loc decl) decl) ("Dualize declaration " <> ppPrint (TST.data_name decl)) ]
 
 ---------------------------------------------------------------------------------
 -- Provide TypeAnnot Action
 ---------------------------------------------------------------------------------
 
-generateAnnotCodeAction :: forall pc. TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> Command |? CodeAction
-generateAnnotCodeAction (TextDocumentIdentifier uri) decl =
-  InR $ CodeAction { _title = "Annotate type for " <> ppPrint (TST.pcdecl_name decl)
-                   , _kind = Just CodeActionQuickFix
-                   , _diagnostics = Nothing
-                   , _isPreferred = Nothing
-                   , _disabled = Nothing
-                   , _edit = Just (generateAnnotEdit uri decl)
-                   , _command = Nothing
-                   , _xdata = Nothing
-                   }
 
-generateAnnotEdit :: forall pc. Uri -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
-generateAnnotEdit uri (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Inferred tys) tm) =
+generateAnnotEdit :: forall pc. TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
+generateAnnotEdit (TextDocumentIdentifier uri) (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Inferred tys) tm) =
   let
     newDecl :: TST.Declaration
     newDecl = TST.PrdCnsDecl rep (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Annotated tys) tm)
@@ -186,20 +189,8 @@ generateAnnotEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _ } =
 -- Provide Dualize Action
 ---------------------------------------------------------------------------------
 
-generateDualizeCommandAction :: TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
-generateDualizeCommandAction (TextDocumentIdentifier uri) decl =
-  InR $ CodeAction { _title = "Dualize command " <> ppPrint (TST.cmddecl_name decl)
-                   , _kind = Just CodeActionQuickFix
-                   , _diagnostics = Nothing
-                   , _isPreferred = Nothing
-                   , _disabled = Nothing
-                   , _edit = Just (generateDualizeCommandEdit uri decl)
-                   , _command = Nothing
-                   , _xdata = Nothing
-                   }
-
-generateDualizeCommandEdit :: Uri -> TST.CommandDeclaration -> WorkspaceEdit
-generateDualizeCommandEdit uri decl@(TST.MkCommandDeclaration loc _ _ _) =
+generateDualizeCommandEdit :: TextDocumentIdentifier -> TST.CommandDeclaration -> WorkspaceEdit
+generateDualizeCommandEdit (TextDocumentIdentifier uri) decl@(TST.MkCommandDeclaration loc _ _ _) =
   let
     replacement = case dualCmdDeclaration decl of
       (Left error) -> ppPrint $ T.pack (show error)
@@ -210,21 +201,9 @@ generateDualizeCommandEdit uri decl@(TST.MkCommandDeclaration loc _ _ _) =
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing }
 
-generateDualizeCodeAction :: forall pc. TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> Command |? CodeAction
-generateDualizeCodeAction (TextDocumentIdentifier uri) decl =
-  InR $ CodeAction { _title = "Dualize term " <> ppPrint (TST.pcdecl_name decl)
-                   , _kind = Just CodeActionQuickFix
-                   , _diagnostics = Nothing
-                   , _isPreferred = Nothing
-                   , _disabled = Nothing
-                   , _edit = Just (generateDualizeEdit uri decl)
-                   , _command = Nothing
-                   , _xdata = Nothing
-                   }
 
-
-generateDualizeEdit :: forall pc. Uri -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
-generateDualizeEdit uri decl@(TST.MkPrdCnsDeclaration loc _ rep _ _ _ _) =
+generateDualizeEdit :: forall pc. TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
+generateDualizeEdit (TextDocumentIdentifier uri) decl@(TST.MkPrdCnsDeclaration loc _ rep _ _ _ _) =
   let
     replacement = case dualPrdCnsDeclaration decl of
       (Left error) -> ppPrint $ T.pack (show error)
@@ -237,21 +216,9 @@ generateDualizeEdit uri decl@(TST.MkPrdCnsDeclaration loc _ rep _ _ _ _) =
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing }
 
-generateDualizeDeclCodeAction :: TextDocumentIdentifier -> Loc -> TST.DataDecl -> Command |? CodeAction
-generateDualizeDeclCodeAction (TextDocumentIdentifier uri) loc decl =
-  InR $ CodeAction { _title = "Dualize declaration " <> ppPrint (TST.data_name decl)
-                   , _kind = Just CodeActionQuickFix
-                   , _diagnostics = Nothing
-                   , _isPreferred = Nothing
-                   , _disabled = Nothing
-                   , _edit = Just (generateDualizeDeclEdit uri loc decl)
-                   , _command = Nothing
-                   , _xdata = Nothing
-                   }
 
-
-generateDualizeDeclEdit :: Uri -> Loc -> TST.DataDecl -> WorkspaceEdit
-generateDualizeDeclEdit uri loc decl =
+generateDualizeDeclEdit :: TextDocumentIdentifier -> Loc -> TST.DataDecl -> WorkspaceEdit
+generateDualizeDeclEdit (TextDocumentIdentifier uri) loc decl =
   let
     decl' = dualDataDecl decl
     replacement = ppPrint (TST.DataDecl  decl')
@@ -266,19 +233,6 @@ generateDualizeDeclEdit uri loc decl =
 -- Provide Focus Actions
 ---------------------------------------------------------------------------------
 
-
-generateFocusCodeAction :: forall pc.TextDocumentIdentifier -> EvaluationOrder -> TST.PrdCnsDeclaration pc -> Command |? CodeAction
-generateFocusCodeAction ident eo decl =
-  InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> unFreeVarName (TST.pcdecl_name decl)
-                   , _kind = Just CodeActionQuickFix
-                   , _diagnostics = Nothing
-                   , _isPreferred = Nothing
-                   , _disabled = Nothing
-                   , _edit = Just (generateFocusEdit ident eo decl)
-                   , _command = Nothing
-                   , _xdata = Nothing
-                   }
-
 generateFocusEdit :: forall pc.TextDocumentIdentifier -> EvaluationOrder -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
 generateFocusEdit (TextDocumentIdentifier uri) eo decl =
   let
@@ -291,18 +245,6 @@ generateFocusEdit (TextDocumentIdentifier uri) eo decl =
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing
                   }
-
-generateCmdFocusCodeAction :: TextDocumentIdentifier -> EvaluationOrder -> TST.CommandDeclaration -> Command |? CodeAction
-generateCmdFocusCodeAction ident eo decl =
-  InR $ CodeAction { _title = "Focus " <> (case eo of CBV -> "CBV "; CBN -> "CBN ") <> unFreeVarName (TST.cmddecl_name decl)
-                   , _kind = Just CodeActionQuickFix
-                   , _diagnostics = Nothing
-                   , _isPreferred = Nothing
-                   , _disabled = Nothing
-                   , _edit = Just (generateCmdFocusEdit ident eo decl)
-                   , _command = Nothing
-                   , _xdata = Nothing
-                   }
 
 generateCmdFocusEdit :: TextDocumentIdentifier -> EvaluationOrder -> TST.CommandDeclaration -> WorkspaceEdit
 generateCmdFocusEdit (TextDocumentIdentifier uri) eo decl =
@@ -320,18 +262,6 @@ generateCmdFocusEdit (TextDocumentIdentifier uri) eo decl =
 -- Provide Desugar Actions
 ---------------------------------------------------------------------------------
 
-generateDesugarCodeAction :: forall pc. TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> Command |? CodeAction
-generateDesugarCodeAction ident decl =
-  InR $ CodeAction { _title = "Desugar " <> unFreeVarName (TST.pcdecl_name decl)
-                   , _kind = Just CodeActionQuickFix
-                   , _diagnostics = Nothing
-                   , _isPreferred = Nothing
-                   , _disabled = Nothing
-                   , _edit = Just (generateDesugarEdit ident decl)
-                   , _command = Nothing
-                   , _xdata = Nothing
-                   }
-
 generateDesugarEdit :: forall pc. TextDocumentIdentifier  -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
 generateDesugarEdit (TextDocumentIdentifier uri) (TST.MkPrdCnsDeclaration loc doc rep isRec name (TST.Annotated ty) tm) =
   let
@@ -343,18 +273,6 @@ generateDesugarEdit (TextDocumentIdentifier uri) (TST.MkPrdCnsDeclaration loc do
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing}
 generateDesugarEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Inferred _ } = error "Should not occur"
-
-generateCmdDesugarCodeAction ::  TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
-generateCmdDesugarCodeAction ident decl =
-  InR $ CodeAction { _title = "Desugar " <> unFreeVarName (TST.cmddecl_name decl)
-                   , _kind = Just CodeActionQuickFix
-                   , _diagnostics = Nothing
-                   , _isPreferred = Nothing
-                   , _disabled = Nothing
-                   , _edit = Just (generateCmdDesugarEdit ident decl)
-                   , _command = Nothing
-                   , _xdata = Nothing
-                   }
 
 generateCmdDesugarEdit :: TextDocumentIdentifier -> TST.CommandDeclaration -> WorkspaceEdit
 generateCmdDesugarEdit (TextDocumentIdentifier uri) decl =
