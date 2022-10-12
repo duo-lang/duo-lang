@@ -26,10 +26,8 @@ import System.Log.Logger ( debugM )
 
 import Driver.Definition ( defaultDriverState )
 import Driver.Driver ( inferProgramIO )
-import LSP.Definition ( LSPMonad )
+import LSP.Definition ( LSPMonad, getModuleFromFilePath )
 import LSP.MegaparsecToLSP ( locToRange, lookupInRangeMap )
-import Parser.Definition ( runFileParser )
-import Parser.Program ( moduleP )
 import Sugar.Desugar (Desugar(..))
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
@@ -45,7 +43,7 @@ jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
     let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
     let file = virtualFileText vfile
     let fp = fromMaybe "fail" (uriToFilePath uri)
-    let decls = runFileParser fp (moduleP fp) file
+    let decls = getModuleFromFilePath fp file
     case decls of
       Left _err -> do
         responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))

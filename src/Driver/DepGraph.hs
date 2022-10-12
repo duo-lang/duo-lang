@@ -77,7 +77,7 @@ lookupOrInserts depGraph (mn:mns) =
 
 createDepGraph' :: [ModuleName] -> DepGraph -> DriverM DepGraph
 createDepGraph' [] depGraph = pure depGraph
-createDepGraph' (mn:mns) depGraph | mn `elem` (visited depGraph) = createDepGraph' mns depGraph
+createDepGraph' (mn:mns) depGraph | mn `elem` visited depGraph = createDepGraph' mns depGraph
                                   | otherwise = do
                                       -- We have to insert the current modulename
                                       let (this, depGraph') = lookupOrInsert depGraph mn
@@ -88,7 +88,7 @@ createDepGraph' (mn:mns) depGraph | mn `elem` (visited depGraph) = createDepGrap
                                       let (nodes, depGraph'') = lookupOrInserts depGraph' importedModules
                                       -- We have to insert the edges
                                       let newEdges :: [(Node, Node, ())] = [(this, imported, ()) | imported <- nodes]
-                                      let depGraph''' = depGraph'' { graph = insEdges newEdges (graph depGraph''), visited = mn : (visited depGraph'')}
+                                      let depGraph''' = depGraph'' { graph = insEdges newEdges (graph depGraph''), visited = mn : visited depGraph''}
                                       createDepGraph' (importedModules ++ mns) depGraph'''
 
 
@@ -137,7 +137,7 @@ depGraphParams = defaultParams
   { fmtNode = \(_,mn) ->
     [ style filled
     , fillColor Gray
-    , textLabel ((pack . show) (unModuleName mn))]
+    , textLabel ((pack . show) (mn_base mn))]
   }
 
 printDepGraph :: MonadIO m => DepGraph -> m ()
@@ -166,4 +166,4 @@ printDepGraph depGraph = liftIO $ do
 printCompilationOrder :: MonadIO m => CompilationOrder -> m ()
 printCompilationOrder compilationOrder = liftIO $ do
   forM_ (zip [(1 :: Int)..] compilationOrder) $ \(n,mn) -> do
-    putStrLn ("[" ++ show n ++ "] " ++ (ppPrintString mn))
+    putStrLn ("[" ++ show n ++ "] " ++ ppPrintString mn)

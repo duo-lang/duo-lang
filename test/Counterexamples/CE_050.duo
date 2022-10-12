@@ -1,0 +1,19 @@
+module CE_050;
+
+-- Type missmatch in InstanceDeclaration and implementations fails.
+import Data.Bool;
+import Data.Peano;
+import Data.List;
+
+-- | Class definition.
+class Eq(+a : CBV) {
+  Equals(a, a, return Bool),
+  Differ(a, a, return Bool)
+};
+
+
+-- | Nat instance definition.
+instance Eq Nat {
+  Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
+  Differ(x, y, k) => and (or x y) (not (and x y)) >> k
+};

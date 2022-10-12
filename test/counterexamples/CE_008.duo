@@ -1,7 +1,0 @@
-module CE_008;
-
--- Ctor called with incorrect number of args
-
-data Nat : CBV { Z, S(Nat) };
-
-def prd fail := S(Z,Z);

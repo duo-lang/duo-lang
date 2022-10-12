@@ -1,13 +1,13 @@
 module ParserAlt;
 
-import Bool;
-import Function;
-import List;
-import Peano;
+import Data.Bool;
+import Codata.Function;
+import Data.List;
+import Data.Peano;
 import Prelude;
-import Cofunction;
-import Unit;
-import Par;
+import Data.Cofunction;
+import Data.Unit;
+import Codata.Par;
 
 -- a backtracking parser combinator library
 

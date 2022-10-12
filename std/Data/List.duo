@@ -1,8 +1,8 @@
-module List;
+module Data.List;
 
-import Peano;
-import Bool;
-import Function;
+import Data.Peano;
+import Data.Bool;
+import Codata.Function;
 
 -- | The type of lists.
 data List : (+a : CBV) -> CBV {

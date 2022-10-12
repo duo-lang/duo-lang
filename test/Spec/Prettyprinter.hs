@@ -14,10 +14,12 @@ import Syntax.TST.Program qualified as TST
 import Driver.Definition
 import Driver.Driver
 import Errors
+import Syntax.CST.Names (ModuleName(..))
+import Utils (moduleNameToFullPath)
 
 type Reason = String
 
-pendingFiles :: [(FilePath, Reason)]
+pendingFiles :: [(ModuleName, Reason)]
 pendingFiles = []
 
 -- Check that all the examples in `examples/..` can be:
@@ -25,30 +27,32 @@ pendingFiles = []
 -- 2. Prettyprinted
 -- 3a. Parsed again from the prettyprinted result.
 -- 3b. Parsed and typechecked again from the prettyprinted result.
-spec :: [(FilePath, Either (NonEmpty Error) CST.Module)] -- ^ examples to be parsed after pretty-printing
-  -> [(FilePath, Either (NonEmpty Error) TST.Module)] -- ^ examples to be type-checked after pretty-printing
+spec :: [((FilePath, ModuleName), Either (NonEmpty Error) CST.Module)] -- ^ examples to be parsed after pretty-printing
+  -> [((FilePath, ModuleName), Either (NonEmpty Error) TST.Module)] -- ^ examples to be type-checked after pretty-printing
   -> Spec
 spec parseExamples typeCheckExamples = do
   describe "All the examples in the \"examples/\" folder can be parsed after prettyprinting." $ do
-    forM_ parseExamples $ \(example,prog) -> do
-      describe ("The example " ++ example ++ " can be parsed after prettyprinting.") $ do
+    forM_ parseExamples $ \((example, mn) ,prog) -> do
+      let fullName = moduleNameToFullPath mn example
+      describe ("The example " ++ fullName ++ " can be parsed after prettyprinting.") $ do
         it "Can be parsed again." $
           case prog of
             Left err -> expectationFailure (ppPrintString err)
             Right decls -> runFileParser example (moduleP example) (ppPrint decls) `shouldSatisfy` isRight
 
   describe "All the examples in the \"examples/\" folder can be parsed and typechecked after prettyprinting." $ do
-    forM_ typeCheckExamples $ \(example,prog) -> do
-      case example `lookup` pendingFiles of
-         Just reason -> it "" $ pendingWith $ "Could not focus file " ++ example ++ "\nReason: " ++ reason
-         Nothing     -> describe ("The example " ++ example ++ " can be parsed and typechecked after prettyprinting.") $ do
+    forM_ typeCheckExamples $ \((example, mn), prog) -> do
+      let fullName = moduleNameToFullPath mn example
+      case mn `lookup` pendingFiles of
+         Just reason -> it "" $ pendingWith $ "Could not focus file " ++ fullName ++ "\nReason: " ++ reason
+         Nothing     -> describe ("The example " ++ fullName ++ " can be parsed and typechecked after prettyprinting.") $ do
+            let msg = it "Can be parsed and typechecked again." 
             case prog of
-                Left err -> it "Can be parsed and typechecked again." $ expectationFailure (ppPrintString err)
+                Left err -> msg $ expectationFailure (ppPrintString err)
                 Right decls -> case runFileParser example (moduleP example) (ppPrint decls) of
-                  Left _ -> it "Can be parsed and typechecked again." $ expectationFailure "Could not be parsed"
+                  Left _ -> msg $ expectationFailure "Could not be parsed"
                   Right decls -> do
                     res <- runIO $ inferProgramIO defaultDriverState decls
-                    it "Can be parsed and typechecked again." $
-                        fst res `shouldSatisfy` isRight
+                    msg $ fst res `shouldSatisfy` isRight
 
 

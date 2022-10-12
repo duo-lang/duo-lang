@@ -1,4 +1,4 @@
-module NegationP;
+module Data.NegationP;
 
 -- positive negation
 -- not sure whether a should be CBV or CBN...

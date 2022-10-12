@@ -765,9 +765,9 @@ instance Unresolve RST.Declaration CST.Declaration where
 
 instance Unresolve RST.Module CST.Module where
   unresolve :: RST.Module -> UnresolveM CST.Module
-  unresolve RST.MkModule { mod_name, mod_fp, mod_decls } = do
+  unresolve RST.MkModule { mod_name, mod_libpath, mod_decls } = do
     decls' <- mapM unresolve mod_decls
     pure $ CST.MkModule  { mod_name = mod_name
-                         , mod_fp = mod_fp
+                         , mod_libpath = mod_libpath
                          , mod_decls = decls'
                          }

@@ -96,8 +96,8 @@ interTyOp = MkBinOpDescr
 lookupTyOp :: Loc
            -> BinOp
            -> ResolverM (ModuleName, BinOpDescr)
-lookupTyOp _ UnionOp = pure (MkModuleName "<BUILTIN>", unionTyOp)
-lookupTyOp _ InterOp = pure (MkModuleName "<BUILTIN>", interTyOp)
+lookupTyOp _ UnionOp = pure (MkModuleName [] "<BUILTIN>", unionTyOp)
+lookupTyOp _ InterOp = pure (MkModuleName [] "<BUILTIN>", interTyOp)
 lookupTyOp loc (CustomOp sym) = do
   symbolTables <- asks $ M.toList . rr_modules
   let results :: [(ModuleName, Maybe BinOpDescr)]

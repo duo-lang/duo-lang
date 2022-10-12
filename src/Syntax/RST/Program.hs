@@ -212,18 +212,11 @@ data DataDecl =
     -- ^ The name of the type. E.g. "List".
   , data_polarity :: DataCodata
     -- ^ Whether a data or codata type is declared.
-  , data_refinement_empty :: (Typ Pos, Typ Neg)
-    -- ^ The lower bound of the refinement type. E.g. `< Nat | >`
-  , data_refinement_full :: (Typ Pos, Typ Neg)
-    -- ^ The upper bound of the refinement type. E.g. `mu alpha. < Nat | Z, S(alpha) >`
   , data_kind :: PolyKind
     -- ^ The kind of the type constructor.
   , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
     -- ^ The constructors/destructors of the declaration,
     -- as written by the user.
-  , data_xtors_refined :: ([XtorSig Pos], [XtorSig Neg])
-    -- ^ The constructors/destructors of the declaration,
-    -- with recursive occurrences replaced by the refinement type.
   }
 
 deriving instance Show DataDecl
@@ -266,8 +259,8 @@ instance Show Declaration where
 data Module = MkModule
   { mod_name :: ModuleName
     -- ^ The name of the module.
-  , mod_fp :: FilePath
-    -- ^ The absolute filepath of the module.
+  , mod_libpath :: FilePath
+    -- ^ The absolute filepath of the library of the module.
   , mod_decls :: [Declaration]
     -- ^ The declarations contained in the module.
   }

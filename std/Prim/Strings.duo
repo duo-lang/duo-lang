@@ -1,6 +1,6 @@
-module Strings;
+module Prim.Strings;
 
-import Bool;
+import Data.Bool;
 
 --------------------------------------------------------------------------------------------
 -- Boxed 64-Bit strings
