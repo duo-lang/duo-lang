@@ -218,7 +218,7 @@ overlap (x : xs)  =
               p2@(PatXtor _ yXtorName yPatterns) =
                 if    xXtorName /= yXtorName
                 then  Nothing
-                else  let subPatternsOverlaps = (map overlapA2 xPatterns) <*> yPatterns
+                else  let subPatternsOverlaps = zipWith overlapA2 xPatterns yPatterns
                           --Only if all Pairs of Subpatterns truly overlap is an Overlap found.
                           subPatternsOverlap =  if   (elem Nothing subPatternsOverlaps) 
                                                 then Nothing 
