@@ -2,10 +2,10 @@ module Spec.OverlapCheck where
 
 import Test.Hspec
 import Syntax.CST.Terms
-import Data.Text (Text, pack, unpack)
+import Data.Text (pack, unpack)
 import Data.Maybe (isJust)
-import Syntax.CST.Names (FreeVarName (MkFreeVarName), PrimName, XtorName (MkXtorName))
-import Loc (Loc, defaultLoc)
+import Syntax.CST.Names (FreeVarName (MkFreeVarName), XtorName (MkXtorName))
+import Loc (defaultLoc)
 
 -- (1) Leaf x 
 -- (2) Branch (Leaf y) t2 
@@ -170,6 +170,11 @@ test8 = [PatXtor
               PatXtor defaultLoc (MkXtorName (pack "Leaf")) [PatVar defaultLoc (MkFreeVarName (pack "y2"))]
             ]
           ]]
+
+-- | Helper for readable display of Overlap objects, testing with printOverlap $ overlap test<X>
+printOverlap :: Overlap -> IO ()
+printOverlap (Just msg) = putStrLn $ unpack msg 
+printOverlap Nothing    = putStrLn $ "No Overlap found."
 
 spec :: Spec
 spec = describe "Foo" $ 
