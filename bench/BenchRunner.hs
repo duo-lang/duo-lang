@@ -11,6 +11,8 @@ import Syntax.CST.Program qualified as CST
 import Syntax.CST.Names
 import Syntax.TST.Program qualified as TST
 import Utils (listRecursiveDuoFiles, moduleNameToFullPath)
+import GHC.IO.Encoding (setLocaleEncoding)
+import System.IO (utf8)
 
 excluded :: [ModuleName]
 excluded = []
@@ -49,5 +51,6 @@ inferType fp mn = bench (" Example: " <> moduleNameToFullPath mn fp) $ whnfIO (g
 
 main :: IO ()
 main = do
+    setLocaleEncoding utf8
     examples <- getAvailableExamples
     defaultMain [typeInferenceBenchmarks examples]
