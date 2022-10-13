@@ -159,7 +159,10 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     inferredCases <- forM cases (\Core.MkCmdCase{ cmdcase_pat = Core.XtorPat loc xt args, cmdcase_loc, cmdcase_cmd} -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
-                        (uvarsPos, uvarsNeg) <- freshTVars (map (\(x,y) -> (x,y,Nothing)) args)
+                        xtorKnd <- lookupXtorKind xt
+                        let argKnds = snd xtorKnd
+                        let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, Just z))) args argKnds
+                        (uvarsPos, uvarsNeg) <- freshTVars tVarArgs
                         -- Check the command in the context extended with the positive unification variables
                         cmdInferred <- withContext uvarsPos (genConstraints cmdcase_cmd)
                         -- Return the negative unification variables in the returned type.
