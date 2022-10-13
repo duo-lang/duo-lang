@@ -2,6 +2,7 @@ module LSP.LSP ( runLSP ) where
 
 import Control.Monad.IO.Class (liftIO)
 import Data.IORef ( newIORef )
+import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Version (showVersion)
 import Language.LSP.Server qualified as LSP
@@ -54,7 +55,7 @@ serverOptions = LSP.Options
 
 definition :: IO (LSP.ServerDefinition LSPConfig)
 definition = do
-  initialCache <- newIORef ()
+  initialCache <- newIORef M.empty
   return LSP.ServerDefinition
     { defaultConfig = MkLSPConfig initialCache
     , onConfigurationChange = \config _ -> pure config

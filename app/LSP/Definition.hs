@@ -5,6 +5,7 @@ import Control.Monad.IO.Class ( MonadIO(..) )
 import Control.Monad.IO.Unlift (MonadUnliftIO)
 import Data.IORef ( IORef )
 import Data.List.NonEmpty qualified as NE
+import Data.Map ( Map )
 import Data.Map qualified as M
 import Data.Maybe ( fromMaybe )
 import Data.SortedList qualified as SL
@@ -22,12 +23,14 @@ import Parser.Definition (runFileParser)
 import Parser.Program ( moduleP )
 import Pretty.Pretty ( ppPrint )
 import Syntax.CST.Program qualified as CST
+import Syntax.TST.Program qualified as TST
 
 ---------------------------------------------------------------------------------
 -- LSPMonad and Utility Functions
 ---------------------------------------------------------------------------------
 
-newtype LSPConfig = MkLSPConfig (IORef ())
+
+newtype LSPConfig = MkLSPConfig { tst_map :: IORef (Map LSP.Uri TST.Module) }
 
 newtype LSPMonad a = MkLSPMonad { unLSPMonad :: LSP.LspT LSPConfig IO a }
   deriving newtype (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, LSP.MonadLsp LSPConfig)
