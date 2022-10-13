@@ -12,9 +12,12 @@ import Deps (runDeps)
 import LSP.LSP (runLSP)
 import Paths_duo_lang (version)
 import Utils (trimStr, filePathToModuleName)
+import GHC.IO.Encoding (setLocaleEncoding)
+import System.IO (utf8)
 
 main :: IO ()
 main = do
+    setLocaleEncoding utf8
     opts <- parseOptions
     dispatch opts
 
