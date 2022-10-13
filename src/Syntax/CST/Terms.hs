@@ -1,8 +1,9 @@
 module Syntax.CST.Terms where
 
-import Data.Text (Text, pack, unpack)
-import Loc (HasLoc (..), Loc, defaultLoc)
-import Syntax.CST.Names (FreeVarName (MkFreeVarName), PrimName, XtorName (MkXtorName))
+import Data.Text (Text, pack)
+import Data.List (tails)
+import Loc (HasLoc (..), Loc)
+import Syntax.CST.Names (FreeVarName, PrimName, XtorName)
 
 --------------------------------------------------------------------------------------------
 -- Substitutions
@@ -40,24 +41,15 @@ data Pattern where
 
 --------------------------------------------
 
--- | An Overlap Message is a Text
 type OverlapMsg = Text
 
--- | An Overlap may be an Overlap Message.
 type Overlap = Maybe OverlapMsg
 
--- | Helper for readable display of Overlap objects.
-printOverlap :: Overlap -> String
-printOverlap (Just msg) = unpack msg 
-printOverlap Nothing    = "No Overlap found."
-
 -- | Generates the Overlap of Patterns between one another.
--- For testing purposes, best display via putStrLn $ printOverlap $ overlap test<X>...
+-- For testing purposes, best display via printOverlap $ overlap test<X>...
 overlap :: [Pattern] -> Overlap
-overlap []        = Nothing
-overlap (x : xs)  =
-  let xOverlaps = map (overlapA2 x) xs
-  in  concatOverlaps $ xOverlaps <> [overlap xs]
+overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (tails l))
+            in  concatOverlaps pairOverlaps
   where
     -- | Reduces multiple potential Overlap Messages into one potential Overlap Message.
     concatOverlaps :: [Overlap] -> Overlap
