@@ -2,7 +2,7 @@
 module Main where
 
 import Data.Version (showVersion)
-import GitHash (tGitInfoCwd, giHash, giBranch)
+import GitHash (tGitInfoCwdTry, giHash, giBranch)
 
 import Options (Options(..), parseOptions)
 import Run (runRun)
@@ -30,7 +30,10 @@ dispatch (OptTypecheck fp opts) = runTypecheck opts $ filepathToModuleName fp
 
 printVersion :: IO ()
 printVersion = do
-    let gi = $$tGitInfoCwd
     putStrLn $ "Duo Version: " <> showVersion version
-    putStrLn $ "Git Commit: " <> giHash gi
-    putStrLn $ "Git Branch: " <> giBranch gi
+    let gitry = $$tGitInfoCwdTry
+    case gitry of
+        Left _ -> pure ()
+        Right gi -> do
+          putStrLn $ "Git Commit: " <> giHash gi
+          putStrLn $ "Git Branch: " <> giBranch gi
