@@ -1,101 +1,74 @@
-{-# LANGUAGE ExplicitNamespaces #-}
 module LSP.LSP ( runLSP ) where
 
 import Control.Monad.IO.Class (liftIO)
-import Data.IORef
-import Data.List.NonEmpty qualified as NE
-import Data.Map qualified as M
-import Data.Maybe ( fromMaybe )
-import Data.SortedList qualified as SL
+import Data.IORef ( newIORef )
 import Data.Text qualified as T
 import Data.Version (showVersion)
-import Language.LSP.VFS ( virtualFileText )
-import Language.LSP.Server
-    ( runServer,
-      notificationHandler,
-      requestHandler,
-      runLspT,
-      type (<~>)(Iso, forward, backward),
-      Handlers,
-      Options(..),
-      ServerDefinition(..),
-      getVirtualFile, publishDiagnostics, flushDiagnosticsBySource, setupLogger)
-import Language.LSP.Types
+import Language.LSP.Server qualified as LSP
+import Language.LSP.Types qualified as LSP
 import System.Exit ( exitSuccess, ExitCode (ExitFailure), exitWith )
 import System.Log.Logger ( Priority(DEBUG), debugM )
 
-import Driver.Definition
-import Driver.Driver
-import Errors
-import LSP.Definition
-import LSP.Handler.Hover ( hoverHandler, updateHoverCache )
+import LSP.Definition ( LSPConfig(..), LSPMonad(unLSPMonad) )
+import LSP.Handler.Hover ( hoverHandler )
 import LSP.Handler.CodeAction ( codeActionHandler, evalHandler )
 import LSP.Handler.Completion ( completionHandler )
 import LSP.Handler.JumpToDef ( jumpToDefHandler )
-import LSP.MegaparsecToLSP ( locToRange )
+import LSP.Handler.Various
+    ( initializedHandler,
+      exitHandler,
+      shutdownHandler,
+      cancelRequestHandler,
+      didOpenHandler,
+      didChangeHandler,
+      didCloseHandler )
 import Paths_duo_lang (version)
-import Pretty.Pretty ( ppPrint )
-import Pretty.Program ()
-import Loc
 
 ---------------------------------------------------------------------------------
--- Static configuration of the LSP Server
+-- Server Options
 ---------------------------------------------------------------------------------
 
-serverOptions :: Options
-serverOptions = Options
-  { textDocumentSync = Just TextDocumentSyncOptions { _openClose = Just True
-                                                    , _change = Just TdSyncIncremental
-                                                    , _willSave = Nothing
-                                                    , _willSaveWaitUntil = Nothing
-                                                    , _save = Nothing
-                                                    }
+serverOptions :: LSP.Options
+serverOptions = LSP.Options
+  { textDocumentSync = Just LSP.TextDocumentSyncOptions { _openClose = Just True
+                                                        , _change = Just LSP.TdSyncIncremental
+                                                        , _willSave = Nothing
+                                                        , _willSaveWaitUntil = Nothing
+                                                        , _save = Nothing
+                                                        }
   , completionTriggerCharacters = Nothing
   , completionAllCommitCharacters = Nothing
   , signatureHelpTriggerCharacters = Nothing
   , signatureHelpRetriggerCharacters = Nothing
-  , codeActionKinds = Just [CodeActionQuickFix]
+  , codeActionKinds = Just [LSP.CodeActionQuickFix]
   , documentOnTypeFormattingTriggerCharacters = Nothing
   , executeCommandCommands = Just ["duo-inline-eval"]
-  , serverInfo = Just ServerInfo { _name = "duo-lsp"
-                                 , _version = Just (T.pack $ showVersion version)
-                                 }
+  , serverInfo = Just LSP.ServerInfo { _name = "duo-lsp"
+                                     , _version = Just (T.pack $ showVersion version)
+                                     }
   }
 
-definition :: IO (ServerDefinition LSPConfig)
+---------------------------------------------------------------------------------
+-- Server Definition with initial config
+---------------------------------------------------------------------------------
+
+definition :: IO (LSP.ServerDefinition LSPConfig)
 definition = do
-  initialCache <- newIORef M.empty
-  return ServerDefinition
+  initialCache <- newIORef ()
+  return LSP.ServerDefinition
     { defaultConfig = MkLSPConfig initialCache
     , onConfigurationChange = \config _ -> pure config
     , doInitialize = \env _req -> pure $ Right env
     , staticHandlers = handlers
-    , interpretHandler = \env -> Iso { forward = runLspT env . unLSPMonad, backward = liftIO }
+    , interpretHandler = \env -> LSP.Iso { forward = LSP.runLspT env . unLSPMonad, backward = liftIO }
     , options = serverOptions
     }
 
 ---------------------------------------------------------------------------------
--- Running the LSP Server
+-- Handlers
 ---------------------------------------------------------------------------------
 
-runLSP :: Maybe FilePath -> IO ()
-runLSP mLogPath = do
-  setupLogger mLogPath ["lspserver"] DEBUG
-  debugM "lspserver" "Starting LSP Server"
-  initialDefinition <- definition
-  errCode <- runServer initialDefinition
-  case errCode of
-    0 -> exitSuccess
-    i -> exitWith $ ExitFailure i
-
-
----------------------------------------------------------------------------------
--- Static Message Handlers
----------------------------------------------------------------------------------
-
--- All Handlers
-
-handlers :: Handlers LSPMonad
+handlers :: LSP.Handlers LSPMonad
 handlers = mconcat [ initializedHandler
                    , exitHandler
                    , shutdownHandler
@@ -110,110 +83,16 @@ handlers = mconcat [ initializedHandler
                    , evalHandler
                    ]
 
--- Initialization Handlers
+---------------------------------------------------------------------------------
+-- Running the LSP Server
+---------------------------------------------------------------------------------
 
-initializedHandler :: Handlers LSPMonad
-initializedHandler = notificationHandler SInitialized $ \_notif -> do
-  liftIO $ debugM "lspserver" "LSP Server Initialized"
-
-
--- Exit + Shutdown Handlers
-
-exitHandler :: Handlers LSPMonad
-exitHandler = notificationHandler SExit $ \_notif -> do
-  liftIO $ debugM "lspserver.exitHandler" "Received exit notification"
-  liftIO exitSuccess
-
-shutdownHandler :: Handlers LSPMonad
-shutdownHandler = requestHandler SShutdown $ \_re responder -> do
-  liftIO $ debugM "lspserver.shutdownHandler" "Received shutdown request"
-  responder (Right Empty)
-  liftIO exitSuccess
-
--- CancelRequestHandler
-cancelRequestHandler :: Handlers LSPMonad
-cancelRequestHandler = notificationHandler SCancelRequest $ \_notif -> do
-  liftIO $ debugM "lspserver.cancelRequestHandler" "Received cancel request"
-  return ()
-
--- File Open + Change + Close Handlers
-
-didOpenHandler :: Handlers LSPMonad
-didOpenHandler = notificationHandler STextDocumentDidOpen $ \notif -> do
-  let (NotificationMessage _ _ (DidOpenTextDocumentParams (TextDocumentItem uri _ _ _))) = notif
-  liftIO $ debugM "lspserver.didOpenHandler" ("Opened file: " <> show uri)
-  publishErrors uri
-
-didChangeHandler :: Handlers LSPMonad
-didChangeHandler = notificationHandler STextDocumentDidChange $ \notif -> do
-  let (NotificationMessage _ _ (DidChangeTextDocumentParams (VersionedTextDocumentIdentifier uri _) _)) = notif
-  liftIO $ debugM "lspserver.didChangeHandler" ("Changed file: " <> show uri)
-  publishErrors uri
-
-didCloseHandler :: Handlers LSPMonad
-didCloseHandler = notificationHandler STextDocumentDidClose $ \notif -> do
-  let (NotificationMessage _ _ (DidCloseTextDocumentParams uri)) = notif
-  liftIO $ debugM "lspserver.didCloseHandler" ("Closed file: " <> show uri)
-
----------------------------------------------------------------------------------------------
--- Publishing Diagnostics
----------------------------------------------------------------------------------------------
-
-class IsDiagnostic a where
-  toDiagnostic :: a -> [Diagnostic]
-
-instance IsDiagnostic Warning where
-  toDiagnostic warn = [diag]
-    where
-      diag = Diagnostic { _range = locToRange (getLoc warn)
-                        , _severity = Just DsWarning
-                        , _code = Nothing
-                        , _source = Nothing
-                        , _message = ppPrint warn
-                        , _tags = Nothing
-                        , _relatedInformation = Nothing
-                        }
-
-instance IsDiagnostic Error where
-  toDiagnostic err = [diag]
-    where
-      diag = Diagnostic { _range = locToRange (getLoc err)
-                        , _severity = Just DsError
-                        , _code = Nothing
-                        , _source = Nothing
-                        , _message = ppPrint err
-                        , _tags = Nothing
-                        , _relatedInformation = Nothing
-                        }
-
-sendDiagnostics :: IsDiagnostic a => NormalizedUri -> [a] -> LSPMonad ()
-sendDiagnostics uri w = do
-  let diags = concat (toDiagnostic <$> w)
-  publishDiagnostics 42 uri Nothing (M.fromList [(Just "Duo", SL.toSortedList diags)])
-
----------------------------------------------------------------------------------------------
--- Main loop
----------------------------------------------------------------------------------------------
-
-publishErrors :: Uri -> LSPMonad ()
-publishErrors uri = do
-  flushDiagnosticsBySource 42 (Just "TypeInference")
-  mfile <- getVirtualFile (toNormalizedUri uri)
-  case mfile of
-    Nothing -> sendError "Virtual File not present!"
-    Just vfile -> do
-      let file = virtualFileText vfile
-      let fp = fromMaybe "fail" (uriToFilePath uri)
-      let decls = getModuleFromFilePath fp file
-      case decls of
-        Left errs -> do
-          sendDiagnostics (toNormalizedUri uri) (NE.toList errs)
-        Right decls -> do
-          (res, warnings) <- liftIO $ inferProgramIO defaultDriverState decls
-          sendDiagnostics (toNormalizedUri uri) warnings 
-          case res of
-            Left errs -> do
-              sendDiagnostics (toNormalizedUri uri) (NE.toList errs)
-            Right (_,prog) -> do
-              updateHoverCache uri prog
-
+runLSP :: Maybe FilePath -> IO ()
+runLSP mLogPath = do
+  LSP.setupLogger mLogPath ["lspserver"] DEBUG
+  debugM "lspserver" "Starting LSP Server"
+  initialDefinition <- definition
+  errCode <- LSP.runServer initialDefinition
+  case errCode of
+    0 -> exitSuccess
+    i -> exitWith $ ExitFailure i

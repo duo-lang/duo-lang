@@ -1,17 +1,15 @@
-module LSP.Handler.Hover
-  ( hoverHandler
-  , updateHoverCache
-  ) where
+module LSP.Handler.Hover ( hoverHandler ) where
 
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.IORef (readIORef, modifyIORef)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Text (Text)
+import Data.Map (Map)
 import Language.LSP.Types
 import Language.LSP.Server
     ( requestHandler, Handlers, getConfig )
-import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap, sendInfo )
+import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), sendInfo )
 import LSP.MegaparsecToLSP
 import System.Log.Logger ( debugM )
 
@@ -38,23 +36,15 @@ import Syntax.RST.Program (StructuralXtorDeclaration(strxtordecl_evalOrder))
 -- Handle Type on Hover
 ---------------------------------------------------------------------------------
 
+type HoverMap   = Map Range Hover
+
 hoverHandler :: Handlers LSPMonad
 hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
   let (RequestMessage _ _ _ (HoverParams (TextDocumentIdentifier uri) pos _)) = req
   liftIO $ debugM "lspserver.hoverHandler" ("Received hover request: " <> show uri <> " at: " <> show pos)
-  MkLSPConfig ref <- getConfig
-  cache <- liftIO $ readIORef ref
-  case M.lookup uri cache of
-    Nothing -> do
-      sendInfo ("Hover Cache not initialized for: " <> T.pack (show uri))
-      responder (Right Nothing)
-    Just cache -> responder (Right (lookupInRangeMap pos cache))
+  sendInfo ("Hover Cache not initialized for: " <> T.pack (show uri))
+  responder (Right Nothing)
 
-
-updateHoverCache :: Uri -> TST.Module -> LSPMonad ()
-updateHoverCache uri prog = do
-  MkLSPConfig ref <- getConfig
-  liftIO $ modifyIORef ref (M.insert uri (toHoverMap prog))
 
 ---------------------------------------------------------------------------------
 -- Generating HoverMaps
