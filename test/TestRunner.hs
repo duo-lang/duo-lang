@@ -15,6 +15,7 @@ import Errors
 import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified
+import Spec.OverlapCheck qualified
 import Spec.Prettyprinter qualified
 import Spec.Focusing qualified
 import Syntax.CST.Program qualified as CST
@@ -101,3 +102,6 @@ main = do
       describe "ExampleSpec" (Spec.TypeInferenceExamples.spec parsedCounterExamples checkedCounterExamples)
       describe "Prettyprinted work again" (Spec.Prettyprinter.spec parsedExamples checkedExamplesFiltered)
       describe "Focusing works" (Spec.Focusing.spec checkedExamplesFiltered)
+      describe "OverlapCheck works" Spec.OverlapCheck.spec
+
+
