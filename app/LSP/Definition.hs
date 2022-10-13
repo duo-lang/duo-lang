@@ -3,7 +3,7 @@ module LSP.Definition where
 import Control.Monad.Except (runExcept)
 import Control.Monad.IO.Class ( MonadIO(..) )
 import Control.Monad.IO.Unlift (MonadUnliftIO)
-import Data.IORef ( IORef )
+import Data.IORef ( IORef, modifyIORef' )
 import Data.List.NonEmpty qualified as NE
 import Data.Map ( Map )
 import Data.Map qualified as M
@@ -31,6 +31,11 @@ import Syntax.TST.Program qualified as TST
 
 
 newtype LSPConfig = MkLSPConfig { tst_map :: IORef (Map LSP.Uri TST.Module) }
+
+updateCache :: LSP.Uri -> TST.Module -> LSPMonad ()
+updateCache uri mod = do
+  MkLSPConfig ref <- LSP.getConfig
+  liftIO $ modifyIORef' ref (M.insert uri mod)
 
 newtype LSPMonad a = MkLSPMonad { unLSPMonad :: LSP.LspT LSPConfig IO a }
   deriving newtype (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, LSP.MonadLsp LSPConfig)
@@ -110,5 +115,5 @@ publishErrors uri = do
           case res of
             Left errs -> do
               sendDiagnostics (LSP.toNormalizedUri uri) (NE.toList errs)
-            Right (_,_) -> do
-              pure ()
+            Right (_,mod) -> do
+              updateCache uri mod
