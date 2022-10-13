@@ -1,0 +1,7 @@
+module CE_054;
+
+--  Parameterized refinement types are not supported
+refinement data List : (+a : CBV) -> CBV {
+    Nil,
+    Cons(a, List(a))
+};

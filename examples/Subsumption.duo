@@ -1,8 +1,8 @@
 module Subsumption;
 
-import Function;
-import PeanoStructural;
-import BoolStructural;
+import Codata.Function;
+import Data.Peano;
+import Data.Bool;
 
 -- Subsumptions which should hold
 constructor ApS(CBV, return CBV): CBV;

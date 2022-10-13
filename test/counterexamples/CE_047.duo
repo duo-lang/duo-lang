@@ -1,4 +1,0 @@
-module CE_047;
-
--- Type variable "b" is not declared in signature.
-codata Foo : (+a : CBV) -> CBV { MkFoo(b) };

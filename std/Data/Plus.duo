@@ -1,6 +1,6 @@
-module Plus;
+module Data.Plus;
 
-import Function;
+import Codata.Function;
 
 -- | Disjunction as a data type.
 data Plus : (+a : CBV, +b : CBV) -> CBV {

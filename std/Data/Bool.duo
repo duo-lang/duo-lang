@@ -1,8 +1,8 @@
-module Bool;
+module Data.Bool;
 
 -- Booleans (Nominal)
 
-import Function;
+import Codata.Function;
 
 -- | The type of Booleans
 data Bool : CBV {
