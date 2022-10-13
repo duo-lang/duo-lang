@@ -35,7 +35,7 @@ constructor Zero;
 
 -- Check subsumption for negative typeschemes
 def cns subsumptionEx1 : < TT > := case { TT => #ExitSuccess, FF => #ExitSuccess};
-def cns subsumptionEx2 : Nat := mu n. #ExitSuccess; 
+--def cns subsumptionEx2 : Nat := mu n. #ExitSuccess; 
 
 
 

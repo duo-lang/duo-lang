@@ -11,34 +11,35 @@ class Eq(+a : CBV) {
 };
 
 
--- | Bool instance definition.
-instance Eq Bool {
-  Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
-  Differ(x, y, k) => and (or x y) (not (and x y)) >> k
-};
+--  Bool instance definition.
+--instance Eq Bool {
+--  Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
+--  Differ(x, y, k) => and (or x y) (not (and x y)) >> k
+--};
+--
+--  Nat instance definition.
+--instance Eq Nat {
+--  Equals(x, y, k) => nateq x y >> k,
+--  Differ(x, y, k) => not (nateq x y) >> k
+--};
 
--- | Nat instance definition.
-instance Eq Nat {
-  Equals(x, y, k) => nateq x y >> k,
-  Differ(x, y, k) => not (nateq x y) >> k
-};
+--class Show(+a : CBV) {
+--  Show(a)
+--};
 
-class Show(+a : CBV) {
-  Show(a)
-};
+--instance Show Bool {
+--  Show(x) => #Print(x, #ExitSuccess)
+--};
 
-instance Show Bool {
-  Show(x) => #Print(x, #ExitSuccess)
-};
+--class Reader(-a : CBV) {
+--  Reader(Bool, return a)
+--};
 
-class Reader(-a : CBV) {
-  Reader(Bool, return a)
-};
+--instance Reader Bool {
+--  Reader(x, k) => x >> k
+--};
 
-instance Reader Bool {
-  Reader(x, k) => x >> k
-};
+--def cmd main := Reader(False, case { True => #ExitFailure, False => #ExitSuccess });
 
-def cmd main := Reader(False, case { True => #ExitFailure, False => #ExitSuccess });
+--def prd eq : forall a. Eq a => a -> a -> Bool := \x y => mu k. Equals(x,y,k);
 
-def prd eq : forall a. Eq a => a -> a -> Bool := \x y => mu k. Equals(x,y,k);

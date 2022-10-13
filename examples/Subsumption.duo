@@ -6,47 +6,47 @@ import Data.Bool;
 
 -- Subsumptions which should hold
 
-def rec prd ex01    : forall a. { Ap(a,return a) }                                   := ex01;
-def rec prd ex01sub : { Ap(< True >,return < True >) }                               := ex01;
+--def rec prd ex01    : forall a. { Ap(a,return a) }                                   := ex01;
+--def rec prd ex01sub : { Ap(< True >,return < True >) }                               := ex01;
 
-def rec prd ex02    : forall a. { Ap(a,return a) }                                   := ex02;
-def rec prd ex02sub : { Ap(< True >,return < True >) }                               := ex02;
+--def rec prd ex02    : forall a. { Ap(a,return a) }                                   := ex02;
+--def rec prd ex02sub : { Ap(< True >,return < True >) }                               := ex02;
 
-def rec prd ex03    : { Ap(< True >,return < True >) }                               := ex03; 
-def rec prd ex03sub : { Ap(< True >,return < True >) }                               := ex03;
+--def rec prd ex03    : { Ap(< True >,return < True >) }                               := ex03; 
+--def rec prd ex03sub : { Ap(< True >,return < True >) }                               := ex03;
 
-def rec prd ex04    : forall a. { Ap(< True >,return < True >) }                     := ex04;
-def rec prd ex04sub : { Ap(< True >,return < True >) }                               := ex04;
+--def rec prd ex04    : forall a. { Ap(< True >,return < True >) }                     := ex04;
+--def rec prd ex04sub : { Ap(< True >,return < True >) }                               := ex04;
 
-def rec prd ex05    : { Ap(< True >,return < True >) }                               := ex05;
-def rec prd ex05sub : forall a. { Ap(< True >,return < True >) }                     := ex05;
+--def rec prd ex05    : { Ap(< True >,return < True >) }                               := ex05;
+--def rec prd ex05sub : forall a. { Ap(< True >,return < True >) }                     := ex05;
 
-def rec prd ex06    : { Ap(< True , False >,return < True >) }                       := ex06;
-def rec prd ex06sub : { Ap(< True >,return < True , False >) }                       := ex06;
+--def rec prd ex06    : { Ap(< True , False >,return < True >) }                       := ex06;
+--def rec prd ex06sub : { Ap(< True >,return < True , False >) }                       := ex06;
 
-def rec prd ex07    : { Ap( Nat , return { Ap( Nat , return Bool ) } ) }             := ex07;
-def rec prd ex07sub : { Ap( Nat , return { Ap( Nat , return Bool ) } ) }             := ex07;
+--def rec prd ex07    : { Ap( Nat , return { Ap( Nat , return Bool ) } ) }             := ex07;
+--def rec prd ex07sub : { Ap( Nat , return { Ap( Nat , return Bool ) } ) }             := ex07;
 
-def rec prd ex08    : Nat                                                            := ex08;
-def rec prd ex08sub : Nat                                                            := ex08;
+--def rec prd ex08    : Nat                                                            := ex08;
+--def rec prd ex08sub : Nat                                                            := ex08;
 
-def rec prd ex09    : { Ap(Nat,return Bool) }                                        := ex09;
-def rec prd ex09sub : { Ap(Nat,return Bool) }                                        := ex09; 
+--def rec prd ex09    : { Ap(Nat,return Bool) }                                        := ex09;
+--def rec prd ex09sub : { Ap(Nat,return Bool) }                                        := ex09; 
 
-def rec prd ex10    : rec a.  <Z, S(< S(a) >)>                                       := ex10;
-def rec prd ex10sub : rec a. <Z, S(a)>                                               := ex10;
+--def rec prd ex10    : rec a.  <Z, S(< S(a) >)>                                       := ex10;
+--def rec prd ex10sub : rec a. <Z, S(a)>                                               := ex10;
 
-def rec prd ex11    : { Ap(rec a. < Z, S(a) >, return (rec a.  <Z, S(< S(a) >)>) ) } := ex11;
-def rec prd ex11sub : { Ap(rec a.  <Z, S(< S(a) >)>, return (rec a. < Z, S(a) >) ) } := ex11;
+--def rec prd ex11    : { Ap(rec a. < Z, S(a) >, return (rec a.  <Z, S(< S(a) >)>) ) } := ex11;
+--def rec prd ex11sub : { Ap(rec a.  <Z, S(< S(a) >)>, return (rec a. < Z, S(a) >) ) } := ex11;
 
-def rec prd ex12    : Nat                                                            := ex12;
-def rec prd ex12sub : Nat \/ Nat                                                     := ex12;
+--def rec prd ex12    : Nat                                                            := ex12;
+--def rec prd ex12sub : Nat \/ Nat                                                     := ex12;
 
-def rec prd ex13    : rec a. < Z, S(a) >                                             := ex13;
-def rec prd ex13sub : rec a. < Z > \/ < S(a) >                                       := ex13;
+--def rec prd ex13    : rec a. < Z, S(a) >                                             := ex13;
+--def rec prd ex13sub : rec a. < Z > \/ < S(a) >                                       := ex13;
 
-def rec prd ex14    : < S(<Z>) >                                                     := ex14;
-def rec prd ex14sub : < Z> \/ < S(<Z>) >                                             := ex14;
+--def rec prd ex14    : < S(<Z>) >                                                     := ex14;
+--def rec prd ex14sub : < Z> \/ < S(<Z>) >                                             := ex14;
 
-def rec prd ex15    : forall t0. (t0 -> (rec r4.(t0 \/ < S( r4 ) >)))                := ex15;
-def rec prd ex15sub : (rec b. < Z , S( b ) > ) -> (rec c. < Z , S( c ) > )           := ex15;
+--def rec prd ex15    : forall t0. (t0 -> (rec r4.(t0 \/ < S( r4 ) >)))                := ex15;
+--def rec prd ex15sub : (rec b. < Z , S( b ) > ) -> (rec c. < Z , S( c ) > )           := ex15;
