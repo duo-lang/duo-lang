@@ -1,8 +1,8 @@
-module BoolStructural;
+module Data.BoolStructural;
 
 -- Booleans (Structural)
 
-import Function;
+import Codata.Function;
 
 constructor True;
 constructor False;

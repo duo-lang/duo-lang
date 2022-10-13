@@ -2,9 +2,9 @@ module Compilertests;
 
 -- These examples serve primarily as a testsuite for the compiler.
 -- Do not expect the following examples to be sensible or understandable
-import Function;
-import Peano;
-import Bool;
+import Codata.Function;
+import Data.Peano;
+import Data.Bool;
 import Prelude;
 
 -- Symmetric system:

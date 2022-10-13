@@ -1,8 +1,0 @@
-module CE_039;
-
--- Constructor is applied to too many arguments in match
-constructor A(CBV) : CBV;
-
-def cns foo := case {
-    A(x,y) => #ExitSuccess
-};

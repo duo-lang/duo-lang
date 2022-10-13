@@ -1,11 +1,11 @@
-module FunCofunNeg;
+module Data.FunCofunNeg;
 
-import Function;
-import Cofunction;
-import NegationP; 
-import NegationN; 
-import Unit; 
-import VoidN;
+import Codata.Function;
+import Data.Cofunction;
+import Data.NegationP;
+import Codata.NegationN;
+import Data.Unit;
+import Codata.VoidN;
 
 def prd contrap : ∀ a. a -> Notp(a) -> ⊥ := 
   cocase { Ap(x1,k1) => (cocase {Ap(x2,k2) => (x2) >> case {MkNotp(k3) => (x1) >> k3}}) >> k1};

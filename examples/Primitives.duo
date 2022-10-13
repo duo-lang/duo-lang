@@ -1,8 +1,8 @@
 module Primitives;
 
-import Function;
-import I64;
-import F64;
+import Codata.Function;
+import Prim.I64;
+import Prim.F64;
 
 def prd x := MkI64(7#I64);
 def prd y := MkI64(2#I64);
