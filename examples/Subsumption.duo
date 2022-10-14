@@ -6,6 +6,10 @@ import Data.Bool;
 
 -- Subsumptions which should hold
 
+-- ex01 will get a kvar as kind, then the kvar gets constrained by the recursively calculated kind of the rhs
+-- but since the rhs is just ex01, the only constraint will be k0~k0, which can't be resolved
+-- the remaining examples have the same problem
+
 --def rec prd ex01    : forall a. { Ap(a,return a) }                                   := ex01;
 --def rec prd ex01sub : { Ap(< True >,return < True >) }                               := ex01;
 

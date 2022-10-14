@@ -68,6 +68,7 @@ def prd l7 : List(Nat) := Cons(1,Cons(2,Cons(5,Nil)));
 def prd l8 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Nil)))));
 def prd l9 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Cons(6,Nil))))));
 
+-- print commands don't work (same as parser)
 --def cmd test8  := parseComplicated >> Parse(l4,MkPar(print,print)) ;
 --def cmd test9  := parseComplicated >> Parse(l5,MkPar(print,print)) ;
 --def cmd test10 := parseComplicated >> Parse(l6,MkPar(print,print)) ;

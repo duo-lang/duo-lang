@@ -26,6 +26,7 @@ def rec prd splitAt : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
         }
     };
 
+-- impossiblePrd doesn't work right now (Prelude)
 --def rec prd splitHalvesHelper : forall a. List(a) -> List(a) -> Notp(Tensor(List(a), List(a))) -> Void :=
 --    \xs ys k => case k of {
 --        MkNotp(k) => case xs of {
@@ -61,6 +62,7 @@ def rec prd merge : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List
         }
     };
 
+-- spilt Halves doesn't work, so sort can't either
 --def rec prd sort : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
 --    \f xs => case xs of {
 --        Nil => Nil,
@@ -88,4 +90,5 @@ def rec prd compare : Nat -> Nat -> Ordering :=
 
 def prd testlist := Cons(5, Cons(2, Cons(8, Cons(1, Cons(4, Cons(7, Cons(3, Cons(6, Cons(10, Cons(9, Nil))))))))));
 
+-- sort doensn't work
 --def cmd main := #Print(sort compare testlist, #ExitSuccess);
