@@ -5,9 +5,7 @@ module TypeInference.GenerateConstraints.Terms
 
 
 import Control.Monad.Reader
-import Control.Monad.State
 import Errors
-import Data.Map qualified as M
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.TST.Terms qualified as TST

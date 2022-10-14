@@ -190,6 +190,9 @@ unifyKinds CharRep CharRep = return ()
 unifyKinds StringRep StringRep = return ()
 unifyKinds knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1<> " and " <> ppPrint knd2]
 
+computeKVarSolution :: KindPolicy
+                    -> [([KVar], Maybe MonoKind)]
+                    -> Either (NE.NonEmpty Error) (Map KVar MonoKind)
 computeKVarSolution DefaultCBV sets = return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBV); Just mk -> (xs,mk)) <$> sets)
 computeKVarSolution DefaultCBN sets = return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBN); Just mk -> (xs,mk)) <$> sets)
 computeKVarSolution ErrorUnresolved sets = if all (\(_,mk) -> isJust mk) sets
