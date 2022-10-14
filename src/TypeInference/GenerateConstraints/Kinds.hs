@@ -591,12 +591,16 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     ty1' <- annotateKind ty1
     ty2' <- annotateKind ty2
     kv <- newKVar 
+    addConstraint (KindEq KindConstraint (getKind ty1') (getKind ty2'))
+    addConstraint (KindEq KindConstraint (KindVar kv) (getKind ty1'))
     return (TST.TyUnion loc (KindVar kv) ty1' ty2')
     
   annotateKind (RST.TyInter loc ty1 ty2) = do
     ty1' <- annotateKind ty1
     ty2' <- annotateKind ty2
     kv <- newKVar 
+    addConstraint (KindEq KindConstraint (getKind ty1') (getKind ty2'))
+    addConstraint (KindEq KindConstraint (KindVar kv) (getKind ty1'))
     return (TST.TyInter loc (KindVar kv) ty1' ty2')
     
   annotateKind (RST.TyRec loc pol rv ty) = do
