@@ -30,8 +30,6 @@ import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 import Syntax.TST.Terms (Substitution(..))
 
-import Debug.Trace
-
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
 ---------------------------------------------------------------------------------------------
@@ -337,9 +335,6 @@ instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
                     modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM})
                     ctxtPos <- annotateKind posTypes
                     ctxtNeg <- annotateKind negTypes
-                    trace (show ctxtPos) $ pure ()
-                    trace (show ctxtPos) $ pure ()
-                    trace (show ctxtNeg) $ pure ()
                     -- Substitute fresh unification variables for type parameters
                     let posTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtPos 
                     let negTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtNeg 
