@@ -1,10 +1,16 @@
 module Prelude;
 
 -- Standard Prelude
-
 def cmd impossibleCmd := #ExitSuccess;
-def prd impossiblePrd := mu k. impossibleCmd;
-def cns impossibleCns := mu x. impossibleCmd;
 
--- | Generic print consumer
-def cns print := mu x.#Print(x, #ExitSuccess);
+-- kinds of x and k are unclear
+-- This is why sorting doesn't work
+--def prd impossiblePrd := mu k. impossibleCmd;
+--def cns impossibleCns := mu x. impossibleCmd;
+
+-- kind of x doesn't work 
+-- this is why Parser and ParserAlt are broken
+--  Generic print consumer 
+-- def cns print := mu x.#Print(x, #ExitSuccess);
+
+
