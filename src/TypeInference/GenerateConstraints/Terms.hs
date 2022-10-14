@@ -277,6 +277,7 @@ instance GenConstraints Core.Command TST.Command where
     pure (TST.Jump loc fv)
   genConstraints (Core.Method loc mn cn subst) = do
     decl <- lookupClassDecl loc cn
+    insertSkolemsClass decl
       -- fresh type var and subsitution for type class variable(s)
     tyParamsMap <- createMethodSubst loc decl
     negTypes <- lookupMethodType loc mn decl NegRep
@@ -320,6 +321,7 @@ instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
   genConstraints Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
     -- We lookup the class declaration  of the instance.
     decl <- lookupClassDecl instancedecl_loc instancedecl_name
+    insertSkolemsClass decl
     -- We check that all implementations belong to the same type class.
     checkInstanceCoverage instancedecl_loc decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
     -- Generate fresh unification variables for type parameters
@@ -330,9 +332,6 @@ instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
                     -- We lookup the types belonging to the xtor in the type declaration.
                     posTypes <- lookupMethodType instancecase_loc mn decl PosRep
                     negTypes <- lookupMethodType instancecase_loc mn decl NegRep  
-                    skMap <- gets usedSkolemVars
-                    let newM = insertSkolems (classdecl_kinds decl) skMap
-                    modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM})
                     ctxtPos <- annotateKind posTypes
                     ctxtNeg <- annotateKind negTypes
                     -- Substitute fresh unification variables for type parameters
@@ -352,10 +351,6 @@ instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
                                   , instancedecl_typ = instancety
                                   , instancedecl_cases = inferredCases
                                   }
-    where 
-      insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar MonoKind -> M.Map SkolemTVar MonoKind
-      insertSkolems [] mp = mp
-      insertSkolems ((_,tv,mk):rst) mp = insertSkolems rst (M.insert tv mk mp)
 
 
 

@@ -10,6 +10,7 @@ module TypeInference.GenerateConstraints.Definition
   , freshTVarsForTypeParams
   , paramsMap
   , createMethodSubst
+  , insertSkolemsClass
     -- Throwing errors
   , throwGenError
     -- Looking up in context or environment
@@ -195,6 +196,18 @@ createMethodSubst loc decl =
 paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(TST.Typ Pos, TST.Typ Neg)] -> TST.Bisubstitution TST.SkolemVT
 paramsMap kindArgs freshVars =
   TST.MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
+
+insertSkolemsClass :: RST.ClassDeclaration -> GenM()
+insertSkolemsClass decl = do
+  let tyParams = classdecl_kinds decl
+  skMap <- gets usedSkolemVars
+  let newM = insertSkolems tyParams skMap
+  modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM}) 
+  return () 
+  where 
+    insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar MonoKind -> M.Map SkolemTVar MonoKind
+    insertSkolems [] mp = mp
+    insertSkolems ((_,tv,mk):rst) mp = insertSkolems rst (M.insert tv mk mp)
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
