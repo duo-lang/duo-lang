@@ -5,7 +5,9 @@ module TypeInference.GenerateConstraints.Terms
 
 
 import Control.Monad.Reader
+import Control.Monad.State
 import Errors
+import Data.Map qualified as M
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.TST.Terms qualified as TST
@@ -27,6 +29,8 @@ import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 import Syntax.TST.Terms (Substitution(..))
+
+import Debug.Trace
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -327,9 +331,15 @@ instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
                     let mn :: MethodName = MkMethodName $ unXtorName xt
                     -- We lookup the types belonging to the xtor in the type declaration.
                     posTypes <- lookupMethodType instancecase_loc mn decl PosRep
-                    negTypes <- lookupMethodType instancecase_loc mn decl NegRep
+                    negTypes <- lookupMethodType instancecase_loc mn decl NegRep  
+                    skMap <- gets usedSkolemVars
+                    let newM = insertSkolems (classdecl_kinds decl) skMap
+                    modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM})
                     ctxtPos <- annotateKind posTypes
                     ctxtNeg <- annotateKind negTypes
+                    trace (show ctxtPos) $ pure ()
+                    trace (show ctxtPos) $ pure ()
+                    trace (show ctxtNeg) $ pure ()
                     -- Substitute fresh unification variables for type parameters
                     let posTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtPos 
                     let negTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtNeg 
@@ -347,6 +357,11 @@ instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
                                   , instancedecl_typ = instancety
                                   , instancedecl_cases = inferredCases
                                   }
+    where 
+      insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar MonoKind -> M.Map SkolemTVar MonoKind
+      insertSkolems [] mp = mp
+      insertSkolems ((_,tv,mk):rst) mp = insertSkolems rst (M.insert tv mk mp)
+
 
 
 ---------------------------------------------------------------------------------------------

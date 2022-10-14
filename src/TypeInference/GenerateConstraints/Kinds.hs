@@ -71,7 +71,6 @@ getKindDecl decl = do
   let argKnds = map (\(_,_,mk) -> mk) (kindArgs polyknd)
   return (CBox $ returnKind polyknd, argKnds)
 
-
 newKVar :: GenM KVar
 newKVar = do
   kvCnt <- gets kVarCount
