@@ -344,8 +344,8 @@ subConstraints (SubType _ t1 t2) = do
                               , "    " <> ppPrint t2 ]
 -- subConstraints for type classes are deprecated
 -- type class constraints should only be resolved after subtype constraints
-subConstraints TypeClassPos{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
-subConstraints TypeClassNeg{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
+subConstraints TypeClassPos{} = throwSolverError defaultLoc ["subContraints should not be called on type class Constraints"]
+subConstraints TypeClassNeg{} = throwSolverError defaultLoc ["subContraints should not be called on type class Constraints"]
 subConstraints KindEq{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
 
 ------------------------------------------------------------------------------
