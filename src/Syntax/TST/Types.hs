@@ -147,27 +147,37 @@ getPolarity (TyChar _ rep)                 = rep
 getPolarity (TyString _ rep)               = rep
 getPolarity (TyFlipPol rep _)              = rep
 
+class GetKind (a :: Type) where
+  getKind :: a -> MonoKind
 
-getKind ::  Typ pol -> MonoKind
-getKind (TySkolemVar _ _ mk _)        = mk
-getKind (TyUniVar _ _ mk _)           = mk
-getKind (TyRecVar _ _ mk _)           = mk
-getKind (TyData _ _ mk _ )            = mk
-getKind (TyCodata _ _ mk _ )          = mk
-getKind (TyDataRefined _ _ mk _ _ )   = mk
-getKind (TyCodataRefined _ _ mk _ _ ) = mk
-getKind (TyNominal _ _ mk _ _)        = mk
-getKind (TySyn _ _ _ ty)              = getKind ty
-getKind (TyTop _ mk)                  = mk
-getKind (TyBot _ mk)                  = mk
-getKind (TyUnion _ mk _ _)            = mk
-getKind (TyInter _ mk _ _)            = mk
-getKind (TyRec _ _ _ ty)              = getKind ty
-getKind TyI64{}                       = I64Rep
-getKind TyF64{}                       = F64Rep
-getKind TyChar{}                      = CharRep
-getKind TyString{}                    = StringRep
-getKind (TyFlipPol _ ty)              = getKind ty
+instance GetKind (Typ pol) where 
+--getKind ::  Typ pol -> MonoKind
+  getKind (TySkolemVar _ _ mk _)        = mk
+  getKind (TyUniVar _ _ mk _)           = mk
+  getKind (TyRecVar _ _ mk _)           = mk
+  getKind (TyData _ _ mk _ )            = mk
+  getKind (TyCodata _ _ mk _ )          = mk
+  getKind (TyDataRefined _ _ mk _ _ )   = mk
+  getKind (TyCodataRefined _ _ mk _ _ ) = mk
+  getKind (TyNominal _ _ mk _ _)        = mk
+  getKind (TySyn _ _ _ ty)              = getKind ty
+  getKind (TyTop _ mk)                  = mk
+  getKind (TyBot _ mk)                  = mk
+  getKind (TyUnion _ mk _ _)            = mk
+  getKind (TyInter _ mk _ _)            = mk
+  getKind (TyRec _ _ _ ty)              = getKind ty
+  getKind TyI64{}                       = I64Rep
+  getKind TyF64{}                       = F64Rep
+  getKind TyChar{}                      = CharRep
+  getKind TyString{}                    = StringRep
+  getKind (TyFlipPol _ ty)              = getKind ty
+
+instance GetKind (PrdCnsType pol) where 
+  getKind (PrdCnsType _ ty) = getKind ty
+
+instance GetKind (VariantType pol) where 
+  getKind (CovariantType ty) = getKind ty 
+  getKind (ContravariantType ty) = getKind ty
 
 ------------------------------------------------------------------------------
 -- Type Schemes

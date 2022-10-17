@@ -12,7 +12,6 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
---import Data.Text qualified as T
 import Data.List (partition)
 import Data.Maybe (fromJust, isJust)
 import Data.Bifunctor (second)
@@ -42,10 +41,14 @@ data SolverState = SolverState
 
 createInitState :: ConstraintSet -> SolverState
 createInitState (ConstraintSet _ uvs kuvs) =
-  SolverState { sst_bounds =  M.fromList [(fst uv,emptyVarState (KindVar (MkKVar "TODO"))) | uv <- uvs]
+  SolverState { sst_bounds =  M.fromList $ getsst_bounds uvs --[(fst uv,emptyVarState (KindVar (MkKVar "TODO"))) | uv <- uvs]
               , sst_cache = M.empty
               , sst_kvars = [([kv],Nothing) | kv <- kuvs]
               }
+  where 
+    getsst_bounds :: [(UniTVar, UVarProvenance, MonoKind)] -> [(UniTVar, VariableState)]
+    getsst_bounds [] = []
+    getsst_bounds ((uv,_,mk):rst) = (uv,emptyVarState mk):getsst_bounds rst
 
 
 type SolverM = (ReaderT (Map ModuleName Environment, ()) (StateT SolverState (Except (NE.NonEmpty Error))))
@@ -172,7 +175,7 @@ unifyKinds (KindVar kv1) (KindVar kv2) = do
     let newSet = kvset1 ++ kvset2
     case (mk1,mk2) of
       (mk1, Nothing) -> putKVars $ (newSet,mk1):rest2
-      (Nothing, mk2) -> putKVars $ (newSet,mk2):rest1
+      (Nothing, mk2) -> putKVars $ (newSet,mk2):rest2
       (Just mk1, Just mk2) | mk1 == mk2 -> putKVars $ (newSet, Just mk1) :rest2
                            | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint mk1 <> " and " <> ppPrint mk2]
 unifyKinds (KindVar kv) kind = do
@@ -184,9 +187,15 @@ unifyKinds (KindVar kv) kind = do
                then return ()
                else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint kind <> " and " <> ppPrint mk]
 unifyKinds kind (KindVar kv) = unifyKinds (KindVar kv) kind
-unifyKinds _ _ = throwSolverError defaultLoc ["Not implemented"]
+unifyKinds I64Rep I64Rep = return ()
+unifyKinds F64Rep F64Rep = return ()
+unifyKinds CharRep CharRep = return ()
+unifyKinds StringRep StringRep = return ()
+unifyKinds knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1<> " and " <> ppPrint knd2]
 
-computeKVarSolution :: KindPolicy -> [([KVar],Maybe MonoKind)] -> Either (NE.NonEmpty Error) (Map KVar MonoKind)
+computeKVarSolution :: KindPolicy
+                    -> [([KVar], Maybe MonoKind)]
+                    -> Either (NE.NonEmpty Error) (Map KVar MonoKind)
 computeKVarSolution DefaultCBV sets = return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBV); Just mk -> (xs,mk)) <$> sets)
 computeKVarSolution DefaultCBN sets = return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBN); Just mk -> (xs,mk)) <$> sets)
 computeKVarSolution ErrorUnresolved sets = if all (\(_,mk) -> isJust mk) sets
@@ -412,6 +421,6 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
 solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NE.NonEmpty Error) SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) env = do
   (_, solverState) <- runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet)
-  kvarSolution <- computeKVarSolution DefaultCBV (sst_kvars solverState)
+  kvarSolution <- computeKVarSolution ErrorUnresolved (sst_kvars solverState)
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution

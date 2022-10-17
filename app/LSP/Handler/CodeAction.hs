@@ -23,13 +23,11 @@ import Language.LSP.Types ( TextDocumentIdentifier(..)
                           , ExecuteCommandParams (..)
                           , ApplyWorkspaceEditParams (..)
                           , SMethod (..)
-                          , toNormalizedUri
                           , uriToFilePath
                           , CodeActionKind (..)
                           , ErrorCode (..) )
 import Language.LSP.Server
-    ( getVirtualFile, requestHandler, sendRequest, Handlers )
-import Language.LSP.VFS ( VirtualFile, virtualFileText )
+    (  requestHandler, sendRequest, Handlers, getConfig )
 import System.Log.Logger ( debugM )
 import Syntax.TST.Types qualified as TST ( TopAnnot(..))
 import Syntax.CST.Kinds ( EvaluationOrder(..) )
@@ -40,9 +38,9 @@ import Driver.Definition
       defaultDriverState,
       execDriverM,
       queryTypecheckedModule )
-import Driver.Driver ( inferProgramIO, runCompilationModule )
+import Driver.Driver ( runCompilationModule )
 import Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration, dualCmdDeclaration)
-import LSP.Definition ( LSPMonad, getModuleFromFilePath )
+import LSP.Definition ( LSPMonad, LSPConfig (..), sendInfo )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
@@ -62,6 +60,7 @@ import Run (desugarEnv)
 import qualified Data.Map as M
 import Utils (filePathToModuleName)
 import System.Directory (makeRelativeToCurrentDirectory)
+import Data.IORef (readIORef)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -71,21 +70,30 @@ codeActionHandler :: Handlers LSPMonad
 codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> do
   let (RequestMessage _ _ _ (CodeActionParams _workDoneToken _partialResultToken ident@(TextDocumentIdentifier uri) range _context)) = req
   liftIO $ debugM "lspserver.codeActionHandler" ("Received codeAction request: " <> show uri <> " range: " <> show range)
-  mfile <- getVirtualFile (toNormalizedUri uri)
-  let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
-  let file = virtualFileText vfile
-  let fp = fromMaybe "fail" (uriToFilePath uri)
-  let decls = getModuleFromFilePath  fp file
-  case decls of
-    Left _err -> do
+  MkLSPConfig ref <- getConfig
+  cache <- liftIO $ readIORef ref
+  case M.lookup uri cache of
+    Nothing -> do
+      sendInfo ("Cache not initialized for: " <> T.pack (show uri))
       responder (Right (List []))
-    Right decls -> do
-      (res,_warnings) <- liftIO $ inferProgramIO defaultDriverState decls
-      case res of
-        Left _err -> do
-          responder (Right (List []))
-        Right (_,prog) -> do
-          responder (Right (getCodeActions ident range prog))
+    Just mod -> responder (Right (getCodeActions ident range mod))
+
+
+  -- mfile <- getVirtualFile (toNormalizedUri uri)
+  -- let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
+  -- let file = virtualFileText vfile
+  -- let fp = fromMaybe "fail" (uriToFilePath uri)
+  -- let decls = getModuleFromFilePath  fp file
+  -- case decls of
+  --   Left _err -> do
+  --     responder (Right (List []))
+  --   Right decls -> do
+  --     (res,_warnings) <- liftIO $ inferProgramIO defaultDriverState decls
+  --     case res of
+  --       Left _err -> do
+  --         responder (Right (List []))
+  --       Right (_,prog) -> do
+  --         
 
 
 workspaceEditToCodeAction :: WorkspaceEdit -> Text -> Command |? CodeAction

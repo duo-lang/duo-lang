@@ -25,11 +25,10 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind(CBox),PolyKind(..))
+import Syntax.CST.Kinds (MonoKind(CBox))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
-import Syntax.RST.Types qualified as RST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Syntax.Core.Program as Core
@@ -222,26 +221,19 @@ inferDecl mn (Core.DataDecl decl) = do
   let loc = RST.data_loc decl
   env <- gets drvEnv
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
-  let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
+  let f env = env { declEnv = (loc, decl') : declEnv env} 
   modifyEnvironment mn f
   pure (TST.DataDecl decl')
-  where 
-    insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
-    insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do
-      let names = map RST.sig_name (fst xtors)
-      let mk = CBox (returnKind knd)
-      foldr (`M.insert`mk) mp names
-    insertKinds RST.RefinementDecl{data_kind = knd, data_xtors = xtors} mp = do
-      let names = map RST.sig_name (fst xtors)
-      let mk = CBox (returnKind knd)
-      foldr (`M.insert`mk) mp names
  
 --
 -- XtorDecl
 --
 inferDecl _mn (Core.XtorDecl decl) = do
-
-  let f env = env { kindEnv = M.insert (RST.strxtordecl_name decl) (CBox (RST.strxtordecl_evalOrder decl)) (kindEnv env)}
+  -- check constructor kinds
+  let retKnd = CBox $ RST.strxtordecl_evalOrder decl
+  let xtornm = RST.strxtordecl_name decl
+  let argKnds = map snd (RST.strxtordecl_arity decl)
+  let f env = env { kindEnv = M.insert xtornm (retKnd, argKnds) (kindEnv env)}
   modifyEnvironment _mn f
   pure (TST.XtorDecl decl)
 --
