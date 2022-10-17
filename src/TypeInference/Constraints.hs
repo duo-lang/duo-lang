@@ -65,6 +65,8 @@ data SubtypeWitness
   | DataNominal RnTypeName [SubtypeWitness]
   | CodataNominal RnTypeName [SubtypeWitness]
   | Refl (Typ Pos) (Typ Neg)
+  | UVarL UniTVar (Typ Neg)
+  | UVarR UniTVar (Typ Pos)
   | SubVar (Constraint ConstraintInfo)
   | Fix (Constraint ())
     -- deriving (Eq, Ord)

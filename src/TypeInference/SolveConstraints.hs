@@ -124,12 +124,15 @@ solve (cs:css) = do
         if uvl == uvu
         then solve css
         else do
+          addToCache cs (UVarL uvl tvu)
           newCss <- addUpperBound uvl tvu
           solve (newCss ++ css)
       (SubType _ (TyUniVar _ PosRep _ uv) ub) -> do
+        addToCache cs (UVarL uv ub)
         newCss <- addUpperBound uv ub
         solve (newCss ++ css)
       (SubType _ lb (TyUniVar _ NegRep _ uv)) -> do
+        addToCache cs (UVarR uv lb)
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)
       (TypeClassPos _ cn (TyUniVar _ PosRep _ uv)) -> do
