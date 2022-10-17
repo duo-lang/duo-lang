@@ -1,7 +1,6 @@
 module TypeInference.Constraints where
 
 import Data.Map (Map)
-import qualified Data.Map as M
 
 import Syntax.TST.Types
 import Syntax.CST.Names
