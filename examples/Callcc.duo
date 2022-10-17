@@ -1,5 +1,7 @@
-import Function;
-import Cofunction;
+module Callcc;
+
+import Codata.Function;
+import Data.Cofunction;
 
 def prd peirce : forall a b. ((a -> b) -> a) -> a := 
   \y => mu k.  (y (\x => mu c.x >> k)) >> k ;

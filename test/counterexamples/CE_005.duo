@@ -1,3 +1,0 @@
-constructor A : CBV;
-constructor B : CBV;
-def cmd test := A >> B;

@@ -1,6 +1,0 @@
--- Destructor is applied to too few arguments in match
-destructor A(CBV) : CBV;
-
-def prd foo := cocase {
-    A => #ExitSuccess
-};

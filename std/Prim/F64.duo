@@ -1,5 +1,7 @@
-import Function;
-import Bool;
+module Prim.F64;
+
+import Codata.Function;
+import Data.Bool;
 
 --------------------------------------------------------------------------------------------
 -- Boxed 64-Bit floating point numbers

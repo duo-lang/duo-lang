@@ -1,0 +1,28 @@
+module ICFP.ParsimoniousFilter;
+
+import Codata.Function;
+import Data.List;
+import Data.Bool;
+import Data.Unit;
+import Codata.Par;
+
+def rec prd filterHelper := \p l => case l of {
+    Nil => cocase {
+        MkPar(k1,*) => MkUnit
+    },
+    Cons(x,xs) => case p x of {
+        True =>
+            cocase {
+                MkPar(k1,k2) =>
+                    filterHelper p xs >> MkPar(mu ys. Cons(x,ys) >> k1, k2)
+            },
+        False =>
+            cocase {
+                MkPar(k1,k2) =>
+                    filterHelper p xs >> MkPar(k1, mu y. xs >> k1)
+            }
+    }
+};
+
+def prd filter  := \p l => mu k. filterHelper p l >> MkPar(k, mu y. l >> k);
+def prd filter2 := \p l => mu k. (filterHelper p l).MkPar(k,*) >> mu y. l >> k;

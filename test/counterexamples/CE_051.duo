@@ -1,4 +1,0 @@
--- unbound type var a is not declared in class kinds
-class Foo(+f : CBV) {
-  Bar(a)
-};

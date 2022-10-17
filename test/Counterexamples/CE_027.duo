@@ -1,0 +1,7 @@
+module CE_027;
+
+-- Destructor should not be recognized as constructor
+
+destructor A : CBV;
+
+def prd test := A;

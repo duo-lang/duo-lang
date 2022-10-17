@@ -1,7 +1,6 @@
-{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE ExplicitNamespaces #-}
 module LSP.LSP ( runLSP ) where
 
-import Control.Monad.Except (runExcept)
 import Control.Monad.IO.Class (liftIO)
 import Data.IORef
 import Data.List.NonEmpty qualified as NE
@@ -30,13 +29,11 @@ import Driver.Driver
 import Errors
 import LSP.Definition
 import LSP.Handler.Hover ( hoverHandler, updateHoverCache )
-import LSP.Handler.CodeAction ( codeActionHandler )
+import LSP.Handler.CodeAction ( codeActionHandler, evalHandler )
 import LSP.Handler.Completion ( completionHandler )
 import LSP.Handler.JumpToDef ( jumpToDefHandler )
 import LSP.MegaparsecToLSP ( locToRange )
 import Paths_duo_lang (version)
-import Parser.Definition ( runFileParser )
-import Parser.Program ( moduleP )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
 import Loc
@@ -59,7 +56,7 @@ serverOptions = Options
   , signatureHelpRetriggerCharacters = Nothing
   , codeActionKinds = Just [CodeActionQuickFix]
   , documentOnTypeFormattingTriggerCharacters = Nothing
-  , executeCommandCommands = Nothing
+  , executeCommandCommands = Just ["duo-inline-eval"]
   , serverInfo = Just ServerInfo { _name = "duo-lsp"
                                  , _version = Just (T.pack $ showVersion version)
                                  }
@@ -84,7 +81,7 @@ definition = do
 runLSP :: Maybe FilePath -> IO ()
 runLSP mLogPath = do
   setupLogger mLogPath ["lspserver"] DEBUG
-  debugM "lspserver" $ "Starting LSP Server"
+  debugM "lspserver" "Starting LSP Server"
   initialDefinition <- definition
   errCode <- runServer initialDefinition
   case errCode of
@@ -110,6 +107,7 @@ handlers = mconcat [ initializedHandler
                    , cancelRequestHandler
                    , codeActionHandler
                    , completionHandler
+                   , evalHandler
                    ]
 
 -- Initialization Handlers
@@ -206,7 +204,7 @@ publishErrors uri = do
     Just vfile -> do
       let file = virtualFileText vfile
       let fp = fromMaybe "fail" (uriToFilePath uri)
-      let decls = runExcept (runFileParser fp (moduleP fp) file)
+      let decls = getModuleFromFilePath fp file
       case decls of
         Left errs -> do
           sendDiagnostics (toNormalizedUri uri) (NE.toList errs)

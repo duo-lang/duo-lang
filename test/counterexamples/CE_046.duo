@@ -1,2 +1,0 @@
--- Type variable "b" is not declared in signature.
-data Foo : (+a : CBV) -> CBV { MkFoo(b) };

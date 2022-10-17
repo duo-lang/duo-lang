@@ -1,11 +1,13 @@
-import Function;
-import Cofunction;
-import Par;
-import With;
-import Plus;
-import Tensor;
-import NegationN;
-import NegationP;
+module DeMorgan;
+
+import Codata.Function;
+import Data.Cofunction;
+import Codata.Par;
+import Codata.With;
+import Data.Plus;
+import Data.Tensor;
+import Codata.NegationN;
+import Data.NegationP;
 
 
 

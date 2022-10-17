@@ -1,0 +1,12 @@
+module CE_017;
+
+-- Pattern match destructee has incorrect type
+
+data Bool : CBV { True, False };
+data Bool2 : CBV { TT, FF };
+
+constructor None : CBV;
+def prd fail := case True of { TT => None
+                            , FF => None
+                            };
+

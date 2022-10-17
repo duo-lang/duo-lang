@@ -8,16 +8,24 @@ import Data.IORef
 import Language.LSP.Server
 import Language.LSP.Types
 import Data.Text qualified as T
+import qualified Data.List.NonEmpty as NE
+import Errors (Error)
+import Control.Monad.Except (runExcept)
+import Parser.Definition (runFileParser)
+import Parser.Parser (moduleP)
+import qualified Syntax.CST.Program as CST
+import Syntax.CST.Program (adjustModulePath)
+
 ---------------------------------------------------------------------------------
 -- LSPMonad and Utility Functions
 ---------------------------------------------------------------------------------
 
 type HoverMap   = Map Range Hover
 type HoverCache = Map Uri HoverMap
-data LSPConfig = MkLSPConfig (IORef HoverCache)
+newtype LSPConfig = MkLSPConfig (IORef HoverCache)
 
-newtype LSPMonad a = MkLSPMonad { unLSPMonad :: (LspT LSPConfig IO a) }
-  deriving (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, MonadLsp LSPConfig)
+newtype LSPMonad a = MkLSPMonad { unLSPMonad :: LspT LSPConfig IO a }
+  deriving newtype (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, MonadLsp LSPConfig)
 
 sendInfo :: T.Text -> LSPMonad ()
 sendInfo msg = sendNotification SWindowShowMessage (ShowMessageParams MtInfo msg)
@@ -27,3 +35,9 @@ sendWarning msg = sendNotification SWindowShowMessage (ShowMessageParams MtWarni
 
 sendError :: T.Text -> LSPMonad ()
 sendError msg = sendNotification SWindowShowMessage (ShowMessageParams MtError msg)
+
+getModuleFromFilePath :: FilePath -> T.Text -> Either (NE.NonEmpty Error) CST.Module
+getModuleFromFilePath fp file = do
+  mod <- runExcept (runFileParser fp (moduleP fp) file)
+  adjustModulePath mod fp
+

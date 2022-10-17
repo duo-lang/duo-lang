@@ -1,3 +1,5 @@
+module Shifts;
+
 -- The `Shift` connectives mediate between the different evaluation orders.
 -- The specific choice of names for constructors and destructors has been adapted
 -- from [1, p.4]

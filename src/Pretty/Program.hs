@@ -44,6 +44,9 @@ instance PrettyAnn CST.DataDecl where
 instance PrettyAnn RST.DataDecl where
   prettyAnn decl = prettyAnn (runUnresolveM (unresolve decl))
 
+instance PrettyAnn TST.DataDecl where 
+  prettyAnn decl = prettyAnn (embedTST decl)
+
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declarations
 ---------------------------------------------------------------------------------
@@ -212,10 +215,12 @@ instance PrettyAnn CST.Declaration where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn CST.Module where
-  prettyAnn CST.MkModule { mod_decls } = vsep (prettyAnn <$> mod_decls)
+  prettyAnn CST.MkModule { mod_name, mod_decls } = vsep (moduleDecl : (prettyAnn <$> mod_decls))
+    where moduleDecl = annKeyword "module" <+> prettyAnn mod_name <> semi
 
 instance PrettyAnn TST.Module where
-  prettyAnn TST.MkModule { mod_decls } = vsep (prettyAnn <$> mod_decls)
+  prettyAnn TST.MkModule { mod_name, mod_decls } = vsep (moduleDecl : (prettyAnn <$> mod_decls))
+    where moduleDecl = annKeyword "module" <+> prettyAnn mod_name <> semi
 
 ---------------------------------------------------------------------------------
 -- Prettyprinting of Environments

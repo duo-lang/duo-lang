@@ -10,10 +10,10 @@ import Eval.Definition
 import Errors (throwEvalError)
 import Loc
 
-applyPrdToCns :: Term Prd -> Term Cns -> EvalM (Maybe Command)
+applyPrdToCns :: Monad m => Term Prd -> Term Cns -> EvalM m (Maybe Command)
 applyPrdToCns x k = pure $ Just $ Apply defaultLoc ApplyAnnotOrig (CBox CBV) x k
 
-evalPrimOp :: PrimitiveOp -> Substitution -> EvalM (Maybe Command)
+evalPrimOp :: Monad m => PrimitiveOp -> Substitution -> EvalM m (Maybe Command)
 -- I64
 evalPrimOp I64Add       (MkSubstitution [PrdTerm (PrimLitI64 _ x),      PrdTerm (PrimLitI64 _ y), CnsTerm k]) = applyPrdToCns (PrimLitI64 defaultLoc (x + y)) k
 evalPrimOp I64Sub       (MkSubstitution [PrdTerm (PrimLitI64 _ x),      PrdTerm (PrimLitI64 _ y), CnsTerm k]) = applyPrdToCns (PrimLitI64 defaultLoc (x - y)) k

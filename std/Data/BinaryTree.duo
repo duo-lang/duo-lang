@@ -1,6 +1,8 @@
-import Peano;
-import Bool;
-import List;
+module Data.BinaryTree;
+
+import Data.Peano;
+import Data.Bool;
+import Data.List;
 
 -- The type of Binary trees
 data BinTree : (+a : CBV) -> CBV{

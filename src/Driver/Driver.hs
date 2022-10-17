@@ -52,6 +52,7 @@ import Data.Maybe (catMaybes)
 import Pretty.Common (Header(..))
 import Pretty.Program ()
 
+
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
            -> Maybe (TST.TypeScheme pol) -- ^ Annotated type
@@ -217,10 +218,12 @@ inferDecl mn (Core.CmdDecl decl) = do
 --
 inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
-  let f env = env { declEnv = (RST.data_loc decl,decl) : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
-
+  let loc = RST.data_loc decl
+  env <- gets drvEnv
+  decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
+  let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
   modifyEnvironment mn f
-  pure (TST.DataDecl decl)
+  pure (TST.DataDecl decl')
   where 
     insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
     insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do
@@ -279,12 +282,12 @@ inferDecl mn (Core.InstanceDecl decl) = do
   pure (TST.InstanceDecl decl')
 
 inferProgram :: Core.Module -> DriverM TST.Module
-inferProgram Core.MkModule { mod_name, mod_fp, mod_decls } = do
+inferProgram Core.MkModule { mod_name, mod_libpath, mod_decls } = do
   let inferDecl' :: Core.Declaration -> DriverM (Maybe TST.Declaration)
       inferDecl' d = catchError (Just <$> inferDecl mod_name d) (addErrorsNonEmpty mod_name Nothing)
   newDecls <- catMaybes <$> mapM inferDecl' mod_decls
   pure TST.MkModule { mod_name = mod_name
-                    , mod_fp = mod_fp
+                    , mod_libpath = mod_libpath
                     , mod_decls = newDecls
                     }
 

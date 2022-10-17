@@ -1,5 +1,7 @@
-import Function;
-import Bool;
+module Data.Maybe;
+
+import Codata.Function;
+import Data.Bool;
 
 -- | The Maybe type encapsulates optional values.
 data Maybe : (+a : CBV) -> CBV {

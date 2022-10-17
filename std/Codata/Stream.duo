@@ -1,9 +1,11 @@
+module Codata.Stream;
 
-import Function;
-import Peano;
-import Bool;
-import List;
-import Tensor;
+
+import Codata.Function;
+import Data.Peano;
+import Data.Bool;
+import Data.List;
+import Data.Tensor;
 
 -- | The type of infinite Streams
 codata Stream : (+a : CBV) -> CBV {

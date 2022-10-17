@@ -52,6 +52,7 @@ import Syntax.CST.Kinds
 import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program as RST
+import Syntax.TST.Program as TST
 import TypeInference.Constraints
 import Loc ( Loc, defaultLoc )
 import Utils ( indexMaybe )
@@ -106,7 +107,7 @@ initialReader loc env = (env, GenerateReader { context = [], location = loc })
 ---------------------------------------------------------------------------------------------
 
 newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (ExceptT (NonEmpty Error) (Writer [Warning]))) a }
-  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Map ModuleName Environment, GenerateReader), MonadError (NonEmpty Error))
+  deriving newtype (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Map ModuleName Environment, GenerateReader), MonadError (NonEmpty Error))
 
 runGenM :: Loc -> Map ModuleName Environment -> GenM a -> (Either (NonEmpty Error) (a, ConstraintSet), [Warning])
 runGenM loc env m = case runWriter (runExceptT (runStateT (runReaderT  (getGenM m) (initialReader loc env)) initialState)) of
@@ -149,10 +150,10 @@ freshTVars ((Cns,fv):rest) = do
   (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
   return (TST.PrdCnsType CnsRep tn:lctxtP, TST.PrdCnsType CnsRep tp:lctxtN)
 
-freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([TST.VariantType pol], TST.Bisubstitution TST.SkolemVT)
+freshTVarsForTypeParams :: forall pol. PolarityRep pol -> TST.DataDecl -> GenM ([TST.VariantType pol], TST.Bisubstitution TST.SkolemVT)
 freshTVarsForTypeParams rep decl = 
-  let MkPolyKind { kindArgs } = data_kind decl
-      tn = data_name decl
+  let MkPolyKind { kindArgs } = TST.data_kind decl
+      tn = TST.data_name decl
   in do
     (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
     let map = paramsMap kindArgs vars
@@ -261,23 +262,23 @@ fromMaybeVar (Just fv) = fv
 -- the type declaration (Correctness).
 checkCorrectness :: Loc 
                  -> [XtorName]
-                 -> DataDecl
+                 -> TST.DataDecl
                  -> GenM ()
 checkCorrectness loc matched decl = do
-  let declared = RST.sig_name <$> fst (data_xtors decl)
+  let declared = TST.sig_name <$> fst (TST.data_xtors decl)
   forM_ matched $ \xn -> unless (xn `elem` declared)
-    (throwGenError (PatternMatchAdditional loc xn (data_name decl)))
+    (throwGenError (PatternMatchAdditional loc xn (TST.data_name decl)))
 
 -- | Checks for a given list of XtorNames and a type declaration whether all xtors of the type declaration
 -- are matched against (Exhaustiveness).
 checkExhaustiveness :: Loc
                     -> [XtorName] -- ^ The xtor names used in the pattern match
-                    -> DataDecl   -- ^ The type declaration to check against.
+                    -> TST.DataDecl   -- ^ The type declaration to check against.
                     -> GenM ()
 checkExhaustiveness loc matched decl = do
-  let declared = RST.sig_name <$> fst (data_xtors decl)
+  let declared = TST.sig_name <$> fst (TST.data_xtors decl)
   forM_ declared $ \xn -> unless (xn `elem` matched)
-    (throwGenError (PatternMatchMissingXtor loc xn (data_name decl)))
+    (throwGenError (PatternMatchMissingXtor loc xn (TST.data_name decl)))
 
 -- | Check well-definedness of an instance, i.e. every method specified in the class declaration is implemented
 -- in the instance declaration and every implemented method is actually declared.
