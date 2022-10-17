@@ -36,14 +36,14 @@ import Syntax.CST.Kinds
 
 data SolverState = SolverState
   { sst_bounds :: Map UniTVar VariableState
-  , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
+  , sst_cache :: Map (Constraint ()) SubtypeWitness -- The constraints in the cache need to have their annotations removed!
   , sst_kvars :: [([KVar], Maybe MonoKind)]
   }
 
 createInitState :: ConstraintSet -> SolverState
 createInitState (ConstraintSet _ uvs kuvs) =
   SolverState { sst_bounds =  M.fromList [(fst uv,emptyVarState (KindVar (MkKVar "TODO"))) | uv <- uvs]
-              , sst_cache = S.empty
+              , sst_cache = M.empty
               , sst_kvars = [([kv],Nothing) | kv <- kuvs]
               }
 
@@ -57,14 +57,14 @@ runSolverM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 -- Monadic helper functions
 ------------------------------------------------------------------------------
 
-addToCache :: Constraint ConstraintInfo -> SolverM ()
-addToCache cs = modifyCache (S.insert (() <$ cs)) -- We delete the annotation when inserting into cache
+addToCache :: Constraint ConstraintInfo -> SubtypeWitness -> SolverM ()
+addToCache cs w = modifyCache (M.insert (void cs) w) -- We delete the annotation when inserting into cache
   where
-    modifyCache :: (Set (Constraint ()) -> Set (Constraint ())) -> SolverM ()
+    modifyCache ::( Map (Constraint ()) SubtypeWitness -> Map (Constraint ()) SubtypeWitness) -> SolverM ()
     modifyCache f = modify (\(SolverState gr cache kvars) -> SolverState gr (f cache) kvars)
 
 inCache :: Constraint ConstraintInfo -> SolverM Bool
-inCache cs = gets sst_cache >>= \cache -> pure ((() <$ cs) `elem` cache)
+inCache cs = gets sst_cache >>= \cache -> pure (void cs `M.member` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> UniTVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache kvars) -> SolverState (M.adjust f uv varMap) cache kvars)
@@ -117,8 +117,7 @@ solve :: [Constraint ConstraintInfo] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
   cacheHit <- inCache cs
-  if cacheHit then solve css else (do
-    addToCache cs
+  if cacheHit then solve css else
     case cs of
       (KindEq _ k1 k2) -> do
         unifyKinds k1 k2
@@ -140,8 +139,9 @@ solve (cs:css) = do
       (TypeClassNeg _ cn (TyUniVar _ NegRep _ uv)) -> do
         addTypeClassConstraint uv cn
       _ -> do
-        (_w, subCss) <- subConstraints cs
-        solve (subCss ++ css))
+        (w, subCss) <- subConstraints cs
+        addToCache cs w
+        solve (subCss ++ css)
 
 ------------------------------------------------------------------------------
 -- Kind Inference
@@ -164,7 +164,7 @@ unifyKinds (KindVar kv1) (KindVar kv2) = do
   ((kvset1,mk1),rest1) <- partitionM sets kv1
   if kv2 `elem` kvset1 then
     pure ()
-  else do 
+  else do
     ((kvset2,mk2), rest2) <- partitionM rest1 kv2
     let newSet = kvset1 ++ kvset2
     case (mk1,mk2) of
