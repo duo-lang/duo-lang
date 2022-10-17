@@ -10,6 +10,8 @@ import Data.Foldable (find)
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Set (Set)
+import Data.Set qualified as S
 --import Data.Text qualified as T
 import Data.List (partition)
 import Data.Maybe (fromJust, isJust)
@@ -46,7 +48,7 @@ createInitState (ConstraintSet _ uvs kuvs) =
               }
 
 
-type SolverM a = (ReaderT (Map ModuleName Environment, ()) (StateT SolverState (Except (NE.NonEmpty Error)))) a
+type SolverM = (ReaderT (Map ModuleName Environment, ()) (StateT SolverState (Except (NE.NonEmpty Error))))
 
 runSolverM :: SolverM a -> Map ModuleName Environment -> SolverState -> Either (NE.NonEmpty Error) (a, SolverState)
 runSolverM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
@@ -57,9 +59,9 @@ runSolverM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 
 addToCache :: Constraint ConstraintInfo -> SubtypeWitness -> SolverM ()
 addToCache cs w = modifyCache (M.insert (void cs) w) -- We delete the annotation when inserting into cache
-  where
-    modifyCache ::( Map (Constraint ()) SubtypeWitness -> Map (Constraint ()) SubtypeWitness) -> SolverM ()
-    modifyCache f = modify (\(SolverState gr cache kvars) -> SolverState gr (f cache) kvars)
+
+modifyCache ::( Map (Constraint ()) SubtypeWitness -> Map (Constraint ()) SubtypeWitness) -> SolverM ()
+modifyCache f = modify (\(SolverState gr cache kvars) -> SolverState gr (f cache) kvars)
 
 inCache :: Constraint ConstraintInfo -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure (void cs `M.member` cache)
@@ -122,9 +124,9 @@ solve (cs:css) = do
         solve css
       (SubType _ (TyUniVar _ PosRep _ uvl) tvu@(TyUniVar _ NegRep _ uvu)) ->
         if uvl == uvu
-        then solve css
+        then addToCache cs (UVarB uvl uvu) >> solve css
         else do
-          addToCache cs (UVarL uvl tvu)
+          addToCache cs (UVarB uvl uvu)
           newCss <- addUpperBound uvl tvu
           solve (newCss ++ css)
       (SubType _ (TyUniVar _ PosRep _ uv) ub) -> do
@@ -358,6 +360,42 @@ subConstraints TypeClassPos{} = throwSolverError defaultLoc ["subContraints shou
 subConstraints TypeClassNeg{} = throwSolverError defaultLoc ["subContraints should not be called on type class Constraints"]
 subConstraints KindEq{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
 
+-- | Substitute cached witnesses for generated subtyping witness variables.
+substitute :: ReaderT (Set (Constraint ())) SolverM ()
+substitute = do
+    cache <- gets sst_cache
+    forM_ (M.toList cache) $ \(c,w) -> do
+      w <- go cache w
+      lift $ modifyCache (M.adjust (const w) c)
+  where
+    go :: Map (Constraint ()) SubtypeWitness -> SubtypeWitness -> ReaderT (Set (Constraint ())) SolverM SubtypeWitness
+    go m (SynL rn w) = SynL rn <$> go m w
+    go m (SynR rn w) = SynR rn <$> go m w
+    go _ (FromTop ty) = pure $ FromTop ty
+    go _ (ToBot ty) = pure $ ToBot ty
+    go m (Meet w1 w2) = Meet <$> go m w1 <*> go m w2
+    go m (Join w1 w2) = Join <$> go m w1 <*> go m w2
+    go m (UnfoldL recTVar w) = UnfoldL recTVar <$> go m w
+    go m (UnfoldR recTVar w) = UnfoldR recTVar <$> go m w
+    go _ (LookupL _recTVar _w) = throwSolverError defaultLoc [ "Not implemented yet." ]
+    go _ (LookupR _recTVar _w) = throwSolverError defaultLoc [ "Not implemented yet." ]
+    go m (Data ws) = Data <$> mapM (go m) ws
+    go m (Codata ws) = Codata <$> mapM (go m) ws
+    go m (DataRefined rn ws) = DataRefined rn <$> mapM (go m) ws
+    go m (CodataRefined rn ws) = CodataRefined rn <$> mapM (go m) ws
+    go m (DataNominal rn ws) = DataNominal rn <$> mapM (go m) ws
+    go _ (Refl typ tyn) = pure $ Refl typ tyn
+    go _ (UVarB uv1 uv2) = pure $ UVarB uv1 uv2
+    go _ (UVarL uv tyn) = pure $ UVarL uv tyn
+    go _ (UVarR uv typ) = pure $ UVarR uv typ
+    go _ (Fix cs) = pure $ Fix cs
+    go m (SubVar c) = case M.lookup (void c) m of
+         Nothing -> throwSolverError defaultLoc [ "Cannot find witness for: " <> ppPrint c ]
+         Just (SubVar _c) -> throwSolverError defaultLoc [ "Tried to substitute a variable with another variable" ]
+         Just w -> asks (S.member (void c)) >>= \case
+            True -> pure $ Fix (void c)
+            False -> local (S.insert $ void c) (go m w)
+
 ------------------------------------------------------------------------------
 -- Exported Function
 ------------------------------------------------------------------------------
@@ -373,7 +411,7 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
 -- | Creates the variable states that results from solving constraints.
 solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NE.NonEmpty Error) SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) env = do
-  (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
+  (_, solverState) <- runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet)
   kvarSolution <- computeKVarSolution DefaultCBV (sst_kvars solverState)
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution
