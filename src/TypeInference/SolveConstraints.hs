@@ -240,6 +240,13 @@ checkContexts (_:_) []    =
 -- | The `subConstraints` function takes a complex constraint, and decomposes it
 -- into simpler constraints. A constraint is complex if it is not atomic. An atomic
 -- constraint has a type variable on the right or left hand side of the constraint.
+-- 
+-- Besides generating subconstraints the function returns a witness for the subtyping
+-- relation. 
+-- This can be seen as a means to reconstruct the original constraint or to provide a
+-- coercion function from the super- to the subtype.
+-- The constructor `SubVar` is a sort of hole which will later on be filled with new
+-- witnesses for the subconstraints.
 --
 -- The `subConstraints` function is the function which will produce the error if the
 -- constraint set generated from a program is not solvable.
