@@ -1,6 +1,7 @@
 module TypeInference.Constraints where
 
 import Data.Map (Map)
+import qualified Data.Map as M
 
 import Syntax.TST.Types
 import Syntax.CST.Names
@@ -43,6 +44,31 @@ data Constraint a where
   TypeClassPos :: a -> ClassName -> Typ Pos -> Constraint a
   TypeClassNeg :: a -> ClassName -> Typ Neg -> Constraint a
     deriving (Eq, Ord, Functor)
+
+-- | Witnesses generated while solving (sub-)constraints.
+-- Provide a path from the subtype to the supertype and thus
+-- a coercion function.
+data SubtypeWitness
+  = SynL RnTypeName SubtypeWitness
+  | SynR RnTypeName SubtypeWitness
+  | FromTop (Typ Pos)
+  | ToBot (Typ Neg)
+  | Meet SubtypeWitness SubtypeWitness
+  | Join SubtypeWitness SubtypeWitness
+  | UnfoldL RecTVar SubtypeWitness
+  | UnfoldR RecTVar SubtypeWitness
+  | LookupL RecTVar SubtypeWitness
+  | LookupR RecTVar SubtypeWitness
+  | Data [SubtypeWitness]
+  | Codata [SubtypeWitness]
+  | DataRefined RnTypeName [SubtypeWitness]
+  | CodataRefined RnTypeName [SubtypeWitness]
+  | DataNominal RnTypeName [SubtypeWitness]
+  | CodataNominal RnTypeName [SubtypeWitness]
+  | Refl (Typ Neg) (Typ Pos)
+  | SubVar (Constraint ConstraintInfo)
+  | Fix (Constraint ())
+    -- deriving (Eq, Ord)
 
 -- | Information about the provenance of a unification variable.
 data UVarProvenance
