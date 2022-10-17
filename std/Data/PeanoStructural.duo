@@ -9,6 +9,8 @@ import Data.Bool;
 constructor Z;
 constructor S(CBV);
 
+type SNat := rec r. < Z, S(r) >;
+
 def rec prd add :=
   \n m => case n of { Z => m
                     , S(n) => S(add n m)};

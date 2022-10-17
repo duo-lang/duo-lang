@@ -47,6 +47,7 @@ instance PrettyAnn RST.DataDecl where
 instance PrettyAnn TST.DataDecl where 
   prettyAnn decl = prettyAnn (embedTST decl)
 
+
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declarations
 ---------------------------------------------------------------------------------
