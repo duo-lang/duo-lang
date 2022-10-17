@@ -140,7 +140,7 @@ solve (cs:css) = do
       (TypeClassNeg _ cn (TyUniVar _ NegRep _ uv)) -> do
         addTypeClassConstraint uv cn
       _ -> do
-        subCss <- subConstraints cs
+        (_w, subCss) <- subConstraints cs
         solve (subCss ++ css))
 
 ------------------------------------------------------------------------------
@@ -242,14 +242,14 @@ checkContexts (_:_) []    =
 --
 -- The `subConstraints` function is the function which will produce the error if the
 -- constraint set generated from a program is not solvable.
-subConstraints :: Constraint ConstraintInfo -> SolverM [Constraint ConstraintInfo]
+subConstraints :: Constraint ConstraintInfo -> SolverM (SubtypeWitness, [Constraint ConstraintInfo])
 -- Type synonyms are unfolded and are not preserved through constraint solving.
 -- A more efficient solution to directly compare type synonyms is possible in the
 -- future.
-subConstraints (SubType annot (TySyn _ _ _ ty) ty') =
-  pure [SubType annot ty ty']
-subConstraints (SubType annot ty (TySyn _ _ _ ty')) =
-  pure [SubType annot ty ty']
+subConstraints c@(SubType annot (TySyn _ _ rn ty) ty') =
+  pure (SynL rn (SubVar c), [SubType annot ty ty'])
+subConstraints c@(SubType annot ty (TySyn _ _ rn ty')) =
+  pure (SynR rn (SubVar c), [SubType annot ty ty'])
 -- Intersection and union constraints:
 --
 -- If the left hand side of the constraint is a intersection type, or the
@@ -259,18 +259,18 @@ subConstraints (SubType annot ty (TySyn _ _ _ ty')) =
 --     ty1 \/ ty2 <: ty3         ~>     ty1 <: ty3   AND  ty2 <: ty3
 --     ty1 <: ty2 /\ ty3         ~>     ty1 <: ty2   AND  ty1 <: ty3
 --
-subConstraints (SubType _ _ (TyTop _ _)) =
-  pure []
-subConstraints (SubType _ (TyBot _ _) _) =
-  pure []
-subConstraints (SubType _ (TyUnion _ _ ty1 ty2) ty3) =
-  pure [ SubType IntersectionUnionSubConstraint ty1 ty3
-       , SubType IntersectionUnionSubConstraint ty2 ty3
-       ]
-subConstraints (SubType _ ty1 (TyInter _ _ ty2 ty3)) =
-  pure [ SubType IntersectionUnionSubConstraint ty1 ty2
-       , SubType IntersectionUnionSubConstraint ty1 ty3
-       ]
+subConstraints (SubType _ typ (TyTop _ _)) =
+  pure (FromTop typ, [])
+subConstraints (SubType _ (TyBot _ _) tyn) =
+  pure (ToBot tyn, [])
+subConstraints (SubType _ (TyUnion _ _ ty1 ty2) ty3) = do
+  let c1 = SubType IntersectionUnionSubConstraint ty1 ty3
+  let c2 = SubType IntersectionUnionSubConstraint ty2 ty3
+  pure (Join (SubVar c1) (SubVar c2), [c1, c2])
+subConstraints (SubType _ ty1 (TyInter _ _ ty2 ty3)) = do
+  let c1 = SubType IntersectionUnionSubConstraint ty1 ty2
+  let c2 = SubType IntersectionUnionSubConstraint ty1 ty3
+  pure (Meet (SubVar c1) (SubVar c2), [c1, c2])
 -- Recursive constraints:
 --
 -- If the left hand side or the right hand side of the constraint is a recursive
@@ -280,10 +280,12 @@ subConstraints (SubType _ ty1 (TyInter _ _ ty2 ty3)) =
 --     rec a.ty1 <: ty2          ~>     ty1 [rec a.ty1 / a] <: ty2
 --     ty1 <: rec a.ty2          ~>     ty1 <: ty2 [rec a.ty2 / a]
 --
-subConstraints (SubType _ ty@TyRec{} ty') =
-  return [SubType RecTypeSubConstraint (unfoldRecType ty) ty']
-subConstraints (SubType _ ty' ty@TyRec{}) =
-  return [SubType RecTypeSubConstraint ty' (unfoldRecType ty)]
+subConstraints (SubType _ ty@(TyRec _ _ recTVar _) ty') = do
+  let c = SubType RecTypeSubConstraint (unfoldRecType ty) ty'
+  return (UnfoldL recTVar (SubVar c), [c])
+subConstraints (SubType _ ty' ty@(TyRec _ _ recTVar _)) = do
+  let c = SubType RecTypeSubConstraint ty' (unfoldRecType ty)
+  return (UnfoldR recTVar (SubVar c), [c])
 -- Constraints between structural data or codata types:
 --
 -- Constraints between structural data and codata types generate constraints based
@@ -295,11 +297,11 @@ subConstraints (SubType _ ty' ty@TyRec{}) =
 --
 subConstraints (SubType _ (TyData _ PosRep _ ctors1) (TyData _ NegRep _ ctors2)) = do
   constraints <- forM ctors1 (checkXtor ctors2)
-  pure $ concat constraints
+  pure (Data $ SubVar <$> concat constraints, concat constraints)
 
 subConstraints (SubType _ (TyCodata _ PosRep _ dtors1) (TyCodata _ NegRep _ dtors2)) = do
   constraints <- forM dtors2 (checkXtor dtors1)
-  pure $ concat constraints
+  pure (Codata $ SubVar <$> concat constraints, concat constraints)
 
 -- Constraints between refinement data or codata types:
 --
@@ -311,11 +313,11 @@ subConstraints (SubType _ (TyCodata _ PosRep _ dtors1) (TyCodata _ NegRep _ dtor
 --
 subConstraints (SubType _ (TyDataRefined _ PosRep _ tn1 ctors1) (TyDataRefined _ NegRep _ tn2 ctors2)) | tn1 == tn2 = do
   constraints <- forM ctors1 (checkXtor ctors2)
-  pure $ concat constraints
+  pure (DataRefined tn1 $ SubVar <$> concat constraints, concat constraints)
 
 subConstraints (SubType _ (TyCodataRefined _ PosRep _ tn1 dtors1) (TyCodataRefined _ NegRep _ tn2 dtors2))  | tn1 == tn2 = do
   constraints <- forM dtors2 (checkXtor dtors1)
-  pure $ concat constraints
+  pure (CodataRefined tn1 $ SubVar <$> concat constraints, concat constraints)
 
 -- Constraints between nominal types:
 --
@@ -329,12 +331,13 @@ subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2
     let f (CovariantType ty1) (CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
         f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
         f _ _ = error "cannot occur"
-    pure (zipWith f args1 args2)
+        constraints = zipWith f args1 args2
+    pure (DataNominal tn1 $ SubVar <$> constraints, constraints)
 -- Constraints between primitive types:
-subConstraints (SubType _ (TyI64 _ _) (TyI64 _ _)) = pure []
-subConstraints (SubType _ (TyF64 _ _) (TyF64 _ _)) = pure []
-subConstraints (SubType _ (TyChar _ _) (TyChar _ _)) = pure []
-subConstraints (SubType _ (TyString _ _) (TyString _ _)) = pure []
+subConstraints (SubType _ p@(TyI64 _ _) n@(TyI64 _ _)) = pure (Refl p n, [])
+subConstraints (SubType _ p@(TyF64 _ _) n@(TyF64 _ _)) = pure (Refl p n, [])
+subConstraints (SubType _ p@(TyChar _ _) n@(TyChar _ _)) = pure (Refl p n, [])
+subConstraints (SubType _ p@(TyString _ _) n@(TyString _ _)) = pure (Refl p n, [])
 -- All other constraints cannot be solved.
 subConstraints (SubType _ t1 t2) = do
   throwSolverError defaultLoc ["Cannot constraint type"
@@ -343,8 +346,8 @@ subConstraints (SubType _ t1 t2) = do
                               , "    " <> ppPrint t2 ]
 -- subConstraints for type classes are deprecated
 -- type class constraints should only be resolved after subtype constraints
-subConstraints (TypeClassPos _ _cn _typ) = pure []
-subConstraints (TypeClassNeg _ _cn _tyn) = pure []
+subConstraints TypeClassPos{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
+subConstraints TypeClassNeg{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
 subConstraints KindEq{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
 
 ------------------------------------------------------------------------------

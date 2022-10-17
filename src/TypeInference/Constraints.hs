@@ -65,7 +65,7 @@ data SubtypeWitness
   | CodataRefined RnTypeName [SubtypeWitness]
   | DataNominal RnTypeName [SubtypeWitness]
   | CodataNominal RnTypeName [SubtypeWitness]
-  | Refl (Typ Neg) (Typ Pos)
+  | Refl (Typ Pos) (Typ Neg)
   | SubVar (Constraint ConstraintInfo)
   | Fix (Constraint ())
     -- deriving (Eq, Ord)
