@@ -60,13 +60,13 @@ runSolverM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 -- Monadic helper functions
 ------------------------------------------------------------------------------
 
-addToCache :: Constraint ConstraintInfo -> SubtypeWitness -> SolverM ()
+addToCache :: Constraint a -> SubtypeWitness -> SolverM ()
 addToCache cs w = modifyCache (M.insert (void cs) w) -- We delete the annotation when inserting into cache
 
-modifyCache ::( Map (Constraint ()) SubtypeWitness -> Map (Constraint ()) SubtypeWitness) -> SolverM ()
+modifyCache :: (Map (Constraint ()) SubtypeWitness -> Map (Constraint ()) SubtypeWitness) -> SolverM ()
 modifyCache f = modify (\(SolverState gr cache kvars) -> SolverState gr (f cache) kvars)
 
-inCache :: Constraint ConstraintInfo -> SolverM Bool
+inCache :: Constraint a -> SolverM Bool
 inCache cs = gets sst_cache >>= \cache -> pure (void cs `M.member` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> UniTVar -> SolverM ()
@@ -89,19 +89,19 @@ getKVars = gets sst_kvars
 putKVars :: [([KVar],Maybe MonoKind)] -> SolverM ()
 putKVars x = modify (\s -> s { sst_kvars = x })
 
-addUpperBound :: UniTVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
-addUpperBound uv ty = do
+addUpperBound :: Delay a -> UniTVar -> Typ Neg -> SolverM [Constraint (Delay ConstraintInfo)]
+addUpperBound del uv ty = do
   modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState (ty:ubs) lbs classes kind) uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
-  return [SubType UpperBoundConstraint lb ty | lb <- lbs]
+  return [SubType (UpperBoundConstraint <$ del) lb ty | lb <- lbs]
 
-addLowerBound :: UniTVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
-addLowerBound uv ty = do
+addLowerBound :: Delay a -> UniTVar -> Typ Pos -> SolverM [Constraint (Delay ConstraintInfo)]
+addLowerBound del uv ty = do
   modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs (ty:lbs) classes kind) uv
   bounds <- getBounds uv
   let ubs = vst_upperbounds bounds
-  return [SubType LowerBoundConstraint ty ub | ub <- ubs]
+  return [SubType (LowerBoundConstraint <$ del) ty ub | ub <- ubs]
 
 addTypeClassConstraint :: UniTVar -> ClassName -> SolverM ()
 addTypeClassConstraint uv cn = modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs lbs (cn:classes) kind) uv
@@ -116,7 +116,7 @@ addTypeClassConstraint uv cn = modifyBounds (\(VariableState ubs lbs classes kin
 -- Constraint solving algorithm
 ------------------------------------------------------------------------------
 
-solve :: [Constraint ConstraintInfo] -> SolverM ()
+solve :: [Constraint (Delay ConstraintInfo)] -> SolverM ()
 solve [] = return ()
 solve (cs:css) = do
   cacheHit <- inCache cs
@@ -125,20 +125,20 @@ solve (cs:css) = do
       (KindEq _ k1 k2) -> do
         unifyKinds k1 k2
         solve css
-      (SubType _ (TyUniVar _ PosRep _ uvl) tvu@(TyUniVar _ NegRep _ uvu)) ->
+      (SubType del (TyUniVar _ PosRep _ uvl) tvu@(TyUniVar _ NegRep _ uvu)) ->
         if uvl == uvu
         then addToCache cs (UVarB uvl uvu) >> solve css
         else do
           addToCache cs (UVarB uvl uvu)
-          newCss <- addUpperBound uvl tvu
+          newCss <- addUpperBound del uvl tvu
           solve (newCss ++ css)
-      (SubType _ (TyUniVar _ PosRep _ uv) ub) -> do
+      (SubType del (TyUniVar _ PosRep _ uv) ub) -> do
         addToCache cs (UVarL uv ub)
-        newCss <- addUpperBound uv ub
+        newCss <- addUpperBound del uv ub
         solve (newCss ++ css)
-      (SubType _ lb (TyUniVar _ NegRep _ uv)) -> do
+      (SubType del lb (TyUniVar _ NegRep _ uv)) -> do
         addToCache cs (UVarR uv lb)
-        newCss <- addLowerBound uv lb
+        newCss <- addLowerBound del uv lb
         solve (newCss ++ css)
       (TypeClassPos _ cn (TyUniVar _ PosRep _ uv)) -> do
         addTypeClassConstraint uv cn
@@ -225,26 +225,26 @@ lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName'
                                          , ppPrint xtors ]
   Just xtorSig -> pure xtorSig
 
-checkXtor :: [XtorSig Neg] -> XtorSig Pos ->  SolverM [Constraint ConstraintInfo]
-checkXtor xtors2 (MkXtorSig xtName subst1) = do
+checkXtor :: Delay a -> [XtorSig Neg] -> XtorSig Pos ->  SolverM [Constraint (Delay ConstraintInfo)]
+checkXtor del xtors2 (MkXtorSig xtName subst1) = do
   MkXtorSig _ subst2 <- lookupXtor xtName xtors2
-  checkContexts subst1 subst2
+  checkContexts del subst1 subst2
 
-checkContexts :: LinearContext Pos -> LinearContext Neg -> SolverM [Constraint ConstraintInfo]
-checkContexts [] [] = return []
-checkContexts (PrdCnsType PrdRep ty1:rest1) (PrdCnsType PrdRep ty2:rest2) = do
-  xs <- checkContexts rest1 rest2
-  return (SubType XtorSubConstraint ty1 ty2:xs)
-checkContexts (PrdCnsType CnsRep ty1:rest1) (PrdCnsType CnsRep ty2:rest2) = do
-  xs <- checkContexts rest1 rest2
-  return (SubType XtorSubConstraint ty2 ty1:xs)
-checkContexts (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) =
+checkContexts :: Delay a -> LinearContext Pos -> LinearContext Neg -> SolverM [Constraint (Delay ConstraintInfo)]
+checkContexts _ [] [] = return []
+checkContexts del (PrdCnsType PrdRep ty1:rest1) (PrdCnsType PrdRep ty2:rest2) = do
+  xs <- checkContexts del rest1 rest2
+  return (SubType (XtorSubConstraint <$ del) ty1 ty2:xs)
+checkContexts del (PrdCnsType CnsRep ty1:rest1) (PrdCnsType CnsRep ty2:rest2) = do
+  xs <- checkContexts del rest1 rest2
+  return (SubType (XtorSubConstraint <$ del) ty2 ty1:xs)
+checkContexts _ (PrdCnsType PrdRep _:_) (PrdCnsType CnsRep _:_) =
   throwSolverError defaultLoc ["checkContexts: Tried to constrain PrdType by CnsType."]
-checkContexts (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) =
+checkContexts _ (PrdCnsType CnsRep _:_) (PrdCnsType PrdRep _:_) =
   throwSolverError defaultLoc ["checkContexts: Tried to constrain CnsType by PrdType."]
-checkContexts []    (_:_) =
+checkContexts _ []    (_:_) =
   throwSolverError defaultLoc ["checkContexts: Linear contexts have unequal length."]
-checkContexts (_:_) []    =
+checkContexts _ (_:_) []    =
   throwSolverError defaultLoc ["checkContexts: Linear contexts have unequal length."]
 
 
@@ -261,7 +261,7 @@ checkContexts (_:_) []    =
 --
 -- The `subConstraints` function is the function which will produce the error if the
 -- constraint set generated from a program is not solvable.
-subConstraints :: Constraint ConstraintInfo -> SolverM (SubtypeWitness, [Constraint ConstraintInfo])
+subConstraints :: Constraint (Delay ConstraintInfo) -> SolverM (SubtypeWitness, [Constraint (Delay ConstraintInfo)])
 -- Type synonyms are unfolded and are not preserved through constraint solving.
 -- A more efficient solution to directly compare type synonyms is possible in the
 -- future.
@@ -282,29 +282,44 @@ subConstraints (SubType _ typ (TyTop _ _)) =
   pure (FromTop typ, [])
 subConstraints (SubType _ (TyBot _ _) tyn) =
   pure (ToBot tyn, [])
-subConstraints (SubType _ (TyUnion _ _ ty1 ty2) ty3) = do
-  let c1 = SubType IntersectionUnionSubConstraint ty1 ty3
-  let c2 = SubType IntersectionUnionSubConstraint ty2 ty3
+subConstraints (SubType del (TyUnion _ _ ty1 ty2) ty3) = do
+  let c1 = SubType (IntersectionUnionSubConstraint <$ del) ty1 ty3
+  let c2 = SubType (IntersectionUnionSubConstraint <$ del) ty2 ty3
   pure (Join (SubVar c1) (SubVar c2), [c1, c2])
-subConstraints (SubType _ ty1 (TyInter _ _ ty2 ty3)) = do
-  let c1 = SubType IntersectionUnionSubConstraint ty1 ty2
-  let c2 = SubType IntersectionUnionSubConstraint ty1 ty3
+subConstraints (SubType del ty1 (TyInter _ _ ty2 ty3)) = do
+  let c1 = SubType (IntersectionUnionSubConstraint <$ del) ty1 ty2
+  let c2 = SubType (IntersectionUnionSubConstraint <$ del) ty1 ty3
   pure (Meet (SubVar c1) (SubVar c2), [c1, c2])
 -- Recursive constraints:
 --
 -- If the left hand side or the right hand side of the constraint is a recursive
--- mu-type, the mu-type gets unrolled once. Note that this case makes it non-obvious
+-- mu-type, the recursive variable is inserted into the left map of the /Delay/ annotation.
+-- Note that this case makes it non-obvious
 -- that constraint generation is going to terminate. Examples:
 --
 --     rec a.ty1 <: ty2          ~>     ty1 [rec a.ty1 / a] <: ty2
 --     ty1 <: rec a.ty2          ~>     ty1 <: ty2 [rec a.ty2 / a]
 --
-subConstraints (SubType _ ty@(TyRec _ _ recTVar _) ty') = do
-  let c = SubType RecTypeSubConstraint (unfoldRecType ty) ty'
+subConstraints (SubType del rc@(TyRec _ _ recTVar ty) ty') = do
+  let c = SubType (RecTypeSubConstraint <$ addDelayL recTVar rc del) ty ty'
   return (UnfoldL recTVar (SubVar c), [c])
-subConstraints (SubType _ ty' ty@(TyRec _ _ recTVar _)) = do
-  let c = SubType RecTypeSubConstraint ty' (unfoldRecType ty)
+subConstraints (SubType del ty' rc@(TyRec _ _ recTVar ty)) = do
+  let c = SubType (RecTypeSubConstraint <$ addDelayR recTVar rc del) ty' ty
   return (UnfoldR recTVar (SubVar c), [c])
+-- If a recursive type variable is found, we check the /Delay/ annotation for the
+-- binding of the variable and generate a subconstraint with the substituted type.
+subConstraints (SubType del (TyRecVar _ _ _ recTVar) ty') = do
+  case M.lookup recTVar (mapL del) of
+      Nothing -> throwSolverError defaultLoc [ "Failed LookupL for recursive variable: " <> ppPrint recTVar ]
+      Just ty -> do
+        let c = SubType (RecTypeSubConstraint <$ del) ty ty'
+        pure (LookupL recTVar (SubVar c), [c])
+subConstraints (SubType del ty (TyRecVar _ _ _ recTVar)) = do
+  case M.lookup recTVar (mapR del) of
+      Nothing -> throwSolverError defaultLoc [ "Failed LookupR for recursive variable: " <> ppPrint recTVar ]
+      Just ty' -> do
+        let c = SubType (RecTypeSubConstraint <$ del) ty ty'
+        pure (LookupR recTVar (SubVar c), [c])
 -- Constraints between structural data or codata types:
 --
 -- Constraints between structural data and codata types generate constraints based
@@ -314,12 +329,12 @@ subConstraints (SubType _ ty' ty@(TyRec _ _ recTVar _)) = do
 --     < ctors1 > <: < ctors2 >  ~>     [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     { dtors1 } <: { dtors2 }  ~>     [ checkXtors dtors1 dtor | dtor <- dtors2 ]
 --
-subConstraints (SubType _ (TyData _ PosRep _ ctors1) (TyData _ NegRep _ ctors2)) = do
-  constraints <- forM ctors1 (checkXtor ctors2)
+subConstraints (SubType del (TyData _ PosRep _ ctors1) (TyData _ NegRep _ ctors2)) = do
+  constraints <- forM ctors1 (checkXtor del ctors2)
   pure (Data $ SubVar <$> concat constraints, concat constraints)
 
-subConstraints (SubType _ (TyCodata _ PosRep _ dtors1) (TyCodata _ NegRep _ dtors2)) = do
-  constraints <- forM dtors2 (checkXtor dtors1)
+subConstraints (SubType del (TyCodata _ PosRep _ dtors1) (TyCodata _ NegRep _ dtors2)) = do
+  constraints <- forM dtors2 (checkXtor del dtors1)
   pure (Codata $ SubVar <$> concat constraints, concat constraints)
 
 -- Constraints between refinement data or codata types:
@@ -330,12 +345,12 @@ subConstraints (SubType _ (TyCodata _ PosRep _ dtors1) (TyCodata _ NegRep _ dtor
 --     {{ Nat :>> < ctors1 > }} <: {{ Nat  :>> < ctors2 > }}   ~>    [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     {{ Nat :>> < ctors1 > }} <: {{ Bool :>> < ctors2 > }}   ~>    FAIL
 --
-subConstraints (SubType _ (TyDataRefined _ PosRep _ tn1 ctors1) (TyDataRefined _ NegRep _ tn2 ctors2)) | tn1 == tn2 = do
-  constraints <- forM ctors1 (checkXtor ctors2)
+subConstraints (SubType del (TyDataRefined _ PosRep _ tn1 ctors1) (TyDataRefined _ NegRep _ tn2 ctors2)) | tn1 == tn2 = do
+  constraints <- forM ctors1 (checkXtor del ctors2)
   pure (DataRefined tn1 $ SubVar <$> concat constraints, concat constraints)
 
-subConstraints (SubType _ (TyCodataRefined _ PosRep _ tn1 dtors1) (TyCodataRefined _ NegRep _ tn2 dtors2))  | tn1 == tn2 = do
-  constraints <- forM dtors2 (checkXtor dtors1)
+subConstraints (SubType del (TyCodataRefined _ PosRep _ tn1 dtors1) (TyCodataRefined _ NegRep _ tn2 dtors2))  | tn1 == tn2 = do
+  constraints <- forM dtors2 (checkXtor del dtors1)
   pure (CodataRefined tn1 $ SubVar <$> concat constraints, concat constraints)
 
 -- Constraints between nominal types:
@@ -346,9 +361,9 @@ subConstraints (SubType _ (TyCodataRefined _ PosRep _ tn1 dtors1) (TyCodataRefin
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
-subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2)) | tn1 == tn2 = do
-    let f (CovariantType ty1) (CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
-        f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
+subConstraints (SubType del (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2)) | tn1 == tn2 = do
+    let f (CovariantType ty1) (CovariantType ty2) = SubType (NominalSubConstraint <$ del) ty1 ty2
+        f (ContravariantType ty1) (ContravariantType ty2) = SubType (NominalSubConstraint <$ del) ty2 ty1
         f _ _ = error "cannot occur"
         constraints = zipWith f args1 args2
     pure (DataNominal tn1 $ SubVar <$> constraints, constraints)
@@ -386,8 +401,8 @@ substitute = do
     go m (Join w1 w2) = Join <$> go m w1 <*> go m w2
     go m (UnfoldL recTVar w) = UnfoldL recTVar <$> go m w
     go m (UnfoldR recTVar w) = UnfoldR recTVar <$> go m w
-    go _ (LookupL _recTVar _w) = throwSolverError defaultLoc [ "Not implemented yet." ]
-    go _ (LookupR _recTVar _w) = throwSolverError defaultLoc [ "Not implemented yet." ]
+    go m (LookupL recTVar w) = LookupL recTVar <$> go m w
+    go m (LookupR recTVar w) = LookupR recTVar <$> go m w
     go m (Data ws) = Data <$> mapM (go m) ws
     go m (Codata ws) = Codata <$> mapM (go m) ws
     go m (DataRefined rn ws) = DataRefined rn <$> mapM (go m) ws
@@ -399,7 +414,7 @@ substitute = do
     go _ (UVarR uv typ) = pure $ UVarR uv typ
     go _ (Fix cs) = pure $ Fix cs
     go m (SubVar c) = case M.lookup (void c) m of
-         Nothing -> throwSolverError defaultLoc [ "Cannot find witness for: " <> ppPrint c ]
+         Nothing -> throwSolverError defaultLoc [ "Cannot find witness for: " <> ppPrint (extractDelay <$> c) ]
          Just (SubVar _c) -> throwSolverError defaultLoc [ "Tried to substitute a variable with another variable" ]
          Just w -> asks (S.member (void c)) >>= \case
             True -> pure $ Fix (void c)
@@ -420,7 +435,7 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
 -- | Creates the variable states that results from solving constraints.
 solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NE.NonEmpty Error) SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) env = do
-  (_, solverState) <- runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet)
+  (_, solverState) <- runSolverM (solve ((Delay M.empty M.empty <$>) <$> css) >> runReaderT substitute S.empty) env (createInitState constraintSet)
   kvarSolution <- computeKVarSolution ErrorUnresolved (sst_kvars solverState)
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution

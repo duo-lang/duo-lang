@@ -1,7 +1,7 @@
 module TypeInference.Constraints where
 
 import Data.Map (Map)
-
+import Data.Map qualified as M
 import Syntax.TST.Types
 import Syntax.CST.Names
 import Syntax.RST.Types (Polarity(..))
@@ -37,6 +37,22 @@ data ConstraintInfo
   | KindConstraint
   deriving (Show)
 
+-- | Delay to use together with constraint for delayed substitution.
+data Delay a = Delay
+  { mapL :: Map RecTVar (Typ Pos)
+  , mapR :: Map RecTVar (Typ Neg)
+  , rest :: a
+  }
+   deriving (Eq, Ord, Functor)
+
+addDelayL :: RecTVar -> Typ Pos -> Delay a -> Delay a
+addDelayL var typ (Delay m m' x) = Delay (M.insert var typ m) m' x
+
+addDelayR :: RecTVar -> Typ Neg -> Delay a -> Delay a
+addDelayR var tyn (Delay m m' x) = Delay m (M.insert var tyn m') x
+
+extractDelay :: Delay a -> a
+extractDelay (Delay _ _ x) = x
 
 data Constraint a where
   SubType :: a -> Typ Pos -> Typ Neg -> Constraint a
@@ -68,7 +84,7 @@ data SubtypeWitness
   | UVarB UniTVar UniTVar
   | UVarL UniTVar (Typ Neg)
   | UVarR UniTVar (Typ Pos)
-  | SubVar (Constraint ConstraintInfo)
+  | SubVar (Constraint (Delay ConstraintInfo))
   | Fix (Constraint ())
     -- deriving (Eq, Ord)
 
@@ -81,7 +97,7 @@ data UVarProvenance
   | TypeSchemeInstance FreeVarName Loc     -- ^ UVar generated for the instantiation of a type scheme.
   | TypeParameter RnTypeName SkolemTVar    -- ^ UVar generated for a type parameter of a nominal type
   | TypeClassInstance ClassName SkolemTVar -- ^ UVar generated for a type parameter of a class instance
-  
+
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInfo]
