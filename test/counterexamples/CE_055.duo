@@ -1,8 +1,0 @@
--- Regression test for #427
-
-codata Fun : (-a : CBV, +b : CBV) -> CBN {
-    Ap(a,return b)
-};
-
-type operator -> rightassoc at 0 := Fun;
-type operator -> rightassoc at 0 := Fun;

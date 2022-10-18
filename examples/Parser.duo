@@ -1,10 +1,12 @@
-import Bool;
-import Function;
-import List;
-import Peano;
+module Parser;
+
+import Data.Bool;
+import Codata.Function;
+import Data.List;
+import Data.Peano;
 import Prelude;
-import Cofunction;
-import Unit;
+import Data.Cofunction;
+import Data.Unit;
 -- a backtracking parser combinator library
 
 
@@ -62,25 +64,25 @@ def prd l2 : List(Nat) := Cons(3,Cons(2,Cons(1,Nil)));
 
 def prd parseOne : Parser := lit 1;
  
-
-def cmd test1 := parseOne >> Parse(l1,print,print) ;
-def cmd test2 := parseOne >> Parse(l2,print,print) ;
+-- Print Commands don't work (same for all other commented commands)
+--def cmd test1 := parseOne >> Parse(l1,print,print) ;
+--def cmd test2 := parseOne >> Parse(l2,print,print) ;
 
 def prd parseOneTwo : Parser := seq (lit 1) (lit 2);
 
-def cmd test3 := parseOneTwo >> Parse(l1,print,print) ;
-def cmd test4 := parseOneTwo >> Parse(l2,print,print) ;
+--def cmd test3 := parseOneTwo >> Parse(l1,print,print) ;
+--def cmd test4 := parseOneTwo >> Parse(l2,print,print) ;
 
 def prd parseTwoOrOne : Parser := seq (alt (lit 2) (lit 1)) (lit 2);
 
-def cmd test5 := parseTwoOrOne >> Parse(l1,print,print) ;
-def cmd test6 := parseTwoOrOne >> Parse(l2,print,print) ;
+--def cmd test5 := parseTwoOrOne >> Parse(l1,print,print) ;
+--def cmd test6 := parseTwoOrOne >> Parse(l2,print,print) ;
 
 def prd parseOnes : Parser := seq (alt (seq (lit 1) (lit 1)) (lit 1)) (lit 1);
 
 def prd l3 : List(Nat) := Cons(1,Cons(1,Cons(1,Nil)));
 
-def cmd test7 := parseOnes >> Parse(l3,print,print) ;
+--def cmd test7 := parseOnes >> Parse(l3,print,print) ;
 
 def prd parseOneTwoThree : Parser := seq (seq (lit 1) (lit 2)) (lit 3);
 def prd parseOneTwoFour : Parser := seq (seq (lit 1) (lit 2)) (lit 4);
@@ -95,12 +97,12 @@ def prd l7 : List(Nat) := Cons(1,Cons(2,Cons(5,Nil)));
 def prd l8 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Nil)))));
 def prd l9 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Cons(6,Nil))))));
 
-def cmd test8  := parseComplicated >> Parse(l4,print,print) ;
-def cmd test9  := parseComplicated >> Parse(l5,print,print) ;
-def cmd test10 := parseComplicated >> Parse(l6,print,print) ;
-def cmd test11 := parseComplicated >> Parse(l7,print,print) ;
-def cmd test12 := parseComplicated >> Parse(l8,print,print) ;
-def cmd test13 := parseComplicated >> Parse(l9,print,print) ;
+--def cmd test8  := parseComplicated >> Parse(l4,print,print) ;
+--def cmd test9  := parseComplicated >> Parse(l5,print,print) ;
+--def cmd test10 := parseComplicated >> Parse(l6,print,print) ;
+--def cmd test11 := parseComplicated >> Parse(l7,print,print) ;
+--def cmd test12 := parseComplicated >> Parse(l8,print,print) ;
+--def cmd test13 := parseComplicated >> Parse(l9,print,print) ;
 
 -- instead of modeling the parser as a codata producer, we could
 -- also model it as a data consumer. Is this better in any way?

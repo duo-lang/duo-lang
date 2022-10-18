@@ -1,0 +1,7 @@
+module CE_030;
+
+-- Constructor should not be recognized as destructor
+
+constructor A : CBV;
+
+def prd test := cocase { A => #ExitSuccess };

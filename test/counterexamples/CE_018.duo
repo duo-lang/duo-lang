@@ -1,6 +1,0 @@
--- Match acase arg usage does not fit type
-
-data Nat : CBV { Z, S(Nat) };
-data Foo : CBV { A, B(Foo) };
-
-def prd fail := case A of { A => Z, B(f) => S(f) };

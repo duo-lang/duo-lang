@@ -28,6 +28,7 @@ import Pretty.Pretty
 import Pretty.Common ()
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Types qualified as TST
+import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))
@@ -91,19 +92,16 @@ lookupCommand loc fv = do
   snd <$> findFirstM f err
 
 ---------------------------------------------------------------------------------
--- Lookup information about type declarations
----------------------------------------------------------------------------------
-
--- | Find the type declaration belonging to a given Xtor Name.
+-- Lookup information about type declarations ------------------------------------------------------------------------------- | Find the type declaration belonging to a given Xtor Name.
 lookupDataDecl :: EnvReader a m
-               => Loc -> XtorName -> m RST.DataDecl
+               => Loc -> XtorName -> m TST.DataDecl
 lookupDataDecl loc xt = do
-  let containsXtor :: RST.XtorSig Pos -> Bool
-      containsXtor sig = RST.sig_name sig == xt
-  let typeContainsXtor :: RST.DataDecl -> Bool
-      typeContainsXtor RST.NominalDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
+  let containsXtor :: TST.XtorSig Pos -> Bool
+      containsXtor sig = TST.sig_name sig == xt
+  let typeContainsXtor :: TST.DataDecl -> Bool
+      typeContainsXtor TST.NominalDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
                                                       | otherwise = False
-      typeContainsXtor RST.RefinementDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
+      typeContainsXtor TST.RefinementDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
                                                          | otherwise = False                                                      
   let err = ErrOther $ SomeOtherError loc ("Constructor/Destructor " <> ppPrint xt <> " is not contained in program.")
   let f env = find typeContainsXtor (fmap snd (declEnv env))
@@ -111,52 +109,52 @@ lookupDataDecl loc xt = do
 
 -- | Find the type declaration belonging to a given TypeName.
 lookupTypeName :: EnvReader a m
-               => Loc -> RnTypeName -> m RST.DataDecl
+               => Loc -> RnTypeName -> m TST.DataDecl
 lookupTypeName loc tn = do
   let err = ErrOther $ SomeOtherError loc ("Type name " <> unTypeName (rnTnName tn) <> " not found in environment")
-  let findFun RST.NominalDecl{..} = data_name == tn
-      findFun RST.RefinementDecl {..} = data_name == tn
+  let findFun TST.NominalDecl{..} = data_name == tn
+      findFun TST.RefinementDecl {..} = data_name == tn
   let f env = find findFun (fmap snd (declEnv env))
   snd <$> findFirstM f err
 
 -- | Find the XtorSig belonging to a given XtorName.
 lookupXtorSig :: EnvReader a m
-              => Loc -> XtorName -> PolarityRep pol -> m (RST.XtorSig pol)
+              => Loc -> XtorName -> PolarityRep pol -> m (TST.XtorSig pol)
 lookupXtorSig loc xtn PosRep = do
   decl <- lookupDataDecl loc xtn
-  case find ( \RST.MkXtorSig{..} -> sig_name == xtn ) (fst (RST.data_xtors decl)) of
+  case find ( \TST.MkXtorSig{..} -> sig_name == xtn ) (fst (TST.data_xtors decl)) of
     Just xts -> pure xts
-    Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (RST.data_name decl))]
+    Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (TST.data_name decl))]
 lookupXtorSig loc xtn NegRep = do
   decl <- lookupDataDecl loc xtn
-  case find ( \RST.MkXtorSig{..} -> sig_name == xtn ) (snd (RST.data_xtors decl)) of
+  case find ( \TST.MkXtorSig{..} -> sig_name == xtn ) (snd (TST.data_xtors decl)) of
     Just xts -> pure xts
-    Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (RST.data_name decl))]
+    Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (TST.data_name decl))]
 
 
 lookupXtorSigUpper :: EnvReader a m
-                   => Loc -> XtorName -> m (RST.XtorSig Neg)
+                   => Loc -> XtorName -> m (TST.XtorSig Neg)
 lookupXtorSigUpper loc xt = do
   decl <- lookupDataDecl loc xt
   case decl of
-    RST.NominalDecl { } -> do
+    TST.NominalDecl { } -> do
       throwOtherError loc ["lookupXtorSigUpper: Expected refinement type but found nominal type."]
-    RST.RefinementDecl { data_xtors_refined } -> do
-      case find ( \RST.MkXtorSig{..} -> sig_name == xt ) (snd data_xtors_refined) of
+    TST.RefinementDecl { data_xtors_refined } -> do
+      case find ( \TST.MkXtorSig{..} -> sig_name == xt ) (snd data_xtors_refined) of
         Nothing -> throwOtherError loc ["lookupXtorSigUpper: Constructor/Destructor " <> ppPrint xt <> " not found"]
         Just sig -> pure sig
 
   
 
 lookupXtorSigLower :: EnvReader a m
-                   => Loc -> XtorName -> m (RST.XtorSig Pos)
+                   => Loc -> XtorName -> m (TST.XtorSig Pos)
 lookupXtorSigLower loc xt = do
   decl <- lookupDataDecl loc xt
   case decl of
-    RST.NominalDecl {} -> do
+    TST.NominalDecl {} -> do
       throwOtherError loc ["lookupXtorSigLower: Expected refinement type but found nominal type."]
-    RST.RefinementDecl { data_xtors_refined } -> do
-      case find ( \RST.MkXtorSig{..} -> sig_name == xt ) (fst data_xtors_refined) of
+    TST.RefinementDecl { data_xtors_refined } -> do
+      case find ( \TST.MkXtorSig{..} -> sig_name == xt ) (fst data_xtors_refined) of
         Nothing ->  throwOtherError loc ["lookupXtorSigLower: Constructor/Destructor " <> ppPrint xt <> " not found"]
         Just sig -> pure sig
 
@@ -183,9 +181,9 @@ lookupMethodType loc mn RST.MkClassDeclaration { classdecl_name, classdecl_metho
     Just msig -> pure $ RST.msig_args msig
 
 lookupXtorKind :: EnvReader a m
-             => XtorName -> m MonoKind
+             => XtorName -> m (MonoKind,[MonoKind])
 lookupXtorKind xtorn = do
-  let err = ErrOther $ SomeOtherError defaultLoc ("No Kind for XTor " <> ppPrint xtorn)
+  let err = ErrOther $ SomeOtherError defaultLoc ("No Kinds for XTor " <> ppPrint xtorn)
   let f env = M.lookup xtorn (kindEnv env)
   snd <$> findFirstM f err
 

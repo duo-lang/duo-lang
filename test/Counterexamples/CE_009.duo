@@ -1,0 +1,8 @@
+module CE_009;
+
+-- Dtor called with incorrect number of args
+
+data Nat : CBV { Z, S(Nat) };
+codata Fun : CBN { Ap(Nat, return Nat) };
+
+def prd fail := cocase { Ap(n,*) => S(n) }.Ap(Z,Z,*);

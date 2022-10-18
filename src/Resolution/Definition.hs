@@ -28,7 +28,7 @@ data ResolveReader = ResolveReader { rr_modules :: Map ModuleName SymbolTable, r
 type WarningWriter = Writer [Warning]
 
 newtype ResolverM a = MkResolverM { unResolverM :: (ReaderT ResolveReader (ExceptT (NonEmpty Error) WarningWriter)) a }
-  deriving (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadReader ResolveReader, MonadWriter [Warning])
+  deriving newtype (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadReader ResolveReader, MonadWriter [Warning])
 
 instance MonadFail ResolverM where
   fail str = throwOtherError defaultLoc [T.pack str]
@@ -96,8 +96,8 @@ interTyOp = MkBinOpDescr
 lookupTyOp :: Loc
            -> BinOp
            -> ResolverM (ModuleName, BinOpDescr)
-lookupTyOp _ UnionOp = pure (MkModuleName "<BUILTIN>", unionTyOp)
-lookupTyOp _ InterOp = pure (MkModuleName "<BUILTIN>", interTyOp)
+lookupTyOp _ UnionOp = pure (MkModuleName [] "<BUILTIN>", unionTyOp)
+lookupTyOp _ InterOp = pure (MkModuleName [] "<BUILTIN>", interTyOp)
 lookupTyOp loc (CustomOp sym) = do
   symbolTables <- asks $ M.toList . rr_modules
   let results :: [(ModuleName, Maybe BinOpDescr)]

@@ -3,12 +3,14 @@ module Syntax.CST.Names where
 import Data.Text (Text)
 
 import Loc ( Loc, defaultLoc )
+import Data.Aeson (ToJSON, FromJSON)
+import GHC.Generics (Generic)
 
 ---------------------------------------------------------------------------------
 -- Names
 ---------------------------------------------------------------------------------
 
-newtype ModuleName = MkModuleName { unModuleName :: Text } deriving (Eq, Ord, Show)
+data ModuleName = MkModuleName { mn_path :: [Text], mn_base :: Text } deriving (Eq, Ord, Show)
 
 -- | Name of a primitive operation. Starts with a '#' followed by an uppercase letter.
 newtype PrimName = MkPrimName { unPrimName :: Text } deriving (Eq, Ord, Show)
@@ -84,12 +86,14 @@ peanoNm :: RnTypeName
 peanoNm = MkRnTypeName { rnTnLoc    = defaultLoc
                        , rnTnDoc    = Nothing
                        , rnTnFp     = Nothing 
-                       , rnTnModule = MkModuleName "Peano"
+                       , rnTnModule = MkModuleName ["Data"] "Peano" 
                        , rnTnName   = MkTypeName "Nat"
                        }
 
 -- | Name of a free variable. Starts with a lowercase letter.
-newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text } deriving (Eq, Ord, Show)
+newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text }
+  deriving stock (Eq, Ord, Show, Generic)
+  deriving newtype (FromJSON, ToJSON)
 
 -- | Type variables
 newtype UniTVar = MkUniTVar { unUniTVar :: Text } deriving (Eq, Show, Ord)

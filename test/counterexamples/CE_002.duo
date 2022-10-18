@@ -1,3 +1,0 @@
--- Match cases not exhaustive
-data Bool : CBV { True, False };
-def prd nominalNot := \x => case x of { True => False };

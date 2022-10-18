@@ -7,17 +7,18 @@ import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
 import Data.Foldable (find)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.Text qualified as T
-import Data.Maybe (fromMaybe)
+import Data.List (partition)
+import Data.Maybe (fromJust, isJust)
+import Data.Bifunctor (second)
 
 import Driver.Environment (Environment)
 import Errors
-import Syntax.TST.Types 
+import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))
 import Pretty.Pretty
 import Pretty.Types ()
@@ -35,20 +36,24 @@ import Syntax.CST.Kinds
 data SolverState = SolverState
   { sst_bounds :: Map UniTVar VariableState
   , sst_cache :: Set (Constraint ()) -- The constraints in the cache need to have their annotations removed!
-  , sst_kvars :: Map (Maybe MonoKind) (Set KVar)
+  , sst_kvars :: [([KVar], Maybe MonoKind)]
   }
 
 createInitState :: ConstraintSet -> SolverState
 createInitState (ConstraintSet _ uvs kuvs) =
-  SolverState { sst_bounds =  M.fromList [(fst uv,emptyVarState (KindVar (MkKVar "TODO"))) | uv <- uvs]
+  SolverState { sst_bounds =  M.fromList $ getsst_bounds uvs --[(fst uv,emptyVarState (KindVar (MkKVar "TODO"))) | uv <- uvs]
               , sst_cache = S.empty
-              , sst_kvars = M.singleton Nothing (S.fromList kuvs)
+              , sst_kvars = [([kv],Nothing) | kv <- kuvs]
               }
+  where 
+    getsst_bounds :: [(UniTVar, UVarProvenance, MonoKind)] -> [(UniTVar, VariableState)]
+    getsst_bounds [] = []
+    getsst_bounds ((uv,_,mk):rst) = (uv,emptyVarState mk):getsst_bounds rst
 
 
-type SolverM a = (ReaderT (Map ModuleName Environment, ()) (StateT SolverState (Except (NonEmpty Error)))) a
+type SolverM a = (ReaderT (Map ModuleName Environment, ()) (StateT SolverState (Except (NE.NonEmpty Error)))) a
 
-runSolverM :: SolverM a -> Map ModuleName Environment -> SolverState -> Either (NonEmpty Error) (a, SolverState)
+runSolverM :: SolverM a -> Map ModuleName Environment -> SolverState -> Either (NE.NonEmpty Error) (a, SolverState)
 runSolverM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 
 ------------------------------------------------------------------------------
@@ -78,10 +83,10 @@ getBounds uv = do
                                            ]
     Just vs -> return vs
 
-getKVars :: SolverM (Map (Maybe MonoKind) (Set KVar))
+getKVars :: SolverM [([KVar],Maybe MonoKind)]
 getKVars = gets sst_kvars
 
-putKVars :: Map (Maybe MonoKind) (Set KVar) -> SolverM ()
+putKVars :: [([KVar],Maybe MonoKind)] -> SolverM ()
 putKVars x = modify (\s -> s { sst_kvars = x })
 
 addUpperBound :: UniTVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
@@ -101,11 +106,11 @@ addLowerBound uv ty = do
 addTypeClassConstraint :: UniTVar -> ClassName -> SolverM ()
 addTypeClassConstraint uv cn = modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs lbs (cn:classes) kind) uv
 
-lookupKVar :: KVar -> Map (Maybe MonoKind) (Set KVar) -> SolverM (Maybe MonoKind, Set KVar)
-lookupKVar kv mp = case M.toList (M.filter (\x -> kv `elem` x) mp) of 
-  [] -> throwSolverError defaultLoc ["Kind variable not found."]
-  [(mk,set)] -> pure (mk,set)
-  _ -> throwSolverError defaultLoc ["Multiple kinds for kind variable" <> T.pack (show kv)]
+-- lookupKVar :: KVar -> Map (Maybe MonoKind) (Set KVar) -> SolverM (Maybe MonoKind, Set KVar)
+-- lookupKVar kv mp = case M.toList (M.filter (\x -> kv `elem` x) mp) of 
+--   [] -> throwSolverError defaultLoc ["Kind variable not found."]
+--   [(mk,set)] -> pure (mk,set)
+--   _ -> throwSolverError defaultLoc ["Multiple kinds for kind variable" <> T.pack (show kv)]
 
 ------------------------------------------------------------------------------
 -- Constraint solving algorithm
@@ -118,11 +123,11 @@ solve (cs:css) = do
   if cacheHit then solve css else (do
     addToCache cs
     case cs of
-      (KindEq _ k1 k2) -> do 
-        unifyKinds k1 k2 
+      (KindEq _ k1 k2) -> do
+        unifyKinds k1 k2
         solve css
       (SubType _ (TyUniVar _ PosRep _ uvl) tvu@(TyUniVar _ NegRep _ uvu)) ->
-        if uvl == uvu 
+        if uvl == uvu
         then solve css
         else do
           newCss <- addUpperBound uvl tvu
@@ -144,47 +149,60 @@ solve (cs:css) = do
 ------------------------------------------------------------------------------
 -- Kind Inference
 ------------------------------------------------------------------------------
-unifyKinds :: MonoKind -> MonoKind -> SolverM()
-unifyKinds (CBox cc1) (CBox cc2) = 
+
+partitionM :: [([KVar], Maybe MonoKind)] -> KVar -> SolverM (([KVar], Maybe MonoKind),[([KVar], Maybe MonoKind)])
+partitionM sets kv = do
+  case partition (\x -> kv `elem` fst x) sets of
+    ([], _) -> throwSolverError defaultLoc ["Kind variable cannot be found: " <> ppPrint kv]
+    ([fst],rest) -> pure (fst, rest)
+    (_:_:_,_) -> throwSolverError defaultLoc ["Kind variable occurs in more than one equivalence class: " <> ppPrint kv]
+
+unifyKinds :: MonoKind -> MonoKind -> SolverM ()
+unifyKinds (CBox cc1) (CBox cc2) =
   if cc1 == cc2
-    then return ()
+    then pure ()
     else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
 unifyKinds (KindVar kv1) (KindVar kv2) = do
   sets <- getKVars
-  (mmk1, kvs1) <- lookupKVar kv1 sets
-  (mmk2, kvs2) <- lookupKVar kv2 sets
-  case (mmk1,mmk2) of 
-    (_, Nothing) -> putKVars $ M.insert mmk1 (S.insert kv2 kvs1) (M.insert mmk2 (S.delete kv2 kvs2) sets)
-    (Nothing, _) -> putKVars $ M.insert mmk2 (S.insert kv1 kvs2) (M.insert mmk1 (S.delete kv1 kvs1) sets)
-    (Just mk1, Just mk2) | mk1 == mk2 -> putKVars sets 
-                         | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint mk1 <> " and " <> ppPrint mk2]
-unifyKinds (KindVar kv) kind = do 
+  ((kvset1,mk1),rest1) <- partitionM sets kv1
+  if kv2 `elem` kvset1 then
+    pure ()
+  else do 
+    ((kvset2,mk2), rest2) <- partitionM rest1 kv2
+    let newSet = kvset1 ++ kvset2
+    case (mk1,mk2) of
+      (mk1, Nothing) -> putKVars $ (newSet,mk1):rest2
+      (Nothing, mk2) -> putKVars $ (newSet,mk2):rest2
+      (Just mk1, Just mk2) | mk1 == mk2 -> putKVars $ (newSet, Just mk1) :rest2
+                           | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint mk1 <> " and " <> ppPrint mk2]
+unifyKinds (KindVar kv) kind = do
   sets <- getKVars
-  boundKind <- lookupKVar kv sets
-  case fst boundKind of 
-    Nothing -> putKVars (M.insert (Just kind) (S.insert kv (M.findWithDefault S.empty (Just kind) sets)) (M.insert Nothing (S.insert kv (snd boundKind)) sets)) 
-    Just kind2 -> 
-      if kind==kind2 
-        then return ()
-        else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint kind <> " and " <> ppPrint kind2]
+  ((kvset,mk),rest) <- partitionM sets kv
+  case mk of
+    Nothing -> putKVars $ (kvset, Just kind):rest
+    Just mk -> if kind == mk
+               then return ()
+               else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint kind <> " and " <> ppPrint mk]
 unifyKinds kind (KindVar kv) = unifyKinds (KindVar kv) kind
-unifyKinds _ _ = throwSolverError defaultLoc ["Not implemented"]
+unifyKinds I64Rep I64Rep = return ()
+unifyKinds F64Rep F64Rep = return ()
+unifyKinds CharRep CharRep = return ()
+unifyKinds StringRep StringRep = return ()
+unifyKinds knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1<> " and " <> ppPrint knd2]
 
-computeKVarSolution :: KindPolicy -> Map (Maybe MonoKind) (Set KVar) -> Either (NonEmpty Error) (Map KVar MonoKind)
-computeKVarSolution kp sets = do
-  x <- mapM (swapKeys kp) (M.toList sets)
-  pure $ M.fromList (concat x)
-   where 
-     swapKeys :: KindPolicy -> (Maybe MonoKind, Set KVar) -> Either (NonEmpty Error) [(KVar, MonoKind)]
-     swapKeys kp (mk, set) = do
-      let f kv = defaultFromPolicy kp >>= \def -> pure (kv,fromMaybe def mk)
-      mapM f (S.toList set)
-     
-     defaultFromPolicy :: KindPolicy -> Either (NonEmpty Error) MonoKind
-     defaultFromPolicy DefaultCBV = pure (CBox CBV)
-     defaultFromPolicy DefaultCBN = pure (CBox CBN)
-     defaultFromPolicy ErrorUnresolved = throwSolverError defaultLoc ["Not all Kind Variables could be resolved"]
-
+computeKVarSolution :: KindPolicy
+                    -> [([KVar], Maybe MonoKind)]
+                    -> Either (NE.NonEmpty Error) (Map KVar MonoKind)
+computeKVarSolution DefaultCBV sets = return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBV); Just mk -> (xs,mk)) <$> sets)
+computeKVarSolution DefaultCBN sets = return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBN); Just mk -> (xs,mk)) <$> sets)
+computeKVarSolution ErrorUnresolved sets = if all (\(_,mk) -> isJust mk) sets
+                                           then return $ computeKVarSolution' (map (Data.Bifunctor.second fromJust) sets)
+                                           else Left $  (NE.:| []) $  ErrConstraintSolver $ SomeConstraintSolverError defaultLoc "Not all kind variables could be resolved"
+computeKVarSolution' :: [([KVar],MonoKind)] -> Map KVar MonoKind
+computeKVarSolution' sets = M.fromList (concatMap f sets)
+  where
+    f :: ([a],MonoKind) -> [(a,MonoKind)]
+    f (xs, mk) = zip xs (repeat mk)
 
 
 data KindPolicy
@@ -291,7 +309,7 @@ subConstraints (SubType _ (TyData _ PosRep _ ctors1) (TyData _ NegRep _ ctors2))
 subConstraints (SubType _ (TyCodata _ PosRep _ dtors1) (TyCodata _ NegRep _ dtors2)) = do
   constraints <- forM dtors2 (checkXtor dtors1)
   pure $ concat constraints
-  
+
 -- Constraints between refinement data or codata types:
 --
 -- These constraints are treated in the same way as those between structural (co)data types, with
@@ -351,9 +369,9 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
   VariableState zonkedlbs zonkedubs tc zonkedKind
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NonEmpty Error) SolverResult
+solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NE.NonEmpty Error) SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) env = do
   (_, solverState) <- runSolverM (solve css) env (createInitState constraintSet)
-  kvarSolution <- computeKVarSolution DefaultCBV (sst_kvars solverState)
+  kvarSolution <- computeKVarSolution ErrorUnresolved (sst_kvars solverState)
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution

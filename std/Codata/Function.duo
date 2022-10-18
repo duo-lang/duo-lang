@@ -1,3 +1,5 @@
+module Codata.Function;
+
 
 
 -- | The function type

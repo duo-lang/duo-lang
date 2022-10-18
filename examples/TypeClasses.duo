@@ -1,6 +1,8 @@
+module TypeClasses;
 
-import Bool;
-import List;
+
+import Data.Bool;
+import Data.List;
 
 -- | Class definition.
 class Eq(+a : CBV) {

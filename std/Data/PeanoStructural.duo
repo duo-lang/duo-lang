@@ -1,11 +1,15 @@
+module Data.PeanoStructural;
+
 -- Peano Natural Numbers (Structural)
 
-import Function;
-import Bool;
+import Codata.Function;
+import Data.Bool;
 
 -- | The type of Peano natural numbers.
 constructor Z;
 constructor S(CBV);
+
+type SNat := rec r. < Z, S(r) >;
 
 def rec prd add :=
   \n m => case n of { Z => m

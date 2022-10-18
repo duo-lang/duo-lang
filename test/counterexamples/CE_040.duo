@@ -1,6 +1,0 @@
--- Constructor is applied to too many arguments in match
-destructor A(CBV) : CBV;
-
-def prd foo := cocase {
-    A(x,y) => #ExitSuccess
-};

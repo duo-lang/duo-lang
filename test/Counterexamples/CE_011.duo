@@ -1,0 +1,9 @@
+module CE_011;
+
+-- Dtor called with incorrect arg type
+
+data Nat : CBV { Z, S(Nat) };
+data Bool : CBV { True, False };
+codata Fun : CBV { Ap(Nat,Nat) };
+
+def prd fail := Ap(True,mu k.#ExitSuccess);

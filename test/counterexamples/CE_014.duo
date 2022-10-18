@@ -1,6 +1,0 @@
--- Comatch is not exhaustive
-
-data Nat : CBV { Z, S(Nat) };
-codata Tuple : CBN { Fst( return Nat), Snd(return Nat) };
-
-def prd fail := cocase { Fst(*) => 1 };

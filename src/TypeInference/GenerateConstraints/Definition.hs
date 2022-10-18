@@ -2,6 +2,7 @@ module TypeInference.GenerateConstraints.Definition
   ( -- Constraint Generation Monad
     GenM
   , GenerateReader(..)
+  , GenConstraints(..)
   , runGenM
     -- Generating fresh unification variables
   , freshTVar
@@ -9,6 +10,7 @@ module TypeInference.GenerateConstraints.Definition
   , freshTVarsForTypeParams
   , paramsMap
   , createMethodSubst
+  , insertSkolemsClass
     -- Throwing errors
   , throwGenError
     -- Looking up in context or environment
@@ -51,6 +53,7 @@ import Syntax.CST.Kinds
 import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program as RST
+import Syntax.TST.Program as TST
 import TypeInference.Constraints
 import Loc ( Loc, defaultLoc )
 import Utils ( indexMaybe )
@@ -105,7 +108,7 @@ initialReader loc env = (env, GenerateReader { context = [], location = loc })
 ---------------------------------------------------------------------------------------------
 
 newtype GenM a = GenM { getGenM :: ReaderT (Map ModuleName Environment, GenerateReader) (StateT GenerateState (ExceptT (NonEmpty Error) (Writer [Warning]))) a }
-  deriving (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Map ModuleName Environment, GenerateReader), MonadError (NonEmpty Error))
+  deriving newtype (Functor, Applicative, Monad, MonadState GenerateState, MonadReader (Map ModuleName Environment, GenerateReader), MonadError (NonEmpty Error))
 
 runGenM :: Loc -> Map ModuleName Environment -> GenM a -> (Either (NonEmpty Error) (a, ConstraintSet), [Warning])
 runGenM loc env m = case runWriter (runExceptT (runStateT (runReaderT  (getGenM m) (initialReader loc env)) initialState)) of
@@ -113,49 +116,59 @@ runGenM loc env m = case runWriter (runExceptT (runStateT (runReaderT  (getGenM 
   (Right (x, state),warns) -> (Right (x, constraintSet state), warns)
 
 ---------------------------------------------------------------------------------------------
+-- A typeclass for generating constraints and transforming from a Core.X to a TST.X
+---------------------------------------------------------------------------------------------
+
+class GenConstraints a b | a -> b where
+  genConstraints :: a -> GenM b
+
+---------------------------------------------------------------------------------------------
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
-freshTVar :: UVarProvenance -> GenM (TST.Typ Pos, TST.Typ Neg)
-freshTVar uvp = do
+
+freshTVar :: UVarProvenance -> Maybe MonoKind -> GenM (TST.Typ Pos, TST.Typ Neg)
+freshTVar uvp kv = do
   uVarC <- gets uVarCount
   kVarC <- gets kVarCount
   uniVMap <- gets usedUniVars
   let tVar = MkUniTVar ("u" <> T.pack (show uVarC))
-  let kVar = MkKVar ("k" <> T.pack (show kVarC))
-  -- We need to increment the counter:
-  modify (\gs@GenerateState{} -> gs { uVarCount = uVarC + 1, kVarCount = kVarC + 1, usedUniVars = M.insert tVar (KindVar kVar) uniVMap })
+  let newKVar = MkKVar ("k" <> T.pack (show kVarC))
+  let knd = case kv of Nothing -> KindVar newKVar; Just kv' -> kv'
+  let inc = case kv of Nothing -> 1; Just _ -> 0;
+  -- We need to increment the counter
+  modify (\gs@GenerateState{} -> gs { uVarCount = uVarC + 1, kVarCount = kVarC + inc, usedUniVars = M.insert tVar knd uniVMap })
   -- We also need to add the uvar to the constraintset.
   modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars,cs_kvars } } ->
-            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tVar, uvp)], cs_kvars = cs_kvars ++ [kVar] } })
-  return (TST.TyUniVar defaultLoc PosRep (KindVar kVar) tVar, TST.TyUniVar defaultLoc NegRep (KindVar kVar) tVar)
+            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tVar, uvp,knd)], cs_kvars = cs_kvars ++ case kv of Nothing -> [newKVar];Just _->[] } })
+  return (TST.TyUniVar defaultLoc PosRep knd tVar, TST.TyUniVar defaultLoc NegRep knd tVar)
 
-freshTVars :: [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
+freshTVars :: [(PrdCns, Maybe FreeVarName, Maybe MonoKind)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
 freshTVars [] = return ([],[])
-freshTVars ((Prd,fv):rest) = do
+freshTVars ((Prd,fv,mk):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
-  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) mk
   return (TST.PrdCnsType PrdRep tp:lctxtP, TST.PrdCnsType PrdRep tn:lctxtN)
-freshTVars ((Cns,fv):rest) = do
+freshTVars ((Cns,fv,kv):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
-  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv))
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) kv
   return (TST.PrdCnsType CnsRep tn:lctxtP, TST.PrdCnsType CnsRep tp:lctxtN)
 
-freshTVarsForTypeParams :: forall pol. PolarityRep pol -> DataDecl -> GenM ([TST.VariantType pol], TST.Bisubstitution TST.SkolemVT)
+freshTVarsForTypeParams :: forall pol. PolarityRep pol -> TST.DataDecl -> GenM ([TST.VariantType pol], TST.Bisubstitution TST.SkolemVT)
 freshTVarsForTypeParams rep decl = 
-  let MkPolyKind { kindArgs } = data_kind decl
-      tn = data_name decl
+  let MkPolyKind { kindArgs } = TST.data_kind decl
+      tn = TST.data_name decl
   in do
-    (varTypes, vars) <- freshTVars tn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
+    (varTypes, vars) <- freshTVars tn kindArgs
     let map = paramsMap kindArgs vars
     case rep of
       PosRep -> pure (varTypes, map)
       NegRep -> pure (varTypes, map)
   where
-   freshTVars :: RnTypeName -> [(SkolemTVar, Variance)] -> GenM ([TST.VariantType pol],[(TST.Typ Pos, TST.Typ Neg)])
+   freshTVars :: RnTypeName -> [(Variance, SkolemTVar, MonoKind)] -> GenM ([TST.VariantType pol],[(TST.Typ Pos, TST.Typ Neg)])
    freshTVars _ [] = pure ([],[])
-   freshTVars tn ((tv,variance) : vs) = do
+   freshTVars tn ((variance,tv,mk) : vs) = do
     (vartypes,vs') <- freshTVars tn vs
-    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv)
+    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv) (Just mk)
     case (variance, rep) of
       (Covariant, PosRep)     -> pure (TST.CovariantType tyPos     : vartypes, (tyPos, tyNeg) : vs')
       (Covariant, NegRep)     -> pure (TST.CovariantType tyNeg     : vartypes, (tyPos, tyNeg) : vs')
@@ -167,14 +180,14 @@ createMethodSubst loc decl =
   let kindArgs = classdecl_kinds decl
       cn = classdecl_name decl
   in do
-    vars <- freshTVars cn ((\(variance,tv,_) -> (tv,variance)) <$> kindArgs)
+    vars <- freshTVars cn kindArgs
     pure $ paramsMap kindArgs vars
    where
-   freshTVars ::  ClassName -> [(SkolemTVar, Variance)] -> GenM [(TST.Typ Pos, TST.Typ Neg)]
+   freshTVars ::  ClassName -> [(Variance,SkolemTVar, MonoKind)] -> GenM [(TST.Typ Pos, TST.Typ Neg)]
    freshTVars _ [] = pure []
-   freshTVars cn ((tv,variance) : vs) = do
+   freshTVars cn ((variance,tv,mk) : vs) = do
     vs' <- freshTVars cn vs
-    (tyPos, tyNeg) <- freshTVar (TypeClassInstance cn tv)
+    (tyPos, tyNeg) <- freshTVar (TypeClassInstance cn tv) (Just mk)
     addConstraint $ case variance of
        Covariant -> TypeClassPos (InstanceConstraint loc) cn tyPos
        Contravariant -> TypeClassPos (InstanceConstraint loc) cn tyPos
@@ -183,6 +196,18 @@ createMethodSubst loc decl =
 paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(TST.Typ Pos, TST.Typ Neg)] -> TST.Bisubstitution TST.SkolemVT
 paramsMap kindArgs freshVars =
   TST.MkBisubstitution (M.fromList (zip ((\(_,tv,_) -> tv) <$> kindArgs) freshVars))
+
+insertSkolemsClass :: RST.ClassDeclaration -> GenM()
+insertSkolemsClass decl = do
+  let tyParams = classdecl_kinds decl
+  skMap <- gets usedSkolemVars
+  let newM = insertSkolems tyParams skMap
+  modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM}) 
+  return () 
+  where 
+    insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar MonoKind -> M.Map SkolemTVar MonoKind
+    insertSkolems [] mp = mp
+    insertSkolems ((_,tv,mk):rst) mp = insertSkolems rst (M.insert tv mk mp)
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -217,7 +242,9 @@ lookupContext loc rep idx@(i,j) = do
 --
 instantiateTypeScheme :: FreeVarName -> Loc -> TST.TypeScheme pol -> GenM (TST.Typ pol)
 instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do
-  freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) >>= \ty -> return (tv, ty))
+  freshVars <- forM ts_vars (\tv -> freshTVar (TypeSchemeInstance fv loc) Nothing >>= \ty -> return (tv, ty))
+  forM_ freshVars (\(_,ty) -> addConstraint (KindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ fst ty)))
+  forM_ freshVars (\(_,ty) -> addConstraint (KindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ snd ty)))
   pure $ TST.zonk TST.SkolemRep (TST.MkBisubstitution (M.fromList freshVars)) ts_monotype
 
 ---------------------------------------------------------------------------------------------
@@ -252,23 +279,23 @@ fromMaybeVar (Just fv) = fv
 -- the type declaration (Correctness).
 checkCorrectness :: Loc 
                  -> [XtorName]
-                 -> DataDecl
+                 -> TST.DataDecl
                  -> GenM ()
 checkCorrectness loc matched decl = do
-  let declared = RST.sig_name <$> fst (data_xtors decl)
+  let declared = TST.sig_name <$> fst (TST.data_xtors decl)
   forM_ matched $ \xn -> unless (xn `elem` declared)
-    (throwGenError (PatternMatchAdditional loc xn (data_name decl)))
+    (throwGenError (PatternMatchAdditional loc xn (TST.data_name decl)))
 
 -- | Checks for a given list of XtorNames and a type declaration whether all xtors of the type declaration
 -- are matched against (Exhaustiveness).
 checkExhaustiveness :: Loc
                     -> [XtorName] -- ^ The xtor names used in the pattern match
-                    -> DataDecl   -- ^ The type declaration to check against.
+                    -> TST.DataDecl   -- ^ The type declaration to check against.
                     -> GenM ()
 checkExhaustiveness loc matched decl = do
-  let declared = RST.sig_name <$> fst (data_xtors decl)
+  let declared = TST.sig_name <$> fst (TST.data_xtors decl)
   forM_ declared $ \xn -> unless (xn `elem` matched)
-    (throwGenError (PatternMatchMissingXtor loc xn (data_name decl)))
+    (throwGenError (PatternMatchMissingXtor loc xn (TST.data_name decl)))
 
 -- | Check well-definedness of an instance, i.e. every method specified in the class declaration is implemented
 -- in the instance declaration and every implemented method is actually declared.

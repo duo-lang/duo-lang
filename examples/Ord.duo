@@ -1,4 +1,6 @@
-import Bool;
+module Ord;
+
+import Data.Bool;
 
 data Ordering : CBV {
     LT,

@@ -1,6 +1,8 @@
+module Data.BoolRefinement;
+
 -- Booleans (Refinement)
 
-import Function;
+import Codata.Function;
 
 refinement data Bool : CBV {
     True,

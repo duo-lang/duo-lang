@@ -1,2 +1,0 @@
--- Should not typecheck because True is nominal and not predeclared.
-def prd fail := True;

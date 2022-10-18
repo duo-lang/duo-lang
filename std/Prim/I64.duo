@@ -1,4 +1,6 @@
-import Function;
+module Prim.I64;
+
+import Codata.Function;
 
 --------------------------------------------------------------------------------------------
 -- Boxed 64-Bit signed integers
