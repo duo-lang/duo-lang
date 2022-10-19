@@ -17,7 +17,6 @@ import Data.Foldable (foldl')
 import TypeAutomata.Definition
 import Utils (intersections)
 import Syntax.RST.Types ( Polarity(Neg, Pos) )
-import Syntax.CST.Kinds (MonoKind(..))
 
 ---------------------------------------------------------------------------------------
 -- First step of determinization:
@@ -81,18 +80,21 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
   case rs_merged of
     pr@MkPrimitiveNodeLabel{} -> error ("Tried to combine primitive type" <> show pr <> " and algebraic type " <> show fstLabel)
     combLabel@MkNodeLabel{} ->
-      MkNodeLabel {
-        nl_pol = if nl_pol combLabel == pol then pol else error "Tried to combine node labels of different polarity!",
-        nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ _ <- [fstLabel,combLabel]],
-        nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ _ <- [fstLabel,combLabel]],
-        nl_nominal = S.unions [tn | MkNodeLabel _ _ _ tn _ _ _ <- [fstLabel, combLabel]],
-        nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ _ <- [fstLabel, combLabel]],
-        nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ <- [fstLabel, combLabel]],
-        nl_kind = case (nl_kind combLabel, knd) of 
-          (KindVar _, mk) -> mk
-          (mk, KindVar _) -> mk
-          (mk,mk') -> if mk==mk' then mk else error ("Tried to combine node labels of different kind "<>show mk <> "~" <> show mk')
+      --if nl_kind combLabel == knd then 
+        if nl_pol combLabel == pol then
+          MkNodeLabel {
+            nl_pol = pol,
+            nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ _ <- [fstLabel,combLabel]],
+            nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ _ <- [fstLabel,combLabel]],
+            nl_nominal = S.unions [tn | MkNodeLabel _ _ _ tn _ _ _ <- [fstLabel, combLabel]],
+            nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ _ <- [fstLabel, combLabel]],
+            nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ <- [fstLabel, combLabel]],
+            nl_kind = knd
           }
+        else
+          error "Tried to combine node labels of different polarity!"
+    --else 
+    --  error "Tried to combine node labels of different kind"
   where
     pol = nl_pol fstLabel
     knd = nl_kind fstLabel
