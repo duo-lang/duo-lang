@@ -73,10 +73,7 @@ typeAutEqualM :: (TypeGr, Node) -> (TypeGr, Node) -> StateT (Map Node Node) Mayb
 typeAutEqualM (gr1, n) (gr2, m) = do
   mp <- get
   case M.lookup n mp of
-    Nothing -> do
-      let newl1 = removeKindNodeLabel (lab gr1 n)
-      let newl2 = removeKindNodeLabel (lab gr2 m)
-      guard (newl1 == newl2)
+      guard (nl1==nl2)
       modify (M.insert n m)
       forM_ (lsuc gr1 n) $ \(i,el) -> do
         j <- lift $ sucWith gr2 m el
@@ -84,12 +81,6 @@ typeAutEqualM (gr1, n) (gr2, m) = do
     Just m' -> do
       guard (m == m')
 
---needed so wrong kinds will not cause problems
---will be removed once kind inference is done
-removeKindNodeLabel :: Maybe NodeLabel -> Maybe NodeLabel
-removeKindNodeLabel Nothing = Nothing
-removeKindNodeLabel (Just (MkNodeLabel pol dat codat nom datref codatref _)) = Just $ MkNodeLabel pol dat codat nom datref codatref (CBox CBV)
-removeKindNodeLabel (Just (MkPrimitiveNodeLabel pol primty)) = Just $ MkPrimitiveNodeLabel pol primty
 
 subsume :: PolarityRep pol -> TypeScheme pol -> TypeScheme pol -> Either (NonEmpty Error) Bool
 subsume polrep ty1 ty2 = do
