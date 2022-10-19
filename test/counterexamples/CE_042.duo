@@ -1,3 +1,0 @@
--- Comatch is not a consumer
-
-def cns foo := cocase {};

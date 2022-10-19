@@ -11,6 +11,17 @@ packages:
       sha256: 6c45647f171dbf96c5cd2dbf9af6c9ba8cac5408968a3504c1464fe7895c0904
   original:
     hackage: diagnose-2.2.0
+- completed:
+    name: wcwidth
+    version: 0.0.2
+    git: https://github.com/solidsnack/wcwidth.git
+    pantry-tree:
+      size: 815
+      sha256: dc6939beb9b35fcebebfe22eef013d9438ff2dd885b517fb7ea352dee4d580a7
+    commit: 747297319f0dd0c8e8f72b7de4fbf52aad73d5b0
+  original:
+    git: https://github.com/solidsnack/wcwidth.git
+    commit: 747297319f0dd0c8e8f72b7de4fbf52aad73d5b0
 snapshots:
 - completed:
     size: 619399

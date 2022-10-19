@@ -150,67 +150,13 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
           h :: ResolveReader -> ResolveReader
           h r = r { rr_modules = f $ rr_modules r }
       (xtorsPos, xtorsNeg) <- local h (resolveXtors data_xtors)
-      -- Compute the resolved typename
-      NominalResult rtn _ _ _ <- lookupTypeConstructor data_loc data_name
-      -- Compute the empty refinement of the data/codata type. E.g. < Nat | >
-      (emptyRefinementPos, emptyRefinementNeg) <- computeEmptyRefinementType data_polarity rtn
-      -- Compute the full refinement of the data/codata type. E.g. mu a. < Nat | Z, S(a) >
-      (fullRefinementPos, fullRefinementNeg) <- computeFullRefinementType data_polarity rtn (xtorsPos, xtorsNeg)
-      -- Compute the refined xtor sigs
-      let xtorsRefinedPos = RST.replaceNominal emptyRefinementPos emptyRefinementNeg rtn <$> xtorsPos
-      -- The negative ones are called by `getXtorSigsUpper` which are used as upper bounds to Xtors!
-      let xtorsRefinedNeg = RST.replaceNominal fullRefinementPos fullRefinementNeg rtn <$> xtorsNeg
       pure RST.RefinementDecl { data_loc = data_loc
                               , data_doc = data_doc
                               , data_name = data_name'
                               , data_polarity = data_polarity
-                              , data_refinement_empty = (emptyRefinementPos, emptyRefinementNeg)
-                              , data_refinement_full = (fullRefinementPos, fullRefinementNeg)
                               , data_kind = polyKind
                               , data_xtors = (xtorsPos, xtorsNeg)
-                              , data_xtors_refined = (xtorsRefinedPos,xtorsRefinedNeg)
                               }
-
--- | Given the polarity (data/codata) and the name of a type, compute the empty refinement of that type.
--- Example:
---
---   computeEmptyRefinementType Data   Nat = < Nat | >
---   computeEmptyRefinementType Codata Foo = { Foo | }
--- 
-computeEmptyRefinementType :: CST.DataCodata
-                           -> RnTypeName
-                           -> ResolverM (RST.Typ Pos, RST.Typ Neg)
-computeEmptyRefinementType CST.Data   tn =
-  pure (RST.TyDataRefined   defaultLoc PosRep tn [], RST.TyDataRefined   defaultLoc NegRep tn [])
-computeEmptyRefinementType CST.Codata tn =
-  pure (RST.TyCodataRefined defaultLoc PosRep tn [], RST.TyCodataRefined defaultLoc NegRep tn [])
-
--- | Given the polarity (data/codata), the name and the constructors/destructors of a type, compute the
--- full refinement of that type.
--- Example:
---
---   computeFullRefinementType Data Nat [Z,S(Nat)] = mu a. < Nat | Z, S(a) >
---
-computeFullRefinementType :: CST.DataCodata
-                          -> RnTypeName
-                          -> ([RST.XtorSig Pos], [RST.XtorSig Neg])
-                          -> ResolverM (RST.Typ Pos, RST.Typ Neg)
-computeFullRefinementType dc tn (xtorsPos, xtorsNeg) = do
-  -- Define the variable that stands for the recursive occurrences in the translation.
-  let recVar = MkRecTVar "α"
-  let recVarPos = RST.TyRecVar defaultLoc PosRep recVar
-  let recVarNeg = RST.TyRecVar defaultLoc NegRep recVar
-  -- Replace all the recursive occurrences of the type by the variable "α" in the constructors/destructors.
-  let xtorsReplacedPos :: [RST.XtorSig Pos] = RST.replaceNominal recVarPos recVarNeg tn <$> xtorsPos
-  let xtorsReplacedNeg :: [RST.XtorSig Neg] = RST.replaceNominal recVarPos recVarNeg tn <$> xtorsNeg
-  -- Assemble the 
-  let fullRefinementTypePos :: RST.Typ Pos = case dc of
-                   CST.Data   -> RST.TyRec defaultLoc PosRep recVar (RST.TyDataRefined   defaultLoc PosRep tn xtorsReplacedPos)
-                   CST.Codata -> RST.TyRec defaultLoc PosRep recVar (RST.TyCodataRefined defaultLoc PosRep tn xtorsReplacedNeg)
-  let fullRefinementTypeNeg :: RST.Typ Neg = case dc of
-                   CST.Data   -> RST.TyRec defaultLoc NegRep recVar (RST.TyDataRefined defaultLoc NegRep tn   xtorsReplacedNeg)
-                   CST.Codata -> RST.TyRec defaultLoc NegRep recVar (RST.TyCodataRefined defaultLoc NegRep tn xtorsReplacedPos)
-  pure (fullRefinementTypePos, fullRefinementTypeNeg)
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declarations
@@ -391,9 +337,9 @@ resolveDecl CST.ParseErrorDecl =
   throwOtherError defaultLoc ["Unreachable: ParseErrorDecl cannot be parsed"]
 
 resolveModule :: CST.Module -> ResolverM RST.Module
-resolveModule CST.MkModule { mod_name, mod_fp, mod_decls } = do
+resolveModule CST.MkModule { mod_name, mod_libpath, mod_decls } = do
   decls' <- mapM resolveDecl mod_decls
   pure RST.MkModule { mod_name = mod_name
-                    , mod_fp = mod_fp
+                    , mod_libpath = mod_libpath
                     , mod_decls = decls'
                     }

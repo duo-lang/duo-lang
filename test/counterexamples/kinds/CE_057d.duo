@@ -1,0 +1,11 @@
+module CE_057d;
+-- should fail since List expects CBV argument instead of CBN
+import List; 
+
+data CBNUnit : CBN {
+    MkCBNUnit
+};
+
+def prd x := MkCBNUnit;
+
+def prd f1 := Cons(x, Nil);

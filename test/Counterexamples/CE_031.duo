@@ -1,0 +1,6 @@
+module CE_031;
+
+-- Type constructor is not applied to enough arguments.
+data A : (+a : CBV) -> CBV {};
+
+def rec prd foo : A := foo;

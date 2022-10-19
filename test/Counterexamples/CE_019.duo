@@ -1,0 +1,9 @@
+module CE_019;
+
+-- Comatch acase arg usage does not fit type
+
+data Nat : CBV { Z, S(Nat) };
+data Nat : CBV { True, False };
+codata Fun : CBN { Ap(Bool, return Nat) };
+
+def prd fail := cocase { Ap(b,*) => S(b) };

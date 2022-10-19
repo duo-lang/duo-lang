@@ -19,6 +19,7 @@ import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..), Arity, PrdCnsRep(..))
 import Syntax.CST.Names
 import Loc
+import qualified Syntax.LocallyNameless as LN
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
@@ -118,7 +119,7 @@ analyzeCases :: CST.DataCodata
              -> [CST.TermCase]
              -> ResolverM SomeIntermediateCases
 analyzeCases dc cases = do
-  cases' <- sequence $ analyzeCase dc <$> cases
+  cases' <- mapM (analyzeCase dc) cases
   if | all isExplicitCase cases' -> pure $ ExplicitCases    $ fromExplicitCase <$> cases'
      | all (isImplicitCase PrdRep) cases' -> pure $ ImplicitCases PrdRep $ fromImplicitCase PrdRep <$> cases'
      | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCases CnsRep $ fromImplicitCase CnsRep <$> cases'
@@ -145,7 +146,7 @@ resolveCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , ic
   cmd' <- resolveCommand icase_term
   pure RST.MkCmdCase { cmdcase_loc = icase_loc
                      , cmdcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
-                     , cmdcase_cmd = RST.commandClosing icase_args cmd'
+                     , cmdcase_cmd = LN.close icase_args cmd'
                      }
 
 resolveTermCaseI :: PrdCnsRep pc -> IntermediateCaseI pc -> ResolverM (RST.TermCaseI pc)
@@ -153,7 +154,7 @@ resolveTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args 
   tm' <- resolveTerm rep icasei_term
   pure RST.MkTermCaseI { tmcasei_loc = icasei_loc
                        , tmcasei_pat = RST.XtorPatI icasei_loc icasei_name (second Just <$> args1, (), second Just <$> args2)
-                       , tmcasei_term = RST.termClosing (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
+                       , tmcasei_term = LN.close (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
                        }
 
 resolveTermCase :: PrdCnsRep pc -> IntermediateCase -> ResolverM (RST.TermCase pc)
@@ -161,7 +162,7 @@ resolveTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icas
   tm' <- resolveTerm rep icase_term
   pure RST.MkTermCase { tmcase_loc  = icase_loc
                       , tmcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
-                      , tmcase_term = RST.termClosing icase_args tm'
+                      , tmcase_term = LN.close icase_args tm'
                       }
 
 resolveInstanceCase :: IntermediateCase -> ResolverM RST.InstanceCase
@@ -169,43 +170,43 @@ resolveInstanceCase MkIntermediateCase { icase_loc , icase_name , icase_args , i
   cmd' <- resolveCommand icase_term
   pure RST.MkInstanceCase { instancecase_loc = icase_loc
                           , instancecase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
-                          , instancecase_cmd = RST.commandClosing icase_args cmd'
+                          , instancecase_cmd = LN.close icase_args cmd'
                           }
 
 
 resolveInstanceCases :: [CST.TermCase] -> ResolverM [RST.InstanceCase]
 resolveInstanceCases cases = do
-  intermediateCases <- sequence $ analyzeInstanceCase <$> cases
-  sequence $ resolveInstanceCase . fromExplicitCase <$> intermediateCases
+  intermediateCases <- mapM analyzeInstanceCase cases
+  mapM (resolveInstanceCase . fromExplicitCase) intermediateCases
 
 
 ---------------------------------------------------------------------------------
 -- Resolving PrimCommands
 ---------------------------------------------------------------------------------
 
-resolvePrimCommand :: Loc -> PrimName -> [CST.Term] -> ResolverM RST.Command
+resolvePrimCommand :: Loc -> PrimName -> CST.Substitution -> ResolverM RST.Command
 -- 0 arguments
-resolvePrimCommand loc nm [] =
+resolvePrimCommand loc nm (CST.MkSubstitution []) =
   if | nm == exitSuccessName -> pure $ RST.ExitSuccess loc
      | nm == exitFailureName -> pure $ RST.ExitFailure loc
      | otherwise             -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 0) :| []
 -- 1 argument
-resolvePrimCommand loc nm [tm] | nm == readName =
+resolvePrimCommand loc nm (CST.MkSubstitution [tm]) | nm == readName =
   if | nm == readName -> do
                tm' <- resolveTerm CnsRep tm
                pure $ RST.Read loc tm'
      | otherwise      -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 1) :| []
 -- 2 arguments
-resolvePrimCommand loc nm [tm, cmd] | nm == printName = do
+resolvePrimCommand loc nm (CST.MkSubstitution [tm, cmd]) | nm == printName = do
   tm' <- resolveTerm PrdRep tm
   cmd' <- resolveCommand cmd
   pure $ RST.Print loc tm' cmd'
 --3 arguments
-resolvePrimCommand loc nm [tm1,tm2,tm3] = do
+resolvePrimCommand loc nm (CST.MkSubstitution [tm1,tm2,tm3]) = do
   tm1' <- resolveTerm PrdRep tm1
   tm2' <- resolveTerm PrdRep tm2
   tm3' <- resolveTerm CnsRep tm3
-  let args = [RST.PrdTerm tm1', RST.PrdTerm tm2', RST.CnsTerm tm3']
+  let args = RST.MkSubstitution [RST.PrdTerm tm1', RST.PrdTerm tm2', RST.CnsTerm tm3']
   if | nm == i64AddName -> pure (RST.PrimOp loc RST.I64Add args)
      | nm == i64SubName -> pure (RST.PrimOp loc RST.I64Sub args)
      | nm == i64MulName -> pure (RST.PrimOp loc RST.I64Mul args)
@@ -219,7 +220,7 @@ resolvePrimCommand loc nm [tm1,tm2,tm3] = do
      | nm == stringAppendName -> pure (RST.PrimOp loc RST.StringAppend args)
      | otherwise -> throwError $ ErrResolution (PrimOpArityMismatch loc nm 3) :| []
 -- More arguments
-resolvePrimCommand loc nm args = throwError $ ErrResolution (PrimOpArityMismatch loc nm (length args)) :| []
+resolvePrimCommand loc nm args = throwError $ ErrResolution (PrimOpArityMismatch loc nm (length $ CST.unSubstitution args)) :| []
 
 ---------------------------------------------------------------------------------
 -- Resolving Commands
@@ -245,10 +246,10 @@ resolveCommand (CST.CaseOf loc tm cases) = do
   intermediateCases <- analyzeCases CST.Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cmdCases <- sequence $ resolveCommandCase <$> explicitCases
+      cmdCases <- mapM resolveCommandCase explicitCases
       pure $ RST.CaseOfCmd loc ns tm' cmdCases
     ImplicitCases rep implicitCases -> do
-      termCasesI <- sequence $ resolveTermCaseI rep <$> implicitCases
+      termCasesI <- mapM (resolveTermCaseI rep) implicitCases
       pure $ RST.CaseOfI loc rep ns tm' termCasesI
 resolveCommand (CST.CocaseOf loc tm cases) = do
   tm' <- resolveTerm CnsRep tm
@@ -256,10 +257,10 @@ resolveCommand (CST.CocaseOf loc tm cases) = do
   intermediateCases <- analyzeCases CST.Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cmdCases <- sequence $ resolveCommandCase <$> explicitCases
+      cmdCases <- mapM resolveCommandCase explicitCases
       pure $ RST.CocaseOfCmd loc ns tm' cmdCases
     ImplicitCases rep implicitCases -> do
-      termCasesI <- sequence $ resolveTermCaseI rep <$> implicitCases
+      termCasesI <- mapM (resolveTermCaseI rep) implicitCases
       pure $ RST.CocaseOfI loc rep ns tm' termCasesI
 resolveCommand (CST.Xtor loc xtor arity) = do
   (_, res) <- lookupXtor loc xtor
@@ -272,7 +273,7 @@ resolveCommand (CST.Xtor loc xtor arity) = do
           ExplicitSubst es -> return (map snd es)
           ImplicitSubst {} ->  throwOtherError loc ["The substitution in a method call cannot contain implicit arguments"]
       pctms <- resolveTerms loc ar subst'
-      pure $! RST.Method loc mn cn pctms
+      pure $! RST.Method loc mn cn (RST.MkSubstitution pctms)
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------
@@ -315,21 +316,21 @@ casesToNS _ =
 
 -- | Lower a natural number literal.
 resolveNatLit :: Loc -> CST.NominalStructural -> Int -> ResolverM (RST.Term Prd)
-resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep ns (MkXtorName "Z") []
+resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep ns (MkXtorName "Z") (RST.MkSubstitution [])
 resolveNatLit loc ns n = do
   n' <- resolveNatLit loc ns (n-1)
-  pure $ RST.Xtor loc PrdRep ns (MkXtorName "S") [RST.PrdTerm n']
+  pure $ RST.Xtor loc PrdRep ns (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n'])
 
 -- | Lower an application.
 resolveApp :: PrdCnsRep pc -> Loc -> CST.Term -> CST.Term -> ResolverM (RST.Term pc)
 resolveApp PrdRep loc fun arg = do
   fun' <- resolveTerm PrdRep fun
   arg' <- resolveTerm PrdRep arg
-  pure $ RST.Dtor loc PrdRep CST.Nominal (MkXtorName "Ap") fun' ([RST.PrdTerm arg'],PrdRep,[])
+  pure $ RST.Dtor loc PrdRep CST.Nominal (MkXtorName "Ap") fun' (RST.MkSubstitutionI ([RST.PrdTerm arg'],PrdRep,[]))
 resolveApp CnsRep loc fun arg = do
   fun' <- resolveTerm CnsRep fun
   arg' <- resolveTerm CnsRep arg
-  pure $ RST.Semi loc CnsRep CST.Nominal (MkXtorName "CoAp")  ([RST.CnsTerm arg'],CnsRep,[]) fun'
+  pure $ RST.Semi loc CnsRep CST.Nominal (MkXtorName "CoAp")  (RST.MkSubstitutionI ([RST.CnsTerm arg'],CnsRep,[])) fun'
 
 isStarT :: CST.TermOrStar -> Bool
 isStarT CST.ToSStar  = True
@@ -346,30 +347,30 @@ data AnalyzedSubstitution where
   ExplicitSubst :: [(PrdCns, CST.Term)] -> AnalyzedSubstitution
   ImplicitSubst :: [(PrdCns, CST.Term)] -> PrdCns -> [(PrdCns, CST.Term)] -> AnalyzedSubstitution
 
-analyzeSubstitution :: Loc -> Arity -> [CST.TermOrStar] -> ResolverM AnalyzedSubstitution
-analyzeSubstitution loc arity subst = do
+analyzeSubstitution :: Loc -> Arity -> CST.SubstitutionI -> ResolverM AnalyzedSubstitution
+analyzeSubstitution loc arity (CST.MkSubstitutionI subst) = do
   -- Dispatch on the number of stars in the substitution
   case length (filter isStarT subst) of
     0 -> pure $ ExplicitSubst (zip arity (toTm <$> subst))
     1 -> do
       let zipped :: [(PrdCns, CST.TermOrStar)] = zip arity subst
-      case span (not . isStarT . snd) zipped of
+      case break (isStarT . snd) zipped of
         (subst1,(pc,_):subst2) -> pure $ ImplicitSubst (second toTm <$> subst1) pc (second toTm <$> subst2)
         _ -> throwOtherError loc ["Compiler bug in analyzeSubstitution"]
     n -> throwOtherError loc ["At most one star expected. Got " <> T.pack (show n) <> " stars."]
 
-analyzeXtorSubstitution :: Loc -> XtorName -> Arity -> [CST.TermOrStar] -> ResolverM AnalyzedSubstitution
+analyzeXtorSubstitution :: Loc -> XtorName -> Arity -> CST.SubstitutionI -> ResolverM AnalyzedSubstitution
 analyzeXtorSubstitution loc xtor arity subst = do
   -- Check whether the arity corresponds to the length of the substitution
-  when (length arity /= length subst) $
-    throwError $ ErrResolution (XtorArityMismatch loc xtor (length arity) (length subst)) :| []
+  when (length arity /= length (CST.unSubstitutionI subst)) $
+    throwError $ ErrResolution (XtorArityMismatch loc xtor (length arity) (length (CST.unSubstitutionI subst))) :| []
   analyzeSubstitution loc arity subst
 
-analyzeMethodSubstitution :: Loc -> MethodName -> ClassName -> Arity -> [CST.TermOrStar] -> ResolverM AnalyzedSubstitution
+analyzeMethodSubstitution :: Loc -> MethodName -> ClassName -> Arity -> CST.SubstitutionI -> ResolverM AnalyzedSubstitution
 analyzeMethodSubstitution loc mn cn arity subst = do
   -- Check whether the arity corresponds to the length of the substitution
-  when (length arity /= length subst) $
-    throwError $ ErrResolution (MethodArityMismatch loc mn cn (length arity) (length subst)) :| []
+  when (length arity /= length (CST.unSubstitutionI subst)) $
+    throwError $ ErrResolution (MethodArityMismatch loc mn cn (length arity) (length (CST.unSubstitutionI subst))) :| []
   analyzeSubstitution loc arity subst
 
 resolvePrdCnsTerm :: PrdCns -> CST.Term -> ResolverM RST.PrdCnsTerm
@@ -386,10 +387,10 @@ resolveTerm rep (CST.Var loc v) =
 ---------------------------------------------------------------------------------
 resolveTerm PrdRep (CST.MuAbs loc fv cmd) = do
   cmd' <- resolveCommand cmd
-  pure $ RST.MuAbs loc PrdRep (Just fv) (RST.commandClosing [(Cns,fv)] cmd')
+  pure $ RST.MuAbs loc PrdRep (Just fv) (LN.close [(Cns,fv)] cmd')
 resolveTerm CnsRep (CST.MuAbs loc fv cmd) = do
   cmd' <- resolveCommand cmd
-  pure $ RST.MuAbs loc CnsRep (Just fv) (RST.commandClosing [(Prd,fv)] cmd')
+  pure $ RST.MuAbs loc CnsRep (Just fv) (LN.close [(Prd,fv)] cmd')
 ---------------------------------------------------------------------------------
 -- Xtor
 ---------------------------------------------------------------------------------
@@ -397,8 +398,8 @@ resolveTerm PrdRep (CST.Xtor loc xtor subst) = do
   (_, res) <- lookupXtor loc xtor
   case res of
     (XtorNameResult dc ns ar) -> do
-      when (length ar /= length subst) $
-               throwError $ ErrResolution (XtorArityMismatch loc xtor (length ar) (length subst)) :| []
+      when (length ar /= length (CST.unSubstitutionI subst)) $
+               throwError $ ErrResolution (XtorArityMismatch loc xtor (length ar) (length (CST.unSubstitutionI subst))) :| []
       when (dc /= CST.Data) $
                throwOtherError loc ["The given xtor " <> ppPrint xtor <> " is declared as a destructor, not a constructor."]
       analyzedSubst <- analyzeXtorSubstitution loc xtor ar subst
@@ -406,14 +407,14 @@ resolveTerm PrdRep (CST.Xtor loc xtor subst) = do
           ExplicitSubst es -> return (map snd es)
           ImplicitSubst {} ->  throwOtherError loc ["The substitution in a constructor call cannot contain implicit arguments"]
       pctms <- resolveTerms loc ar subst'
-      pure $ RST.Xtor loc PrdRep ns xtor pctms
+      pure $ RST.Xtor loc PrdRep ns xtor (RST.MkSubstitution pctms)
     (MethodNameResult _cn _ar) -> throwOtherError loc ["Xtor expected, but found Method"]
 resolveTerm CnsRep (CST.Xtor loc xtor subst) = do
   (_, res) <- lookupXtor loc xtor
   case res of
     (XtorNameResult dc ns ar) -> do
-      when (length ar /= length subst) $
-               throwError $ ErrResolution (XtorArityMismatch loc xtor (length ar) (length subst)) :| []
+      when (length ar /= length (CST.unSubstitutionI subst)) $
+               throwError $ ErrResolution (XtorArityMismatch loc xtor (length ar) (length (CST.unSubstitutionI subst))) :| []
       when (dc /= CST.Codata) $
                throwOtherError loc ["The given xtor " <> ppPrint xtor <> " is declared as a constructor, not a destructor."]
       analyzedSubst <- analyzeXtorSubstitution loc xtor ar subst
@@ -421,7 +422,7 @@ resolveTerm CnsRep (CST.Xtor loc xtor subst) = do
           ExplicitSubst es -> return (map snd es)
           ImplicitSubst {} ->  throwOtherError loc ["The substitution in a constructor call cannot contain implicit arguments"]
       pctms <- resolveTerms loc ar subst'
-      pure $ RST.Xtor loc CnsRep ns xtor pctms
+      pure $ RST.Xtor loc CnsRep ns xtor (RST.MkSubstitution pctms)
     (MethodNameResult _cn _ar) -> throwOtherError loc ["Xtor expected, but found Method"]
 ---------------------------------------------------------------------------------
 -- Semi / Dtor
@@ -442,13 +443,13 @@ resolveTerm rep (CST.Semi loc xtor subst tm) = do
         CnsRep -> do
           subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
           subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
-          pure $ RST.Semi loc CnsRep ns xtor (subst1', CnsRep, subst2') tm'
+          pure $ RST.Semi loc CnsRep ns xtor (RST.MkSubstitutionI (subst1', CnsRep, subst2')) tm'
     ImplicitSubst subst1 Cns subst2 -> do
       case rep of
         PrdRep -> do
           subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
           subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
-          pure $ RST.Semi loc PrdRep ns xtor (subst1', PrdRep, subst2') tm'
+          pure $ RST.Semi loc PrdRep ns xtor (RST.MkSubstitutionI (subst1', PrdRep, subst2')) tm'
         CnsRep ->
           throwOtherError loc ["Tried to resolve Semi to a producer, but implicit argument stands for a producer"]
 resolveTerm rep (CST.Dtor loc xtor tm subst) = do
@@ -467,13 +468,13 @@ resolveTerm rep (CST.Dtor loc xtor tm subst) = do
         CnsRep -> do
           subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
           subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
-          pure $ RST.Dtor loc CnsRep ns xtor tm' (subst1', CnsRep, subst2')
+          pure $ RST.Dtor loc CnsRep ns xtor tm' (RST.MkSubstitutionI (subst1', CnsRep, subst2'))
     ImplicitSubst subst1 Cns subst2 -> do
       case rep of
         PrdRep -> do
           subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
           subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
-          pure $ RST.Dtor loc PrdRep ns xtor tm' (subst1', PrdRep, subst2')
+          pure $ RST.Dtor loc PrdRep ns xtor tm' (RST.MkSubstitutionI (subst1', PrdRep, subst2'))
         CnsRep -> do
           throwOtherError loc ["Tried to resolve Dtor to a consumer, but implicit argument stands for consumer"]
 ---------------------------------------------------------------------------------
@@ -488,20 +489,20 @@ resolveTerm PrdRep (CST.Cocase loc cases)  = do
   intermediateCases <- analyzeCases CST.Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cases' <- sequence $ resolveCommandCase <$> explicitCases
+      cases' <- mapM resolveCommandCase explicitCases
       pure $ RST.XCase loc PrdRep ns cases'
     ImplicitCases rep implicitCases -> do
-      cases' <- sequence $ resolveTermCaseI rep <$> implicitCases
+      cases' <- mapM (resolveTermCaseI rep) implicitCases
       pure $ RST.CocaseI loc rep ns cases'
 resolveTerm CnsRep (CST.Case loc cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases CST.Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cases' <- sequence $ resolveCommandCase <$> explicitCases
+      cases' <- mapM resolveCommandCase explicitCases
       pure $ RST.XCase loc CnsRep ns cases'
     ImplicitCases rep implicitCases -> do
-      cases' <- sequence $ resolveTermCaseI rep <$> implicitCases
+      cases' <- mapM (resolveTermCaseI rep) implicitCases
       pure $ RST.CaseI loc rep ns cases'
 ---------------------------------------------------------------------------------
 -- CaseOf / CocaseOf
@@ -511,7 +512,7 @@ resolveTerm PrdRep (CST.CaseOf loc t cases)  = do
   intermediateCases <- analyzeCases CST.Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cases' <- sequence (resolveTermCase PrdRep <$> explicitCases)
+      cases' <- mapM (resolveTermCase PrdRep) explicitCases
       t' <- resolveTerm PrdRep t
       pure $ RST.CaseOf loc PrdRep ns t' cases'
     ImplicitCases _rep _implicitCases ->
@@ -521,7 +522,7 @@ resolveTerm PrdRep (CST.CocaseOf loc t cases)  = do
   intermediateCases <- analyzeCases CST.Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cases' <- sequence (resolveTermCase PrdRep <$> explicitCases)
+      cases' <- mapM (resolveTermCase PrdRep) explicitCases
       t' <- resolveTerm CnsRep t
       pure $ RST.CocaseOf loc PrdRep ns t' cases'
     ImplicitCases _rep _implicitCases ->
@@ -531,7 +532,7 @@ resolveTerm CnsRep (CST.CaseOf loc t cases) = do
   intermediateCases <- analyzeCases CST.Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cases' <- sequence (resolveTermCase CnsRep <$> explicitCases)
+      cases' <- mapM (resolveTermCase CnsRep) explicitCases
       t' <- resolveTerm PrdRep t
       pure $ RST.CaseOf loc CnsRep ns t' cases'
     ImplicitCases _rep _implicitCases ->
@@ -541,7 +542,7 @@ resolveTerm CnsRep (CST.CocaseOf loc t cases) = do
   intermediateCases <- analyzeCases CST.Codata cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
-      cases' <- sequence (resolveTermCase CnsRep <$> explicitCases)
+      cases' <- mapM (resolveTermCase CnsRep) explicitCases
       t' <- resolveTerm CnsRep t
       pure $ RST.CocaseOf loc CnsRep ns t' cases'
     ImplicitCases _rep _implicitCases ->
@@ -575,12 +576,12 @@ resolveTerm CnsRep (CST.NatLit loc _ns _i) =
 resolveTerm PrdRep (CST.Lambda loc fv tm) =
   do
     tm' <- resolveTerm PrdRep tm
-    let tm'' = RST.termClosing [(Prd,fv)] tm'
+    let tm'' = LN.close [(Prd,fv)] tm'
     return $ RST.Lambda loc PrdRep fv tm''
 resolveTerm CnsRep (CST.CoLambda loc fv tm) =
   do
     tm' <- resolveTerm CnsRep tm
-    let tm'' = RST.termClosing [(Cns,fv)] tm'
+    let tm'' = LN.close [(Cns,fv)] tm'
     return $ RST.Lambda loc CnsRep fv tm''
 resolveTerm rep (CST.FunApp loc fun arg) =
   resolveApp rep loc fun arg

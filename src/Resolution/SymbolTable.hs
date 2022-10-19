@@ -128,11 +128,11 @@ checkFreshTyOpName loc op st =
 createSymbolTable :: MonadError (NonEmpty Error) m
                   => Module
                   -> m SymbolTable
-createSymbolTable MkModule { mod_name, mod_fp, mod_decls } = createSymbolTableAcc mod_decls emptySymbolTable
+createSymbolTable MkModule { mod_name, mod_libpath, mod_decls } = createSymbolTableAcc mod_decls emptySymbolTable
   where
     createSymbolTableAcc [] acc = pure acc
     createSymbolTableAcc (x:xs) acc = do
-      acc' <- createSymbolTable' mod_fp mod_name x acc
+      acc' <- createSymbolTable' mod_libpath mod_name x acc
       createSymbolTableAcc xs acc'
 
 createSymbolTable' :: MonadError (NonEmpty Error) m

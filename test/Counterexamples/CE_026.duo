@@ -1,0 +1,12 @@
+module CE_026;
+
+-- We can only use a definition with the annotated type, not the inferred type.
+
+destructor Ap : CBN;
+constructor True : CBV;
+constructor False : CBV;
+constructor Bar : CBV;
+
+def prd id : { Ap(<True , False >, return <True , False>) } := cocase { Ap(x,*) => x };
+
+def prd useId : < Bar > := id.Ap(Bar,*);

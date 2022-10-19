@@ -1,3 +1,5 @@
+module Codata.NegationN;
+
 -- negative negation
 
 codata Notn: (-a : CBV) -> CBV {

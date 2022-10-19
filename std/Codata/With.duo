@@ -1,4 +1,6 @@
-import Function;
+module Codata.With;
+
+import Codata.Function;
 
 -- | Conjunction defined as a codata type.
 codata With : (+a : CBV, +b : CBV) -> CBV {

@@ -1,0 +1,5 @@
+module CE_005;
+
+constructor A : CBV;
+constructor B : CBV;
+def cmd test := A >> B;

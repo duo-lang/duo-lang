@@ -1,9 +1,0 @@
-import Function;
-import Bool;
-import Peano;
-
--- Subsumptions which shouldn't hold
-
-def rec prd ex20    : { Ap(rec a. < Z, S( <S(a)> ) >, return (rec a.  <Z, S(< S(a) >)>) ) } := ex20;
-def rec prd ex20sub : { Ap(rec a.  <Z, S(a)>, return (rec a. < Z, S(a) >) ) }               := ex20;
-

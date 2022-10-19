@@ -2,18 +2,15 @@ module Syntax.TST.Terms
   ( -- Terms
     Term(..)
   , PrdCnsTerm(..)
-  , Substitution
+  , Substitution(..)
   , RST.Pattern(..)
   , CmdCase(..)
   , InstanceCase(..)
   , Command(..)
   -- Functions
-  , commandClosing
   , ShiftDirection(..)
-  , shiftCmd
   , getTypeTerm
   , getTypArgs
-  , commandOpening
   , termLocallyClosed
   , instanceCaseLocallyClosed
   ) where
@@ -36,6 +33,8 @@ import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.TST.Types
 import Data.Bifunctor (Bifunctor(second))
+import Syntax.LocallyNameless (LocallyNameless (..), ShiftDirection(..), Shiftable (..))
+import Syntax.NMap (NMap (..), (<¢>))
 
 ---------------------------------------------------------------------------------
 -- Variable representation
@@ -62,7 +61,12 @@ instance Zonk PrdCnsTerm where
   zonk vt bisubst (PrdTerm tm) = PrdTerm (zonk vt bisubst tm)
   zonk vt bisubst (CnsTerm tm) = CnsTerm (zonk vt bisubst tm)
 
-type Substitution = [PrdCnsTerm]
+newtype Substitution = MkSubstitution { unSubstitution :: [PrdCnsTerm] }
+  deriving (Show)
+
+instance NMap Substitution PrdCnsTerm where
+  nmap f = MkSubstitution . fmap f . unSubstitution
+  nmapM f = fmap MkSubstitution . mapM f . unSubstitution
 
 
 -- | Represents one case in a pattern match or copattern match.
@@ -143,7 +147,7 @@ instance Zonk (Term pc) where
   zonk vt bisubst (FreeVar loc rep ty nm)  =
     FreeVar loc rep (zonk vt bisubst ty) nm
   zonk vt bisubst (Xtor loc annot rep ty ns xt subst) =
-    Xtor loc annot rep (zonk vt bisubst ty) ns xt (zonk vt bisubst <$> subst)
+    Xtor loc annot rep (zonk vt bisubst ty) ns xt (zonk vt bisubst <¢> subst)
   zonk vt bisubst (XCase loc annot rep ty ns cases) =
     XCase loc annot rep (zonk vt bisubst ty) ns (zonk vt bisubst <$> cases)
   zonk vt bisubst (MuAbs loc annot rep ty fv cmd) =
@@ -168,7 +172,7 @@ getTypeTerm (PrimLitChar _ _) = TyChar defaultLoc PosRep
 getTypeTerm (PrimLitString _ _) = TyString defaultLoc PosRep
 
 getTypArgs :: Substitution -> LinearContext Pos
-getTypArgs subst = getTypArgs'' <$> subst
+getTypArgs subst = getTypArgs'' <$> unSubstitution subst
    where
      getTypArgs'' (PrdTerm tm) = PrdCnsType PrdRep $ getTypeTerm tm
      getTypArgs'' (CnsTerm tm) = PrdCnsType CnsRep $ getTypeTerm tm
@@ -204,13 +208,13 @@ instance Zonk Command where
   zonk _vt _ (Jump ext fv) =
     Jump ext fv
   zonk vt bisubst (Method ext mn cn subst) =
-    Method ext mn cn (zonk vt bisubst <$> subst)
+    Method ext mn cn (zonk vt bisubst <¢> subst)
   zonk _vt _ (ExitSuccess ext) =
     ExitSuccess ext
   zonk _vt _ (ExitFailure ext) =
     ExitFailure ext
   zonk vt bisubst (PrimOp ext op subst) =
-    PrimOp ext op (zonk vt bisubst <$> subst)
+    PrimOp ext op (zonk vt bisubst <¢> subst)
 
 ---------------------------------------------------------------------------------
 -- Variable Opening
@@ -223,14 +227,14 @@ pctermOpeningRec k subst (CnsTerm tm) = CnsTerm $ termOpeningRec k subst tm
 
 termOpeningRec :: Int -> Substitution -> Term pc -> Term pc
 -- Core constructs
-termOpeningRec k subst bv@(BoundVar _ pcrep _ (i,j)) | i == k    = case (pcrep, subst !! j) of
+termOpeningRec k subst bv@(BoundVar _ pcrep _ (i,j)) | i == k    = case (pcrep, unSubstitution subst !! j) of
                                                                       (PrdRep, PrdTerm tm) -> tm
                                                                       (CnsRep, CnsTerm tm) -> tm
                                                                       _                    -> error "termOpeningRec BOOM"
                                                    | otherwise = bv
 termOpeningRec _ _ fv@FreeVar {} = fv
 termOpeningRec k args (Xtor loc annot rep ty ns xt subst) =
-  Xtor loc annot rep ty ns xt (pctermOpeningRec k args <$> subst)
+  Xtor loc annot rep ty ns xt (pctermOpeningRec k args <¢> subst)
 termOpeningRec k args (XCase loc annot rep ty ns cases) =
   XCase loc annot rep ty ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
 termOpeningRec k args (MuAbs loc annot rep ty fv cmd) =
@@ -253,14 +257,11 @@ commandOpeningRec k args (Read loc cns) =
 commandOpeningRec _ _ (Jump loc fv) =
   Jump loc fv
 commandOpeningRec k args (Method loc mn cn subst) =
-  Method loc mn cn (pctermOpeningRec k args <$> subst)
+  Method loc mn cn (pctermOpeningRec k args <¢> subst)
 commandOpeningRec k args (Apply loc annot kind t1 t2) =
   Apply loc annot kind (termOpeningRec k args t1) (termOpeningRec k args t2)
 commandOpeningRec k args (PrimOp loc op subst) =
-  PrimOp loc op (pctermOpeningRec k args <$> subst)
-
-commandOpening :: Substitution -> Command -> Command
-commandOpening = commandOpeningRec 0
+  PrimOp loc op (pctermOpeningRec k args <¢> subst)
 
 ---------------------------------------------------------------------------------
 -- Variable Closing
@@ -278,7 +279,7 @@ termClosingRec k vars (FreeVar loc PrdRep ty v) | isJust ((Prd,v) `elemIndex` va
 termClosingRec k vars (FreeVar loc CnsRep ty v) | isJust ((Cns,v) `elemIndex` vars) = BoundVar loc CnsRep ty (k, fromJust ((Cns,v) `elemIndex` vars))
                                                    | otherwise = FreeVar loc CnsRep ty v
 termClosingRec k vars (Xtor loc ty pc annot ns xt subst) =
-  Xtor loc ty pc annot ns xt (pctermClosingRec k vars <$> subst)
+  Xtor loc ty pc annot ns xt (pctermClosingRec k vars <¢> subst)
 termClosingRec k vars (XCase loc annot pc ty sn cases) =
   XCase loc annot pc ty sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
 termClosingRec k vars (MuAbs loc annot pc ty fv cmd) =
@@ -302,14 +303,23 @@ commandClosingRec k args (Print ext t cmd) =
 commandClosingRec k args (Read ext cns) =
   Read ext (termClosingRec k args cns)
 commandClosingRec k args (Method ext mn cn subst) =
-  Method ext mn cn (pctermClosingRec k args <$> subst)
+  Method ext mn cn (pctermClosingRec k args <¢> subst)
 commandClosingRec k args (Apply ext annot kind t1 t2) =
   Apply ext annot kind (termClosingRec k args t1) (termClosingRec k args t2)
 commandClosingRec k args (PrimOp ext op subst) =
-  PrimOp ext op (pctermClosingRec k args <$> subst)
+  PrimOp ext op (pctermClosingRec k args <¢> subst)
 
-commandClosing :: [(PrdCns, FreeVarName)] -> Command -> Command
-commandClosing = commandClosingRec 0
+instance LocallyNameless Substitution [(PrdCns, FreeVarName)] Command where
+  openRec  = commandOpeningRec
+  closeRec = commandClosingRec
+
+instance LocallyNameless Substitution [(PrdCns, FreeVarName)] (Term pc) where
+  openRec  = termOpeningRec
+  closeRec = termClosingRec
+
+instance LocallyNameless Substitution [(PrdCns, FreeVarName)] PrdCnsTerm where
+  openRec  = pctermOpeningRec
+  closeRec = pctermClosingRec
 
 ---------------------------------------------------------------------------------
 -- Check for locally closedness
@@ -342,7 +352,7 @@ termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either Error ()
 termLocallyClosedRec env (BoundVar _ pc _ idx) = checkIfBound env pc idx
 termLocallyClosedRec _ FreeVar {} = Right ()
 termLocallyClosedRec env (Xtor _ _  _ _ _ _ subst) = do
-  sequence_ (pctermLocallyClosedRec env <$> subst)
+  sequence_ (pctermLocallyClosedRec env <$> unSubstitution subst)
 termLocallyClosedRec env (XCase _ _ _ _ _ cases) = do
   sequence_ (cmdCaseLocallyClosedRec env <$> cases)
 termLocallyClosedRec env (MuAbs _ _ PrdRep _ _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
@@ -365,8 +375,8 @@ commandLocallyClosedRec _ (Jump _ _) = Right ()
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
-commandLocallyClosedRec env (Method _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
-commandLocallyClosedRec env (PrimOp _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst
+commandLocallyClosedRec env (Method _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> unSubstitution subst
+commandLocallyClosedRec env (PrimOp _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> unSubstitution subst
 
 termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
@@ -381,58 +391,54 @@ instanceCaseLocallyClosed (MkInstanceCase _ (RST.XtorPat _ _ args) cmd) =
 -- Used in program transformations like focusing.
 ---------------------------------------------------------------------------------
 
-data ShiftDirection = ShiftUp | ShiftDown
-  deriving (Show, Eq)
+instance Shiftable PrdCnsTerm where
+  shiftRec :: ShiftDirection -> Int -> PrdCnsTerm -> PrdCnsTerm
+  shiftRec dir n (PrdTerm tm) = PrdTerm $ shiftRec dir n tm
+  shiftRec dir n (CnsTerm tm) = CnsTerm $ shiftRec dir n tm
 
-shiftPCTermRec :: ShiftDirection -> Int -> PrdCnsTerm -> PrdCnsTerm
-shiftPCTermRec dir n (PrdTerm tm) = PrdTerm $ shiftTermRec dir n tm
-shiftPCTermRec dir n (CnsTerm tm) = CnsTerm $ shiftTermRec dir n tm
+instance Shiftable (Term pc) where
+  shiftRec :: ShiftDirection -> Int -> Term pc -> Term pc
+  -- Core constructs
+  shiftRec _ _ var@FreeVar {} = var
+  shiftRec ShiftUp n (BoundVar loc pcrep ty (i,j)) | n <= i    = BoundVar loc pcrep ty (i + 1, j)
+                                                   | otherwise = BoundVar loc pcrep ty (i    , j)
+  shiftRec ShiftDown n (BoundVar loc pcrep ty (i,j)) | n <= i    = BoundVar loc pcrep ty (i - 1, j)
+                                                     | otherwise = BoundVar loc pcrep ty (i    , j)
+  shiftRec dir n (Xtor loc annot pcrep ty ns xt subst) =
+    Xtor loc annot pcrep ty ns xt (shiftRec dir n <¢> subst)
+  shiftRec dir n (XCase loc annot pcrep ty ns cases) =
+    XCase loc annot pcrep ty ns (shiftRec dir (n + 1) <$> cases)
+  shiftRec dir n (MuAbs loc annot pcrep ty bs cmd) =
+    MuAbs loc annot pcrep ty bs (shiftRec dir (n + 1) cmd)
+  -- Primitive constructs
+  shiftRec _ _ lit@PrimLitI64{} = lit
+  shiftRec _ _ lit@PrimLitF64{} = lit
+  shiftRec _ _ lit@PrimLitChar{} = lit
+  shiftRec _ _ lit@PrimLitString{} = lit
 
-shiftTermRec :: ShiftDirection -> Int -> Term pc -> Term pc
--- Core constructs
-shiftTermRec _ _ var@FreeVar {} = var
-shiftTermRec ShiftUp n (BoundVar loc pcrep ty (i,j)) | n <= i    = BoundVar loc pcrep ty (i + 1, j)
-                                                        | otherwise = BoundVar loc pcrep ty (i    , j)
-shiftTermRec ShiftDown n (BoundVar loc pcrep ty (i,j)) | n <= i    = BoundVar loc pcrep ty (i - 1, j)
-                                                          | otherwise = BoundVar loc pcrep ty (i    , j)
-shiftTermRec dir n (Xtor loc annot pcrep ty ns xt subst) =
-    Xtor loc annot pcrep ty ns xt (shiftPCTermRec dir n <$> subst)
-shiftTermRec dir n (XCase loc annot pcrep ty ns cases) =
-  XCase loc annot pcrep ty ns (shiftCmdCaseRec dir (n + 1) <$> cases)
-shiftTermRec dir n (MuAbs loc annot pcrep ty bs cmd) =
-  MuAbs loc annot pcrep ty bs (shiftCmdRec dir (n + 1) cmd)
--- Primitive constructs
-shiftTermRec _ _ lit@PrimLitI64{} = lit
-shiftTermRec _ _ lit@PrimLitF64{} = lit
-shiftTermRec _ _ lit@PrimLitChar{} = lit
-shiftTermRec _ _ lit@PrimLitString{} = lit
+instance Shiftable CmdCase where
+  shiftRec :: ShiftDirection -> Int -> CmdCase -> CmdCase
+  shiftRec dir n MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
+    MkCmdCase { cmdcase_loc = cmdcase_loc
+              , cmdcase_pat = cmdcase_pat
+              , cmdcase_cmd = shiftRec dir n cmdcase_cmd
+              }
 
-shiftCmdCaseRec :: ShiftDirection -> Int -> CmdCase -> CmdCase
-shiftCmdCaseRec dir n MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
-  MkCmdCase { cmdcase_loc = cmdcase_loc
-            , cmdcase_pat = cmdcase_pat
-            , cmdcase_cmd = shiftCmdRec dir n cmdcase_cmd
-            }
-
-shiftCmdRec :: ShiftDirection -> Int -> Command -> Command
-shiftCmdRec dir n (Apply ext annot kind prd cns) =
-  Apply ext annot kind (shiftTermRec dir n prd) (shiftTermRec dir n cns)
-shiftCmdRec _ _ (ExitSuccess ext) =
-  ExitSuccess ext
-shiftCmdRec _ _ (ExitFailure ext) =
-  ExitFailure ext
-shiftCmdRec dir n (Print ext prd cmd) =
-  Print ext (shiftTermRec dir n prd) (shiftCmdRec dir n cmd)
-shiftCmdRec dir n (Read ext cns) =
-  Read ext (shiftTermRec dir n cns)
-shiftCmdRec _ _ (Jump ext fv) =
-  Jump ext fv
-shiftCmdRec dir n (Method ext mn cn subst) =
-  Method ext mn cn (shiftPCTermRec dir n <$> subst)
-shiftCmdRec dir n (PrimOp ext op subst) =
-  PrimOp ext op (shiftPCTermRec dir n <$> subst)
-
--- | Shift all unbound BoundVars up by one.
-shiftCmd :: ShiftDirection -> Command -> Command
-shiftCmd dir = shiftCmdRec dir 0
-
+instance Shiftable Command where
+  shiftRec :: ShiftDirection -> Int -> Command -> Command
+  shiftRec dir n (Apply ext annot kind prd cns) =
+    Apply ext annot kind (shiftRec dir n prd) (shiftRec dir n cns)
+  shiftRec _ _ (ExitSuccess ext) =
+    ExitSuccess ext
+  shiftRec _ _ (ExitFailure ext) =
+    ExitFailure ext
+  shiftRec dir n (Print ext prd cmd) =
+    Print ext (shiftRec dir n prd) (shiftRec dir n cmd)
+  shiftRec dir n (Read ext cns) =
+    Read ext (shiftRec dir n cns)
+  shiftRec _ _ (Jump ext fv) =
+    Jump ext fv
+  shiftRec dir n (Method ext mn cn subst) =
+    Method ext mn cn (shiftRec dir n <¢> subst)
+  shiftRec dir n (PrimOp ext op subst) =
+    PrimOp ext op (shiftRec dir n <¢> subst)

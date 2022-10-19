@@ -6,6 +6,7 @@ import Prettyprinter
 import Prettyprinter.Render.String (renderString)
 import Prettyprinter.Render.Text (renderStrict)
 import System.Console.ANSI
+import Control.Monad.Writer (MonadWriter (..))
 
 ---------------------------------------------------------------------------------
 -- Annotations
@@ -103,6 +104,9 @@ annotationToOpts AnnXtorName   = [SetColor Foreground Dull Magenta]
 annotationToOpts AnnMethodName = [SetColor Foreground Dull Magenta]
 annotationToOpts AnnClassName  = [SetColor Foreground Dull Yellow]
 annotationToOpts AnnLiteral    = [SetColor Foreground Dull Cyan]
+
+ppPrintWriter :: (MonadWriter [String] m, PrettyAnn a) => a -> m ()
+ppPrintWriter doc = tell [ppPrintString doc]
 
 ppPrintIO :: PrettyAnn a => a -> IO ()
 ppPrintIO doc =

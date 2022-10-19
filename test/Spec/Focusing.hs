@@ -2,41 +2,45 @@ module Spec.Focusing (spec) where
 
 import Control.Monad
 import Data.List.NonEmpty ( NonEmpty )
-import Test.Hspec
+import Test.Hspec hiding (focus)
 import Pretty.Pretty
 import Pretty.Program ()
+import Utils (moduleNameToFullPath)
 
 import Driver.Definition
 import Driver.Driver (inferProgramIO)
-import Translate.Embed
+import Sugar.Desugar (Desugar(..))
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
 import Translate.Focusing
-import Translate.Reparse
+import Resolution.Unresolve
+import Translate.EmbedTST (EmbedTST(..))
 import Errors
+import Syntax.CST.Names (ModuleName)
 
 type Reason = String
 
-pendingFiles :: [(FilePath, Reason)]
+pendingFiles :: [(ModuleName, Reason)]
 pendingFiles = []
 
-testHelper :: (FilePath, Either (NonEmpty Error) TST.Module) -> EvaluationOrder -> SpecWith ()
-testHelper (example,decls) cbx = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") $ 
-  case example `lookup` pendingFiles of
-    Just reason -> it "" $ pendingWith $ "Could not focus file " ++ example ++ "\nReason: " ++ reason
+testHelper :: ((FilePath, ModuleName), Either (NonEmpty Error) TST.Module) -> EvaluationOrder -> SpecWith ()
+testHelper ((example, mn),decls) cbx = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") $ 
+  let fullName = moduleNameToFullPath mn example in
+  case mn `lookup` pendingFiles of
+    Just reason -> it "" $ pendingWith $ "Could not focus file " ++ fullName ++ "\nReason: " ++ reason
     Nothing     -> 
       case decls of
         Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
         Right decls -> do
-          let focusedDecls :: CST.Module = reparseModule $ embedCoreModule $ embedTSTModule $ focusModule cbx decls
+          let focusedDecls :: CST.Module = runUnresolveM $ unresolve $ embedCore $ embedTST $ focus cbx decls
           res <- runIO $ inferProgramIO defaultDriverState focusedDecls
           case res of
             (Left err,_) -> do
               let msg = unlines [ "---------------------------------"
                                 , "Prettyprinted declarations:"
                                 , ""
-                                ,  ppPrintString (focusModule cbx decls)
+                                ,  ppPrintString (focus cbx decls)
                                 , ""
                                 , "Show instance of declarations:"
                                 , ""
@@ -48,9 +52,9 @@ testHelper (example,decls) cbx = describe (show cbx ++ " Focusing the program in
                                 , "---------------------------------"
                                 ]
               it "Could not load examples" $ expectationFailure msg
-            (Right _env,_) -> pure ()
+            (Right _env,_) -> it ("Focused " ++ fullName ++ " succesfully") $ () `shouldBe` ()
 
-spec :: [(FilePath,Either (NonEmpty Error) TST.Module)] -> Spec
+spec :: [((FilePath, ModuleName),Either (NonEmpty Error) TST.Module)] -> Spec
 spec examples = do
     describe "Focusing an entire program still typechecks" $ do
       forM_ examples $ \example -> do

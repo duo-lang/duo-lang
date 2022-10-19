@@ -6,8 +6,9 @@ import Data.Set (Set)
 
 import Syntax.CST.Names
 import Syntax.TST.Terms ( Command, Term )
-import Syntax.RST.Program ( ClassDeclaration, DataDecl )
-import Syntax.TST.Types ( TypeScheme, Typ)
+import Syntax.RST.Program ( ClassDeclaration)
+import Syntax.TST.Types ( TypeScheme, Typ )
+import Syntax.TST.Program (DataDecl)
 import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Types( PrdCns(..) )
 import Syntax.CST.Kinds (MonoKind)
@@ -24,7 +25,7 @@ data Environment = MkEnvironment
   , classEnv :: Map ClassName ClassDeclaration
   , instanceEnv :: Map ClassName (Set (Typ Pos, Typ Neg))
   , declEnv :: [(Loc,DataDecl)]
-  , kindEnv :: Map XtorName MonoKind
+  , kindEnv :: Map XtorName (MonoKind, [MonoKind]) -- for each structural constructor a return kind and list of argument kinds
   }
 
 emptyEnvironment :: Environment

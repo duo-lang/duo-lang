@@ -1,5 +1,0 @@
--- Type constructor is applied to too many arguments.
-data Bool { True, False };
-data A : (+a : CBV) -> CBV {};
-
-def rec prd foo : A(Bool, Bool) := foo;

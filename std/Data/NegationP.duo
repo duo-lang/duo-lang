@@ -1,3 +1,5 @@
+module Data.NegationP;
+
 -- positive negation
 -- not sure whether a should be CBV or CBN...
 data Notp : (-a : CBV) -> CBV {

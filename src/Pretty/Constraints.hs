@@ -12,7 +12,7 @@ import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Names
 import TypeInference.Constraints
 import Syntax.CST.Kinds
-import Translate.Embed
+import Translate.EmbedTST (EmbedTST(..))
 
 ---------------------------------------------------------------------------------
 -- Generated Constraints
@@ -31,6 +31,7 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn RecursionConstraint = parens "Recursive"
   prettyAnn (PrimOpArgsConstraint loc)     = parens ("Primitive operation args constraint at" <+> prettyAnn loc)
   prettyAnn (TypeClassConstraint loc) = parens ("Type class constraint at" <+> prettyAnn loc)
+  prettyAnn KindConstraint = parens "Kind Constraint"
   -- Derived Constraints
   prettyAnn UpperBoundConstraint           = parens "UpperBound"
   prettyAnn LowerBoundConstraint           = parens "LowerBound"
@@ -38,6 +39,7 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn IntersectionUnionSubConstraint = parens "Intersection/Union"
   prettyAnn RecTypeSubConstraint           = parens "muTypeUnfold"
   prettyAnn NominalSubConstraint           = parens "NominalSubConstraint"
+
 
 instance PrettyAnn UVarProvenance where
   prettyAnn (RecursiveUVar fv) = parens ("Recursive binding:" <+> prettyAnn fv)
@@ -58,8 +60,8 @@ instance PrettyAnn (Constraint ConstraintInfo) where
   prettyAnn (TypeClassNeg ann cn typ) =
     prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
 
-printUVar :: (UniTVar, UVarProvenance) -> Doc Annotation
-printUVar (tv,prov) = prettyAnn tv <+> prettyAnn prov
+printUVar :: (UniTVar, UVarProvenance,MonoKind) -> Doc Annotation
+printUVar (tv,prov,kv) = prettyAnn tv <> ":" <> prettyAnn kv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
   prettyAnn ConstraintSet { cs_constraints, cs_uvars, cs_kvars } = vsep
@@ -68,6 +70,7 @@ instance PrettyAnn ConstraintSet where
     , "Generated unification variables:"
     , nest 3 (line' <> vsep (printUVar <$> cs_uvars))
     , ""
+    , "Generated Kind Variables: "
     , nest 3 (line' <> vsep (prettyAnn <$> cs_kvars))
     , ""
     , "Generated constraints:"
@@ -94,10 +97,10 @@ printRSTUpperBounds upperbounds =
                 ]
 
 printTSTLowerBounds :: [TST.Typ 'Pos] -> Doc Annotation
-printTSTLowerBounds ls = printRSTLowerBounds (map embedTSTType ls)
+printTSTLowerBounds ls = printRSTLowerBounds (map embedTST ls)
 
 printTSTUpperBounds :: [TST.Typ 'Neg] -> Doc Annotation
-printTSTUpperBounds ls = printRSTUpperBounds (map embedTSTType ls)
+printTSTUpperBounds ls = printRSTUpperBounds (map embedTST ls)
 
 printTypeClassConstraints :: [ClassName] -> Doc Annotation
 printTypeClassConstraints [] = mempty
