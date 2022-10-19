@@ -1,6 +1,0 @@
--- Constructor is applied to too few arguments in match
-constructor A(CBV) : CBV;
-
-def cns foo := case {
-    A => #ExitSuccess
-};

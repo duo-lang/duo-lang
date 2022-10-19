@@ -1,7 +1,0 @@
--- We can only use a definition with the annotated type, not the inferred type.
-
-destructor Ap : CBN;
-constructor Bar : CBV;
-def prd id : { Ap(<True , False >, return <True , False>) } := cocase { Ap(x,k) => x >> k };
-
-def prd useId : < Bar > := mu k.(id >> Ap(Bar,k));

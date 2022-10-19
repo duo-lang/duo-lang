@@ -1,3 +1,5 @@
+module VexingParse;
+
 -- Regression test. See issue #387 and issue #217.
 --
 -- The problem has to do with the expression
@@ -7,7 +9,7 @@
 -- instead of
 --   "add 1 (xs.Length(*))"
 
-import Peano;
+import Data.Peano;
 
 codata List2 : (+a : CBV) -> CBV {
     Nth(Nat, return a),

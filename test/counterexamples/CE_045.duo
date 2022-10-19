@@ -1,4 +1,0 @@
--- The variance of the CoFun declaration is wrong
-codata Fun : (+f : CBV, -e : CBV) -> CBV {
-    Ap(f, return e)
-};

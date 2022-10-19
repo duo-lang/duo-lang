@@ -3,7 +3,6 @@ module LSP.Handler.JumpToDef ( jumpToDefHandler ) where
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe ( fromMaybe )
 import Data.Text qualified as T
 import Language.LSP.Types
     ( Uri(Uri),
@@ -12,51 +11,36 @@ import Language.LSP.Types
       RequestMessage(RequestMessage),
       ResponseError(..),
       TextDocumentIdentifier(TextDocumentIdentifier),
-      toNormalizedUri,
       type (|?)(InL),
-      uriToFilePath,
       DefinitionParams(DefinitionParams),
       Location(..),
       Position,
       ErrorCode(InvalidRequest) )
 import Language.LSP.Server
-    ( getVirtualFile, requestHandler, Handlers )
-import Language.LSP.VFS ( VirtualFile, virtualFileText )
+    (  requestHandler, Handlers, getConfig )
 import System.Log.Logger ( debugM )
 
-import Driver.Definition ( defaultDriverState )
-import Driver.Driver ( inferProgramIO )
-import LSP.Definition ( LSPMonad )
+import LSP.Definition ( LSPMonad, LSPConfig (..), sendInfo )
 import LSP.MegaparsecToLSP ( locToRange, lookupInRangeMap )
-import Parser.Definition ( runFileParser )
-import Parser.Program ( moduleP )
 import Sugar.Desugar (Desugar(..))
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
 import Translate.EmbedTST(EmbedTST(..))
+import Data.IORef (readIORef)
 
 jumpToDefHandler :: Handlers LSPMonad
 jumpToDefHandler = requestHandler STextDocumentDefinition $ \req responder -> do
     let (RequestMessage _ _ _ (DefinitionParams (TextDocumentIdentifier uri) pos _ _)) = req
     liftIO $ debugM "lspserver.JumpToDefHandler" ("Received definition request: " <> show uri <> " at: " <> show pos)
-    mfile <- getVirtualFile (toNormalizedUri uri)
-    let vfile :: VirtualFile = fromMaybe (error "Virtual File not present!") mfile
-    let file = virtualFileText vfile
-    let fp = fromMaybe "fail" (uriToFilePath uri)
-    let decls = runFileParser fp (moduleP fp) file
-    case decls of
-      Left _err -> do
+    MkLSPConfig ref <- getConfig
+    cache <- liftIO $ readIORef ref
+    case M.lookup uri cache of
+      Nothing -> do
+        sendInfo ("Cache not initialized for: " <> T.pack (show uri))
         responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
-      Right decls -> do
-        (res, _warnings) <- liftIO $ inferProgramIO defaultDriverState decls
-        case res of
-          Left _err -> do
-            responder (Left (ResponseError { _code = InvalidRequest, _message = "", _xdata = Nothing}))
-          Right (_,prog) -> do
-            responder (generateJumpToDef pos (embedCore (embedTST prog)))
-
+      Just mod -> responder (generateJumpToDef pos (embedCore (embedTST mod)))
 
 generateJumpToDef :: Position -> RST.Module -> Either ResponseError (Location |? b)
 generateJumpToDef pos prog = do

@@ -10,7 +10,7 @@ import Syntax.CST.Names
       ClassName,
       DocComment,
       FreeVarName,
-      ModuleName,
+      ModuleName (..),
       Precedence,
       SkolemTVar,
       TyOpName,
@@ -18,7 +18,14 @@ import Syntax.CST.Names
       XtorName )
 import Syntax.CST.Kinds
     ( EvaluationOrder, MonoKind, PolyKind, Variance )
-import Loc ( HasLoc(..), Loc )
+import Loc ( HasLoc(..), Loc, defaultLoc )
+import Errors (Error, throwOtherError)
+import qualified Data.List.NonEmpty as NE
+import qualified Data.Text as T
+import Data.List
+import System.FilePath (joinPath, splitDirectories, dropExtension)
+import Pretty.Pretty (ppPrintString)
+import Pretty.Common ()
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declaration
@@ -50,7 +57,7 @@ data PrdCnsDeclaration = MkPrdCnsDeclaration
 deriving instance Show PrdCnsDeclaration
 
 instance HasLoc PrdCnsDeclaration where
-  getLoc decl = pcdecl_loc decl
+  getLoc = pcdecl_loc
 
 ---------------------------------------------------------------------------------
 -- Command Declaration
@@ -71,7 +78,7 @@ data CommandDeclaration = MkCommandDeclaration
 deriving instance Show CommandDeclaration
 
 instance HasLoc CommandDeclaration where
-  getLoc decl = cmddecl_loc decl
+  getLoc = cmddecl_loc
 
 ---------------------------------------------------------------------------------
 -- Structural Xtor Declaration
@@ -80,7 +87,7 @@ instance HasLoc CommandDeclaration where
 -- | A toplevel declaration of a constructor or destructor.
 -- These declarations are needed for structural data and codata types.
 data StructuralXtorDeclaration = MkStructuralXtorDeclaration
-  { 
+  {
     strxtordecl_loc :: Loc
     -- ^ The source code location of the declaration.
   , strxtordecl_doc :: Maybe DocComment
@@ -103,7 +110,7 @@ data StructuralXtorDeclaration = MkStructuralXtorDeclaration
 deriving instance Show StructuralXtorDeclaration
 
 instance HasLoc StructuralXtorDeclaration where
-  getLoc decl = strxtordecl_loc decl
+  getLoc = strxtordecl_loc
 
 ---------------------------------------------------------------------------------
 -- Import Declaration
@@ -122,7 +129,7 @@ data ImportDeclaration = MkImportDeclaration
 deriving instance Show ImportDeclaration
 
 instance HasLoc ImportDeclaration where
-  getLoc decl = imprtdecl_loc decl
+  getLoc = imprtdecl_loc
 
 ---------------------------------------------------------------------------------
 -- Set Declaration
@@ -141,7 +148,7 @@ data SetDeclaration = MkSetDeclaration
 deriving instance Show SetDeclaration
 
 instance HasLoc SetDeclaration where
-  getLoc decl = setdecl_loc decl
+  getLoc = setdecl_loc
 
 ---------------------------------------------------------------------------------
 -- Type Operator Declaration
@@ -166,7 +173,7 @@ data TyOpDeclaration = MkTyOpDeclaration
 deriving instance Show TyOpDeclaration
 
 instance HasLoc TyOpDeclaration where
-  getLoc decl = tyopdecl_loc decl
+  getLoc = tyopdecl_loc
 
 ---------------------------------------------------------------------------------
 -- Type Synonym Declaration
@@ -187,7 +194,7 @@ data TySynDeclaration = MkTySynDeclaration
 deriving instance Show TySynDeclaration
 
 instance HasLoc TySynDeclaration where
-  getLoc decl = tysyndecl_loc decl
+  getLoc = tysyndecl_loc
 
 ------------------------------------------------------------------------------
 -- Instance Declaration
@@ -209,7 +216,7 @@ data InstanceDeclaration = MkInstanceDeclaration
 deriving instance Show InstanceDeclaration
 
 instance HasLoc InstanceDeclaration where
-  getLoc decl = instancedecl_loc decl
+  getLoc = instancedecl_loc
 
 ------------------------------------------------------------------------------
 -- Class Declaration
@@ -231,7 +238,7 @@ data ClassDeclaration = MkClassDeclaration
 deriving instance Show ClassDeclaration
 
 instance HasLoc ClassDeclaration where
-  getLoc decl = classdecl_loc decl
+  getLoc = classdecl_loc
 
 ------------------------------------------------------------------------------
 -- Data Type declarations
@@ -261,13 +268,13 @@ data DataDecl = MkDataDecl
 deriving instance Show DataDecl
 
 instance HasLoc DataDecl where
-  getLoc decl = data_loc decl
+  getLoc = data_loc
 
 ---------------------------------------------------------------------------------
 -- Declarations
 ---------------------------------------------------------------------------------
 
-data Declaration where 
+data Declaration where
   PrdCnsDecl     :: PrdCnsDeclaration         -> Declaration
   CmdDecl        :: CommandDeclaration        -> Declaration
   DataDecl       :: DataDecl                  -> Declaration
@@ -291,10 +298,36 @@ instance Show Declaration where
 data Module = MkModule
   { mod_name :: ModuleName
     -- ^ The name of the module.
-  , mod_fp :: FilePath
-    -- ^ The absolute filepath of the module.
+  , mod_libpath :: FilePath
+    -- ^ The absolute filepath of the library of the module.
   , mod_decls :: [Declaration]
     -- ^ The declarations contained in the module.
   }
 
 deriving instance Show Module
+
+-- when only given a filepath, parsing the file will result in the libpath of a module overlapping with the module name, e.g.
+-- module Codata.Function in std/Codata/Function.duo will have libpath `std/Codata`.
+-- Thus we have to adjust the libpath (to `std/` in the example above).
+-- Moreover, we need to check whether the new path and the original filepath are compatible.
+adjustModulePath :: Module -> FilePath -> Either (NE.NonEmpty Error) Module
+adjustModulePath mod fp =
+  let fp'  = fpToList fp
+      mlp  = mod_libpath mod
+      mFp  = fpToList mlp
+      mn   = mod_name mod
+      mp   = T.unpack <$> mn_path mn ++ [mn_base mn]
+  in do
+    prefix <- reverse <$> dropModulePart (reverse mp) (reverse mFp)
+    if prefix `isPrefixOf` fp'
+    then pure mod { mod_libpath = joinPath prefix } 
+    else throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString mlp) <> " is not compatible with given filepath " <> T.pack fp ]
+  where
+    fpToList :: FilePath -> [String]
+    fpToList = splitDirectories . dropExtension
+
+    dropModulePart :: [String] -> [String] -> Either (NE.NonEmpty Error) [String]
+    dropModulePart mp mFp =
+      case stripPrefix mp mFp of
+        Just mFp' -> pure mFp'
+        Nothing   -> throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString (mod_name mod)) <> " is not a suffix of path " <> T.pack (mod_libpath mod)  ]

@@ -1,0 +1,7 @@
+module CE_028;
+
+-- Constructor should not be recognized as destructor
+
+constructor A : CBV;
+
+def cns test := A;

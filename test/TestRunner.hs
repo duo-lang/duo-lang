@@ -1,29 +1,29 @@
 module Main where
 
-import Control.Monad.Except (runExcept, forM)
+import Control.Monad.Except (runExcept, runExceptT, forM)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Either (isRight)
 import Data.List (sort)
-import Data.Text.IO qualified as T
 import System.Environment (withArgs)
 import Test.Hspec
 import Test.Hspec.Runner
 import Test.Hspec.Formatters
 
-import Driver.Definition (defaultDriverState)
+import Driver.Definition (defaultDriverState, parseAndCheckModule)
 import Driver.Driver (inferProgramIO)
 import Errors
-import Parser.Definition (runFileParser)
-import Parser.Program (moduleP)
 import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified
 import Spec.Prettyprinter qualified
 import Spec.Focusing qualified
 import Syntax.CST.Program qualified as CST
+import Syntax.CST.Names
 import Syntax.TST.Program qualified as TST
 import Options.Applicative
-import Utils (listRecursiveDuoFiles)
+import Utils (listRecursiveDuoFiles, filePathToModuleName, moduleNameToFullPath)
+import GHC.IO.Encoding (setLocaleEncoding)
+import System.IO (utf8)
 
 data Options where
   OptEmpty  :: Options
@@ -38,38 +38,43 @@ optsP = (OptFilter <$> filterP) <|> pure OptEmpty
 filterP :: Parser [FilePath]
 filterP = some (argument str (metavar "FILES..." <> help "Specify files which should be tested (instead of all in the `examples/` directory"))
 
-getAvailableCounterExamples :: IO [FilePath]
+getAvailableCounterExamples :: IO [(FilePath, ModuleName)]
 getAvailableCounterExamples = do
-  examples <- listRecursiveDuoFiles "test/counterexamples/"
-  pure  $ sort (filter (\s -> head s /= '.') examples)
+  let counterExFp = "test/Counterexamples/"
+  examples <- listRecursiveDuoFiles counterExFp
+  pure  $ zip (repeat counterExFp) $ sort examples
 
-excluded :: [FilePath]
-excluded = ["fix.duo"]
+excluded :: [ModuleName]
+excluded = []
 
-getAvailableExamples :: IO [FilePath]
+getAvailableExamples :: IO [(FilePath, ModuleName)]
 getAvailableExamples = do
-  examples <- listRecursiveDuoFiles "examples/"
-  examples' <- listRecursiveDuoFiles "std/"
-  return (filter (\s -> head s /= '.' && notElem s excluded) (examples <> examples'))
+  let examplesFp  = "examples/"
+  let examplesFp' = "std/"
+  examples <- listRecursiveDuoFiles examplesFp
+  examples' <- listRecursiveDuoFiles examplesFp'
+  let examplesFiltered  = filter filterFun examples
+  let examplesFiltered' = filter filterFun examples'
+  return $ zip (repeat examplesFp) examplesFiltered ++ zip (repeat examplesFp') examplesFiltered'
+    where
+      filterFun s = s `notElem` excluded
 
-getParsedDeclarations :: FilePath -> IO (Either (NonEmpty Error) CST.Module)
-getParsedDeclarations fp = do
-  s <- T.readFile fp
-  case runExcept (runFileParser fp (moduleP fp) s) of
-    Left err -> pure (Left err)
-    Right prog -> pure (pure prog)
+getParsedDeclarations :: FilePath -> ModuleName -> IO (Either (NonEmpty Error) CST.Module)
+getParsedDeclarations fp mn = do
+  let fullFp = moduleNameToFullPath mn fp
+  runExceptT (parseAndCheckModule fullFp mn fp)
 
-getTypecheckedDecls :: FilePath -> IO (Either (NonEmpty Error) TST.Module)
-getTypecheckedDecls fp = do
-  decls <- getParsedDeclarations fp
+getTypecheckedDecls :: FilePath -> ModuleName -> IO (Either (NonEmpty Error) TST.Module)
+getTypecheckedDecls fp mn = do
+  decls <- getParsedDeclarations fp mn
   case decls of
     Right decls -> do
       fmap snd <$> (fst <$> inferProgramIO defaultDriverState decls)
     Left err -> return (Left err)
 
-getSymbolTable :: FilePath -> IO (Either (NonEmpty Error) SymbolTable)
-getSymbolTable fp = do
-  decls <- getParsedDeclarations fp
+getSymbolTable :: FilePath -> ModuleName -> IO (Either (NonEmpty Error) SymbolTable)
+getSymbolTable fp mn = do
+  decls <- getParsedDeclarations fp mn
   case decls of
     Right decls -> pure (runExcept (createSymbolTable decls))
     Left err -> return (Left err)
@@ -77,20 +82,21 @@ getSymbolTable fp = do
 
 main :: IO ()
 main = do
+    setLocaleEncoding utf8
     o <- execParser getOpts
     examples <- case o of
       -- Collect the filepaths of all the available examples
       OptEmpty -> getAvailableExamples
       -- only use files specified in command line
-      OptFilter fs -> pure fs
+      OptFilter fs -> pure $ (,) "." . filePathToModuleName <$> fs
     counterExamples <- getAvailableCounterExamples
     -- Collect the parsed declarations
-    parsedExamples <- forM examples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
-    parsedCounterExamples <- forM counterExamples $ \example -> getParsedDeclarations example >>= \res -> pure (example, res)
+    parsedExamples <- forM examples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
+    parsedCounterExamples <- forM counterExamples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
     -- Collect the typechecked declarations
-    checkedExamples <- forM examples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
+    checkedExamples <- forM examples $ \example -> uncurry getTypecheckedDecls example >>= \res -> pure (example, res)
     let checkedExamplesFiltered = filter (isRight . snd) checkedExamples
-    checkedCounterExamples <- forM counterExamples $ \example -> getTypecheckedDecls example >>= \res -> pure (example, res)
+    checkedCounterExamples <- forM counterExamples $ \example -> uncurry getTypecheckedDecls example >>= \res -> pure (example, res)
     -- Create symbol tables for tests
     -- Run the testsuite
     withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do

@@ -1,9 +1,0 @@
-import Function;
-import Bool;
-import Peano;
-
--- Subsumptions which shouldn't hold
-
-def rec prd ex19    : Nat                                                                   := ex19;
-def rec prd ex19sub : Bool                                                                  := ex19;
-

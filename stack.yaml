@@ -5,5 +5,8 @@ packages:
 
 extra-deps:
 - diagnose-2.2.0
+- git: https://github.com/solidsnack/wcwidth.git
+  commit: 747297319f0dd0c8e8f72b7de4fbf52aad73d5b0
 
 system-ghc: true
+

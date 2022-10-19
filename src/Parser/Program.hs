@@ -4,13 +4,10 @@ module Parser.Program
   , returnP
   , xtorDeclP
   , xtorSignatureP
-  , filePathToModuleName
   ) where
 
 import Control.Monad (void)
 import Data.Maybe qualified
-import Data.Text qualified as T
-import System.FilePath (takeBaseName)
 import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char (eol)
 
@@ -338,15 +335,24 @@ declarationP = do
   doc <- optional ((fst <$> docCommentP) <* eol)
   docDeclarationP doc
 
-filePathToModuleName :: FilePath -> ModuleName
-filePathToModuleName fp = MkModuleName (T.pack (takeBaseName fp))
+moduleDeclP :: Parser ModuleName
+moduleDeclP = do
+    --  startPos <- getSourcePos
+    void $ keywordP KwModule
+    sc
+    (mn, _endPos) <- moduleNameP
+    sc
+    symbolP SymSemi
+    sc
+    return mn
 
 moduleP :: FilePath -> Parser Module
-moduleP fp = do
+moduleP libp = do
   sc
+  mn <- moduleDeclP
   decls <- many declarationP
   eof
-  pure MkModule { mod_name = filePathToModuleName fp
-                , mod_fp = fp
+  pure MkModule { mod_name = mn
+                , mod_libpath = libp
                 , mod_decls = decls
                 }

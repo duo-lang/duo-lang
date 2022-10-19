@@ -1,8 +1,0 @@
--- Dtor is called on value of incorrect type
-
-data Nat : CBV { Z, S(Nat) };
-data Bool : CBV { True, False };
-codata FunNatNat : CBN { ApNN(Nat, return Nat) };
-codata FunBoolNat : CBN { ApBN(Bool, return Nat) };
-
-def prd fail := cocase { ApNN(n,*) => S(n) }.ApBN(True,*);

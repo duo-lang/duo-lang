@@ -1,3 +1,5 @@
+module Codata.UnitN;
+
 -- | The singleton type defined as a codata type.
 codata UnitN {};
 

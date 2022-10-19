@@ -11,7 +11,6 @@ import Control.Monad.Except
 import Data.List.NonEmpty ( NonEmpty )
 import Data.Text qualified as T
 import Data.Text (Text)
-import Data.Void (Void)
 import Text.Megaparsec
 import Text.Megaparsec.Debug qualified
 
@@ -22,9 +21,14 @@ import Loc ( Loc(..) )
 -- Definition of the Parsing Monad
 -------------------------------------------------------------------------------------------
 
-newtype Parser a = Parser { unParser :: Parsec Void Text a }
-  deriving (Functor, Applicative, Monad, MonadFail, Alternative, MonadPlus
-           , MonadParsec Void Text)
+type FancyParseError = Text
+instance ShowErrorComponent FancyParseError where
+    showErrorComponent = T.unpack
+    errorComponentLen = T.length
+
+newtype Parser a = Parser { unParser :: Parsec FancyParseError Text a }
+  deriving newtype (Functor, Applicative, Monad, MonadFail, Alternative, MonadPlus
+                   , MonadParsec FancyParseError Text)
 
 -------------------------------------------------------------------------------------------
 -- Debugging Support 
@@ -39,14 +43,14 @@ parseTst (Parser p) = Text.Megaparsec.parseTest p
 -- Translating a Parse Error to an Error
 -------------------------------------------------------------------------------------------
 
-type MyParseError = ParseErrorBundle Text Void
+type MyParseError = ParseErrorBundle Text FancyParseError
 
 -- | Compute a position from a given offset and the PosState of the
 -- beginning of the file.
 getPosFromOffset :: Int ->  PosState Text -> SourcePos
 getPosFromOffset offset ps = pstateSourcePos (snd (reachOffset offset ps))
 
-parseErrorToDiag :: PosState Text -> ParseError Text Void -> Error
+parseErrorToDiag :: PosState Text -> ParseError Text FancyParseError -> Error
 parseErrorToDiag posState err = ErrParser $ SomeParserError (Loc pos pos) msg
   where
     pos = getPosFromOffset (errorOffset err) posState

@@ -8,6 +8,8 @@ import Driver.Definition (defaultDriverState, execDriverM, DriverState(..), setP
 import Pretty.Errors (printLocatedReport)
 import qualified Data.Text as T
 import System.Exit (exitWith, ExitCode (ExitFailure))
+import Data.List (intersperse)
+import Data.Foldable (fold)
 
 runTypecheck :: DebugFlags -> ModuleName -> IO ()
 runTypecheck DebugFlags { df_debug, df_printGraphs } mn = do
@@ -18,7 +20,7 @@ runTypecheck DebugFlags { df_debug, df_printGraphs } mn = do
       mapM_ printLocatedReport errs
       exitWith (ExitFailure 1)
     Right (_, MkDriverState {}) -> do
-      putStrLn $ "Module " <> T.unpack (unModuleName mn) <> " typechecks"
+      putStrLn $ "Module " <> T.unpack (fold (intersperse "." (mn_path mn)) <> "." <> mn_base mn) <> " typechecks"
   return ()
     where
       driverState = defaultDriverState { drvOpts = infOpts }
