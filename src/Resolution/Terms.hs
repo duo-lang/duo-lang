@@ -129,13 +129,12 @@ analyzeInstanceCase :: CST.TermCase -> ResolverM SomeIntermediateCase
 analyzeInstanceCase CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
   analyzedPattern <- analyzeInstancePattern tmcase_pat
   case analyzedPattern of
-    ExplicitPattern _ xt pat -> pure $ ExplicitCase $ MkIntermediateCase
+    (_,xt, pat) -> pure $ ExplicitCase $ MkIntermediateCase
                                     { icase_loc = tmcase_loc
                                     , icase_name = xt
                                     , icase_args = adjustPat <$> pat
                                     , icase_term = tmcase_term
                                     }
-    _ -> throwOtherError defaultLoc ["Should be unreachable"]
 
 ---------------------------------------------------------------------------------
 -- Resolve Cases

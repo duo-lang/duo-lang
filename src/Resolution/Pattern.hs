@@ -27,14 +27,13 @@ import Loc ( Loc, HasLoc(getLoc))
 ---------------------------------------------------------------------------------
 
 data Pattern where
-  PatClassMethod :: Loc -> XtorName -> [(Loc, PrdCns, FreeVarName)] -> Pattern
   PatXtor        :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> [Pattern] -> Pattern
   PatVar         :: Loc -> PrdCns -> FreeVarName -> Pattern
   PatStar        :: Loc -> PrdCns -> Pattern
   PatWildcard    :: Loc -> PrdCns -> Pattern
 
 instance HasLoc Pattern where
-  getLoc (PatClassMethod loc _ _) = loc
+  getLoc :: Pattern -> Loc
   getLoc (PatXtor loc _ _ _ _) = loc
   getLoc (PatVar loc _ _) = loc
   getLoc (PatStar loc _) = loc
@@ -51,12 +50,8 @@ resolvePattern pc (CST.PatXtor loc xt pats) = do
   -- Lookup up the arity information in the symbol table.
   (_,res) <- lookupXtor loc xt
   case res of
-    (MethodNameResult _cn arity) -> do
-      when (length arity /= length pats) $
-        throwError (ErrResolution (XtorArityMismatch loc xt (length arity) (length pats)) :| [])
-      pats' <- zipWithM resolvePattern arity pats
-      args <- mapM fromVar pats'
-      pure $ PatClassMethod loc xt args
+    (MethodNameResult _cn _) -> do
+      throwOtherError loc ["Expected a constructor or destructor, but found a typeclas method."]
     (XtorNameResult dc ns arity) -> do
       when (length arity /= length pats) $
         throwError (ErrResolution (XtorArityMismatch loc xt (length arity) (length pats)) :| [])
@@ -120,9 +115,18 @@ analyzePattern dc pat = do
     _ -> throwOtherError (getLoc pat) ["Invalid pattern in function \"analyzePattern\""]
 
 
-analyzeInstancePattern :: CST.Pattern -> ResolverM AnalyzedPattern
-analyzeInstancePattern pat = do
-  pat' <- resolvePattern Prd pat
-  case pat' of
-    PatClassMethod loc xt args -> pure $ ExplicitPattern loc xt args
-    _ -> throwOtherError (getLoc pat) ["Expected method but found pattern."]
+analyzeInstancePattern :: CST.Pattern -> ResolverM (Loc, XtorName, [(Loc, PrdCns, FreeVarName)])
+analyzeInstancePattern (CST.PatXtor loc xt pats) = do
+  (_,res) <- lookupXtor loc xt
+  case res of 
+    XtorNameResult {} -> do
+      throwOtherError loc ["Expected typeclass method but found xtor" <> T.pack (show xt)]
+    MethodNameResult _cn arity -> do
+      when (length arity /= length pats) $
+        throwError (ErrResolution (XtorArityMismatch loc xt (length arity) (length pats)) :| [])
+      pats' <- zipWithM resolvePattern arity pats
+      args <- mapM fromVar pats'
+      pure (loc, xt, args)
+analyzeInstancePattern pat = 
+  throwOtherError (getLoc pat) ["Expected typeclass method but found pattern" <> T.pack (show pat)]
+
