@@ -11,12 +11,16 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Text qualified as T
 
 import Errors
+    ( throwOtherError,
+      ResolutionError(XtorArityMismatch),
+      Warning(MisnamedConsumerVar, MisnamedProducerVar),
+      Error(ErrResolution) )
 import Resolution.Definition ( ResolverM, lookupXtor )
 import Resolution.SymbolTable ( XtorNameResolve(..) )
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
-import Syntax.CST.Names
+import Syntax.CST.Names ( FreeVarName(MkFreeVarName), XtorName )
 import Loc ( Loc, HasLoc(getLoc))
 import Data.Either (isRight, fromLeft, fromRight)
 
