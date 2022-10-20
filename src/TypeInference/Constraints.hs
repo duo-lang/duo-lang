@@ -83,11 +83,11 @@ data SubtypeWitness
   -- ^ Witness that a type is an upper bound of a unification variable.
   | UVarR UniTVar (Typ Pos)
   -- ^ Witness that a type is a lower bound of a unification variable.
-  | SubVar (Constraint ConstraintInfo)
+  | SubVar (Constraint ())
   -- ^ Witness "hole" containing a constraint which should be substituted by its witness. Only used when generating subwitnesses.
   | Fix (Constraint ())
   -- ^ Pointer to a previously solved constraint so that witnesses for recursive types are finite.
-    -- deriving (Eq, Ord)
+    deriving (Eq, Ord)
 
 -- | Information about the provenance of a unification variable.
 data UVarProvenance

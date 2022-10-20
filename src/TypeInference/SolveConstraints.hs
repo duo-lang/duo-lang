@@ -266,9 +266,9 @@ subConstraints :: Constraint ConstraintInfo -> SolverM (SubtypeWitness, [Constra
 -- A more efficient solution to directly compare type synonyms is possible in the
 -- future.
 subConstraints c@(SubType annot (TySyn _ _ rn ty) ty') =
-  pure (SynL rn (SubVar c), [SubType annot ty ty'])
+  pure (SynL rn (SubVar (void c)), [SubType annot ty ty'])
 subConstraints c@(SubType annot ty (TySyn _ _ rn ty')) =
-  pure (SynR rn (SubVar c), [SubType annot ty ty'])
+  pure (SynR rn (SubVar (void c)), [SubType annot ty ty'])
 -- Intersection and union constraints:
 --
 -- If the left hand side of the constraint is a intersection type, or the
@@ -285,11 +285,11 @@ subConstraints (SubType _ (TyBot _ _) tyn) =
 subConstraints (SubType _ (TyUnion _ _ ty1 ty2) ty3) = do
   let c1 = SubType IntersectionUnionSubConstraint ty1 ty3
   let c2 = SubType IntersectionUnionSubConstraint ty2 ty3
-  pure (Join (SubVar c1) (SubVar c2), [c1, c2])
+  pure (Join (SubVar (void c1)) (SubVar (void c2)), [c1, c2])
 subConstraints (SubType _ ty1 (TyInter _ _ ty2 ty3)) = do
   let c1 = SubType IntersectionUnionSubConstraint ty1 ty2
   let c2 = SubType IntersectionUnionSubConstraint ty1 ty3
-  pure (Meet (SubVar c1) (SubVar c2), [c1, c2])
+  pure (Meet (SubVar (void c1)) (SubVar (void c2)), [c1, c2])
 -- Recursive constraints:
 --
 -- If the left hand side or the right hand side of the constraint is a recursive
@@ -301,10 +301,10 @@ subConstraints (SubType _ ty1 (TyInter _ _ ty2 ty3)) = do
 --
 subConstraints (SubType _ ty@(TyRec _ _ recTVar _) ty') = do
   let c = SubType RecTypeSubConstraint (unfoldRecType ty) ty'
-  return (UnfoldL recTVar (SubVar c), [c])
+  return (UnfoldL recTVar (SubVar (void c)), [c])
 subConstraints (SubType _ ty' ty@(TyRec _ _ recTVar _)) = do
   let c = SubType RecTypeSubConstraint ty' (unfoldRecType ty)
-  return (UnfoldR recTVar (SubVar c), [c])
+  return (UnfoldR recTVar (SubVar (void c)), [c])
 -- Constraints between structural data or codata types:
 --
 -- Constraints between structural data and codata types generate constraints based
@@ -316,11 +316,11 @@ subConstraints (SubType _ ty' ty@(TyRec _ _ recTVar _)) = do
 --
 subConstraints (SubType _ (TyData _ PosRep _ ctors1) (TyData _ NegRep _ ctors2)) = do
   constraints <- forM ctors1 (checkXtor ctors2)
-  pure (Data $ SubVar <$> concat constraints, concat constraints)
+  pure (Data $ SubVar . void <$> concat constraints, concat constraints)
 
 subConstraints (SubType _ (TyCodata _ PosRep _ dtors1) (TyCodata _ NegRep _ dtors2)) = do
   constraints <- forM dtors2 (checkXtor dtors1)
-  pure (Codata $ SubVar <$> concat constraints, concat constraints)
+  pure (Codata $ SubVar . void <$> concat constraints, concat constraints)
 
 -- Constraints between refinement data or codata types:
 --
@@ -332,11 +332,11 @@ subConstraints (SubType _ (TyCodata _ PosRep _ dtors1) (TyCodata _ NegRep _ dtor
 --
 subConstraints (SubType _ (TyDataRefined _ PosRep _ tn1 ctors1) (TyDataRefined _ NegRep _ tn2 ctors2)) | tn1 == tn2 = do
   constraints <- forM ctors1 (checkXtor ctors2)
-  pure (DataRefined tn1 $ SubVar <$> concat constraints, concat constraints)
+  pure (DataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
 
 subConstraints (SubType _ (TyCodataRefined _ PosRep _ tn1 dtors1) (TyCodataRefined _ NegRep _ tn2 dtors2))  | tn1 == tn2 = do
   constraints <- forM dtors2 (checkXtor dtors1)
-  pure (CodataRefined tn1 $ SubVar <$> concat constraints, concat constraints)
+  pure (CodataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
 
 -- Constraints between nominal types:
 --
@@ -351,7 +351,7 @@ subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2
         f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
         f _ _ = error "cannot occur"
         constraints = zipWith f args1 args2
-    pure (DataNominal tn1 $ SubVar <$> constraints, constraints)
+    pure (DataNominal tn1 $ SubVar . void <$> constraints, constraints)
 -- Constraints between primitive types:
 subConstraints (SubType _ p@(TyI64 _ _) n@(TyI64 _ _)) = pure (Refl p n, [])
 subConstraints (SubType _ p@(TyF64 _ _) n@(TyF64 _ _)) = pure (Refl p n, [])
@@ -396,12 +396,12 @@ substitute = do
     go _ (UVarL uv tyn) = pure $ UVarL uv tyn
     go _ (UVarR uv typ) = pure $ UVarR uv typ
     go _ (Fix cs) = pure $ Fix cs
-    go m (SubVar c) = case M.lookup (void c) m of
-         Nothing -> throwSolverError defaultLoc [ "Cannot find witness for: " <> ppPrint c ]
+    go m (SubVar c) = case M.lookup c m of
+         Nothing -> throwSolverError defaultLoc [ "Cannot find witness for: " ] -- <> ppPrint c ]
          Just (SubVar _c) -> throwSolverError defaultLoc [ "Tried to substitute a variable with another variable" ]
-         Just w -> asks (S.member (void c)) >>= \case
-            True -> pure $ Fix (void c)
-            False -> local (S.insert $ void c) (go m w)
+         Just w -> asks (S.member c) >>= \case
+            True -> pure $ Fix c
+            False -> local (S.insert c) (go m w)
 
 ------------------------------------------------------------------------------
 -- Exported Function
