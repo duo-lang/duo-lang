@@ -121,6 +121,7 @@ emptyVarState :: MonoKind -> VariableState
 emptyVarState = VariableState [] [] []
 
 data SolverResult = MkSolverResult
-  { tvarSolution :: Map UniTVar VariableState
-  , kvarSolution :: Map KVar MonoKind
-    }
+  { tvarSolution    :: Map UniTVar VariableState
+  , kvarSolution    :: Map KVar MonoKind
+  , witnessSolution :: Map (Constraint ()) SubtypeWitness
+  }

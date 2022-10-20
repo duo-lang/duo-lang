@@ -421,4 +421,4 @@ solveConstraints constraintSet@(ConstraintSet css _ _) env = do
   (_, solverState) <- runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet)
   kvarSolution <- computeKVarSolution ErrorUnresolved (sst_kvars solverState)
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
-  return $ MkSolverResult tvarSol kvarSolution
+  return $ MkSolverResult tvarSol kvarSolution (sst_cache solverState)
