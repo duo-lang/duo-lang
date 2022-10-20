@@ -168,9 +168,10 @@ coalesceType (TyUnion loc knd ty1 ty2) = do
   ty2' <- coalesceType ty2
   pure (TyUnion loc mk ty1' ty2')
 coalesceType (TyInter loc knd ty1 ty2) = do
-    ty1' <- coalesceType ty1
-    ty2' <- coalesceType ty2
-    pure (TyInter loc knd ty1' ty2')
+  mk <- coalesceKind knd  
+  ty1' <- coalesceType ty1
+  ty2' <- coalesceType ty2
+  pure (TyInter loc mk ty1' ty2')
 coalesceType (TyRec loc PosRep tv ty) = do
     return $ TyRec loc PosRep tv ty
 coalesceType (TyRec loc NegRep tv ty) = do
