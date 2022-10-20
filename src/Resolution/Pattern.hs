@@ -1,6 +1,8 @@
 module Resolution.Pattern
-  ( AnalyzedPattern(..)
-  , analyzePattern
+  ( Pattern(..)
+  , StarPattern(..)
+  , resolvePattern
+  , fromVar
   , analyzeInstancePattern
   ) where
 
@@ -19,7 +21,7 @@ import Resolution.Definition ( ResolverM, lookupXtor )
 import Resolution.SymbolTable ( XtorNameResolve(..) )
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types qualified as CST
-import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
+import Syntax.CST.Types (PrdCns(..))
 import Syntax.CST.Names ( FreeVarName(MkFreeVarName), XtorName )
 import Loc ( Loc, HasLoc(getLoc))
 import Data.Either (isRight, fromLeft, fromRight)
@@ -111,35 +113,9 @@ resolvePattern pc (CST.PatWildcard loc) = do
 -- Analyze Patterns
 ---------------------------------------------------------------------------------
 
-data AnalyzedPattern
-  = ExplicitPattern Loc XtorName [(Loc, PrdCns, FreeVarName)]
-  | ImplicitPrdPattern Loc XtorName ([(Loc, PrdCns, FreeVarName)], PrdCnsRep Prd,[(Loc, PrdCns,FreeVarName)])
-  | ImplicitCnsPattern Loc XtorName ([(Loc, PrdCns, FreeVarName)], PrdCnsRep Cns,[(Loc, PrdCns,FreeVarName)])
-
-
 fromVar :: Pattern -> ResolverM (Loc, PrdCns, FreeVarName)
 fromVar (PatVar loc pc var) = pure (loc, pc, var)
 fromVar pat = throwOtherError (getLoc pat) ["Called function \"fromVar\" on pattern which is not a variable."]
-
-
-analyzePattern :: CST.DataCodata -> CST.Pattern -> ResolverM AnalyzedPattern
-analyzePattern dc pat = do
-  pat' <- resolvePattern (case dc of CST.Data -> Prd; CST.Codata -> Cns) pat
-  case pat' of
-    -- Patterns
-    Left (PatXtor loc _pc _ns xt pats) -> do
-      vars <- mapM fromVar pats
-      pure $ ExplicitPattern loc xt vars
-    Left _ -> throwOtherError (getLoc pat) ["Invalid pattern in function \"analyzePattern\""]
-    -- StarPatterns
-    Right (PatXtorStar loc _pc _ns xt (pats_left,PatStar _ pc,pats_right)) -> do
-      pats_left' <- mapM fromVar pats_left
-      pats_right' <- mapM fromVar pats_right
-      case pc of
-        Cns -> pure $ ImplicitPrdPattern loc xt (pats_left', PrdRep, pats_right')
-        Prd -> pure $ ImplicitCnsPattern loc xt (pats_left', CnsRep, pats_right')
-    Right _ -> throwOtherError (getLoc pat) ["Invalid star pattern in function \"analyzePattern\""]
-
 
 analyzeInstancePattern :: CST.Pattern -> ResolverM (Loc, XtorName, [(Loc, PrdCns, FreeVarName)])
 analyzeInstancePattern (CST.PatXtor loc xt pats) = do
