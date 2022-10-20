@@ -50,24 +50,43 @@ data Constraint a where
 -- a coercion function.
 data SubtypeWitness
   = SynL RnTypeName SubtypeWitness
+  -- ^ Witness for type synonym as subtype with substituted subconstraint.
   | SynR RnTypeName SubtypeWitness
+  -- ^ Witness for type synonym as supertype with substituted subconstraint.
   | FromTop (Typ Pos)
+  -- ^ Witness for the type being a subtype of /Top/.
   | ToBot (Typ Neg)
+  -- ^ Witness for the type being a supertype of /Bot/.
   | Meet SubtypeWitness SubtypeWitness
+  -- ^ Witness for a type being a subtype on an intersection type, therefore having to be a subtype of both.
   | Join SubtypeWitness SubtypeWitness
+  -- ^ Witness for a type being a supertype on a union type, therefore having to be a supertype of both.
   | UnfoldL RecTVar SubtypeWitness
+  -- ^ Witness for a recursive subtype with its unfolded representation as a subwitness.
   | UnfoldR RecTVar SubtypeWitness
+  -- ^ Witness for a recursive supertype with its unfolded representation as a subwitness.
   | Data [SubtypeWitness]
+  -- ^ Witness for two data types and subwitnesses for each constructor.
   | Codata [SubtypeWitness]
+  -- ^ Witness for two codata types and subwitnesses for each destructor.
   | DataRefined RnTypeName [SubtypeWitness]
+  -- ^ Witness for two refined data types and subwitnesses for each constructor.
   | CodataRefined RnTypeName [SubtypeWitness]
+  -- ^ Witness for two refined codata types and subwitnesses for each destructor.
   | DataNominal RnTypeName [SubtypeWitness]
+  -- ^ Witness for two nominal (co-)data types and subwitnesses for their arguments.
   | Refl (Typ Pos) (Typ Neg)
+  -- ^ Witness for the reflexivity of the subtyping relation. Contains a positive and negative representation of the same type.
   | UVarB UniTVar UniTVar
+  -- ^ Witness for two nominal unification variables.
   | UVarL UniTVar (Typ Neg)
+  -- ^ Witness that a type is an upper bound of a unification variable.
   | UVarR UniTVar (Typ Pos)
+  -- ^ Witness that a type is a lower bound of a unification variable.
   | SubVar (Constraint ConstraintInfo)
+  -- ^ Witness "hole" containing a constraint which should be substituted by its witness. Only used when generating subwitnesses.
   | Fix (Constraint ())
+  -- ^ Pointer to a previously solved constraint so that witnesses for recursive types are finite.
     -- deriving (Eq, Ord)
 
 -- | Information about the provenance of a unification variable.
