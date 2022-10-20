@@ -57,8 +57,6 @@ data SubtypeWitness
   | Join SubtypeWitness SubtypeWitness
   | UnfoldL RecTVar SubtypeWitness
   | UnfoldR RecTVar SubtypeWitness
-  | LookupL RecTVar SubtypeWitness
-  | LookupR RecTVar SubtypeWitness
   | Data [SubtypeWitness]
   | Codata [SubtypeWitness]
   | DataRefined RnTypeName [SubtypeWitness]
