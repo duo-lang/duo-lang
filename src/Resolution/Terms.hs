@@ -20,6 +20,7 @@ import Syntax.CST.Types (PrdCns(..), Arity, PrdCnsRep(..))
 import Syntax.CST.Names
 import Loc
 import qualified Syntax.LocallyNameless as LN
+import Data.Either (fromLeft)
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
@@ -48,29 +49,28 @@ data IntermediateCase  pat = MkIntermediateCase
   , icase_term :: CST.Term
   }
 
-
-data SomeIntermediateCase where
-  ExplicitCase :: IntermediateCase (XtorName, [(PrdCns, FreeVarName)]) -> SomeIntermediateCase
-  ImplicitPrdCase :: IntermediateCase (XtorName, ([(PrdCns, FreeVarName)], PrdCns,[(PrdCns,FreeVarName)])) -> SomeIntermediateCase
-  ImplicitCnsCase :: IntermediateCase (XtorName, ([(PrdCns, FreeVarName)], PrdCns,[(PrdCns,FreeVarName)])) -> SomeIntermediateCase
+type SomeIntermediateCase = IntermediateCase (Either (XtorName, [(PrdCns, FreeVarName)]) (PrdCns, (XtorName, ([(PrdCns, FreeVarName)], PrdCns,[(PrdCns,FreeVarName)]))))
 
 isExplicitCase :: SomeIntermediateCase -> Bool
-isExplicitCase (ExplicitCase _) = True
-isExplicitCase _                = False
+isExplicitCase MkIntermediateCase {icase_pat} =
+  case icase_pat of
+    Left _ -> True
+    Right _ -> False
 
-isImplicitCase :: PrdCnsRep pc -> SomeIntermediateCase -> Bool
-isImplicitCase PrdRep (ImplicitPrdCase _) = True
-isImplicitCase CnsRep (ImplicitCnsCase _) = True
-isImplicitCase _      _                   = False
+isImplicitCase :: PrdCns -> SomeIntermediateCase -> Bool
+isImplicitCase pc MkIntermediateCase { icase_pat } =
+  case icase_pat of
+    Left _ -> False
+    Right (pc',_) -> pc == pc'
 
 fromExplicitCase :: SomeIntermediateCase -> IntermediateCase (XtorName, [(PrdCns, FreeVarName)])
-fromExplicitCase (ExplicitCase cs) = cs
-fromExplicitCase _                 = error "Compiler bug"
+fromExplicitCase cs@MkIntermediateCase { icase_pat} = cs { icase_pat = fromLeft undefined icase_pat }
 
-fromImplicitCase :: PrdCnsRep pc -> SomeIntermediateCase -> IntermediateCase (XtorName, ([(PrdCns, FreeVarName)], PrdCns,[(PrdCns,FreeVarName)]))
-fromImplicitCase PrdRep (ImplicitPrdCase cs) = cs
-fromImplicitCase CnsRep (ImplicitCnsCase cs) = cs
-fromImplicitCase _      _                    = error "Compiler bug"
+fromImplicitCase :: PrdCns -> SomeIntermediateCase -> IntermediateCase (XtorName, ([(PrdCns, FreeVarName)], PrdCns,[(PrdCns,FreeVarName)]))
+fromImplicitCase pc cs@MkIntermediateCase { icase_pat } =
+  case icase_pat of
+    Left _ -> undefined
+    Right (pc',pat) -> if pc == pc' then cs { icase_pat = pat} else undefined
 
 data Cases where
   ExplicitCases    :: [IntermediateCase (XtorName, [(PrdCns, FreeVarName)])]  -> Cases
@@ -91,27 +91,24 @@ analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
   case analyzedPattern of
     Left (RST.PatXtor _loc _pc _ns xt pats) -> do
       pat <- mapM fromVar pats
-      pure $ ExplicitCase $ MkIntermediateCase
-                                    { icase_loc = tmcase_loc
-                                    , icase_pat = (xt, adjustPat <$> pat)
-                                    , icase_term = tmcase_term
-                                    }
+      pure $ MkIntermediateCase { icase_loc = tmcase_loc
+                                , icase_pat = Left (xt, adjustPat <$> pat)
+                                , icase_term = tmcase_term
+                                }
     Right (RST.PatXtorStar _loc _pc _ns xt (patl,RST.PatStar _ Cns,patr)) -> do
       patl' <- mapM fromVar patl
       patr' <- mapM fromVar patr
-      pure $ ImplicitPrdCase $ MkIntermediateCase
-                                    { icase_loc = tmcase_loc
-                                    , icase_pat = (xt, (adjustPat <$> patl', Prd, adjustPat <$> patr'))
-                                    , icase_term = tmcase_term
-                                    }
+      pure $ MkIntermediateCase { icase_loc = tmcase_loc
+                                , icase_pat = Right (Prd, (xt, (adjustPat <$> patl', Prd, adjustPat <$> patr')))
+                                , icase_term = tmcase_term
+                                }
     Right (RST.PatXtorStar _loc _pc _ns xt (patl, RST.PatStar _ Prd,patr)) -> do
       patl' <- mapM fromVar patl
       patr' <- mapM fromVar patr
-      pure $ ImplicitCnsCase $ MkIntermediateCase
-                                    { icase_loc = tmcase_loc
-                                    , icase_pat = (xt, (adjustPat <$> patl', Cns, adjustPat <$> patr'))
-                                    , icase_term = tmcase_term
-                                    }
+      pure $ MkIntermediateCase { icase_loc = tmcase_loc
+                                , icase_pat = Right (Cns, (xt, (adjustPat <$> patl', Cns, adjustPat <$> patr')))
+                                , icase_term = tmcase_term
+                                }
     _ -> throwOtherError tmcase_loc ["Illegal pattern in function analyzeCase"]
 
 analyzeCases :: CST.DataCodata
@@ -120,8 +117,8 @@ analyzeCases :: CST.DataCodata
 analyzeCases dc cases = do
   cases' <- mapM (analyzeCase dc) cases
   if | all isExplicitCase cases' -> pure $ ExplicitCases    $ fromExplicitCase <$> cases'
-     | all (isImplicitCase PrdRep) cases' -> pure $ ImplicitPrdCases $ fromImplicitCase PrdRep <$> cases'
-     | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCnsCases $ fromImplicitCase CnsRep <$> cases'
+     | all (isImplicitCase Prd) cases' -> pure $ ImplicitPrdCases $ fromImplicitCase Prd <$> cases'
+     | all (isImplicitCase Cns) cases' -> pure $ ImplicitCnsCases $ fromImplicitCase Cns <$> cases'
      | otherwise -> throwOtherError (getLoc (head cases)) ["Cases mix the use of both explicit and implicit patterns."]
 
 ---------------------------------------------------------------------------------
