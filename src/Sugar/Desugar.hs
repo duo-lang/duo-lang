@@ -29,12 +29,12 @@ class Desugar a b | a -> b, b -> a where
 -- Implementation of `Desugar` for patterns and cases
 ---------------------------------------------------------------------------------
 
-instance Desugar RST.Pattern Core.Pattern where
-  desugar :: RST.Pattern -> Core.Pattern
-  desugar (RST.XtorPat loc xt args) = Core.XtorPat loc xt args
+instance Desugar RST.Pattern RST.Pattern where
+  desugar :: RST.Pattern -> RST.Pattern
+  desugar (RST.XtorPat loc xt args) = RST.XtorPat loc xt args
 
-  embedCore :: Core.Pattern -> RST.Pattern
-  embedCore (Core.XtorPat loc xt args) = RST.XtorPat loc xt args
+  embedCore :: RST.Pattern -> RST.Pattern
+  embedCore (RST.XtorPat loc xt args) = RST.XtorPat loc xt args
 
 instance Desugar RST.PatternI Core.PatternI where
   desugar :: RST.PatternI -> Core.PatternI

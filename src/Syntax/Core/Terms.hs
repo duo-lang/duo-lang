@@ -3,7 +3,6 @@ module Syntax.Core.Terms
     Term(..)
   , PrdCnsTerm(..)
   , Substitution(..)
-  , RST.Pattern(..)
   , CmdCase(..)
   , InstanceCase(..)
   , Command(..)
@@ -18,12 +17,11 @@ import Syntax.Core.Annot
 import Loc
 import Errors
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
-import Syntax.TST.Terms (ShiftDirection(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
-import Syntax.LocallyNameless (LocallyNameless (..), Shiftable (..))
+import Syntax.LocallyNameless (LocallyNameless (..), Shiftable (..), ShiftDirection(..))
 import Syntax.NMap (NMap (..), (<¢>))
 
 ---------------------------------------------------------------------------------
