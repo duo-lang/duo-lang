@@ -3,7 +3,6 @@ module Syntax.Core.Terms
     Term(..)
   , PrdCnsTerm(..)
   , Substitution(..)
-  , RST.Pattern(..)
   , CmdCase(..)
   , InstanceCase(..)
   , Command(..)
