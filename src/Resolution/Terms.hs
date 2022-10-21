@@ -96,7 +96,7 @@ analyzeCase :: CST.DataCodata
 analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
   analyzedPattern <- resolvePattern (case dc of CST.Data -> Prd ; CST.Codata -> Cns) tmcase_pat
   case analyzedPattern of
-    Left (PatXtor _loc _pc _ns xt pats) -> do
+    Left (RST.PatXtor _loc _pc _ns xt pats) -> do
       pat <- mapM fromVar pats
       pure $ ExplicitCase $ MkIntermediateCase
                                     { icase_loc = tmcase_loc
@@ -104,7 +104,7 @@ analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
                                     , icase_args = adjustPat <$> pat
                                     , icase_term = tmcase_term
                                     }
-    Right (PatXtorStar _loc _pc _ns xt (patl,PatStar _ Cns,patr)) -> do
+    Right (RST.PatXtorStar _loc _pc _ns xt (patl,RST.PatStar _ Cns,patr)) -> do
       patl' <- mapM fromVar patl
       patr' <- mapM fromVar patr
       pure $ ImplicitCase PrdRep $ MkIntermediateCaseI
@@ -113,7 +113,7 @@ analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
                                     , icasei_args = (adjustPat <$> patl', PrdRep, adjustPat <$> patr')
                                     , icasei_term = tmcase_term
                                     }
-    Right (PatXtorStar _loc _pc _ns xt (patl, PatStar _ Prd,patr)) -> do
+    Right (RST.PatXtorStar _loc _pc _ns xt (patl, RST.PatStar _ Prd,patr)) -> do
       patl' <- mapM fromVar patl
       patr' <- mapM fromVar patr
       pure $ ImplicitCase CnsRep $ MkIntermediateCaseI
