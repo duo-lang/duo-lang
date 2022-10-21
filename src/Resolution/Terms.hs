@@ -1,6 +1,6 @@
 {-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
 {-# HLINT ignore "Redundant multi-way if" #-}
-module Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases) where
+module Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCase) where
 
 import Control.Monad (when, forM)
 import Control.Monad.Except (throwError)
@@ -124,16 +124,6 @@ analyzeCases dc cases = do
      | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCnsCases $ fromImplicitCase CnsRep <$> cases'
      | otherwise -> throwOtherError (getLoc (head cases)) ["Cases mix the use of both explicit and implicit patterns."]
 
-analyzeInstanceCase :: CST.TermCase -> ResolverM SomeIntermediateCase
-analyzeInstanceCase CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
-  analyzedPattern <- analyzeInstancePattern tmcase_pat
-  case analyzedPattern of
-    (_,xt, pat) -> pure $ ExplicitCase $ MkIntermediateCase
-                                    { icase_loc = tmcase_loc
-                                    , icase_pat = (xt, adjustPat <$> pat)
-                                    , icase_term = tmcase_term
-                                    }
-
 ---------------------------------------------------------------------------------
 -- Resolve Cases
 ---------------------------------------------------------------------------------
@@ -162,20 +152,21 @@ resolveTermCase rep MkIntermediateCase { icase_loc, icase_pat = (name, args), ic
                       , tmcase_term = LN.close args tm'
                       }
 
-resolveInstanceCase :: IntermediateCase (XtorName, [(PrdCns, FreeVarName)]) -> ResolverM RST.InstanceCase
-resolveInstanceCase MkIntermediateCase { icase_loc , icase_pat = (name, args), icase_term } = do
-  cmd' <- resolveCommand icase_term
-  pure RST.MkInstanceCase { instancecase_loc = icase_loc
-                          , instancecase_pat = RST.XtorPat icase_loc name (second Just <$> args)
-                          , instancecase_cmd = LN.close args cmd'
+
+
+---------------------------------------------------------------------------------
+-- Resolving InstanceCases
+---------------------------------------------------------------------------------
+
+resolveInstanceCase :: CST.TermCase -> ResolverM RST.InstanceCase
+resolveInstanceCase CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
+  (_,xt,pat) <- analyzeInstancePattern tmcase_pat
+  let pat' = adjustPat <$> pat
+  cmd' <- resolveCommand tmcase_term
+  pure RST.MkInstanceCase { instancecase_loc = tmcase_loc
+                          , instancecase_pat = RST.XtorPat tmcase_loc xt (second Just <$> pat')
+                          , instancecase_cmd = LN.close pat' cmd'
                           }
-
-
-resolveInstanceCases :: [CST.TermCase] -> ResolverM [RST.InstanceCase]
-resolveInstanceCases cases = do
-  intermediateCases <- mapM analyzeInstanceCase cases
-  mapM (resolveInstanceCase . fromExplicitCase) intermediateCases
-
 
 ---------------------------------------------------------------------------------
 -- Resolving PrimCommands
