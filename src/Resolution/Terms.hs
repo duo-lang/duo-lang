@@ -94,26 +94,35 @@ analyzeCase :: CST.DataCodata
             -> CST.TermCase
             -> ResolverM SomeIntermediateCase
 analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
-  analyzedPattern <- analyzePattern dc tmcase_pat
+  analyzedPattern <- resolvePattern (case dc of CST.Data -> Prd ; CST.Codata -> Cns) tmcase_pat
   case analyzedPattern of
-    ExplicitPattern _ xt pat -> pure $ ExplicitCase $ MkIntermediateCase
+    Left (PatXtor _loc _pc _ns xt pats) -> do
+      pat <- mapM fromVar pats
+      pure $ ExplicitCase $ MkIntermediateCase
                                     { icase_loc = tmcase_loc
                                     , icase_name = xt
                                     , icase_args = adjustPat <$> pat
                                     , icase_term = tmcase_term
                                     }
-    ImplicitPrdPattern _ xt pat -> pure $ ImplicitCase PrdRep $ MkIntermediateCaseI
+    Right (PatXtorStar _loc _pc _ns xt (patl,PatStar _ Cns,patr)) -> do
+      patl' <- mapM fromVar patl
+      patr' <- mapM fromVar patr
+      pure $ ImplicitCase PrdRep $ MkIntermediateCaseI
                                     { icasei_loc = tmcase_loc
                                     , icasei_name = xt
-                                    , icasei_args = case pat of (pat1,pc,pat2) -> (adjustPat <$> pat1, pc, adjustPat <$> pat2)
+                                    , icasei_args = (adjustPat <$> patl', PrdRep, adjustPat <$> patr')
                                     , icasei_term = tmcase_term
                                     }
-    ImplicitCnsPattern _ xt pat -> pure $ ImplicitCase CnsRep $ MkIntermediateCaseI
+    Right (PatXtorStar _loc _pc _ns xt (patl, PatStar _ Prd,patr)) -> do
+      patl' <- mapM fromVar patl
+      patr' <- mapM fromVar patr
+      pure $ ImplicitCase CnsRep $ MkIntermediateCaseI
                                     { icasei_loc = tmcase_loc
                                     , icasei_name = xt
-                                    , icasei_args = case pat of (pat1,pc,pat2) -> (adjustPat <$> pat1, pc, adjustPat <$> pat2)
+                                    , icasei_args = (adjustPat <$> patl', CnsRep, adjustPat <$> patr')
                                     , icasei_term = tmcase_term
                                     }
+    _ -> throwOtherError tmcase_loc ["Illegal pattern in function analyzeCase"]
 
 analyzeCases :: CST.DataCodata
              -> [CST.TermCase]
@@ -129,13 +138,12 @@ analyzeInstanceCase :: CST.TermCase -> ResolverM SomeIntermediateCase
 analyzeInstanceCase CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
   analyzedPattern <- analyzeInstancePattern tmcase_pat
   case analyzedPattern of
-    ExplicitPattern _ xt pat -> pure $ ExplicitCase $ MkIntermediateCase
+    (_,xt, pat) -> pure $ ExplicitCase $ MkIntermediateCase
                                     { icase_loc = tmcase_loc
                                     , icase_name = xt
                                     , icase_args = adjustPat <$> pat
                                     , icase_term = tmcase_term
                                     }
-    _ -> throwOtherError defaultLoc ["Should be unreachable"]
 
 ---------------------------------------------------------------------------------
 -- Resolve Cases
