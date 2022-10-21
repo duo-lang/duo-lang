@@ -618,10 +618,11 @@ instance Unresolve (RST.Typ pol) CST.Typ where
 
 instance Unresolve (RST.TypeScheme pol) CST.TypeScheme where
   unresolve :: RST.TypeScheme pol -> UnresolveM CST.TypeScheme
-  unresolve RST.TypeScheme { ts_loc, ts_vars, ts_monotype } = do
+  unresolve RST.TypeScheme { ts_loc, ts_vars, ts_kinds, ts_monotype } = do
     type' <- unresolve ts_monotype
     pure $ CST.TypeScheme  { ts_loc         = ts_loc
                            , ts_vars        = ts_vars
+                           , ts_kinds       = ts_kinds
                            , ts_constraints = []
                            , ts_monotype    = type'
                            }

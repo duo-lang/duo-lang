@@ -239,7 +239,7 @@ dualVariantType NegRep (TST.ContravariantType ty) =
   TST.ContravariantType (dualType PosRep ty)
 
 dualTypeScheme :: PolarityRep pol -> TST.TypeScheme pol -> TST.TypeScheme (FlipPol pol)
-dualTypeScheme pol (TST.TypeScheme _  ts_vars ty) = TST.TypeScheme defaultLoc ts_vars (dualType pol ty)
+dualTypeScheme pol (TST.TypeScheme _  ts_vars ts_kinds ty) = TST.TypeScheme defaultLoc ts_vars ts_kinds (dualType pol ty)
 
 ------------------------------------------------------------------------------
 -- Declarations
