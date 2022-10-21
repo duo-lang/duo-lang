@@ -267,11 +267,12 @@ forallP = void (keywordP KwForall) <|> symbolP SymForallUnicode
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
-  tvars' <- option [] (forallP >> sc >> some (fst <$> (tvarP <* sc)) <* (symbolP SymDot >> sc))
+  tvars' <- option [] (forallP >> sc >> some (tvarAnnotP <* sc) <* (symbolP SymDot >> sc))
+  let (kinds, skolems) = foldr (\(mk,sk,_) (sks,mks)-> (sk:sks,mk:mks)) ([],[]) tvars'
   let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
   tConstraints <- option [] (constraintP `sepBy` (symbolP SymComma >> sc) <* (symbolP SymDoubleRightArrow >> sc))
   (monotype, endPos) <- typP
-  pure (TypeScheme (Loc startPos endPos) tvars' [] tConstraints monotype)
+  pure (TypeScheme (Loc startPos endPos) skolems kinds tConstraints monotype)
 
 typeClassConstraintP :: Parser (Constraint, SourcePos)
 typeClassConstraintP = try $ do
