@@ -158,6 +158,8 @@ instance PrettyAnn SolverResult where
     , ""
     , vsep $ intersperse "" (solvedConstraintsToDoc <$> M.toList tvarSolution)
     , ""
+    , headerise "-" " " "Generated Witnesses:"
+    , ""
     , vsep $ intersperse "" (solvedWitnessesToDoc <$> M.toList witnessSolution)
     , ""
     ]
