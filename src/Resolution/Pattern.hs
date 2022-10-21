@@ -81,6 +81,7 @@ resolvePattern pc (CST.PatWildcard loc) = do
 
 fromVar :: RST.PatternNew -> ResolverM (Loc, PrdCns, FreeVarName)
 fromVar (RST.PatVar loc pc var) = pure (loc, pc, var)
+fromVar (RST.PatWildcard loc pc) = pure (loc, pc, MkFreeVarName "_")
 fromVar pat = throwOtherError (getLoc pat) ["Called function \"fromVar\" on pattern which is not a variable."]
 
 analyzeInstancePattern :: CST.Pattern -> ResolverM (Loc, XtorName, [(Loc, PrdCns, FreeVarName)])
