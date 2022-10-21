@@ -185,8 +185,7 @@ instance GetKind (VariantType pol) where
 
 data TypeScheme (pol :: Polarity) = TypeScheme
   { ts_loc :: Loc
-  , ts_vars :: [SkolemTVar]
-  , ts_kinds :: [Maybe MonoKind]
+  , ts_vars :: [(SkolemTVar,Maybe MonoKind)]
   , ts_monotype :: Typ pol
   }
 
@@ -245,9 +244,8 @@ instance FreeTVars (XtorSig pol) where
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
-generalize ty = 
-  let freeVars = freeTVars ty in 
-  TypeScheme defaultLoc (S.toList freeVars) (replicate (length freeVars) Nothing) ty
+generalize ty = TypeScheme defaultLoc (zip (S.toList $ freeTVars ty) (repeat Nothing)) ty
+
 ------------------------------------------------------------------------------
 -- Bisubstitution and Zonking
 ------------------------------------------------------------------------------

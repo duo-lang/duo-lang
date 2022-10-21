@@ -407,9 +407,9 @@ instance AnnotateKind  (RST.Typ RST.Pos, RST.Typ RST.Neg) (TST.Typ RST.Pos, TST.
 
 instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
   annotateKind ::  RST.TypeScheme pol -> GenM (TST.TypeScheme pol)
-  annotateKind RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_kinds = knds, ts_monotype = ty} = do
+  annotateKind RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = do
     ty' <- annotateKind ty
-    return TST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_kinds = knds ,ts_monotype = ty'}
+    return TST.TypeScheme {ts_loc = loc, ts_vars = tvs,ts_monotype = ty'}
 
 instance AnnotateKind (RST.VariantType pol) (TST.VariantType pol) where
   annotateKind ::  RST.VariantType pol -> GenM (TST.VariantType pol)

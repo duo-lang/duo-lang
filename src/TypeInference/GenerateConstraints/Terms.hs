@@ -363,14 +363,14 @@ genConstraintsTermRecursive :: ModuleName
                             -> GenM (TST.Term pc)
 genConstraintsTermRecursive mn loc fv PrdRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv) Nothing
-  tm <- withTerm mn PrdRep fv (TST.FreeVar loc PrdRep x fv) loc (TST.TypeScheme loc [] [] x) (genConstraints tm)
+  tm <- withTerm mn PrdRep fv (TST.FreeVar loc PrdRep x fv) loc (TST.TypeScheme loc [] x) (genConstraints tm)
   let xTy = TST.getTypeTerm tm
   addConstraint (SubType RecursionConstraint xTy y)
   addConstraint (KindEq KindConstraint (TST.getKind xTy) (TST.getKind y))
   return tm
 genConstraintsTermRecursive mn loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv) Nothing
-  tm <- withTerm mn CnsRep fv (TST.FreeVar loc CnsRep y fv) loc (TST.TypeScheme loc [] [] y) (genConstraints tm)
+  tm <- withTerm mn CnsRep fv (TST.FreeVar loc CnsRep y fv) loc (TST.TypeScheme loc [] y) (genConstraints tm)
   let yTy = TST.getTypeTerm tm
   addConstraint (SubType RecursionConstraint x yTy)
   addConstraint (KindEq KindConstraint (TST.getKind x) (TST.getKind yTy))

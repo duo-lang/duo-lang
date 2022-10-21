@@ -272,7 +272,7 @@ typeSchemeP = do
   let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
   tConstraints <- option [] (constraintP `sepBy` (symbolP SymComma >> sc) <* (symbolP SymDoubleRightArrow >> sc))
   (monotype, endPos) <- typP
-  pure (TypeScheme (Loc startPos endPos) skolems kinds tConstraints monotype)
+  pure (TypeScheme (Loc startPos endPos) (zip skolems kinds) tConstraints monotype)
 
 typeClassConstraintP :: Parser (Constraint, SourcePos)
 typeClassConstraintP = try $ do

@@ -65,12 +65,9 @@ runAutToTypeM m state = runExcept (runReaderT m state)
 autToType :: TypeAutDet pol -> Either (NonEmpty Error) (TypeScheme pol)
 autToType aut@TypeAut{..} = do
   let startState = initializeFromAutomaton aut
-  let tsvars = tvars startState
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
   pure TypeScheme { ts_loc = defaultLoc
-                  --  , ts_vars = [] --tvars startState
-                  , ts_vars = tsvars
-                  , ts_kinds = replicate (length tsvars) Nothing
+                  , ts_vars = zip (tvars startState) (repeat Nothing)
                   , ts_monotype = monotype
                   }
 
