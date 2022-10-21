@@ -93,6 +93,8 @@ resolveTyp rep (TyBinOp loc fst op snd) =
     resolveBinOp loc rep fst op snd
 resolveTyp rep (TyParens _loc typ) =
     resolveTyp rep typ
+resolveTyp rep (TyKindAnnot _loc _ ty) =
+    resolveTyp rep ty
 resolveTyp rep (TyI64 loc) =
     pure $ RST.TyI64 loc rep
 resolveTyp rep (TyF64 loc) =
