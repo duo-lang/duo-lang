@@ -80,9 +80,10 @@ fromImplicitCase PrdRep (ImplicitCase Prd cs) = cs
 fromImplicitCase CnsRep (ImplicitCase Cns cs) = cs
 fromImplicitCase _      _                        = error "Compiler bug"
 
-data SomeIntermediateCases where
-  ExplicitCases    ::                 [IntermediateCase]     -> SomeIntermediateCases
-  ImplicitCases    :: PrdCns -> [IntermediateCaseI] -> SomeIntermediateCases
+data Cases where
+  ExplicitCases    :: [IntermediateCase]  -> Cases
+  ImplicitPrdCases :: [IntermediateCaseI] -> Cases
+  ImplicitCnsCases :: [IntermediateCaseI] -> Cases
 
 adjustPat :: (Loc, PrdCns, FreeVarName) -> (PrdCns, FreeVarName)
 adjustPat (_loc, pc, var) = (pc,var)
@@ -126,12 +127,12 @@ analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
 
 analyzeCases :: CST.DataCodata
              -> [CST.TermCase]
-             -> ResolverM SomeIntermediateCases
+             -> ResolverM Cases
 analyzeCases dc cases = do
   cases' <- mapM (analyzeCase dc) cases
   if | all isExplicitCase cases' -> pure $ ExplicitCases    $ fromExplicitCase <$> cases'
-     | all (isImplicitCase PrdRep) cases' -> pure $ ImplicitCases Prd $ fromImplicitCase PrdRep <$> cases'
-     | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCases Cns $ fromImplicitCase CnsRep <$> cases'
+     | all (isImplicitCase PrdRep) cases' -> pure $ ImplicitPrdCases $ fromImplicitCase PrdRep <$> cases'
+     | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCnsCases $ fromImplicitCase CnsRep <$> cases'
      | otherwise -> throwOtherError (getLoc (head cases)) ["Cases mix the use of both explicit and implicit patterns."]
 
 analyzeInstanceCase :: CST.TermCase -> ResolverM SomeIntermediateCase
@@ -256,10 +257,10 @@ resolveCommand (CST.CaseOf loc tm cases) = do
     ExplicitCases explicitCases -> do
       cmdCases <- mapM resolveCommandCase explicitCases
       pure $ RST.CaseOfCmd loc ns tm' cmdCases
-    ImplicitCases Prd implicitCases -> do
+    ImplicitPrdCases implicitCases -> do
       termCasesI <- mapM (resolveTermCaseI PrdRep) implicitCases
       pure $ RST.CaseOfI loc PrdRep ns tm' termCasesI
-    ImplicitCases Cns implicitCases -> do
+    ImplicitCnsCases implicitCases -> do
       termCasesI <- mapM (resolveTermCaseI CnsRep) implicitCases
       pure $ RST.CaseOfI loc CnsRep ns tm' termCasesI
 resolveCommand (CST.CocaseOf loc tm cases) = do
@@ -270,10 +271,10 @@ resolveCommand (CST.CocaseOf loc tm cases) = do
     ExplicitCases explicitCases -> do
       cmdCases <- mapM resolveCommandCase explicitCases
       pure $ RST.CocaseOfCmd loc ns tm' cmdCases
-    ImplicitCases Prd implicitCases -> do
+    ImplicitPrdCases implicitCases -> do
       termCasesI <- mapM (resolveTermCaseI PrdRep) implicitCases
       pure $ RST.CocaseOfI loc PrdRep ns tm' termCasesI
-    ImplicitCases Cns implicitCases -> do
+    ImplicitCnsCases implicitCases -> do
       termCasesI <- mapM (resolveTermCaseI CnsRep) implicitCases
       pure $ RST.CocaseOfI loc CnsRep ns tm' termCasesI
 resolveCommand (CST.Xtor loc xtor arity) = do
@@ -505,10 +506,10 @@ resolveTerm PrdRep (CST.Cocase loc cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- mapM resolveCommandCase explicitCases
       pure $ RST.XCase loc PrdRep ns cases'
-    ImplicitCases Prd implicitCases -> do
+    ImplicitPrdCases implicitCases -> do
       cases' <- mapM (resolveTermCaseI PrdRep) implicitCases
       pure $ RST.CocaseI loc PrdRep ns cases'
-    ImplicitCases Cns implicitCases -> do
+    ImplicitCnsCases implicitCases -> do
       cases' <- mapM (resolveTermCaseI CnsRep) implicitCases
       pure $ RST.CocaseI loc CnsRep ns cases'
 resolveTerm CnsRep (CST.Case loc cases)  = do
@@ -518,10 +519,10 @@ resolveTerm CnsRep (CST.Case loc cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- mapM resolveCommandCase explicitCases
       pure $ RST.XCase loc CnsRep ns cases'
-    ImplicitCases Prd implicitCases -> do
+    ImplicitPrdCases implicitCases -> do
       cases' <- mapM (resolveTermCaseI PrdRep) implicitCases
       pure $ RST.CaseI loc PrdRep ns cases'
-    ImplicitCases Cns implicitCases -> do
+    ImplicitCnsCases implicitCases -> do
       cases' <- mapM (resolveTermCaseI CnsRep) implicitCases
       pure $ RST.CaseI loc CnsRep ns cases'
 ---------------------------------------------------------------------------------
@@ -535,7 +536,9 @@ resolveTerm PrdRep (CST.CaseOf loc t cases)  = do
       cases' <- mapM (resolveTermCase PrdRep) explicitCases
       t' <- resolveTerm PrdRep t
       pure $ RST.CaseOf loc PrdRep ns t' cases'
-    ImplicitCases _rep _implicitCases ->
+    ImplicitPrdCases _implicitCases ->
+      throwOtherError loc ["Cannot resolve case-of with implicit cases to producer."]
+    ImplicitCnsCases _implicitCases ->
       throwOtherError loc ["Cannot resolve case-of with implicit cases to producer."]
 resolveTerm PrdRep (CST.CocaseOf loc t cases)  = do
   ns <- casesToNS cases
@@ -545,7 +548,9 @@ resolveTerm PrdRep (CST.CocaseOf loc t cases)  = do
       cases' <- mapM (resolveTermCase PrdRep) explicitCases
       t' <- resolveTerm CnsRep t
       pure $ RST.CocaseOf loc PrdRep ns t' cases'
-    ImplicitCases _rep _implicitCases ->
+    ImplicitPrdCases _implicitCases ->
+      throwOtherError loc ["Cannot resolve cocase-of with implicit cases to producer"]
+    ImplicitCnsCases _implicitCases ->
       throwOtherError loc ["Cannot resolve cocase-of with implicit cases to producer"]
 resolveTerm CnsRep (CST.CaseOf loc t cases) = do
   ns <- casesToNS cases
@@ -555,7 +560,9 @@ resolveTerm CnsRep (CST.CaseOf loc t cases) = do
       cases' <- mapM (resolveTermCase CnsRep) explicitCases
       t' <- resolveTerm PrdRep t
       pure $ RST.CaseOf loc CnsRep ns t' cases'
-    ImplicitCases _rep _implicitCases ->
+    ImplicitPrdCases _implicitCases ->
+      throwOtherError loc ["Cannot resolve case-of with implicit cases to consumer."]
+    ImplicitCnsCases _implicitCases ->
       throwOtherError loc ["Cannot resolve case-of with implicit cases to consumer."]
 resolveTerm CnsRep (CST.CocaseOf loc t cases) = do
   ns <- casesToNS cases
@@ -565,7 +572,9 @@ resolveTerm CnsRep (CST.CocaseOf loc t cases) = do
       cases' <- mapM (resolveTermCase CnsRep) explicitCases
       t' <- resolveTerm CnsRep t
       pure $ RST.CocaseOf loc CnsRep ns t' cases'
-    ImplicitCases _rep _implicitCases ->
+    ImplicitPrdCases _implicitCases ->
+      throwOtherError loc ["Cannot resolve cocase-of with implicit cases to consumer"]
+    ImplicitCnsCases _implicitCases ->
       throwOtherError loc ["Cannot resolve cocase-of with implicit cases to consumer"]
 ---------------------------------------------------------------------------------
 -- Literals
