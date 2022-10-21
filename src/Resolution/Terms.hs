@@ -51,38 +51,38 @@ data IntermediateCase  = MkIntermediateCase
   }
 
 -- | A case with exactly one star.
-data IntermediateCaseI pc = MkIntermediateCaseI
+data IntermediateCaseI = MkIntermediateCaseI
   { icasei_loc  :: Loc
   , icasei_name :: XtorName
-  , icasei_args :: ([(PrdCns, FreeVarName)], PrdCnsRep pc,[(PrdCns,FreeVarName)])
+  , icasei_args :: ([(PrdCns, FreeVarName)], PrdCns,[(PrdCns,FreeVarName)])
   , icasei_term :: CST.Term
   }
 
 data SomeIntermediateCase where
   ExplicitCase ::                 IntermediateCase     -> SomeIntermediateCase
-  ImplicitCase :: PrdCnsRep pc -> IntermediateCaseI pc -> SomeIntermediateCase
+  ImplicitCase :: PrdCns -> IntermediateCaseI -> SomeIntermediateCase
 
 isExplicitCase :: SomeIntermediateCase -> Bool
 isExplicitCase (ExplicitCase _) = True
 isExplicitCase _                = False
 
 isImplicitCase :: PrdCnsRep pc -> SomeIntermediateCase -> Bool
-isImplicitCase PrdRep (ImplicitCase PrdRep _) = True
-isImplicitCase CnsRep (ImplicitCase CnsRep _) = True
+isImplicitCase PrdRep (ImplicitCase Prd _) = True
+isImplicitCase CnsRep (ImplicitCase Cns _) = True
 isImplicitCase _      _                       = False
 
 fromExplicitCase :: SomeIntermediateCase -> IntermediateCase
 fromExplicitCase (ExplicitCase cs) = cs
 fromExplicitCase _                 = error "Compiler bug"
 
-fromImplicitCase :: PrdCnsRep pc -> SomeIntermediateCase -> IntermediateCaseI pc
-fromImplicitCase PrdRep (ImplicitCase PrdRep cs) = cs
-fromImplicitCase CnsRep (ImplicitCase CnsRep cs) = cs
+fromImplicitCase :: PrdCnsRep pc -> SomeIntermediateCase -> IntermediateCaseI
+fromImplicitCase PrdRep (ImplicitCase Prd cs) = cs
+fromImplicitCase CnsRep (ImplicitCase Cns cs) = cs
 fromImplicitCase _      _                        = error "Compiler bug"
 
 data SomeIntermediateCases where
   ExplicitCases    ::                 [IntermediateCase]     -> SomeIntermediateCases
-  ImplicitCases    :: PrdCnsRep pc -> [IntermediateCaseI pc] -> SomeIntermediateCases
+  ImplicitCases    :: PrdCns -> [IntermediateCaseI] -> SomeIntermediateCases
 
 adjustPat :: (Loc, PrdCns, FreeVarName) -> (PrdCns, FreeVarName)
 adjustPat (_loc, pc, var) = (pc,var)
@@ -107,19 +107,19 @@ analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
     Right (RST.PatXtorStar _loc _pc _ns xt (patl,RST.PatStar _ Cns,patr)) -> do
       patl' <- mapM fromVar patl
       patr' <- mapM fromVar patr
-      pure $ ImplicitCase PrdRep $ MkIntermediateCaseI
+      pure $ ImplicitCase Prd $ MkIntermediateCaseI
                                     { icasei_loc = tmcase_loc
                                     , icasei_name = xt
-                                    , icasei_args = (adjustPat <$> patl', PrdRep, adjustPat <$> patr')
+                                    , icasei_args = (adjustPat <$> patl', Prd, adjustPat <$> patr')
                                     , icasei_term = tmcase_term
                                     }
     Right (RST.PatXtorStar _loc _pc _ns xt (patl, RST.PatStar _ Prd,patr)) -> do
       patl' <- mapM fromVar patl
       patr' <- mapM fromVar patr
-      pure $ ImplicitCase CnsRep $ MkIntermediateCaseI
+      pure $ ImplicitCase Cns $ MkIntermediateCaseI
                                     { icasei_loc = tmcase_loc
                                     , icasei_name = xt
-                                    , icasei_args = (adjustPat <$> patl', CnsRep, adjustPat <$> patr')
+                                    , icasei_args = (adjustPat <$> patl', Cns, adjustPat <$> patr')
                                     , icasei_term = tmcase_term
                                     }
     _ -> throwOtherError tmcase_loc ["Illegal pattern in function analyzeCase"]
@@ -130,8 +130,8 @@ analyzeCases :: CST.DataCodata
 analyzeCases dc cases = do
   cases' <- mapM (analyzeCase dc) cases
   if | all isExplicitCase cases' -> pure $ ExplicitCases    $ fromExplicitCase <$> cases'
-     | all (isImplicitCase PrdRep) cases' -> pure $ ImplicitCases PrdRep $ fromImplicitCase PrdRep <$> cases'
-     | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCases CnsRep $ fromImplicitCase CnsRep <$> cases'
+     | all (isImplicitCase PrdRep) cases' -> pure $ ImplicitCases Prd $ fromImplicitCase PrdRep <$> cases'
+     | all (isImplicitCase CnsRep) cases' -> pure $ ImplicitCases Cns $ fromImplicitCase CnsRep <$> cases'
      | otherwise -> throwOtherError (getLoc (head cases)) ["Cases mix the use of both explicit and implicit patterns."]
 
 analyzeInstanceCase :: CST.TermCase -> ResolverM SomeIntermediateCase
@@ -157,7 +157,7 @@ resolveCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , ic
                      , cmdcase_cmd = LN.close icase_args cmd'
                      }
 
-resolveTermCaseI :: PrdCnsRep pc -> IntermediateCaseI pc -> ResolverM (RST.TermCaseI pc)
+resolveTermCaseI :: PrdCnsRep pc -> IntermediateCaseI -> ResolverM (RST.TermCaseI pc)
 resolveTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args = (args1,_, args2), icasei_term } = do
   tm' <- resolveTerm rep icasei_term
   pure RST.MkTermCaseI { tmcasei_loc = icasei_loc
@@ -256,9 +256,12 @@ resolveCommand (CST.CaseOf loc tm cases) = do
     ExplicitCases explicitCases -> do
       cmdCases <- mapM resolveCommandCase explicitCases
       pure $ RST.CaseOfCmd loc ns tm' cmdCases
-    ImplicitCases rep implicitCases -> do
-      termCasesI <- mapM (resolveTermCaseI rep) implicitCases
-      pure $ RST.CaseOfI loc rep ns tm' termCasesI
+    ImplicitCases Prd implicitCases -> do
+      termCasesI <- mapM (resolveTermCaseI PrdRep) implicitCases
+      pure $ RST.CaseOfI loc PrdRep ns tm' termCasesI
+    ImplicitCases Cns implicitCases -> do
+      termCasesI <- mapM (resolveTermCaseI CnsRep) implicitCases
+      pure $ RST.CaseOfI loc CnsRep ns tm' termCasesI
 resolveCommand (CST.CocaseOf loc tm cases) = do
   tm' <- resolveTerm CnsRep tm
   ns <- casesToNS cases
@@ -267,9 +270,12 @@ resolveCommand (CST.CocaseOf loc tm cases) = do
     ExplicitCases explicitCases -> do
       cmdCases <- mapM resolveCommandCase explicitCases
       pure $ RST.CocaseOfCmd loc ns tm' cmdCases
-    ImplicitCases rep implicitCases -> do
-      termCasesI <- mapM (resolveTermCaseI rep) implicitCases
-      pure $ RST.CocaseOfI loc rep ns tm' termCasesI
+    ImplicitCases Prd implicitCases -> do
+      termCasesI <- mapM (resolveTermCaseI PrdRep) implicitCases
+      pure $ RST.CocaseOfI loc PrdRep ns tm' termCasesI
+    ImplicitCases Cns implicitCases -> do
+      termCasesI <- mapM (resolveTermCaseI CnsRep) implicitCases
+      pure $ RST.CocaseOfI loc CnsRep ns tm' termCasesI
 resolveCommand (CST.Xtor loc xtor arity) = do
   (_, res) <- lookupXtor loc xtor
   case res of
@@ -499,9 +505,12 @@ resolveTerm PrdRep (CST.Cocase loc cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- mapM resolveCommandCase explicitCases
       pure $ RST.XCase loc PrdRep ns cases'
-    ImplicitCases rep implicitCases -> do
-      cases' <- mapM (resolveTermCaseI rep) implicitCases
-      pure $ RST.CocaseI loc rep ns cases'
+    ImplicitCases Prd implicitCases -> do
+      cases' <- mapM (resolveTermCaseI PrdRep) implicitCases
+      pure $ RST.CocaseI loc PrdRep ns cases'
+    ImplicitCases Cns implicitCases -> do
+      cases' <- mapM (resolveTermCaseI CnsRep) implicitCases
+      pure $ RST.CocaseI loc CnsRep ns cases'
 resolveTerm CnsRep (CST.Case loc cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases CST.Data cases
@@ -509,9 +518,12 @@ resolveTerm CnsRep (CST.Case loc cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- mapM resolveCommandCase explicitCases
       pure $ RST.XCase loc CnsRep ns cases'
-    ImplicitCases rep implicitCases -> do
-      cases' <- mapM (resolveTermCaseI rep) implicitCases
-      pure $ RST.CaseI loc rep ns cases'
+    ImplicitCases Prd implicitCases -> do
+      cases' <- mapM (resolveTermCaseI PrdRep) implicitCases
+      pure $ RST.CaseI loc PrdRep ns cases'
+    ImplicitCases Cns implicitCases -> do
+      cases' <- mapM (resolveTermCaseI CnsRep) implicitCases
+      pure $ RST.CaseI loc CnsRep ns cases'
 ---------------------------------------------------------------------------------
 -- CaseOf / CocaseOf
 ---------------------------------------------------------------------------------
