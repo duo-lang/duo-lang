@@ -45,16 +45,14 @@ resolveTerms loc ar t = error $ "compiler bug in resolveTerms, loc = " ++ show l
 -- | A case with no stars.
 data IntermediateCase  = MkIntermediateCase
   { icase_loc  :: Loc
-  , icase_name :: XtorName
-  , icase_args :: [(PrdCns, FreeVarName)]
+  , icase_pat :: (XtorName, [(PrdCns, FreeVarName)])
   , icase_term :: CST.Term
   }
 
 -- | A case with exactly one star.
 data IntermediateCaseI = MkIntermediateCaseI
   { icasei_loc  :: Loc
-  , icasei_name :: XtorName
-  , icasei_args :: ([(PrdCns, FreeVarName)], PrdCns,[(PrdCns,FreeVarName)])
+  , icasei_pat :: (XtorName, ([(PrdCns, FreeVarName)], PrdCns,[(PrdCns,FreeVarName)]))
   , icasei_term :: CST.Term
   }
 
@@ -101,8 +99,7 @@ analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
       pat <- mapM fromVar pats
       pure $ ExplicitCase $ MkIntermediateCase
                                     { icase_loc = tmcase_loc
-                                    , icase_name = xt
-                                    , icase_args = adjustPat <$> pat
+                                    , icase_pat = (xt, adjustPat <$> pat)
                                     , icase_term = tmcase_term
                                     }
     Right (RST.PatXtorStar _loc _pc _ns xt (patl,RST.PatStar _ Cns,patr)) -> do
@@ -110,8 +107,7 @@ analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
       patr' <- mapM fromVar patr
       pure $ ImplicitCase Prd $ MkIntermediateCaseI
                                     { icasei_loc = tmcase_loc
-                                    , icasei_name = xt
-                                    , icasei_args = (adjustPat <$> patl', Prd, adjustPat <$> patr')
+                                    , icasei_pat = (xt, (adjustPat <$> patl', Prd, adjustPat <$> patr'))
                                     , icasei_term = tmcase_term
                                     }
     Right (RST.PatXtorStar _loc _pc _ns xt (patl, RST.PatStar _ Prd,patr)) -> do
@@ -119,8 +115,7 @@ analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
       patr' <- mapM fromVar patr
       pure $ ImplicitCase Cns $ MkIntermediateCaseI
                                     { icasei_loc = tmcase_loc
-                                    , icasei_name = xt
-                                    , icasei_args = (adjustPat <$> patl', Cns, adjustPat <$> patr')
+                                    , icasei_pat = (xt, (adjustPat <$> patl', Cns, adjustPat <$> patr'))
                                     , icasei_term = tmcase_term
                                     }
     _ -> throwOtherError tmcase_loc ["Illegal pattern in function analyzeCase"]
@@ -141,8 +136,7 @@ analyzeInstanceCase CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
   case analyzedPattern of
     (_,xt, pat) -> pure $ ExplicitCase $ MkIntermediateCase
                                     { icase_loc = tmcase_loc
-                                    , icase_name = xt
-                                    , icase_args = adjustPat <$> pat
+                                    , icase_pat = (xt, adjustPat <$> pat)
                                     , icase_term = tmcase_term
                                     }
 
@@ -151,35 +145,35 @@ analyzeInstanceCase CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
 ---------------------------------------------------------------------------------
 
 resolveCommandCase :: IntermediateCase -> ResolverM RST.CmdCase
-resolveCommandCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
+resolveCommandCase MkIntermediateCase { icase_loc , icase_pat = (name, args) , icase_term } = do
   cmd' <- resolveCommand icase_term
   pure RST.MkCmdCase { cmdcase_loc = icase_loc
-                     , cmdcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
-                     , cmdcase_cmd = LN.close icase_args cmd'
+                     , cmdcase_pat = RST.XtorPat icase_loc name (second Just <$> args)
+                     , cmdcase_cmd = LN.close args cmd'
                      }
 
 resolveTermCaseI :: PrdCnsRep pc -> IntermediateCaseI -> ResolverM (RST.TermCaseI pc)
-resolveTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_name, icasei_args = (args1,_, args2), icasei_term } = do
+resolveTermCaseI rep MkIntermediateCaseI { icasei_loc, icasei_pat = (name,(args1,_, args2)), icasei_term } = do
   tm' <- resolveTerm rep icasei_term
   pure RST.MkTermCaseI { tmcasei_loc = icasei_loc
-                       , tmcasei_pat = RST.XtorPatI icasei_loc icasei_name (second Just <$> args1, (), second Just <$> args2)
+                       , tmcasei_pat = RST.XtorPatI icasei_loc name (second Just <$> args1, (), second Just <$> args2)
                        , tmcasei_term = LN.close (args1 ++ [(Cns, MkFreeVarName "*")] ++ args2) tm'
                        }
 
 resolveTermCase :: PrdCnsRep pc -> IntermediateCase -> ResolverM (RST.TermCase pc)
-resolveTermCase rep MkIntermediateCase { icase_loc, icase_name, icase_args, icase_term } = do
+resolveTermCase rep MkIntermediateCase { icase_loc, icase_pat = (name, args), icase_term } = do
   tm' <- resolveTerm rep icase_term
   pure RST.MkTermCase { tmcase_loc  = icase_loc
-                      , tmcase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
-                      , tmcase_term = LN.close icase_args tm'
+                      , tmcase_pat = RST.XtorPat icase_loc name (second Just <$> args)
+                      , tmcase_term = LN.close args tm'
                       }
 
 resolveInstanceCase :: IntermediateCase -> ResolverM RST.InstanceCase
-resolveInstanceCase MkIntermediateCase { icase_loc , icase_name , icase_args , icase_term } = do
+resolveInstanceCase MkIntermediateCase { icase_loc , icase_pat = (name, args), icase_term } = do
   cmd' <- resolveCommand icase_term
   pure RST.MkInstanceCase { instancecase_loc = icase_loc
-                          , instancecase_pat = RST.XtorPat icase_loc icase_name (second Just <$> icase_args)
-                          , instancecase_cmd = LN.close icase_args cmd'
+                          , instancecase_pat = RST.XtorPat icase_loc name (second Just <$> args)
+                          , instancecase_cmd = LN.close args cmd'
                           }
 
 
