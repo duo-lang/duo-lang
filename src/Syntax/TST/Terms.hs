@@ -25,11 +25,13 @@ import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.Core.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
+import Syntax.Core.Terms qualified as Core
 import Syntax.CST.Kinds ( MonoKind )
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
+
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.TST.Types
 import Data.Bifunctor (Bifunctor(second))
@@ -78,7 +80,7 @@ instance NMap Substitution PrdCnsTerm where
 --
 data CmdCase = MkCmdCase
   { cmdcase_loc  :: Loc
-  , cmdcase_pat :: RST.Pattern
+  , cmdcase_pat :: Core.Pattern
   , cmdcase_cmd  :: Command
   }
 
@@ -98,7 +100,7 @@ deriving instance Show CmdCase
 --
 data InstanceCase = MkInstanceCase
   { instancecase_loc :: Loc
-  , instancecase_pat :: RST.Pattern
+  , instancecase_pat :: Core.Pattern
   , instancecase_cmd :: Command
   }
 
