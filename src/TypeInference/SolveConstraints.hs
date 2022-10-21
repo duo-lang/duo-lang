@@ -285,11 +285,11 @@ subConstraints (SubType _ (TyBot _ _) tyn) =
 subConstraints (SubType _ (TyUnion _ _ ty1 ty2) ty3) = do
   let c1 = SubType IntersectionUnionSubConstraint ty1 ty3
   let c2 = SubType IntersectionUnionSubConstraint ty2 ty3
-  pure (Join (SubVar (void c1)) (SubVar (void c2)), [c1, c2])
+  pure (Union (SubVar (void c1)) (SubVar (void c2)), [c1, c2])
 subConstraints (SubType _ ty1 (TyInter _ _ ty2 ty3)) = do
   let c1 = SubType IntersectionUnionSubConstraint ty1 ty2
   let c2 = SubType IntersectionUnionSubConstraint ty1 ty3
-  pure (Meet (SubVar (void c1)) (SubVar (void c2)), [c1, c2])
+  pure (Inter (SubVar (void c1)) (SubVar (void c2)), [c1, c2])
 -- Recursive constraints:
 --
 -- If the left hand side or the right hand side of the constraint is a recursive
@@ -382,8 +382,8 @@ substitute = do
     go m (SynR rn w) = SynR rn <$> go m w
     go _ (FromTop ty) = pure $ FromTop ty
     go _ (ToBot ty) = pure $ ToBot ty
-    go m (Meet w1 w2) = Meet <$> go m w1 <*> go m w2
-    go m (Join w1 w2) = Join <$> go m w1 <*> go m w2
+    go m (Inter w1 w2) = Inter <$> go m w1 <*> go m w2
+    go m (Union w1 w2) = Union <$> go m w1 <*> go m w2
     go m (UnfoldL recTVar w) = UnfoldL recTVar <$> go m w
     go m (UnfoldR recTVar w) = UnfoldR recTVar <$> go m w
     go m (Data ws) = Data <$> mapM (go m) ws
@@ -397,7 +397,7 @@ substitute = do
     go _ (UVarR uv typ) = pure $ UVarR uv typ
     go _ (Fix cs) = pure $ Fix cs
     go m (SubVar c) = case M.lookup c m of
-         Nothing -> throwSolverError defaultLoc [ "Cannot find witness for: " ] -- <> ppPrint c ]
+         Nothing -> throwSolverError defaultLoc [ "Cannot find witness for: " <> ppPrint c ]
          Just (SubVar _c) -> throwSolverError defaultLoc [ "Tried to substitute a variable with another variable" ]
          Just w -> asks (S.member c) >>= \case
             True -> pure $ Fix c

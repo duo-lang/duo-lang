@@ -57,9 +57,9 @@ data SubtypeWitness
   -- ^ Witness for the type being a subtype of /Top/.
   | ToBot (Typ Neg)
   -- ^ Witness for the type being a supertype of /Bot/.
-  | Meet SubtypeWitness SubtypeWitness
+  | Inter SubtypeWitness SubtypeWitness
   -- ^ Witness for a type being a subtype on an intersection type, therefore having to be a subtype of both.
-  | Join SubtypeWitness SubtypeWitness
+  | Union SubtypeWitness SubtypeWitness
   -- ^ Witness for a type being a supertype on a union type, therefore having to be a supertype of both.
   | UnfoldL RecTVar SubtypeWitness
   -- ^ Witness for a recursive subtype with its unfolded representation as a subwitness.
