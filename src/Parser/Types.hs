@@ -108,7 +108,7 @@ xdataTypeP Codata = do
 typeVariableP :: Parser (Typ, SourcePos)
 typeVariableP = do
   startPos <- getSourcePos
-  (tvar, mk, endPos) <- tvarAnnotP
+  (tvar, endPos) <- tvarP
   sc
   pure (TySkolemVar (Loc startPos endPos) tvar, endPos)
 
@@ -117,7 +117,7 @@ recTypeP = do
   startPos <- getSourcePos
   _ <- keywordP KwRec
   sc
-  (rv,mk,_) <- tvarAnnotP
+  (rv,_) <- tvarP
   symbolP SymDot
   sc
   (ty, endPos) <- typP
