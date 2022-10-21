@@ -125,11 +125,11 @@ solve (cs:css) = do
       (KindEq _ k1 k2) -> do
         unifyKinds k1 k2
         solve css
-      (SubType _ (TyUniVar _ PosRep _ uvl) tvu@(TyUniVar _ NegRep _ uvu)) ->
+      (SubType _ ty@(TyUniVar _ PosRep _ uvl) tvu@(TyUniVar _ NegRep _ uvu)) ->
         if uvl == uvu
-        then addToCache cs (UVarB uvl uvu) >> solve css
+        then addToCache cs (Refl ty tvu) >> solve css
         else do
-          addToCache cs (UVarB uvl uvu)
+          addToCache cs (UVarL uvl tvu)
           newCss <- addUpperBound uvl tvu
           solve (newCss ++ css)
       (SubType _ (TyUniVar _ PosRep _ uv) ub) -> do
@@ -392,7 +392,6 @@ substitute = do
     go m (CodataRefined rn ws) = CodataRefined rn <$> mapM (go m) ws
     go m (DataNominal rn ws) = DataNominal rn <$> mapM (go m) ws
     go _ (Refl typ tyn) = pure $ Refl typ tyn
-    go _ (UVarB uv1 uv2) = pure $ UVarB uv1 uv2
     go _ (UVarL uv tyn) = pure $ UVarL uv tyn
     go _ (UVarR uv typ) = pure $ UVarR uv typ
     go _ (Fix cs) = pure $ Fix cs

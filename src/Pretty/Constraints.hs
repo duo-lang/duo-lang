@@ -97,7 +97,6 @@ instance PrettyAnn SubtypeWitness where
   prettyAnn (CodataRefined rn ws) = "CodataRefined" <> brackets (prettyAnn rn) <> parens (sep $ intersperse "," $ prettyAnn <$> ws)
   prettyAnn (DataNominal rn ws) = "DataNominal" <> brackets (prettyAnn rn) <> parens (sep $ intersperse "," $ prettyAnn <$> ws)
   prettyAnn (Refl typ _tyn) = "Refl" <> brackets (prettyAnn typ)
-  prettyAnn (UVarB uv1 uv2) = "UVarB" <> brackets (prettyAnn uv1 <+> prettyAnn uv2)
   prettyAnn (UVarL uv tyn) = "UVarL" <> brackets (prettyAnn uv) <> parens (prettyAnn tyn)
   prettyAnn (UVarR uv typ) = "UVarR" <> brackets (prettyAnn uv) <> parens (prettyAnn typ)
   prettyAnn (SubVar cs) = "SubVar" <> braces (prettyAnn cs)
