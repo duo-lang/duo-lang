@@ -3,7 +3,6 @@ module Syntax.TST.Terms
     Term(..)
   , PrdCnsTerm(..)
   , Substitution(..)
-  , RST.Pattern(..)
   , CmdCase(..)
   , InstanceCase(..)
   , Command(..)
@@ -367,7 +366,7 @@ termLocallyClosedRec _ (PrimLitString _ _) = Right ()
 
 
 cmdCaseLocallyClosedRec :: [[(PrdCns,())]] -> CmdCase -> Either Error ()
-cmdCaseLocallyClosedRec env (MkCmdCase _ (RST.XtorPat _ _ args) cmd)= do
+cmdCaseLocallyClosedRec env (MkCmdCase _ (Core.XtorPat _ _ args) cmd)= do
   commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args):env) cmd
 
 commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either Error ()
@@ -384,7 +383,7 @@ termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
 
 instanceCaseLocallyClosed :: InstanceCase -> Either Error ()
-instanceCaseLocallyClosed (MkInstanceCase _ (RST.XtorPat _ _ args) cmd) =
+instanceCaseLocallyClosed (MkInstanceCase _ (Core.XtorPat _ _ args) cmd) =
   commandLocallyClosedRec [second (const ()) <$> args] cmd
 
 ---------------------------------------------------------------------------------

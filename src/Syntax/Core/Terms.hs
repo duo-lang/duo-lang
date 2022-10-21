@@ -6,6 +6,7 @@ module Syntax.Core.Terms
   , CmdCase(..)
   , InstanceCase(..)
   , Command(..)
+  , Pattern(..)
   -- Functions
   , termLocallyClosed
   ) where
