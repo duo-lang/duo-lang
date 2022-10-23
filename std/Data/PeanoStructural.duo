@@ -20,5 +20,5 @@ def rec prd mul :=
                     , S(n) => add m (mul n m)};
 
 def rec prd nateq :=
-  \n m => case n of { Z    => case m of { Z => True,  S(m) => False}
+  \n m => case n of { Z    => case m of { Z => True,  S(_) => False}
                     , S(n) => case m of { Z => False, S(m) => nateq n m}};

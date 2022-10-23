@@ -8,7 +8,7 @@ import Codata.Par;
 
 def rec prd filterHelper := \p l => case l of {
     Nil => cocase {
-        MkPar(k1,*) => MkUnit
+        MkPar(_,*) => MkUnit
     },
     Cons(x,xs) => case p x of {
         True =>

@@ -3,10 +3,10 @@ module Syntax.Core.Terms
     Term(..)
   , PrdCnsTerm(..)
   , Substitution(..)
-  , RST.Pattern(..)
   , CmdCase(..)
   , InstanceCase(..)
   , Command(..)
+  , Pattern(..)
   -- Functions
   , termLocallyClosed
   ) where
@@ -18,12 +18,11 @@ import Syntax.Core.Annot
 import Loc
 import Errors
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
-import Syntax.TST.Terms (ShiftDirection(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
-import Syntax.LocallyNameless (LocallyNameless (..), Shiftable (..))
+import Syntax.LocallyNameless (LocallyNameless (..), Shiftable (..), ShiftDirection(..))
 import Syntax.NMap (NMap (..), (<¢>))
 
 ---------------------------------------------------------------------------------
@@ -55,6 +54,11 @@ instance NMap Substitution PrdCnsTerm where
   nmap f = MkSubstitution . fmap f . unSubstitution
   nmapM f = fmap MkSubstitution . mapM f . unSubstitution
 
+data Pattern where
+  XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
+
+deriving instance Show Pattern
+
 -- | Represents one case in a pattern match or copattern match.
 --
 --        X Gamma           => c
@@ -64,7 +68,7 @@ instance NMap Substitution PrdCnsTerm where
 --
 data CmdCase = MkCmdCase
   { cmdcase_loc  :: Loc
-  , cmdcase_pat :: RST.Pattern
+  , cmdcase_pat :: Pattern
   , cmdcase_cmd  :: Command
   }
 
@@ -81,7 +85,7 @@ deriving instance Show CmdCase
 --
 data InstanceCase = MkInstanceCase
   { instancecase_loc :: Loc
-  , instancecase_pat :: RST.Pattern
+  , instancecase_pat :: Pattern
   , instancecase_cmd :: Command
   }
 
@@ -272,7 +276,7 @@ termLocallyClosedRec _ FreeVar{} = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
   sequence_ (pctermLocallyClosedRec env <$> unSubstitution subst)
 termLocallyClosedRec env (XCase _ _ _ _ cases) = do
-  sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_pat = RST.XtorPat _ _ args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase_cmd) <$> cases)
+  sequence_ ((\MkCmdCase { cmdcase_cmd, cmdcase_pat = XtorPat _ _ args } -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase_cmd) <$> cases)
 termLocallyClosedRec env (MuAbs _ _ PrdRep _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
 termLocallyClosedRec env (MuAbs _ _ CnsRep _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
 termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
