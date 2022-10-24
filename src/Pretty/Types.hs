@@ -94,6 +94,9 @@ instance PrettyAnn (RST.PrdCnsType pol) where
 instance PrettyAnn (TST.PrdCnsType pol) where 
   prettyAnn pctype = prettyAnn (embedTST pctype)
 
+instance PrettyAnn (TST.VariantType pol) where 
+  prettyAnn varty = prettyAnn (embedTST varty)
+
 instance PrettyAnn CST.PrdCnsTyp where
   prettyAnn (CST.PrdType ty) = prettyAnn ty
   prettyAnn (CST.CnsType ty) = returnKw <+> prettyAnn ty

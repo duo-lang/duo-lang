@@ -25,7 +25,7 @@ data Environment = MkEnvironment
   , instancePosEnv :: Map (ClassName, Typ Pos) InstanceDeclaration
   , instanceNegEnv :: Map (ClassName, Typ Neg) InstanceDeclaration
   , declEnv :: [(Loc,DataDecl)]
-  , kindEnv :: Map XtorName MonoKind
+  , kindEnv :: Map XtorName (MonoKind, [MonoKind]) -- for each structural constructor a return kind and list of argument kinds
   }
 
 emptyEnvironment :: Environment

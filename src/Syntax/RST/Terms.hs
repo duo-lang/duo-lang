@@ -4,6 +4,8 @@ module Syntax.RST.Terms
   , PrdCnsTerm(..)
   , Substitution(..)
   , SubstitutionI(..)
+  , PatternNew(..)
+  , StarPattern(..)
   , Pattern(..)
   , PatternI(..)
   , TermCase(..)
@@ -17,7 +19,7 @@ module Syntax.RST.Terms
 
 import Data.List (elemIndex)
 
-import Loc ( Loc )
+import Loc ( Loc, HasLoc(..) )
 import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.CST.Terms qualified as CST
@@ -70,6 +72,31 @@ deriving instance Show (SubstitutionI pc)
 -- Pattern/copattern match cases
 ---------------------------------------------------------------------------------
 
+data PatternNew where
+  PatXtor     :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> [PatternNew] -> PatternNew
+  PatVar      :: Loc -> PrdCns -> FreeVarName -> PatternNew
+  PatWildcard :: Loc -> PrdCns -> PatternNew
+
+deriving instance Eq PatternNew
+deriving instance Show PatternNew
+
+instance HasLoc PatternNew where
+  getLoc :: PatternNew -> Loc
+  getLoc (PatXtor loc _ _ _ _) = loc
+  getLoc (PatVar loc _ _) = loc
+  getLoc (PatWildcard loc _) = loc
+
+data StarPattern where
+  PatStar     :: Loc -> PrdCns -> StarPattern
+  PatXtorStar :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> ([PatternNew],StarPattern,[PatternNew]) -> StarPattern
+
+deriving instance Eq StarPattern
+deriving instance Show StarPattern
+
+instance HasLoc StarPattern where
+  getLoc :: StarPattern -> Loc
+  getLoc (PatStar loc _) = loc
+  getLoc (PatXtorStar loc _ _ _ _) = loc
 
 data Pattern where
   XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern

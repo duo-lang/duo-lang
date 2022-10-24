@@ -9,3 +9,4 @@ extra-deps:
   commit: 747297319f0dd0c8e8f72b7de4fbf52aad73d5b0
 
 system-ghc: true
+

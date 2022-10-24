@@ -201,6 +201,7 @@ executable duo
       LSP.Handler.Completion
       LSP.Handler.Hover
       LSP.Handler.JumpToDef
+      LSP.Handler.Various
       LSP.LSP
       LSP.MegaparsecToLSP
       Options
