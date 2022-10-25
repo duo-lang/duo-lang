@@ -1,0 +1,7 @@
+module KindAnnotations;
+
+import Codata.Function;
+
+
+def prd idAnnot : forall (a:CBV). a -> a :=
+  \x => x;
