@@ -9,6 +9,7 @@ module Driver.Driver
   ) where
 
 
+
 import Control.Monad.State
 import Control.Monad.Except
 import Data.List.NonEmpty ( NonEmpty ((:|)) )
@@ -110,9 +111,9 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  --  annot <- liftEitherErrLoc pcdecl_loc (fst $ runGenM pcdecl_loc env (annotateMaybeTypeScheme pcdecl_annot) )
-  annot <- maybe (return Nothing) (Just . fst <$>) $ liftEitherErrLoc pcdecl_loc . fst . runGenM pcdecl_loc env . annotateKind <$> pcdecl_annot
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annot pcdecl_loc
+  (annotChecked, annotConstrs) <- liftEitherErr $ runGenM pcdecl_loc env (annotateKind pcdecl_annot)
+  solverResultAnnot <- liftEitherErrLoc pcdecl_loc $ solveConstraints annotConstrs env
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annotChecked pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
