@@ -1,4 +1,4 @@
-module CE_057b;
+module Kinds.CE_057b;
 -- should fail since List expects CBV argument instead of #F64
 import List; 
 

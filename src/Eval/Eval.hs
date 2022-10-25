@@ -14,6 +14,7 @@ import Pretty.Pretty
 import Syntax.CST.Kinds
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.Core.Annot
+import Syntax.Core.Terms (Pattern(..))
 import Syntax.TST.Terms
 import Eval.Definition
 import Eval.Primitives

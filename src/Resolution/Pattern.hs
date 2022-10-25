@@ -1,7 +1,5 @@
 module Resolution.Pattern
-  ( Pattern(..)
-  , StarPattern(..)
-  , resolvePattern
+  ( resolvePattern
   , fromVar
   , analyzeInstancePattern
   ) where
@@ -24,40 +22,8 @@ import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..))
 import Syntax.CST.Names ( FreeVarName(MkFreeVarName), XtorName )
 import Loc ( Loc, HasLoc(getLoc))
+import Syntax.RST.Terms qualified as RST
 import Data.Either (isRight, fromLeft, fromRight)
-
----------------------------------------------------------------------------------
--- Resolved Pattern
--- 
--- These are supposed to end up in src/Syntax/RST/Terms.hs eventually, but they
--- are used as an intermediate step here.
----------------------------------------------------------------------------------
-
-data Pattern where
-  PatXtor     :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> [Pattern] -> Pattern
-  PatVar      :: Loc -> PrdCns -> FreeVarName -> Pattern
-  PatWildcard :: Loc -> PrdCns -> Pattern
-
-deriving instance Eq Pattern
-deriving instance Show Pattern
-
-instance HasLoc Pattern where
-  getLoc :: Pattern -> Loc
-  getLoc (PatXtor loc _ _ _ _) = loc
-  getLoc (PatVar loc _ _) = loc
-  getLoc (PatWildcard loc _) = loc
-
-data StarPattern where
-  PatStar     :: Loc -> PrdCns -> StarPattern
-  PatXtorStar :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> ([Pattern],StarPattern,[Pattern]) -> StarPattern
-
-deriving instance Eq StarPattern
-deriving instance Show StarPattern
-
-instance HasLoc StarPattern where
-  getLoc :: StarPattern -> Loc
-  getLoc (PatStar loc _) = loc
-  getLoc (PatXtorStar loc _ _ _ _) = loc
 
 ---------------------------------------------------------------------------------
 -- Resolve Pattern
@@ -75,7 +41,7 @@ findAtMostOneRight args = case break isRight args of
 
 -- | Annotate every part of the pattern with information on whether it stands for
 -- a producer or consumer.
-resolvePattern :: PrdCns -> CST.Pattern -> ResolverM (Either Pattern StarPattern)
+resolvePattern :: PrdCns -> CST.Pattern -> ResolverM (Either RST.PatternNew RST.StarPattern)
 resolvePattern pc (CST.PatXtor loc xt pats) = do
   -- Lookup up the arity information in the symbol table.
   (_,res) <- lookupXtor loc xt
@@ -94,27 +60,28 @@ resolvePattern pc (CST.PatXtor loc xt pats) = do
       pats' <- zipWithM resolvePattern arity pats
       pats'' <- findAtMostOneRight pats'
       case pats'' of
-        Left pats''' -> pure $ Left (PatXtor loc pc ns xt pats''')
-        Right pats''' -> pure $ Right (PatXtorStar loc pc ns xt pats''')
+        Left pats''' -> pure $ Left (RST.PatXtor loc pc ns xt pats''')
+        Right pats''' -> pure $ Right (RST.PatXtorStar loc pc ns xt pats''')
 resolvePattern Prd (CST.PatVar loc var@(MkFreeVarName name)) = do
   when ("k" `T.isPrefixOf` name) $
     tell [MisnamedProducerVar loc name]
-  pure $ Left (PatVar loc Prd var)
+  pure $ Left (RST.PatVar loc Prd var)
 resolvePattern Cns (CST.PatVar loc var@(MkFreeVarName name))  = do
   unless ("k" `T.isPrefixOf` name) $
     tell [MisnamedConsumerVar loc name]
-  pure $ Left (PatVar loc Cns var)
+  pure $ Left (RST.PatVar loc Cns var)
 resolvePattern pc (CST.PatStar loc) = do
-  pure $ Right (PatStar loc pc)
+  pure $ Right (RST.PatStar loc pc)
 resolvePattern pc (CST.PatWildcard loc) = do
-  pure $ Left (PatWildcard loc pc)
+  pure $ Left (RST.PatWildcard loc pc)
 
 ---------------------------------------------------------------------------------
 -- Analyze Patterns
 ---------------------------------------------------------------------------------
 
-fromVar :: Pattern -> ResolverM (Loc, PrdCns, FreeVarName)
-fromVar (PatVar loc pc var) = pure (loc, pc, var)
+fromVar :: RST.PatternNew -> ResolverM (Loc, PrdCns, FreeVarName)
+fromVar (RST.PatVar loc pc var) = pure (loc, pc, var)
+fromVar (RST.PatWildcard loc pc) = pure (loc, pc, MkFreeVarName "_")
 fromVar pat = throwOtherError (getLoc pat) ["Called function \"fromVar\" on pattern which is not a variable."]
 
 analyzeInstancePattern :: CST.Pattern -> ResolverM (Loc, XtorName, [(Loc, PrdCns, FreeVarName)])
