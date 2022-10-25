@@ -33,10 +33,18 @@ monoKindP = CBox <$> evalOrderP
 
 -- | Parses annotated Kind Parameter
 tvarAnnotP :: Parser (SkolemTVar, Maybe MonoKind, SourcePos)
-tvarAnnotP = do
-  (var,pos) <- tvarP
-  kind <- optional $ symbolP SymColon >> monoKindP
-  return (var, kind, pos)
+tvarAnnotP = unAnnotP <|> annotP
+  where
+    annotP = do
+      symbolP SymParenLeft
+      (var, pos) <- tvarP 
+      symbolP SymColon 
+      knd <- monoKindP 
+      symbolP SymParenRight
+      pure (var,Just knd,pos)
+    unAnnotP = do
+      (var, pos) <- tvarP 
+      pure (var, Nothing, pos)
 
 
 ---------------------------------------------------------------------------------
