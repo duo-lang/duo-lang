@@ -181,7 +181,7 @@ instance PrettyAnn (TST.TypeScheme pol) where
 
 instance PrettyAnn (SkolemTVar,Maybe MonoKind) where 
   prettyAnn (sk,Nothing) = prettyAnn sk
-  prettyAnn (sk,Just mk) = prettyAnn sk <> ":" <> prettyAnn mk
+  prettyAnn (sk,Just mk) = "(" <> prettyAnn sk <> ":" <> prettyAnn mk <> ")"
 
 instance PrettyAnn CST.TypeScheme where
   prettyAnn CST.TypeScheme { ts_vars = [], ts_monotype } =
