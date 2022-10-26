@@ -6,6 +6,7 @@ import Eval.Definition (EvalEnv)
 import Syntax.TST.Program
 import Syntax.TST.Terms
 import Syntax.TST.Types
+import Syntax.Core.Terms (Pattern(..))
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.RST.Terms qualified as RST
 import Loc

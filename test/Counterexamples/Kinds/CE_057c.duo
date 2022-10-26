@@ -1,4 +1,4 @@
-module CE_057c;
+module Kinds.CE_057c;
 -- should fail since constructor S expects CBV argument instead of #F64
 import PeanoStructural;
 
