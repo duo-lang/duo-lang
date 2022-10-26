@@ -167,7 +167,6 @@ instance PrettyAnn CST.Typ where
   prettyAnn (CST.TyChar _) = "#Char"
   prettyAnn (CST.TyString _) = "#String"
   prettyAnn (CST.TyParens _ ty) = parens (prettyAnn ty)
-  prettyAnn (CST.TyKindAnnot _ mk ty) = prettyAnn ty <> ":" <> prettyAnn mk
 
 ---------------------------------------------------------------------------------
 -- TypScheme
