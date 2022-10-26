@@ -32,19 +32,21 @@ monoKindP = CBox <$> evalOrderP
          <|> StringRep <$ (keywordP KwStringRep >> sc)
 
 -- | Parses annotated Kind Parameter
-tvarAnnotP :: Parser (SkolemTVar, Maybe MonoKind, SourcePos)
+tvarAnnotP :: Parser (KindedSkolem, SourcePos)
 tvarAnnotP = annotP <|> unAnnotP
   where
     annotP = do
       symbolP SymParenLeft
       (var, pos) <- tvarP 
+      sc
       symbolP SymColon 
+      sc
       knd <- monoKindP 
       symbolP SymParenRight
-      pure (var,Just knd,pos)
+      pure ((var,Just knd),pos)
     unAnnotP = do
       (var, pos) <- tvarP 
-      pure (var, Nothing, pos)
+      pure ((var, Nothing), pos)
 
 
 ---------------------------------------------------------------------------------

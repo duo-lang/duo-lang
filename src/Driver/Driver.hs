@@ -112,7 +112,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
   (annotChecked, annotConstrs) <- liftEitherErr $ runGenM pcdecl_loc env (annotateKind pcdecl_annot)
-  solverResultAnnot <- liftEitherErrLoc pcdecl_loc $ solveConstraints annotConstrs env
+  _ <- liftEitherErrLoc pcdecl_loc $ solveConstraints annotConstrs env
   ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annotChecked pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of

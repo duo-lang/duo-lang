@@ -116,7 +116,7 @@ prettyPrdCns Cns = "cns"
 
 instance PrettyAnn KindedSkolem where 
   prettyAnn (sk,Nothing) = prettyAnn sk
-  prettyAnn (sk,Just mk) = "(" <> prettyAnn sk <> ":" <> prettyAnn mk <> ")"
+  prettyAnn (sk,Just mk) = parens (prettyAnn sk <+> ":" <+> prettyAnn mk)
 
 instance PrettyAnn EvaluationOrder where
   prettyAnn CBV = annKeyword "CBV"
