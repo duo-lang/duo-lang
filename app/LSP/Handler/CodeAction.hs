@@ -40,7 +40,7 @@ import Driver.Definition
       queryTypecheckedModule )
 import Driver.Driver ( runCompilationModule )
 import Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration, dualCmdDeclaration)
-import LSP.Definition ( LSPMonad, LSPConfig (..), sendInfo )
+import LSP.Definition ( LSPMonad, LSPConfig (..), sendInfo, getCachedModule )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Pretty.Pretty ( ppPrint )
 import Pretty.Program ()
@@ -385,9 +385,14 @@ evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params}
                 _arguments
       liftIO $ debugM source $ "Running " <> T.unpack _command <> " with args " <> show args
 
+
       -- get Module name
       let uri = _uri $ evalArgs_uri args
-      mn <- uriToModuleName uri
+      mmod <- getCachedModule uri
+
+      mn <- case mmod of
+              Nothing  -> uriToModuleName uri
+              Just mod -> pure $ TST.mod_name mod
       liftIO $ debugM source $ "Running " <> T.unpack _command <> " with module " <> show mn
 
       -- execute command
