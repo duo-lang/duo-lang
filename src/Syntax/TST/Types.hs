@@ -185,7 +185,7 @@ instance GetKind (VariantType pol) where
 
 data TypeScheme (pol :: Polarity) = TypeScheme
   { ts_loc :: Loc
-  , ts_vars :: [(SkolemTVar,Maybe MonoKind)]
+  , ts_vars :: [KindedSkolem]
   , ts_monotype :: Typ pol
   }
 
