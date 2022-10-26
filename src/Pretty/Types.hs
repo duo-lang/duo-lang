@@ -10,7 +10,6 @@ import Syntax.RST.Types qualified as RST
 import Syntax.CST.Types qualified as CST
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind)
 import Resolution.Unresolve (Unresolve (..), runUnresolveM)
 import Translate.EmbedTST (EmbedTST(..))
 
@@ -177,10 +176,6 @@ instance PrettyAnn (RST.TypeScheme pol) where
 
 instance PrettyAnn (TST.TypeScheme pol) where
   prettyAnn tys = prettyAnn (embedTST tys)
-
-instance PrettyAnn (SkolemTVar,Maybe MonoKind) where 
-  prettyAnn (sk,Nothing) = prettyAnn sk
-  prettyAnn (sk,Just mk) = "(" <> prettyAnn sk <> ":" <> prettyAnn mk <> ")"
 
 instance PrettyAnn CST.TypeScheme where
   prettyAnn CST.TypeScheme { ts_vars = [], ts_monotype } =
