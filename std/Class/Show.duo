@@ -1,0 +1,15 @@
+module Class.Show;
+
+import Prim.Strings;
+import Data.Bool;
+
+class Show(+a : CBV){
+    Show(a, return String)
+};
+
+instance Show Bool {
+    Show(b, k) => case b of {
+        True => MkString("True"),
+        False => MkString("False")
+    } >> k
+};

@@ -1,0 +1,16 @@
+module Class.Read;
+
+import Prim.Strings;
+import Data.Bool;
+
+class Read(-a : CBV){
+    Read(String, return a)
+};
+
+instance Read Bool {
+    Read(str, k) => case str of {
+        -- cannot match on strings atm
+        MkString(t) => True,
+        MkString(f) => False
+    } >> k
+};
