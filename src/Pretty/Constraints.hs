@@ -106,10 +106,8 @@ instance PrettyAnn SubtypeWitness where
 
 printBounds :: PolarityRep pc -> UniTVar -> [TST.Typ pc] -> Doc Annotation
 printBounds _ _ [] = mempty
-printBounds pc u bounds =
-  nest 3 $ vsep [ prettyAnn u <+> (case pc of PosRep -> "lower bounds:"; NegRep -> "upper bounds:")
-                , vsep (prettyAnn <$> bounds)
-                ]
+printBounds pc u bounds = prettyAnn u <+> (case pc of PosRep -> "lower bounds:"; NegRep -> "upper bounds:") <> (mkParen True mempty mempty  comma (prettyAnn <$> bounds))
+                
 
 printTypeClassConstraints :: UniTVar -> [ClassName] -> Doc Annotation
 printTypeClassConstraints _ [] = mempty
