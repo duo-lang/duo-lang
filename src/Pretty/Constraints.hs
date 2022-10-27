@@ -104,45 +104,45 @@ instance PrettyAnn SubtypeWitness where
 -- Solved Constraints
 ---------------------------------------------------------------------------------
 
-printBounds :: PolarityRep pc -> [TST.Typ pc] -> Doc Annotation
-printBounds _ [] = mempty
-printBounds pc bounds =
-  nest 3 $ vsep [ case pc of PosRep -> "Lower bounds:"; NegRep -> "Upper bounds:"
-                ,  vsep (prettyAnn <$> bounds)
+printBounds :: PolarityRep pc -> UniTVar -> [TST.Typ pc] -> Doc Annotation
+printBounds _ _ [] = mempty
+printBounds pc u bounds =
+  nest 3 $ vsep [ prettyAnn u <+> (case pc of PosRep -> "lower bounds:"; NegRep -> "upper bounds:")
+                , vsep (prettyAnn <$> bounds)
                 ]
 
-printTypeClassConstraints :: [ClassName] -> Doc Annotation
-printTypeClassConstraints [] = mempty
-printTypeClassConstraints cns =
-  nest 3 $ vsep [ "Type class constraints:"
+printTypeClassConstraints :: UniTVar -> [ClassName] -> Doc Annotation
+printTypeClassConstraints _ [] = mempty
+printTypeClassConstraints u cns =
+  nest 3 $ vsep [ prettyAnn u <+> "type class constraints:" 
                 , vsep (prettyAnn <$> cns)
                 ]
 
-instance PrettyAnn VariableState where
-  prettyAnn :: VariableState -> Doc Annotation
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = []  } =
+
+prettyVariableState :: (UniTVar, VariableState) -> Doc Annotation
+prettyVariableState (_, VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = []  }) =
     mempty
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = cns } =
-    printTypeClassConstraints cns
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = []  } =
-    printBounds PosRep lbs
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = cns } =
-    printBounds PosRep lbs <> line <> printTypeClassConstraints cns
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = []  } =
-    printBounds NegRep ubs
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = cns } =
-    printBounds NegRep ubs <> line <> printTypeClassConstraints cns
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = []  } =
-    printBounds PosRep lbs <> line <> printBounds NegRep ubs
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = cns } =
-    printBounds PosRep lbs <> line <> printBounds NegRep ubs <> line <> printTypeClassConstraints cns
+prettyVariableState (u, VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = cns }) =
+    printTypeClassConstraints u cns
+prettyVariableState (u, VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = []  }) =
+    printBounds PosRep u lbs
+prettyVariableState (u, VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = cns }) =
+    printBounds PosRep u lbs <> line <> printTypeClassConstraints u cns
+prettyVariableState (u, VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = []  }) =
+    printBounds NegRep u ubs
+prettyVariableState (u, VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = cns }) =
+    printBounds NegRep u ubs <> line <> printTypeClassConstraints u cns
+prettyVariableState (u, VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = []  }) =
+    printBounds PosRep u lbs <> line <> printBounds NegRep u ubs
+prettyVariableState (u, VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = cns }) =
+    printBounds PosRep u lbs <> line <> printBounds NegRep u ubs <> line <> printTypeClassConstraints u cns
 
 instance PrettyAnn SolverResult where
   prettyAnn MkSolverResult { tvarSolution, witnessSolution } = vsep
     
     [ headerise "-" " " "Solved Constraints"
     , ""
-    , vsep $ intersperse "" (solvedConstraintsToDoc <$> M.toList tvarSolution)
+    , vsep $ intersperse "" (prettyVariableState <$> M.toList tvarSolution)
     , ""
     , headerise "-" " " "Generated Witnesses:"
     , ""
@@ -150,10 +150,6 @@ instance PrettyAnn SolverResult where
     , ""
     ]
     where
-      solvedConstraintsToDoc :: (UniTVar,VariableState) -> Doc Annotation
-      solvedConstraintsToDoc (v, vs) = nest 3 $ vsep ["Type variable:" <+> prettyAnn v
-                                                     , prettyAnn vs
-                                                     ]
       solvedWitnessesToDoc :: (Constraint (), SubtypeWitness) -> Doc Annotation
       solvedWitnessesToDoc (cs, w) = nest 3 $ vsep ["Constraint:" <+> prettyAnn cs
                                                    , prettyAnn w
