@@ -7,7 +7,7 @@ import Data.Map qualified as M
 import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.TST.Types qualified as TST
-import Syntax.RST.Types (Polarity(..))
+import Syntax.RST.Types (Polarity(..), PolarityRep (..))
 import Syntax.CST.Names
 import TypeInference.Constraints
 import Syntax.CST.Kinds
@@ -104,18 +104,11 @@ instance PrettyAnn SubtypeWitness where
 -- Solved Constraints
 ---------------------------------------------------------------------------------
 
-printLowerBounds :: [TST.Typ 'Pos] -> Doc Annotation
-printLowerBounds [] = mempty
-printLowerBounds lowerbounds =
-  nest 3 $ vsep [ "Lower bounds:"
-                ,  vsep (prettyAnn <$> lowerbounds)
-                ]
-
-printUpperBounds :: [TST.Typ 'Neg] -> Doc Annotation
-printUpperBounds [] = mempty
-printUpperBounds upperbounds =
-  nest 3 $ vsep [ "Upper bounds:"
-                , vsep (prettyAnn <$> upperbounds)
+printBounds :: PolarityRep pc -> [TST.Typ pc] -> Doc Annotation
+printBounds _ [] = mempty
+printBounds pc bounds =
+  nest 3 $ vsep [ case pc of PosRep -> "Lower bounds:"; NegRep -> "Upper bounds:"
+                ,  vsep (prettyAnn <$> bounds)
                 ]
 
 printTypeClassConstraints :: [ClassName] -> Doc Annotation
@@ -126,22 +119,23 @@ printTypeClassConstraints cns =
                 ]
 
 instance PrettyAnn VariableState where
+  prettyAnn :: VariableState -> Doc Annotation
   prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = []  } =
     mempty
   prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = cns } =
     printTypeClassConstraints cns
   prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = []  } =
-    printLowerBounds lbs
+    printBounds PosRep lbs
   prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = cns } =
-    printLowerBounds lbs <> line <> printTypeClassConstraints cns
+    printBounds PosRep lbs <> line <> printTypeClassConstraints cns
   prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = []  } =
-    printUpperBounds ubs
+    printBounds NegRep ubs
   prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = cns } =
-    printUpperBounds ubs <> line <> printTypeClassConstraints cns
+    printBounds NegRep ubs <> line <> printTypeClassConstraints cns
   prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = []  } =
-    printLowerBounds lbs <> line <> printUpperBounds ubs
+    printBounds PosRep lbs <> line <> printBounds NegRep ubs
   prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = cns } =
-    printLowerBounds lbs <> line <> printUpperBounds ubs <> line <> printTypeClassConstraints cns
+    printBounds PosRep lbs <> line <> printBounds NegRep ubs <> line <> printTypeClassConstraints cns
 
 instance PrettyAnn SolverResult where
   prettyAnn MkSolverResult { tvarSolution, witnessSolution } = vsep
