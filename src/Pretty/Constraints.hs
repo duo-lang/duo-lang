@@ -165,27 +165,19 @@ instance PrettyAnn SolverResult where
 ---------------------------------------------------------------------------------
 
 prettyBisubst :: (UniTVar, (TST.Typ 'Pos, TST.Typ 'Neg)) -> Doc Annotation
-prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Unification variable:" <+> prettyAnn v
-
-                                             , vsep [ "+ |->" <+> prettyAnn typ
-                                                    , "- |->" <+> prettyAnn tyn
-                                                    ]
-                                             ]
+prettyBisubst (v, (typ,tyn)) = nest 3 $ line <> vsep [ prettyAnn v <+> "+ ⤇" <+> prettyAnn typ
+                                                     , prettyAnn v <+> "- ⤇" <+> prettyAnn tyn
+                                                     ]
 
 prettyRecBisubst :: (RecTVar, (TST.Typ 'Pos, TST.Typ 'Neg)) -> Doc Annotation
-prettyRecBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Recursive variable:" <+> prettyAnn v
+prettyRecBisubst (v, (typ,tyn)) = nest 3 $ line <> vsep [ prettyAnn v <+> "+ ⤇" <+> prettyAnn typ
+                                                        , prettyAnn v <+> "- ⤇" <+> prettyAnn tyn
+                                                        ]
 
-                                             , vsep [ "+ |->" <+> prettyAnn typ
-                                                    , "- |->" <+> prettyAnn tyn
-                                                    ]
-                                             ]
 prettySkolBisubst :: (SkolemTVar, (TST.Typ 'Pos, TST.Typ 'Neg)) -> Doc Annotation
-prettySkolBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyAnn v
-
-                                             , vsep [ "+ |->" <+> prettyAnn typ
-                                                    , "- |->" <+> prettyAnn tyn
-                                                    ]
-                                             ]
+prettySkolBisubst (v, (typ,tyn)) = nest 3 $ line <> vsep [ prettyAnn v <+> "+ ⤇" <+> prettyAnn typ
+                                                         , prettyAnn v <+> "- ⤇" <+> prettyAnn tyn
+                                                         ]
 
 prettyKindSubst :: (KVar, MonoKind) -> Doc Annotation
 prettyKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
@@ -195,7 +187,7 @@ instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
     [ headerise "-" " " "Bisubstitution (UniTVar)"
     , "" 
     , "Unification Variables: "
-    , vsep $ intersperse "" (prettyBisubst <$> M.toList (fst (TST.bisubst_map uvsubst)))
+    , vsep $ prettyBisubst <$> M.toList (fst (TST.bisubst_map uvsubst))
     , ""
     , "Kind Variables: "
     , vsep $ intersperse "" (prettyKindSubst <$> M.toList (snd (TST.bisubst_map uvsubst)))
@@ -205,13 +197,13 @@ instance PrettyAnn (TST.Bisubstitution TST.SkolemVT) where
   prettyAnn skolvsubst = vsep 
     [ headerise "-" " " "Bisubstitution (SkolemTVar)"
     , ""
-    , vsep $ intersperse "" (prettySkolBisubst <$> M.toList (TST.bisubst_map skolvsubst))
+    , vsep $ prettySkolBisubst <$> M.toList (TST.bisubst_map skolvsubst)
     ]
 
 instance PrettyAnn (TST.Bisubstitution TST.RecVT) where
   prettyAnn recvsubst = vsep
     [ headerise "-" " " "Bisubstitution (RecTVar)"
     , ""
-    , vsep $ intersperse "" (prettyRecBisubst <$> M.toList (TST.bisubst_map recvsubst))
+    , vsep $ prettyRecBisubst <$> M.toList (TST.bisubst_map recvsubst)
     ]
 
