@@ -304,6 +304,7 @@ instanceDeclarationP doc = do
   sc
   recoverDeclaration $ do
     instanceName <- fst <$> (freeVarNameP <* sc)
+    symbolP SymColon <* sc
     className    <- fst <$> (classNameP <* sc)
     typ          <- fst <$> typP
     (cases, _)   <- bracesP (termCaseP `sepBy` (symbolP SymComma >> sc))

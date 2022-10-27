@@ -284,12 +284,13 @@ resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, c
 
 resolveInstanceDeclaration :: CST.InstanceDeclaration
                         -> ResolverM RST.InstanceDeclaration
-resolveInstanceDeclaration CST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_class, instancedecl_typ, instancedecl_cases } = do
+resolveInstanceDeclaration CST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } = do
   typ <- resolveTyp PosRep instancedecl_typ
   tyn <- resolveTyp NegRep instancedecl_typ
   tc <- mapM resolveInstanceCase instancedecl_cases
   pure RST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                  , instancedecl_doc = instancedecl_doc
+                                 , instancedecl_name = instancedecl_name
                                  , instancedecl_class = instancedecl_class
                                  , instancedecl_typ = (typ, tyn)
                                  , instancedecl_cases = tc
