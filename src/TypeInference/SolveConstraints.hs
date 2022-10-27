@@ -91,14 +91,24 @@ putKVars x = modify (\s -> s { sst_kvars = x })
 
 addUpperBound :: Delay a -> UniTVar -> Typ Neg -> SolverM [Constraint (Delay ConstraintInfo)]
 addUpperBound del uv ty = do
-  modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState (ty:ubs) lbs classes kind) uv
+  undelayed <- case ty of
+        (TyRecVar _ _ _ recTVar) -> case M.lookup recTVar (mapR del) of
+           Nothing -> throwSolverError defaultLoc [ "Failed LookupR for recursive variable: " <> ppPrint recTVar ]
+           Just ty' -> pure ty'
+        _ -> pure ty
+  modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState (undelayed:ubs) lbs classes kind) uv
   bounds <- getBounds uv
   let lbs = vst_lowerbounds bounds
   return [SubType (UpperBoundConstraint <$ del) lb ty | lb <- lbs]
 
 addLowerBound :: Delay a -> UniTVar -> Typ Pos -> SolverM [Constraint (Delay ConstraintInfo)]
 addLowerBound del uv ty = do
-  modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs (ty:lbs) classes kind) uv
+  undelayed <- case ty of
+        (TyRecVar _ _ _ recTVar) -> case M.lookup recTVar (mapL del) of
+           Nothing -> throwSolverError defaultLoc [ "Failed LookupL for recursive variable: " <> ppPrint recTVar ]
+           Just ty' -> pure ty'
+        _ -> pure ty
+  modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs (undelayed:lbs) classes kind) uv
   bounds <- getBounds uv
   let ubs = vst_upperbounds bounds
   return [SubType (LowerBoundConstraint <$ del) ty ub | ub <- ubs]
