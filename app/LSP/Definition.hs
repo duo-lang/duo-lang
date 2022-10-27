@@ -3,7 +3,7 @@ module LSP.Definition where
 import Control.Monad.Except (runExcept)
 import Control.Monad.IO.Class ( MonadIO(..) )
 import Control.Monad.IO.Unlift (MonadUnliftIO)
-import Data.IORef ( IORef, modifyIORef' )
+import Data.IORef ( IORef, modifyIORef', readIORef )
 import Data.List.NonEmpty qualified as NE
 import Data.Map ( Map )
 import Data.Map qualified as M
@@ -36,6 +36,12 @@ updateCache :: LSP.Uri -> TST.Module -> LSPMonad ()
 updateCache uri mod = do
   MkLSPConfig ref <- LSP.getConfig
   liftIO $ modifyIORef' ref (M.insert uri mod)
+
+getCachedModule :: LSP.Uri -> LSPMonad (Maybe TST.Module)
+getCachedModule uri = do
+  MkLSPConfig ref <- LSP.getConfig
+  m <- liftIO $ readIORef ref
+  pure $ M.lookup uri m
 
 newtype LSPMonad a = MkLSPMonad { unLSPMonad :: LSP.LspT LSPConfig IO a }
   deriving newtype (Functor, Applicative, Monad, MonadIO, MonadUnliftIO, LSP.MonadLsp LSPConfig)

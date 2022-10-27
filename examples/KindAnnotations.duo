@@ -1,0 +1,7 @@
+module KindAnnotations;
+
+import Codata.Function;
+
+-- here a is annotated as CBV
+def prd idAnnotRight : forall (a : CBV). a -> a :=
+  \x => x;

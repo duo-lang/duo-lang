@@ -29,7 +29,7 @@ import Control.Monad.Reader (asks, MonadReader (local))
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
 resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
-    if RST.freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
+    if RST.freeTVars monotype `S.isSubsetOf` S.fromList (map fst ts_vars)
     then pure (RST.TypeScheme ts_loc ts_vars monotype)
         else throwError (ErrResolution (MissingVarsInTypeScheme ts_loc) :| [])
 

@@ -2,7 +2,7 @@ module Syntax.CST.Types where
 
 import Syntax.CST.Names
     ( BinOp, ClassName, SkolemTVar, TypeName, UniTVar, XtorName )
-
+import Syntax.CST.Kinds
 import Data.List.NonEmpty (NonEmpty)
 import Loc ( Loc, HasLoc(..))
 
@@ -71,6 +71,7 @@ instance HasLoc Typ where
   getLoc (TyBinOp loc _ _ _) = loc
   getLoc (TyParens loc _) = loc
 
+
 data XtorSig = MkXtorSig
   { sig_name :: XtorName
   , sig_args :: LinearContext
@@ -90,9 +91,10 @@ linearContextToArity = map f
     f (PrdType _) = Prd
     f (CnsType _) = Cns
 
+
 data TypeScheme = TypeScheme
   { ts_loc :: Loc
-  , ts_vars :: [SkolemTVar]
+  , ts_vars :: [KindedSkolem]
   , ts_constraints :: [Constraint]
   , ts_monotype :: Typ
   }
