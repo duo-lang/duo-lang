@@ -316,7 +316,7 @@ instance GenConstraints Core.Command TST.Command where
   
 instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
   genConstraints :: Core.InstanceDeclaration -> GenM TST.InstanceDeclaration
-  genConstraints Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_class, instancedecl_typ, instancedecl_cases } = do
+  genConstraints Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } = do
     -- We lookup the class declaration  of the instance.
     decl <- lookupClassDecl instancedecl_loc instancedecl_class
     insertSkolemsClass decl
@@ -344,11 +344,12 @@ instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
                                             , instancecase_cmd = cmdInferred
                                             })
     pure TST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
-                                  , instancedecl_doc = instancedecl_doc
-                                  , instancedecl_class = instancedecl_class
-                                  , instancedecl_typ = instancety
-                                  , instancedecl_cases = inferredCases
-                                  }
+                                   , instancedecl_doc = instancedecl_doc
+                                   , instancedecl_name = instancedecl_name
+                                   , instancedecl_class = instancedecl_class
+                                   , instancedecl_typ = instancety
+                                   , instancedecl_cases = inferredCases
+                                   }
 
 
 
