@@ -12,7 +12,7 @@ class Ord(+a : CBV) {
     Compare(a, a, return Ordering)
 };
 
-instance Ord Ordering {
+instance ordOrdering : Ord Ordering {
     Compare(x,y,k) => case x of {
         LT => case y of {
             LT => EQ,
@@ -32,7 +32,7 @@ instance Ord Ordering {
     } >> k
 };
 
-instance Ord Bool {
+instance ordBool : Ord Bool {
     Compare(x,y,k) => case x of {
         True => case y of {
             True => EQ,

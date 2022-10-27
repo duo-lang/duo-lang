@@ -13,7 +13,7 @@ class Eq(+a : CBV) {
 
 
 -- | Nat instance definition.
-instance Eq Nat {
+instance eqNat : Eq Nat {
   Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
   Differ(x, y, k) => and (or x y) (not (and x y)) >> k
 };
