@@ -168,14 +168,14 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
 inferInstanceDeclaration :: ModuleName
                         -> Core.InstanceDeclaration
                         -> DriverM TST.InstanceDeclaration
-inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_name, instancedecl_typ } = do
+inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_class, instancedecl_typ } = do
   env <- gets drvEnv
   -- Generate the constraints
   (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraints decl))
   -- Solve the constraints
   solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
   guardVerbose $ do
-    ppPrintIO (Header  $ unClassName instancedecl_name <> " " <> ppPrint (fst instancedecl_typ))
+    ppPrintIO (Header  $ unClassName instancedecl_class <> " " <> ppPrint (fst instancedecl_typ))
     ppPrintIO ("" :: T.Text)
     ppPrintIO (Core.InstanceDecl decl)
     ppPrintIO ("" :: T.Text)
@@ -183,7 +183,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
     ppPrintIO solverResult
   -- Insert into environment
   let instty' = TST.instancedecl_typ instanceInferred
-  let f env = env { instanceEnv = M.adjust (S.insert instty') instancedecl_name (instanceEnv env)}
+  let f env = env { instanceEnv = M.adjust (S.insert instty') instancedecl_class (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 

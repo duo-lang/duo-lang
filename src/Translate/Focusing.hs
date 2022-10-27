@@ -305,10 +305,10 @@ instance Focus CommandDeclaration where
 
 instance Focus InstanceDeclaration where
   focus :: EvaluationOrder -> InstanceDeclaration -> InstanceDeclaration
-  focus eo MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+  focus eo MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_class, instancedecl_typ, instancedecl_cases } =
     MkInstanceDeclaration { instancedecl_loc
                           , instancedecl_doc
-                          , instancedecl_name
+                          , instancedecl_class
                           , instancedecl_typ
                           , instancedecl_cases = focus eo <$> instancedecl_cases
                           }

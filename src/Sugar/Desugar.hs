@@ -317,19 +317,19 @@ instance Desugar RST.CommandDeclaration Core.CommandDeclaration where
 
 instance Desugar RST.InstanceDeclaration Core.InstanceDeclaration where
   desugar :: RST.InstanceDeclaration -> Core.InstanceDeclaration
-  desugar RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+  desugar RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_class, instancedecl_typ, instancedecl_cases } =
     Core.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                , instancedecl_doc = instancedecl_doc
-                               , instancedecl_name = instancedecl_name
+                               , instancedecl_class = instancedecl_class
                                , instancedecl_typ = instancedecl_typ
                                , instancedecl_cases = desugar <$> instancedecl_cases
                                }
 
   embedCore :: Core.InstanceDeclaration -> RST.InstanceDeclaration
-  embedCore Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+  embedCore Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_class, instancedecl_typ, instancedecl_cases } =
     RST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                               , instancedecl_doc = instancedecl_doc
-                              , instancedecl_name = instancedecl_name
+                              , instancedecl_class = instancedecl_class
                               , instancedecl_typ = instancedecl_typ
                               , instancedecl_cases = embedCore <$> instancedecl_cases
                               }

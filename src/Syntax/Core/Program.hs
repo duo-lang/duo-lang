@@ -61,7 +61,7 @@ data InstanceDeclaration = MkInstanceDeclaration
     -- ^ The source code location of the declaration.
   , instancedecl_doc :: Maybe DocComment
     -- ^ The documentation string of the declaration.
-  , instancedecl_name :: ClassName
+  , instancedecl_class :: ClassName
     -- ^ The name of the type class the instance is for.
   , instancedecl_typ :: (RST.Typ Pos, RST.Typ Neg)
     -- ^ The type the instance is being defined for.

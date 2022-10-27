@@ -195,10 +195,10 @@ instance EmbedTST TST.CommandDeclaration Core.CommandDeclaration where
 
 instance EmbedTST TST.InstanceDeclaration Core.InstanceDeclaration where
   embedTST  :: TST.InstanceDeclaration -> Core.InstanceDeclaration
-  embedTST  TST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+  embedTST  TST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_class, instancedecl_typ, instancedecl_cases } =
       Core.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                  , instancedecl_doc = instancedecl_doc
-                                 , instancedecl_name = instancedecl_name
+                                 , instancedecl_class = instancedecl_class
                                  , instancedecl_typ = BF.bimap embedTST embedTST instancedecl_typ
                                  , instancedecl_cases = embedTST <$> instancedecl_cases
                                  }
