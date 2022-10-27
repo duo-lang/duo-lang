@@ -3,10 +3,12 @@ module Class.Read;
 import Prim.Strings;
 import Data.Bool;
 
+-- | Definition for type class of readable/parseable types.
 class Read(-a : CBV){
     Read(String, return a)
 };
 
+-- | Read a Boolean value (always returns /True/).
 instance Read Bool {
     Read(str, k) => case str of {
         -- cannot match on strings atm

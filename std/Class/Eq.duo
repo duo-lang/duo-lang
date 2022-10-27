@@ -3,7 +3,7 @@ module Class.Eq;
 
 import Data.Bool;
 
--- | Class definition.
+-- | Definition for equality type class.
 class Eq(+a : CBV) {
   Equals(a, a, return Bool),
   Differ(a, a, return Bool)

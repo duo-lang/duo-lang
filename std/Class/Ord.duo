@@ -2,16 +2,19 @@ module Class.Ord;
 
 import Data.Bool;
 
+-- | Enum type for the order two elements can be related to each other.
 data Ordering : CBV {
     LT,
     EQ,
     GT
 };
 
+-- | Definition for type class of ordered types.
 class Ord(+a : CBV) {
     Compare(a, a, return Ordering)
 };
 
+-- | Trivial Ord instance for the /Ordering/ data type.
 instance Ord Ordering {
     Compare(x,y,k) => case x of {
         LT => case y of {
@@ -32,6 +35,7 @@ instance Ord Ordering {
     } >> k
 };
 
+-- | Ordering of Booleans with /False/ < /True/.
 instance Ord Bool {
     Compare(x,y,k) => case x of {
         True => case y of {
@@ -44,6 +48,3 @@ instance Ord Bool {
         }
     } >> k
 };
-
-def prd cmp : forall a. Ord a => a -> a -> Ordering :=
-    \x y => mu k. Compare(x,y,k);
