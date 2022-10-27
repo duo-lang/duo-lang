@@ -7,12 +7,10 @@ import Data.Map qualified as M
 import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.TST.Types qualified as TST
-import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Names
 import TypeInference.Constraints
 import Syntax.CST.Kinds
-import Translate.EmbedTST (EmbedTST(..))
 
 ---------------------------------------------------------------------------------
 -- Generated Constraints
@@ -106,25 +104,19 @@ instance PrettyAnn SubtypeWitness where
 -- Solved Constraints
 ---------------------------------------------------------------------------------
 
-printRSTLowerBounds :: [RST.Typ 'Pos] -> Doc Annotation
-printRSTLowerBounds [] = mempty
-printRSTLowerBounds lowerbounds =
+printLowerBounds :: [TST.Typ 'Pos] -> Doc Annotation
+printLowerBounds [] = mempty
+printLowerBounds lowerbounds =
   nest 3 $ vsep [ "Lower bounds:"
                 ,  vsep (prettyAnn <$> lowerbounds)
                 ]
 
-printRSTUpperBounds :: [RST.Typ 'Neg] -> Doc Annotation
-printRSTUpperBounds [] = mempty
-printRSTUpperBounds upperbounds =
+printUpperBounds :: [TST.Typ 'Neg] -> Doc Annotation
+printUpperBounds [] = mempty
+printUpperBounds upperbounds =
   nest 3 $ vsep [ "Upper bounds:"
                 , vsep (prettyAnn <$> upperbounds)
                 ]
-
-printTSTLowerBounds :: [TST.Typ 'Pos] -> Doc Annotation
-printTSTLowerBounds ls = printRSTLowerBounds (map embedTST ls)
-
-printTSTUpperBounds :: [TST.Typ 'Neg] -> Doc Annotation
-printTSTUpperBounds ls = printRSTUpperBounds (map embedTST ls)
 
 printTypeClassConstraints :: [ClassName] -> Doc Annotation
 printTypeClassConstraints [] = mempty
@@ -139,17 +131,18 @@ instance PrettyAnn VariableState where
   prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = cns } =
     printTypeClassConstraints cns
   prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = []  } =
-    printTSTLowerBounds lbs
+    printLowerBounds lbs
   prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = cns } =
-    printTSTLowerBounds lbs <> line <> printTypeClassConstraints cns
+    printLowerBounds lbs <> line <> printTypeClassConstraints cns
   prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = []  } =
-    printTSTUpperBounds ubs
+    printUpperBounds ubs
   prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = cns } =
-    printTSTUpperBounds ubs <> line <> printTypeClassConstraints cns
+    printUpperBounds ubs <> line <> printTypeClassConstraints cns
   prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = []  } =
-    printTSTLowerBounds lbs <> line <> printTSTUpperBounds ubs
+    printLowerBounds lbs <> line <> printUpperBounds ubs
   prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = cns } =
-    printTSTLowerBounds lbs <> line <> printTSTUpperBounds ubs <> line <> printTypeClassConstraints cns
+    printLowerBounds lbs <> line <> printUpperBounds ubs <> line <> printTypeClassConstraints cns
+
 instance PrettyAnn SolverResult where
   prettyAnn MkSolverResult { tvarSolution, witnessSolution } = vsep
     
