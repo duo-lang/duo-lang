@@ -14,8 +14,7 @@ class Ord(+a : CBV) {
     Compare(a, a, return Ordering)
 };
 
--- | Trivial Ord instance for the /Ordering/ data type.
-instance Ord Ordering {
+instance ordOrdering : Ord Ordering {
     Compare(x,y,k) => case x of {
         LT => case y of {
             LT => EQ,
@@ -35,8 +34,7 @@ instance Ord Ordering {
     } >> k
 };
 
--- | Ordering of Booleans with /False/ < /True/.
-instance Ord Bool {
+instance ordBool : Ord Bool {
     Compare(x,y,k) => case x of {
         True => case y of {
             True => EQ,

@@ -9,7 +9,7 @@ class Read(-a : CBV){
 };
 
 -- | Read a Boolean value (always returns /True/).
-instance Read Bool {
+instance readBool : Read Bool {
     Read(str, k) => case str of {
         -- cannot match on strings atm
         MkString(t) => True,

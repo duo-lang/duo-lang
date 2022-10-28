@@ -11,7 +11,7 @@ class Eq(+a : CBV) {
 
 
 -- | Instance definition for Eq Bool.
-instance Eq Bool {
+instance eqBool : Eq Bool {
   Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
   Differ(x, y, k) => and (or x y) (not (and x y)) >> k
 };

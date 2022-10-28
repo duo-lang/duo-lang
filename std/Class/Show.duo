@@ -9,7 +9,7 @@ class Show(+a : CBV){
 };
 
 -- | Convert a Boolean constructor to its /String/ representation.
-instance Show Bool {
+instance showBool : Show Bool {
     Show(b, k) => case b of {
         True => MkString("True"),
         False => MkString("False")
