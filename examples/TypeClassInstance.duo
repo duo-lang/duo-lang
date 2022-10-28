@@ -12,13 +12,13 @@ class Eq(+a : CBV) {
 
 
 -- | Bool instance definition.
-instance Eq Bool {
+instance eqBool : Eq Bool {
   Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
   Differ(x, y, k) => and (or x y) (not (and x y)) >> k
 };
 
 -- | Nat instance definition.
-instance Eq Nat {
+instance eqNat : Eq Nat {
   Equals(x, y, k) => nateq x y >> k,
   Differ(x, y, k) => not (nateq x y) >> k
 };
@@ -27,7 +27,7 @@ class Show(+a : CBV) {
   Show(a)
 };
 
-instance Show Bool {
+instance showBool : Show Bool {
   Show(x) => #Print(x, #ExitSuccess)
 };
 
@@ -35,7 +35,7 @@ class Reader(-a : CBV) {
   Reader(Bool, return a)
 };
 
-instance Reader Bool {
+instance readerBool : Reader Bool {
   Reader(x, k) => x >> k
 };
 
