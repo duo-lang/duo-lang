@@ -34,7 +34,7 @@ getInstanceCases TST.MkModule { mod_decls } = go mod_decls []
   where
     go :: [TST.Declaration] -> [InstanceCase] -> [InstanceCase]
     go [] acc = acc
-    go ((TST.InstanceDecl (TST.MkInstanceDeclaration _ _ _ _ cases)):rest) acc = go rest (cases++acc)
+    go ((TST.InstanceDecl (TST.MkInstanceDeclaration _ _ _ _ _ cases)):rest) acc = go rest (cases++acc)
     go (_:rest) acc = go rest acc
 
 spec :: [((FilePath, ModuleName), Either (NonEmpty Error) TST.Module)] -> Spec

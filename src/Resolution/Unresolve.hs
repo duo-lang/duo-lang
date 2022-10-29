@@ -707,12 +707,13 @@ instance Unresolve RST.ClassDeclaration CST.ClassDeclaration where
 
 instance Unresolve RST.InstanceDeclaration CST.InstanceDeclaration where
   unresolve :: RST.InstanceDeclaration -> UnresolveM CST.InstanceDeclaration
-  unresolve RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
+  unresolve RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } = do
     typ' <- unresolve (fst instancedecl_typ)
     cases' <- mapM unresolve instancedecl_cases
     pure $ CST.MkInstanceDeclaration { instancedecl_loc   = instancedecl_loc
                                      , instancedecl_doc   = instancedecl_doc
                                      , instancedecl_name  = instancedecl_name
+                                     , instancedecl_class = instancedecl_class
                                      , instancedecl_typ   = typ'
                                      , instancedecl_cases = cases'
                                      }
