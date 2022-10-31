@@ -42,7 +42,7 @@ import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
       genConstraintsTermRecursive )
-import TypeInference.SolveConstraints (solveConstraints)
+import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints)
 import Loc ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
@@ -101,20 +101,23 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
-  -- 4. Read of the type and generate the resulting type
+  -- 4. Solve the type class constraints.
+  instances <- liftEitherErrLoc pcdecl_loc $ solveClassConstraints solverResult bisubst env
+  guardVerbose $ ppPrintIO instances
+  -- 5. Read of the type and generate the resulting type
   let typ = TST.zonk TST.UniRep bisubst (TST.getTypeTerm tmInferred)
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
-  -- 5. Simplify
+  -- 6. Simplify
   typSimplified <- if infOptsSimplify infopts then (do
                      printGraphs <- gets (infOptsPrintGraphs . drvOpts)
                      tys <- simplify (TST.generalize typ) printGraphs (T.unpack (unFreeVarName pcdecl_name))
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
-  -- 6. Check type annotation.
+  -- 7. Check type annotation.
   (annotChecked, annotConstrs) <- liftEitherErr $ runGenM pcdecl_loc env (annotateKind pcdecl_annot)
   _ <- liftEitherErrLoc pcdecl_loc $ solveConstraints annotConstrs env
   ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annotChecked pcdecl_loc
-  -- 7. Insert into environment
+  -- 8. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
       let f env = env { prdEnv  = M.insert pcdecl_name (tmInferred ,pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) (prdEnv env) }

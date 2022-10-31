@@ -201,3 +201,17 @@ instance PrettyAnn (TST.Bisubstitution TST.RecVT) where
     , vsep $ prettyRecBisubst <$> M.toList (TST.bisubst_map recvsubst)
     ]
 
+
+---------------------------------------------------------------------------------
+-- Instance resolution
+---------------------------------------------------------------------------------
+
+prettyInstanceRes :: (UniTVar, ClassName) -> FreeVarName -> Doc Annotation
+prettyInstanceRes (uv, cn) iname = prettyAnn cn <+> prettyAnn uv <+> "~>" <+> prettyAnn iname
+
+instance PrettyAnn InstanceResult where
+  prettyAnn (MkInstanceResult instanceRes) = vsep
+    [ headerise "-" " " "Resolved Instances" 
+    , ""
+    , vsep $ uncurry prettyInstanceRes <$> M.toList instanceRes
+    ]

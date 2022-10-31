@@ -1,6 +1,7 @@
 module TypeInference.SolveConstraints
   ( solveConstraints,
-    KindPolicy(..)
+    KindPolicy(..),
+    solveClassConstraints
   ) where
 
 import Control.Monad.Except
@@ -16,7 +17,7 @@ import Data.List (partition)
 import Data.Maybe (fromJust, isJust)
 import Data.Bifunctor (second)
 
-import Driver.Environment (Environment)
+import Driver.Environment (Environment (..))
 import Errors
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))
@@ -403,6 +404,14 @@ substitute = do
             False -> local (S.insert c) (go m w)
 
 ------------------------------------------------------------------------------
+-- Instance Resolution
+------------------------------------------------------------------------------
+
+getUniVType :: Bisubstitution 'UniVT -> UniTVar -> Maybe (Typ Pos, Typ Neg)
+getUniVType bisubst uv = M.lookup uv (fst $ bisubst_map bisubst)
+
+
+------------------------------------------------------------------------------
 -- Exported Function
 ------------------------------------------------------------------------------
 
@@ -421,3 +430,11 @@ solveConstraints constraintSet@(ConstraintSet css _ _) env = do
   kvarSolution <- computeKVarSolution ErrorUnresolved (sst_kvars solverState)
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution (sst_cache solverState)
+
+solveClassConstraints :: SolverResult -> Bisubstitution 'UniVT -> Map ModuleName Environment -> Either (NE.NonEmpty Error) InstanceResult
+solveClassConstraints sr bisubst env = do
+  let uvs = M.map (\VariableState { vst_typeclasses } -> head vst_typeclasses) $
+            M.filter (\VariableState { vst_typeclasses } -> not (null vst_typeclasses)) $ tvarSolution sr
+  let tys = M.mapWithKey (\k _ -> getUniVType bisubst k) uvs
+  let instances = instanceEnv <$> M.elems env
+  return (MkInstanceResult M.empty)

@@ -123,3 +123,6 @@ data SolverResult = MkSolverResult
   , kvarSolution    :: Map KVar MonoKind
   , witnessSolution :: Map (Constraint ()) SubtypeWitness
   }
+
+newtype InstanceResult = MkInstanceResult
+  { instanceResult :: Map (UniTVar, ClassName) FreeVarName }
