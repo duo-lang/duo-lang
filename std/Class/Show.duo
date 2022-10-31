@@ -1,0 +1,17 @@
+module Class.Show;
+
+import Prim.Strings;
+import Data.Bool;
+
+-- | Definition for type class of showable types.
+class Show(+a : CBV){
+    Show(a, return String)
+};
+
+-- | Convert a Boolean constructor to its /String/ representation.
+instance showBool : Show Bool {
+    Show(b, k) => case b of {
+        True => MkString("True"),
+        False => MkString("False")
+    } >> k
+};

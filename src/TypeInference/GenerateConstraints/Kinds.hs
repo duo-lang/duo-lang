@@ -398,6 +398,12 @@ annotateDataDecl RST.RefinementDecl {
 class AnnotateKind a b | a -> b where
   annotateKind :: a -> GenM b
 
+instance AnnotateKind (Maybe (RST.TypeScheme pol)) (Maybe (TST.TypeScheme pol)) where 
+  annotateKind Nothing = return Nothing
+  annotateKind (Just ty) = do 
+   ty' <- annotateKind ty 
+   return (Just ty')
+
 instance AnnotateKind  (RST.Typ RST.Pos, RST.Typ RST.Neg) (TST.Typ RST.Pos, TST.Typ RST.Neg) where
   annotateKind ::  (RST.Typ RST.Pos, RST.Typ RST.Neg) -> GenM (TST.Typ RST.Pos, TST.Typ RST.Neg)
   annotateKind (ty1, ty2) = do 
@@ -409,7 +415,21 @@ instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
   annotateKind ::  RST.TypeScheme pol -> GenM (TST.TypeScheme pol)
   annotateKind RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = do
     ty' <- annotateKind ty
-    return TST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty'}
+    mapM_ addTVar tvs
+    return TST.TypeScheme {ts_loc = loc, ts_vars = tvs,ts_monotype = ty'}
+    where 
+      addTVar :: KindedSkolem -> GenM () 
+      addTVar (_,Nothing) = return () 
+      addTVar (sk,Just mk) = do
+        skMap <- gets usedSkolemVars
+        case M.lookup sk skMap of 
+          Nothing -> do
+            let newM = M.insert sk mk skMap
+            modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
+            return ()
+          Just mk' -> do
+            addConstraint $ KindEq KindConstraint mk mk' 
+            return ()
 
 instance AnnotateKind (RST.VariantType pol) (TST.VariantType pol) where
   annotateKind ::  RST.VariantType pol -> GenM (TST.VariantType pol)

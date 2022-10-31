@@ -112,7 +112,7 @@ instance EmbedTST (TST.VariantType pol) (RST.VariantType pol) where
 instance EmbedTST (TST.TypeScheme pol) (RST.TypeScheme pol) where
   embedTST :: TST.TypeScheme pol -> RST.TypeScheme pol
   embedTST TST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = mt} =
-    RST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = embedTST mt}
+    RST.TypeScheme {ts_loc = loc, ts_vars = tyvars,  ts_monotype = embedTST mt}
 
 instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
   embedTST :: TST.LinearContext pol-> RST.LinearContext pol
@@ -195,10 +195,11 @@ instance EmbedTST TST.CommandDeclaration Core.CommandDeclaration where
 
 instance EmbedTST TST.InstanceDeclaration Core.InstanceDeclaration where
   embedTST  :: TST.InstanceDeclaration -> Core.InstanceDeclaration
-  embedTST  TST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+  embedTST  TST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } =
       Core.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                  , instancedecl_doc = instancedecl_doc
                                  , instancedecl_name = instancedecl_name
+                                 , instancedecl_class = instancedecl_class
                                  , instancedecl_typ = BF.bimap embedTST embedTST instancedecl_typ
                                  , instancedecl_cases = embedTST <$> instancedecl_cases
                                  }
