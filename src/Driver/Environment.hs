@@ -23,7 +23,7 @@ data Environment = MkEnvironment
   , cnsEnv :: Map FreeVarName (Term Cns, Loc, TypeScheme Neg)
   , cmdEnv :: Map FreeVarName (Command, Loc)
   , classEnv :: Map ClassName ClassDeclaration
-  , instanceEnv :: Map ClassName (Set (Typ Pos, Typ Neg))
+  , instanceEnv :: Map ClassName (Set (FreeVarName, Typ Pos, Typ Neg))
   , declEnv :: [(Loc,DataDecl)]
   , kindEnv :: Map XtorName (MonoKind, [MonoKind]) -- for each structural constructor a return kind and list of argument kinds
   }

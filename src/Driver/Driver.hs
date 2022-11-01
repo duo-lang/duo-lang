@@ -185,8 +185,9 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
     ppPrintIO constraints
     ppPrintIO solverResult
   -- Insert into environment
-  let instty' = TST.instancedecl_typ instanceInferred
-  let f env = env { instanceEnv = M.adjust (S.insert instty') instancedecl_class (instanceEnv env)}
+  let (typ, tyn) = TST.instancedecl_typ instanceInferred
+  let iname = TST.instancedecl_name instanceInferred
+  let f env = env { instanceEnv = M.adjust (S.insert (iname, typ, tyn)) instancedecl_class (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 

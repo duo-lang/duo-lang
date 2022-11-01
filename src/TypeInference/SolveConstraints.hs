@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 module TypeInference.SolveConstraints
   ( solveConstraints,
     KindPolicy(..),
@@ -14,7 +15,7 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.List (partition)
-import Data.Maybe (fromJust, isJust, isNothing)
+import Data.Maybe (fromJust, isJust)
 import Data.Bifunctor (second)
 
 import Driver.Environment (Environment (..))
@@ -456,20 +457,26 @@ solveClassConstraints sr bisubst env = do
           $ tvarSolution sr
   let tys = M.mapWithKey (\k x -> (x,  getUniVType bisubst k)) uvs
   let instances = M.unions $ instanceEnv <$> M.elems env
-  res <- forM (M.toList tys) $ \(uv, ((cn, _uvarprov, k) , mTy)) -> do
+  res <- forM (M.toList tys) $ \(uv, ((cn, _uvarprov, k) , mTy)) -> ((uv,cn),) <$> do
     case mTy of
       Nothing -> throwSolverError defaultLoc [ "UniVar not found in Bisubstitution: " <> ppPrint uv  ]
       Just (typ, tyn) -> do
         ty <- getInferredType typ tyn
         case M.lookup cn instances of
           Nothing -> throwSolverError defaultLoc [ "No instance available for " <> ppPrint cn  ]
-          Just s -> forM (S.toList s) $ \(typ,tyn) -> do
+          Just s -> forM (S.toList s) $ \(iname, typ,tyn) -> do
             case ty of
                Left sub -> do
                 res <- trySubtype uv k sub tyn env
-                if res then pure (Just (typ, tyn)) else pure Nothing
+                if res then pure (Just iname) else pure Nothing
                Right sup -> do
                 res <- trySubtype uv k typ sup env
-                if res then pure (Just (typ, tyn)) else pure Nothing
-  when (any (all isNothing) res) (throwSolverError defaultLoc [ "Some instances could not be resolved." ])
-  return (MkInstanceResult M.empty)
+                if res then pure (Just iname) else pure Nothing
+  res <- forM res $ \(x, fvs) -> do
+    fv <- getJust fvs
+    pure (x, fv)
+  return (MkInstanceResult (M.fromList res))
+ where
+  getJust [] = throwSolverError defaultLoc [ "No instance resolved" ]
+  getJust ((Just fv):_) = pure fv
+  getJust (Nothing:fvs) = getJust fvs
