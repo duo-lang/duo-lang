@@ -208,8 +208,9 @@ instance PrettyAnn (TST.Bisubstitution TST.RecVT) where
 -- Instance resolution
 ---------------------------------------------------------------------------------
 
-prettyInstanceRes :: (UniTVar, ClassName) -> FreeVarName -> Doc Annotation
-prettyInstanceRes (uv, cn) iname = prettyAnn cn <+> prettyAnn uv <+> "~>" <+> prettyAnn iname
+prettyInstanceRes :: (UniTVar, ClassName) -> (FreeVarName, TST.Typ Pos, TST.Typ Neg) -> Doc Annotation
+prettyInstanceRes (uv, cn) (iname, typ, _tyn) = prettyAnn cn <+> prettyAnn uv <+> "~>"
+                                            <+> prettyAnn iname <+> ":" <+> prettyAnn cn <+> prettyAnn typ
 
 instance PrettyAnn InstanceResult where
   prettyAnn (MkInstanceResult instanceRes) = vsep

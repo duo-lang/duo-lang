@@ -464,14 +464,14 @@ solveClassConstraints sr bisubst env = do
         ty <- getInferredType typ tyn
         case M.lookup cn instances of
           Nothing -> throwSolverError defaultLoc [ "No instance available for " <> ppPrint cn  ]
-          Just s -> forM (S.toList s) $ \(iname, typ,tyn) -> do
+          Just s -> forM (S.toList s) $ \i@(_iname, typ,tyn) -> do
             case ty of
                Left sub -> do
                 res <- trySubtype uv k sub tyn env
-                if res then pure (Just iname) else pure Nothing
+                if res then pure (Just i) else pure Nothing
                Right sup -> do
                 res <- trySubtype uv k typ sup env
-                if res then pure (Just iname) else pure Nothing
+                if res then pure (Just i) else pure Nothing
   res <- forM res $ \(x, fvs) -> do
     fv <- getJust fvs
     pure (x, fv)

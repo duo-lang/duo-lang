@@ -127,4 +127,4 @@ data SolverResult = MkSolverResult
   }
 
 newtype InstanceResult = MkInstanceResult
-  { instanceResult :: Map (UniTVar, ClassName) FreeVarName }
+  { instanceResult :: Map (UniTVar, ClassName) (FreeVarName, Typ Pos, Typ Neg) }
