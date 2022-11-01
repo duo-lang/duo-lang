@@ -213,8 +213,12 @@ prettyInstanceRes (uv, cn) (iname, typ, _tyn) = prettyAnn cn <+> prettyAnn uv <+
                                             <+> prettyAnn iname <+> ":" <+> prettyAnn cn <+> prettyAnn typ
 
 instance PrettyAnn InstanceResult where
-  prettyAnn (MkInstanceResult instanceRes) = vsep
-    [ headerise "-" " " "Resolved Instances" 
-    , ""
-    , vsep $ uncurry prettyInstanceRes <$> M.toList instanceRes
-    ]
+  prettyAnn (MkInstanceResult instanceRes) =
+    let instances = M.toList instanceRes
+    in case instances of
+      [] -> mempty
+      _  -> vsep
+              [ headerise "-" " " "Resolved Instances" 
+              , ""
+              , vsep $ uncurry prettyInstanceRes <$> instances
+              ]
