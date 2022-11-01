@@ -37,6 +37,7 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn IntersectionUnionSubConstraint = parens "Intersection/Union"
   prettyAnn RecTypeSubConstraint           = parens "muTypeUnfold"
   prettyAnn NominalSubConstraint           = parens "NominalSubConstraint"
+  prettyAnn ClassResoultionConstraint      = parens "ClassResoultionConstraint"
 
 
 instance PrettyAnn UVarProvenance where
@@ -47,6 +48,7 @@ instance PrettyAnn UVarProvenance where
   prettyAnn (TypeSchemeInstance fv loc) = parens ("Instantiation of type scheme" <+> prettyAnn fv <+> "at" <+> prettyAnn loc)
   prettyAnn (TypeParameter tn tv) = parens ("Instantiation of type parameter" <+> prettyAnn tv <+> "for" <+> prettyAnn tn)
   prettyAnn (TypeClassInstance cn tv) = parens ("Instantiation for type variable"  <+> prettyAnn tv <+> "of type class" <+> prettyAnn cn)
+  prettyAnn TypeClassResolution = "TypeClassResolution placeholder"
 
 instance (PrettyAnn a) => PrettyAnn (Constraint a) where
   prettyAnn (KindEq ann k1 k2) = 
