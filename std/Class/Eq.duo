@@ -15,3 +15,5 @@ instance eqBool : Eq Bool {
   Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
   Differ(x, y, k) => and (or x y) (not (and x y)) >> k
 };
+
+def prd trueIsTrue : Bool := mu k. Equals(True, True, k);
