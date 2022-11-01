@@ -14,7 +14,7 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.List (partition)
-import Data.Maybe (fromJust, isJust)
+import Data.Maybe (fromJust, isJust, isNothing)
 import Data.Bifunctor (second)
 
 import Driver.Environment (Environment (..))
@@ -46,7 +46,7 @@ createInitState (ConstraintSet _ uvs kuvs) =
               , sst_cache = M.empty
               , sst_kvars = [([kv],Nothing) | kv <- kuvs]
               }
-  where 
+  where
     getsst_bounds :: [(UniTVar, UVarProvenance, MonoKind)] -> [(UniTVar, VariableState)]
     getsst_bounds [] = []
     getsst_bounds ((uv,_,mk):rst) = (uv,emptyVarState mk):getsst_bounds rst
@@ -410,6 +410,24 @@ substitute = do
 getUniVType :: Bisubstitution 'UniVT -> UniTVar -> Maybe (Typ Pos, Typ Neg)
 getUniVType bisubst uv = M.lookup uv (fst $ bisubst_map bisubst)
 
+-- | Get the inferred type for a unification variable constrained by a type class.
+-- We can assume here that either the positive type or the negative type consists of
+-- exactly one skolem variable which also appears as the first part of inverse type.
+getInferredType :: Typ Pos -> Typ Neg -> Either (NE.NonEmpty Error) (Either (Typ Pos) (Typ Neg))
+getInferredType TySkolemVar{} (TyInter _ _ TySkolemVar{} tyn) = pure $ Right tyn
+getInferredType (TyUnion _ _ TySkolemVar{} typ) TySkolemVar{} = pure $ Left typ
+getInferredType _ _ = throwSolverError defaultLoc [ "Should not occur." ]
+
+-- | Try to solve subtyping constraint between two types.
+trySubtype :: UniTVar -> MonoKind -> Typ Pos -> Typ Neg -> Map ModuleName Environment -> Either (NE.NonEmpty Error) Bool
+trySubtype uv k typ tyn env = do
+  let css = [SubType ClassResoultionConstraint typ tyn]
+  let constraintSet = ConstraintSet css [(uv, undefined, k)] []
+  catchError
+    (True <$ runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet))
+    (const $ return False)
+
+
 
 ------------------------------------------------------------------------------
 -- Exported Function
@@ -433,8 +451,25 @@ solveConstraints constraintSet@(ConstraintSet css _ _) env = do
 
 solveClassConstraints :: SolverResult -> Bisubstitution 'UniVT -> Map ModuleName Environment -> Either (NE.NonEmpty Error) InstanceResult
 solveClassConstraints sr bisubst env = do
-  let uvs = M.map (\VariableState { vst_typeclasses } -> head vst_typeclasses) $
-            M.filter (\VariableState { vst_typeclasses } -> not (null vst_typeclasses)) $ tvarSolution sr
-  let tys = M.mapWithKey (\k _ -> getUniVType bisubst k) uvs
-  let instances = instanceEnv <$> M.elems env
+  let uvs = M.map (\VariableState { vst_typeclasses, vst_kind } -> (head vst_typeclasses, TypeClassResolution, vst_kind))
+          $ M.filter (\VariableState { vst_typeclasses } -> not (null vst_typeclasses))
+          $ tvarSolution sr
+  let tys = M.mapWithKey (\k x -> (x,  getUniVType bisubst k)) uvs
+  let instances = M.unions $ instanceEnv <$> M.elems env
+  res <- forM (M.toList tys) $ \(uv, ((cn, _uvarprov, k) , mTy)) -> do
+    case mTy of
+      Nothing -> throwSolverError defaultLoc [ "UniVar not found in Bisubstitution: " <> ppPrint uv  ]
+      Just (typ, tyn) -> do
+        ty <- getInferredType typ tyn
+        case M.lookup cn instances of
+          Nothing -> throwSolverError defaultLoc [ "No instance available for " <> ppPrint cn  ]
+          Just s -> forM (S.toList s) $ \(typ,tyn) -> do
+            case ty of
+               Left sub -> do
+                res <- trySubtype uv k sub tyn env
+                if res then pure (Just (typ, tyn)) else pure Nothing
+               Right sup -> do
+                res <- trySubtype uv k typ sup env
+                if res then pure (Just (typ, tyn)) else pure Nothing
+  when (any (all isNothing) res) (throwSolverError defaultLoc [ "Some instances could not be resolved." ])
   return (MkInstanceResult M.empty)

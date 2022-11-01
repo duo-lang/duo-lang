@@ -35,6 +35,7 @@ data ConstraintInfo
   | RecTypeSubConstraint
   | NominalSubConstraint
   | KindConstraint
+  | ClassResoultionConstraint
   deriving (Show)
 
 
@@ -96,6 +97,7 @@ data UVarProvenance
   | TypeSchemeInstance FreeVarName Loc     -- ^ UVar generated for the instantiation of a type scheme.
   | TypeParameter RnTypeName SkolemTVar    -- ^ UVar generated for a type parameter of a nominal type
   | TypeClassInstance ClassName SkolemTVar -- ^ UVar generated for a type parameter of a class instance
+  | TypeClassResolution                    -- ^ Placeholder UVar generated during type class resolution.
   
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
