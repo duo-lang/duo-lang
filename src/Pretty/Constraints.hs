@@ -55,9 +55,7 @@ instance (PrettyAnn a) => PrettyAnn (Constraint a) where
     prettyAnn k1 <+> "~" <+> prettyAnn k2 <+> prettyAnn ann
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
-  prettyAnn (TypeClassPos ann cn typ) =
-    prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
-  prettyAnn (TypeClassNeg ann cn typ) =
+  prettyAnn (TypeClass ann cn typ) =
     prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
 
 printUVar :: (UniTVar, UVarProvenance,MonoKind) -> Doc Annotation

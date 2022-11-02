@@ -142,9 +142,7 @@ solve (cs:css) = do
         addToCache cs (UVarR uv lb)
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)
-      (TypeClassPos _ cn (TyUniVar _ PosRep _ uv)) -> do
-        addTypeClassConstraint uv cn
-      (TypeClassNeg _ cn (TyUniVar _ NegRep _ uv)) -> do
+      (TypeClass _ cn uv) -> do
         addTypeClassConstraint uv cn
       _ -> do
         (w, subCss) <- subConstraints cs
@@ -367,8 +365,7 @@ subConstraints (SubType _ t1 t2) = do
                               , "    " <> ppPrint t2 ]
 -- subConstraints for type classes are deprecated
 -- type class constraints should only be resolved after subtype constraints
-subConstraints TypeClassPos{} = throwSolverError defaultLoc ["subContraints should not be called on type class Constraints"]
-subConstraints TypeClassNeg{} = throwSolverError defaultLoc ["subContraints should not be called on type class Constraints"]
+subConstraints TypeClass{} = throwSolverError defaultLoc ["subContraints should not be called on type class Constraints"]
 subConstraints KindEq{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
 
 -- | Substitute cached witnesses for generated subtyping witness variables.
