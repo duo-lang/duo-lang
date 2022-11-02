@@ -417,7 +417,7 @@ getUniVType bisubst uv = M.lookup uv (fst $ bisubst_map bisubst)
 getInferredType :: Typ Pos -> Typ Neg -> Either (NE.NonEmpty Error) (Either (Typ Pos) (Typ Neg))
 getInferredType TySkolemVar{} (TyInter _ _ TySkolemVar{} tyn) = pure $ Right tyn
 getInferredType (TyUnion _ _ TySkolemVar{} typ) TySkolemVar{} = pure $ Left typ
-getInferredType _ _ = throwSolverError defaultLoc [ "Should not occur." ]
+getInferredType _ _ = throwSolverError defaultLoc [ "UniVar constrained by type class does not have the expected Bisubstitution." ]
 
 -- | Try to solve subtyping constraint between two types.
 trySubtype :: UniTVar -> MonoKind -> Typ Pos -> Typ Neg -> Map ModuleName Environment -> Either (NE.NonEmpty Error) Bool
@@ -428,6 +428,24 @@ trySubtype uv k typ tyn env = do
     (True <$ runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet))
     (const $ return False)
 
+-- | Try to resolve type class constraint for a UniVar and its lower/upper bounds with given instance environment.
+tryInstances :: UniTVar -> ClassName -> MonoKind -> (Typ 'Pos, Typ 'Neg) -> Map ModuleName Environment
+  -> Either (NE.NonEmpty Error) (FreeVarName, Typ 'Pos, Typ 'Neg)
+tryInstances uv cn k (typ, tyn) env = do
+  ty <- getInferredType typ tyn
+  let instances = M.unions $ instanceEnv <$> M.elems env
+  case M.lookup cn instances of
+          Nothing -> throwSolverError defaultLoc [ "No instance in environment defined for " <> ppPrint cn <> " " <> ppPrint uv ]
+          Just s -> go (S.toList s) ty env
+    where go [] _ _ = throwSolverError defaultLoc [ "No matching instance in environment available for " <> ppPrint cn <> " " <> ppPrint uv ]
+          -- case of covariant type class
+          go (i@(_iname, _typ, tyn):instances) (Left sub) env = do
+            res <- trySubtype uv k sub tyn env
+            if res then pure i else go instances (Left sub) env
+          -- case of contravariant type class
+          go (i@(_iname, typ, _tyn):instances) (Right sup) env = do
+            res <- trySubtype uv k typ sup env
+            if res then pure i else go instances (Right sup) env
 
 
 ------------------------------------------------------------------------------
@@ -450,33 +468,15 @@ solveConstraints constraintSet@(ConstraintSet css _ _) env = do
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution (sst_cache solverState)
 
+-- | Resolves and returns the correct instance for each type-class-constrained uni var.
 solveClassConstraints :: SolverResult -> Bisubstitution 'UniVT -> Map ModuleName Environment -> Either (NE.NonEmpty Error) InstanceResult
 solveClassConstraints sr bisubst env = do
   let uvs = M.map (\VariableState { vst_typeclasses, vst_kind } -> (head vst_typeclasses, TypeClassResolution, vst_kind))
           $ M.filter (\VariableState { vst_typeclasses } -> not (null vst_typeclasses))
           $ tvarSolution sr
   let tys = M.mapWithKey (\k x -> (x,  getUniVType bisubst k)) uvs
-  let instances = M.unions $ instanceEnv <$> M.elems env
   res <- forM (M.toList tys) $ \(uv, ((cn, _uvarprov, k) , mTy)) -> ((uv,cn),) <$> do
     case mTy of
       Nothing -> throwSolverError defaultLoc [ "UniVar not found in Bisubstitution: " <> ppPrint uv  ]
-      Just (typ, tyn) -> do
-        ty <- getInferredType typ tyn
-        case M.lookup cn instances of
-          Nothing -> throwSolverError defaultLoc [ "No instance available for " <> ppPrint cn  ]
-          Just s -> forM (S.toList s) $ \i@(_iname, typ,tyn) -> do
-            case ty of
-               Left sub -> do
-                res <- trySubtype uv k sub tyn env
-                if res then pure (Just i) else pure Nothing
-               Right sup -> do
-                res <- trySubtype uv k typ sup env
-                if res then pure (Just i) else pure Nothing
-  res <- forM res $ \(x, fvs) -> do
-    fv <- getJust fvs
-    pure (x, fv)
+      Just ty -> tryInstances uv cn k ty env
   return (MkInstanceResult (M.fromList res))
- where
-  getJust [] = throwSolverError defaultLoc [ "No instance resolved" ]
-  getJust ((Just fv):_) = pure fv
-  getJust (Nothing:fvs) = getJust fvs
