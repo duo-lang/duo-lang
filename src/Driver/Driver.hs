@@ -159,6 +159,12 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
     ppPrintIO ("" :: T.Text)
     ppPrintIO constraints
     ppPrintIO solverResult
+  -- Coalesce the result
+  let bisubst = coalesce solverResult
+  guardVerbose $ ppPrintIO bisubst
+  -- Solve the type class constraints.
+  instances <- liftEitherErrLoc cmddecl_loc $ solveClassConstraints solverResult bisubst env
+  guardVerbose $ ppPrintIO instances
   -- Insert into environment
   let f env = env { cmdEnv = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
   modifyEnvironment mn f
