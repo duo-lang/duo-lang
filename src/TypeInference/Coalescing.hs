@@ -15,7 +15,6 @@ import Syntax.CST.Names
 import TypeInference.Constraints
 import Loc ( defaultLoc )
 import Syntax.CST.Kinds
-import Pretty.Pretty
 ---------------------------------------------------------------------------------
 -- Coalescing
 ---------------------------------------------------------------------------------
@@ -116,8 +115,8 @@ coalesceType (TyUniVar _ PosRep knd tv) = do
             case M.lookup (tv, Pos) recVarMap of
                 Nothing     -> do
                     newName <- getSkolemVar tv
-                    return $                                            mkUnion defaultLoc mk (TySkolemVar defaultLoc PosRep knd newName : lbs')
-                Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc mk (TyRecVar defaultLoc PosRep knd recVar  : lbs'))
+                    return $                                            mkUnion defaultLoc mk (TySkolemVar defaultLoc PosRep mk newName : lbs')
+                Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc mk (TyRecVar defaultLoc PosRep mk recVar  : lbs'))
 coalesceType (TyUniVar _ NegRep knd tv) = do
     mk <- coalesceKind knd
     isInProcess <- inProcess (tv, Neg)
@@ -133,8 +132,8 @@ coalesceType (TyUniVar _ NegRep knd tv) = do
             case M.lookup (tv, Neg) recVarMap of
                 Nothing     -> do
                     newName <- getSkolemVar tv
-                    return $                                            mkInter defaultLoc mk (TySkolemVar defaultLoc NegRep knd newName : ubs')
-                Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc mk (TyRecVar defaultLoc NegRep knd recVar  : ubs'))
+                    return $                                            mkInter defaultLoc mk (TySkolemVar defaultLoc NegRep mk newName : ubs')
+                Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc mk (TyRecVar defaultLoc NegRep mk recVar  : ubs'))
 coalesceType (TyData loc rep mk xtors) = do
     mk <- coalesceKind mk
     xtors' <- sequence $ coalesceXtor <$> xtors
