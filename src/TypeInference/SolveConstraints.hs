@@ -430,22 +430,31 @@ trySubtype uv k typ tyn env = do
 
 -- | Try to resolve type class constraint for a UniVar and its lower/upper bounds with given instance environment.
 tryInstances :: UniTVar -> ClassName -> MonoKind -> (Typ 'Pos, Typ 'Neg) -> Map ModuleName Environment
-  -> Either (NE.NonEmpty Error) (FreeVarName, Typ 'Pos, Typ 'Neg)
+             -> Either (NE.NonEmpty Error) (FreeVarName, Typ 'Pos, Typ 'Neg)
 tryInstances uv cn k (typ, tyn) env = do
   ty <- getInferredType typ tyn
   let instances = M.unions $ instanceEnv <$> M.elems env
   case M.lookup cn instances of
           Nothing -> throwSolverError defaultLoc [ "No instance in environment defined for " <> ppPrint cn <> " " <> ppPrint uv ]
-          Just s -> go (S.toList s) ty env
-    where go [] _ _ = throwSolverError defaultLoc [ "No matching instance in environment available for " <> ppPrint cn <> " " <> ppPrint uv ]
+          Just s -> go (S.toList s) ty env []
+    where go :: [(FreeVarName, Typ 'Pos, Typ 'Neg)] -> Either (Typ Pos) (Typ Neg) -> Map ModuleName Environment -> [(FreeVarName, Typ 'Pos, Typ 'Neg)]
+             -> Either (NE.NonEmpty Error) (FreeVarName, Typ 'Pos, Typ 'Neg)
+          go [] (Left sub) _ acc = throwSolverError defaultLoc $
+                                   [ "No matching instance in environment available for " <> ppPrint cn <> " " <> ppPrint sub
+                                   , "Instances checked:" 
+                                   ] ++ ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint typ) <$> acc)
+          go [] (Right sup) _ acc = throwSolverError defaultLoc $
+                                   [ "No matching instance in environment available for " <> ppPrint cn <> " " <> ppPrint sup
+                                   , "Instances checked:" 
+                                   ] ++ ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint typ) <$> acc)
           -- case of covariant type class
-          go (i@(_iname, _typ, tyn):instances) (Left sub) env = do
+          go (i@(_iname, _typ, tyn):instances) (Left sub) env acc = do
             res <- trySubtype uv k sub tyn env
-            if res then pure i else go instances (Left sub) env
+            if res then pure i else go instances (Left sub) env (i : acc)
           -- case of contravariant type class
-          go (i@(_iname, typ, _tyn):instances) (Right sup) env = do
+          go (i@(_iname, typ, _tyn):instances) (Right sup) env acc = do
             res <- trySubtype uv k typ sup env
-            if res then pure i else go instances (Right sup) env
+            if res then pure i else go instances (Right sup) env (i : acc)
 
 
 ------------------------------------------------------------------------------
