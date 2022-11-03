@@ -1,6 +1,7 @@
 module Parser.Program
   ( declarationP
   , moduleP
+  , moduleNameP
   , returnP
   , xtorDeclP
   , xtorSignatureP
