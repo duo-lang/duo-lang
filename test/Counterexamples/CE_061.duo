@@ -5,5 +5,5 @@ import Data.Bool;
 
 class Foo(+a : CBV){ Foo(a, return Bool) };
 instance foo : Foo Bool { Foo(x, k) => x >> k };
-instance bar : Foo Bool { Foo(x, k) => x >> k };
+instance bar : Foo Bool { Foo(x, k) => not x >> k };
 def prd baz := mu k. Foo(False, k);
