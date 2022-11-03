@@ -83,7 +83,7 @@ getOrElseUpdateRecVar ptv = do
 
 
 coalesce :: SolverResult -> Bisubstitution UniVT
-coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList xs,M.empty)
+coalesce result@MkSolverResult { tvarSolution, kvarSolution } = MkBisubstitution (M.fromList xs,kvarSolution)
     where
         res = M.keys tvarSolution
         kinds = map (\x -> vst_kind (fromMaybe  (error "UniVar not found in SolverResult (should never happen)") (M.lookup x tvarSolution))) res
@@ -94,14 +94,11 @@ coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList x
         xs = zip res $ runCoalesceM result $ mapM f (zip res kinds)
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
-coalesceType (TySkolemVar loc rep mono tv) =  do
-  mk <- coalesceKind mono
+coalesceType (TySkolemVar loc rep mk tv) =  do
   return (TySkolemVar loc rep mk tv)
-coalesceType (TyRecVar loc rep mono tv) = do 
-  mk <- coalesceKind mono
+coalesceType (TyRecVar loc rep mk tv) = do 
   return (TyRecVar loc rep mk tv)
-coalesceType (TyUniVar _ PosRep knd tv) = do
-    mk <- coalesceKind knd
+coalesceType (TyUniVar _ PosRep mk tv) = do
     isInProcess <- inProcess (tv, Pos)
     if isInProcess
         then do
@@ -117,8 +114,7 @@ coalesceType (TyUniVar _ PosRep knd tv) = do
                     newName <- getSkolemVar tv
                     return $                                            mkUnion defaultLoc mk (TySkolemVar defaultLoc PosRep mk newName : lbs')
                 Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc mk (TyRecVar defaultLoc PosRep mk recVar  : lbs'))
-coalesceType (TyUniVar _ NegRep knd tv) = do
-    mk <- coalesceKind knd
+coalesceType (TyUniVar _ NegRep mk tv) = do
     isInProcess <- inProcess (tv, Neg)
     if isInProcess
         then do
@@ -135,39 +131,30 @@ coalesceType (TyUniVar _ NegRep knd tv) = do
                     return $                                            mkInter defaultLoc mk (TySkolemVar defaultLoc NegRep mk newName : ubs')
                 Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc mk (TyRecVar defaultLoc NegRep mk recVar  : ubs'))
 coalesceType (TyData loc rep mk xtors) = do
-    mk <- coalesceKind mk
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyData loc rep mk xtors')
 coalesceType (TyCodata loc rep mk xtors) = do
-    mk <- coalesceKind mk
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyCodata loc rep mk xtors')
 coalesceType (TyDataRefined loc rep mk tn xtors) = do
-    mk <- coalesceKind mk
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyDataRefined loc rep mk tn xtors')
 coalesceType (TyCodataRefined loc rep mk tn xtors) = do
-    mk <- coalesceKind mk
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyCodataRefined loc rep mk tn xtors')
-coalesceType (TyNominal loc rep kind tn args) = do
-    mk <- coalesceKind kind
+coalesceType (TyNominal loc rep mk tn args) = do
     args' <- sequence $ coalesceVariantType <$> args
     return $ TyNominal loc rep mk tn args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
 coalesceType (TyTop loc mk) = do 
-    mk <- coalesceKind mk
     pure (TyTop loc mk)
 coalesceType (TyBot loc mk) = do
-    mk <- coalesceKind mk
     pure (TyBot loc mk)
-coalesceType (TyUnion loc knd ty1 ty2) = do
-  mk <- coalesceKind knd
+coalesceType (TyUnion loc mk ty1 ty2) = do
   ty1' <- coalesceType ty1
   ty2' <- coalesceType ty2
   pure (TyUnion loc mk ty1' ty2')
-coalesceType (TyInter loc knd ty1 ty2) = do
-  mk <- coalesceKind knd  
+coalesceType (TyInter loc mk ty1 ty2) = do
   ty1' <- coalesceType ty1
   ty2' <- coalesceType ty2
   pure (TyInter loc mk ty1' ty2')
@@ -196,12 +183,4 @@ coalesceXtor :: XtorSig pol -> CoalesceM (XtorSig pol)
 coalesceXtor (MkXtorSig name ctxt) = do
     ctxt' <- coalesceCtxt ctxt
     return $ MkXtorSig name ctxt'
-
-coalesceKind :: MonoKind -> CoalesceM MonoKind
-coalesceKind (KindVar kv) = do
-  mp <- asks (kvarSolution . r_result)
-  case M.lookup kv mp of
-    Nothing -> error ("Kind Variable " <> show kv <> " does not have an assigned kind")
-    Just mk -> return mk
-coalesceKind mk = return mk
 
