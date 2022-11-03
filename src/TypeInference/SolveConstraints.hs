@@ -485,5 +485,5 @@ solveClassConstraints sr bisubst env = do
           [] -> throwSolverError defaultLoc [ "No instance in environment defined for " <> ppPrint cn <> " " <> ppPrint uv ]
           [i] -> pure i
           is -> throwSolverError defaultLoc $ ("Incoherent instances resolved for " <> ppPrint cn <> " " <> ppPrint uv)
-                                            : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint typ) <$> is)
+                                            : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> is)
   return (MkInstanceResult (M.fromList res))
