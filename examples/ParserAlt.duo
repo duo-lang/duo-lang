@@ -19,29 +19,29 @@ codata Parser :  CBV {
 }; 
 
 
-def prd lit : Nat -> Parser := \n => cocase {
-    Parse(xs,km) => xs >> case {
-        Nil =>  throw MkUnit >> km,
-        Cons(y, ys) => nateq y n >> case {
-            True => unit CoAp(mu z.throw z >> km,ys) >> km,
-            False => throw MkUnit >> km
-        }            
-    } 
-} ; 
+--def prd lit : Nat -> Parser := \n => cocase {
+--    Parse(xs,km) => xs >> case {
+--        Nil =>  throw MkUnit >> km,
+--        Cons(y, ys) => nateq y n >> case {
+--            True => unit CoAp(mu z.throw z >> km,ys) >> km,
+--            False => throw MkUnit >> km
+--        }            
+--    } 
+--} ; 
 
 def prd success : Parser := cocase {
     Parse(xs,km) => unit CoAp(mu z.throw z >> km,xs)  >> km
 };
 
-def prd failure : Parser := cocase {
-    Parse(xs,*) => throw MkUnit 
-};
+--def prd failure : Parser := cocase {
+--    Parse(xs,*) => throw MkUnit 
+--};
 
-def prd seq : Parser -> Parser -> Parser := \p1 p2 => cocase {
-    Parse(xs,km) => 
-      p1 >> 
-        Parse(xs,  MkPar(case { MkUnit => throw MkUnit >> km} ,
-                           case { CoAp(kf,l) => p2 >> Parse(l,MkPar(kf,mu z. unit z >> km)) }) ) };
+--def prd seq : Parser -> Parser -> Parser := \p1 p2 => cocase {
+--    Parse(xs,km) => 
+--      p1 >> 
+--        Parse(xs,  MkPar(case { MkUnit => throw MkUnit >> km} ,
+--                           case { CoAp(kf,l) => p2 >> Parse(l,MkPar(kf,mu z. unit z >> km)) }) ) };
 
 def prd alt : Parser -> Parser -> Parser := \p1 p2 => cocase {
     Parse(xs,km) => p1 >> Parse(xs,MkPar(case { MkUnit => p2 >> Parse(xs,km) },mu z. unit z >> km) )
@@ -53,20 +53,20 @@ def rec prd many1 : Parser -> Parser := \p => cocase {
                                             case { CoAp(kf2,l) => alt success (many1 p) >> Parse(l,MkPar(kf2, mu z. unit z >> km)) }))
 };
 
-def prd many : Parser -> Parser := \p => alt success (many1 p);
+--def prd many : Parser -> Parser := \p => alt success (many1 p);
 
-def prd parseOneTwo : Parser := seq (lit 1) (lit 2);
-def prd parseOneTwoThree : Parser := seq (seq (lit 1) (lit 2)) (lit 3);
+--def prd parseOneTwo : Parser := seq (lit 1) (lit 2);
+--def prd parseOneTwoThree : Parser := seq (seq (lit 1) (lit 2)) (lit 3);
 
 -- (123 | 12 | 35)^* 5 6
-def prd parseComplicated : Parser := seq (seq (many (alt (alt parseOneTwoThree parseOneTwo) (seq (lit 3) (lit 5)))) (lit 5)) (lit 6);
+--def prd parseComplicated : Parser := seq (seq (many (alt (alt parseOneTwoThree parseOneTwo) (seq (lit 3) (lit 5)))) (lit 5)) (lit 6);
 
-def prd l4 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Nil))));
-def prd l5 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Cons(5,Nil)))));
-def prd l6 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(6,Cons(5,Nil)))));
-def prd l7 : List(Nat) := Cons(1,Cons(2,Cons(5,Nil)));
-def prd l8 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Nil)))));
-def prd l9 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Cons(6,Nil))))));
+--def prd l4 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Nil))));
+--def prd l5 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Cons(5,Nil)))));
+--def prd l6 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(6,Cons(5,Nil)))));
+--def prd l7 : List(Nat) := Cons(1,Cons(2,Cons(5,Nil)));
+--def prd l8 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Nil)))));
+--def prd l9 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Cons(6,Nil))))));
 
 -- print commands don't work (same as parser)
 --def cmd test8  := parseComplicated >> Parse(l4,MkPar(print,print)) ;

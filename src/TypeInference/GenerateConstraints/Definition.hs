@@ -34,6 +34,8 @@ module TypeInference.GenerateConstraints.Definition
   , initialReader
 ) where
 
+import Debug.Trace 
+
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -244,7 +246,8 @@ lookupContext loc rep idx@(i,j) = do
 ---------------------------------------------------------------------------------------------
 --
 instantiateTypeScheme :: FreeVarName -> Loc -> TST.TypeScheme pol -> GenM (TST.Typ pol)
-instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do
+instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do 
+  trace ("instatiating for " <> show fv) $ pure ()
   freshVars <- forM ts_vars (\(tv,knd) -> freshTVar (TypeSchemeInstance fv loc) knd >>= \ty -> return (tv, ty))
   forM_ freshVars (\(_,ty) -> addConstraint (KindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ fst ty)))
   forM_ freshVars (\(_,ty) -> addConstraint (KindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ snd ty)))

@@ -3,6 +3,7 @@ module TypeInference.GenerateConstraints.Terms
   , genConstraintsTermRecursive
   ) where
 
+import Debug.Trace
 
 import Control.Monad.Reader
 import Errors
@@ -95,6 +96,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
   -- scheme has to be instantiated with fresh unification variables.
   --
   genConstraints (Core.FreeVar loc rep v) = do
+    trace ("generateing for freevar" <> show v)$ pure ()
     tys <- snd <$> lookupTerm loc rep v
     ty <- instantiateTypeScheme v loc tys
     return (TST.FreeVar loc rep ty v)
@@ -363,6 +365,7 @@ genConstraintsTermRecursive :: ModuleName
                             -> PrdCnsRep pc -> Core.Term pc
                             -> GenM (TST.Term pc)
 genConstraintsTermRecursive mn loc fv PrdRep tm = do
+  trace "recursive producer" $ pure ()
   (x,y) <- freshTVar (RecursiveUVar fv) Nothing
   tm <- withTerm mn PrdRep fv (TST.FreeVar loc PrdRep x fv) loc (TST.TypeScheme loc [] x) (genConstraints tm)
   let xTy = TST.getTypeTerm tm
@@ -370,6 +373,7 @@ genConstraintsTermRecursive mn loc fv PrdRep tm = do
   addConstraint (KindEq KindConstraint (TST.getKind xTy) (TST.getKind y))
   return tm
 genConstraintsTermRecursive mn loc fv CnsRep tm = do
+  trace "recursive consumer" $ pure ()
   (x,y) <- freshTVar (RecursiveUVar fv) Nothing
   tm <- withTerm mn CnsRep fv (TST.FreeVar loc CnsRep y fv) loc (TST.TypeScheme loc [] y) (genConstraints tm)
   let yTy = TST.getTypeTerm tm
