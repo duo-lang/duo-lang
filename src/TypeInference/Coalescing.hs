@@ -14,7 +14,7 @@ import Syntax.RST.Types (PolarityRep(..),Polarity(..))
 import Syntax.CST.Names
 import TypeInference.Constraints
 import Loc ( defaultLoc )
-
+import Syntax.CST.Kinds
 ---------------------------------------------------------------------------------
 -- Coalescing
 ---------------------------------------------------------------------------------
@@ -94,14 +94,19 @@ coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList x
         xs = zip res $ runCoalesceM result $ mapM f (zip res kinds)
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
-coalesceType (TySkolemVar loc rep mono tv) =  return (TySkolemVar loc rep mono tv)
-coalesceType (TyRecVar loc rep mono tv) = return (TyRecVar loc rep mono tv)
+coalesceType (TySkolemVar loc rep mono tv) =  do
+  mk <- coalesceKind mono
+  return (TySkolemVar loc rep mk tv)
+coalesceType (TyRecVar loc rep mono tv) = do 
+  mk <- coalesceKind mono
+  return (TyRecVar loc rep mk tv)
 coalesceType (TyUniVar _ PosRep knd tv) = do
+    mk <- coalesceKind knd
     isInProcess <- inProcess (tv, Pos)
     if isInProcess
         then do
             recVar <- getOrElseUpdateRecVar (tv, Pos)
-            return (TyRecVar defaultLoc PosRep knd recVar)
+            return (TyRecVar defaultLoc PosRep mk recVar)
         else do
             VariableState { vst_lowerbounds } <- getVariableState tv
             let f r = r { r_inProcess =  S.insert (tv, Pos) (r_inProcess r) }
@@ -110,14 +115,15 @@ coalesceType (TyUniVar _ PosRep knd tv) = do
             case M.lookup (tv, Pos) recVarMap of
                 Nothing     -> do
                     newName <- getSkolemVar tv
-                    return $                                            mkUnion defaultLoc knd (TySkolemVar defaultLoc PosRep knd newName : lbs')
-                Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc knd (TyRecVar defaultLoc PosRep knd recVar  : lbs'))
+                    return $                                            mkUnion defaultLoc mk (TySkolemVar defaultLoc PosRep mk newName : lbs')
+                Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc mk (TyRecVar defaultLoc PosRep mk recVar  : lbs'))
 coalesceType (TyUniVar _ NegRep knd tv) = do
+    mk <- coalesceKind knd
     isInProcess <- inProcess (tv, Neg)
     if isInProcess
         then do
             recVar <- getOrElseUpdateRecVar (tv, Neg)
-            return (TyRecVar defaultLoc NegRep knd recVar)
+            return (TyRecVar defaultLoc NegRep mk recVar)
         else do
             VariableState { vst_upperbounds } <- getVariableState tv
             let f r = r { r_inProcess =  S.insert (tv, Neg) (r_inProcess r) }
@@ -126,36 +132,45 @@ coalesceType (TyUniVar _ NegRep knd tv) = do
             case M.lookup (tv, Neg) recVarMap of
                 Nothing     -> do
                     newName <- getSkolemVar tv
-                    return $                                            mkInter defaultLoc knd (TySkolemVar defaultLoc NegRep knd newName : ubs')
-                Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc knd (TyRecVar defaultLoc NegRep knd recVar  : ubs'))
+                    return $                                            mkInter defaultLoc mk (TySkolemVar defaultLoc NegRep mk newName : ubs')
+                Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc mk (TyRecVar defaultLoc NegRep mk recVar  : ubs'))
 coalesceType (TyData loc rep mk xtors) = do
+    mk <- coalesceKind mk
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyData loc rep mk xtors')
 coalesceType (TyCodata loc rep mk xtors) = do
+    mk <- coalesceKind mk
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyCodata loc rep mk xtors')
 coalesceType (TyDataRefined loc rep mk tn xtors) = do
+    mk <- coalesceKind mk
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyDataRefined loc rep mk tn xtors')
 coalesceType (TyCodataRefined loc rep mk tn xtors) = do
+    mk <- coalesceKind mk
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyCodataRefined loc rep mk tn xtors')
 coalesceType (TyNominal loc rep kind tn args) = do
+    mk <- coalesceKind kind
     args' <- sequence $ coalesceVariantType <$> args
-    return $ TyNominal loc rep kind tn args'
+    return $ TyNominal loc rep mk tn args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
-coalesceType (TyTop loc mk) =
+coalesceType (TyTop loc mk) = do 
+    mk <- coalesceKind mk
     pure (TyTop loc mk)
-coalesceType (TyBot loc mk) =
+coalesceType (TyBot loc mk) = do
+    mk <- coalesceKind mk
     pure (TyBot loc mk)
 coalesceType (TyUnion loc knd ty1 ty2) = do
-    ty1' <- coalesceType ty1
-    ty2' <- coalesceType ty2
-    pure (TyUnion loc knd ty1' ty2')
+  mk <- coalesceKind knd
+  ty1' <- coalesceType ty1
+  ty2' <- coalesceType ty2
+  pure (TyUnion loc mk ty1' ty2')
 coalesceType (TyInter loc knd ty1 ty2) = do
-    ty1' <- coalesceType ty1
-    ty2' <- coalesceType ty2
-    pure (TyInter loc knd ty1' ty2')
+  mk <- coalesceKind knd  
+  ty1' <- coalesceType ty1
+  ty2' <- coalesceType ty2
+  pure (TyInter loc mk ty1' ty2')
 coalesceType (TyRec loc PosRep tv ty) = do
     return $ TyRec loc PosRep tv ty
 coalesceType (TyRec loc NegRep tv ty) = do
@@ -181,4 +196,12 @@ coalesceXtor :: XtorSig pol -> CoalesceM (XtorSig pol)
 coalesceXtor (MkXtorSig name ctxt) = do
     ctxt' <- coalesceCtxt ctxt
     return $ MkXtorSig name ctxt'
+
+coalesceKind :: MonoKind -> CoalesceM MonoKind
+coalesceKind (KindVar kv) = do
+  mp <- asks (kvarSolution . r_result)
+  case M.lookup kv mp of
+    Nothing -> error ("Kind Variable " <> show kv <> " does not have an assigned kind")
+    Just mk -> return mk
+coalesceKind mk = return mk
 
