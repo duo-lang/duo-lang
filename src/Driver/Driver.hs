@@ -52,7 +52,18 @@ import qualified Data.Set as S
 import Data.Maybe (catMaybes)
 import Pretty.Common (Header(..))
 import Pretty.Program ()
+import Syntax.RST.Types qualified as RST
 
+checkMaybeAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
+checkMaybeAnnot Nothing _ = return Nothing 
+checkMaybeAnnot (Just tys) loc = do
+  env <- gets drvEnv
+  (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tys)
+  solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs env
+  let bisubstAnnot = coalesce solverResAnnot
+  let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot (TST.ts_monotype annotChecked)
+  let tysAnnot = TST.TypeScheme { ts_loc = TST.ts_loc annotChecked, ts_vars = TST.ts_vars annotChecked, ts_monotype = typAnnotZonked }
+  return $ Just tysAnnot
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
@@ -111,9 +122,8 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  (annotChecked, annotConstrs) <- liftEitherErr $ runGenM pcdecl_loc env (annotateKind pcdecl_annot)
-  _ <- liftEitherErrLoc pcdecl_loc $ solveConstraints annotConstrs env
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annotChecked pcdecl_loc
+  tysAnnot <- checkMaybeAnnot  pcdecl_annot pcdecl_loc  
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified tysAnnot pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
