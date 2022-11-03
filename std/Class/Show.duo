@@ -15,3 +15,5 @@ instance showBool : Show Bool {
         False => MkString("False")
     } >> k
 };
+
+def prd show : String := mu k. Show(True, k);

@@ -8,14 +8,13 @@ import Data.Either( isRight, isLeft )
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
 import Errors
-import Utils (moduleNameToFullPath, filePathToModuleName)
+import Utils (moduleNameToFullPath)
 import Syntax.CST.Names (ModuleName)
 
 type Reason = String
 
 pendingFiles :: [(ModuleName, Reason)]
-pendingFiles = [ (filePathToModuleName "CE_053", "Constraint Solver for type class methods not implemented yet.")
-               ]
+pendingFiles = []
 
 -- | Typecheck the programs in the toplevel "examples/" subfolder.
 spec :: [((FilePath, ModuleName), Either (NonEmpty Error) CST.Module)]
