@@ -73,7 +73,8 @@ typeAutEqualM :: (TypeGr, Node) -> (TypeGr, Node) -> StateT (Map Node Node) Mayb
 typeAutEqualM (gr1, n) (gr2, m) = do
   mp <- get
   case M.lookup n mp of
-      guard (nl1==nl2)
+    Nothing -> do
+      guard (lab gr1 n== lab gr2 m)
       modify (M.insert n m)
       forM_ (lsuc gr1 n) $ \(i,el) -> do
         j <- lift $ sucWith gr2 m el
