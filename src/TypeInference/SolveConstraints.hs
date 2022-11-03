@@ -419,7 +419,7 @@ getInferredType _ _ = throwSolverError defaultLoc [ "UniVar constrained by type 
 -- | Try to solve subtyping constraint between two types.
 trySubtype :: UniTVar -> MonoKind -> Typ Pos -> Typ Neg -> Map ModuleName Environment -> Either (NE.NonEmpty Error) Bool
 trySubtype uv k typ tyn env = do
-  let css = [SubType ClassResoultionConstraint typ tyn]
+  let css = [SubType ClassResolutionConstraint typ tyn]
   let constraintSet = ConstraintSet css [(uv, undefined, k)] []
   catchError
     (True <$ runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet))

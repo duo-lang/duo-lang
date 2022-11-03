@@ -35,7 +35,7 @@ data ConstraintInfo
   | RecTypeSubConstraint
   | NominalSubConstraint
   | KindConstraint
-  | ClassResoultionConstraint
+  | ClassResolutionConstraint
   deriving (Show)
 
 

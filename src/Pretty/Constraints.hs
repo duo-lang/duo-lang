@@ -37,7 +37,7 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn IntersectionUnionSubConstraint = parens "Intersection/Union"
   prettyAnn RecTypeSubConstraint           = parens "muTypeUnfold"
   prettyAnn NominalSubConstraint           = parens "NominalSubConstraint"
-  prettyAnn ClassResoultionConstraint      = parens "ClassResoultionConstraint"
+  prettyAnn ClassResolutionConstraint      = parens "ClassResolutionConstraint"
 
 
 instance PrettyAnn UVarProvenance where
