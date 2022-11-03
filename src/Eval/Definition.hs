@@ -14,6 +14,7 @@ import Pretty.Terms ()
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.Core.Annot
+import Syntax.Core.Terms (Pattern(..))
 import Syntax.TST.Terms
 import Loc
 import Syntax.TST.Types qualified as TST

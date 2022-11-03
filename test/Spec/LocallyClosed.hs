@@ -7,7 +7,8 @@ import Test.Hspec
 
 import Pretty.Pretty ( ppPrintString )
 import Pretty.Errors ()
-import Syntax.TST.Terms ( InstanceCase (instancecase_pat), Term, termLocallyClosed, instanceCaseLocallyClosed, Pattern (XtorPat) )
+import Syntax.Core.Terms (Pattern(..))
+import Syntax.TST.Terms ( InstanceCase (instancecase_pat), Term, termLocallyClosed, instanceCaseLocallyClosed)
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Names
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
@@ -33,7 +34,7 @@ getInstanceCases TST.MkModule { mod_decls } = go mod_decls []
   where
     go :: [TST.Declaration] -> [InstanceCase] -> [InstanceCase]
     go [] acc = acc
-    go ((TST.InstanceDecl (TST.MkInstanceDeclaration _ _ _ _ cases)):rest) acc = go rest (cases++acc)
+    go ((TST.InstanceDecl (TST.MkInstanceDeclaration _ _ _ _ _ cases)):rest) acc = go rest (cases++acc)
     go (_:rest) acc = go rest acc
 
 spec :: [((FilePath, ModuleName), Either (NonEmpty Error) TST.Module)] -> Spec

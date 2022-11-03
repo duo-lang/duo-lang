@@ -9,6 +9,7 @@ module Driver.Driver
   ) where
 
 
+
 import Control.Monad.State
 import Control.Monad.Except
 import Data.List.NonEmpty ( NonEmpty ((:|)) )
@@ -110,9 +111,9 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  --  annot <- liftEitherErrLoc pcdecl_loc (fst $ runGenM pcdecl_loc env (annotateMaybeTypeScheme pcdecl_annot) )
-  annot <- maybe (return Nothing) (Just . fst <$>) $ liftEitherErrLoc pcdecl_loc . fst . runGenM pcdecl_loc env . annotateKind <$> pcdecl_annot
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annot pcdecl_loc
+  (annotChecked, annotConstrs) <- liftEitherErr $ runGenM pcdecl_loc env (annotateKind pcdecl_annot)
+  _ <- liftEitherErrLoc pcdecl_loc $ solveConstraints annotConstrs env
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annotChecked pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
@@ -167,14 +168,14 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
 inferInstanceDeclaration :: ModuleName
                         -> Core.InstanceDeclaration
                         -> DriverM TST.InstanceDeclaration
-inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_name, instancedecl_typ } = do
+inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_class, instancedecl_typ } = do
   env <- gets drvEnv
   -- Generate the constraints
   (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraints decl))
   -- Solve the constraints
   solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
   guardVerbose $ do
-    ppPrintIO (Header  $ unClassName instancedecl_name <> " " <> ppPrint (fst instancedecl_typ))
+    ppPrintIO (Header  $ unClassName instancedecl_class <> " " <> ppPrint (fst instancedecl_typ))
     ppPrintIO ("" :: T.Text)
     ppPrintIO (Core.InstanceDecl decl)
     ppPrintIO ("" :: T.Text)
@@ -182,7 +183,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
     ppPrintIO solverResult
   -- Insert into environment
   let instty' = TST.instancedecl_typ instanceInferred
-  let f env = env { instanceEnv = M.adjust (S.insert instty') instancedecl_name (instanceEnv env)}
+  let f env = env { instanceEnv = M.adjust (S.insert instty') instancedecl_class (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 

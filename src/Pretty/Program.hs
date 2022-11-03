@@ -177,9 +177,10 @@ instance PrettyAnn CST.ClassDeclaration where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn CST.InstanceDeclaration where
-  prettyAnn CST.MkInstanceDeclaration { instancedecl_name, instancedecl_typ, instancedecl_cases } =
+  prettyAnn CST.MkInstanceDeclaration { instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } =
     annKeyword "instance" <+>
-    prettyAnn instancedecl_name <+>
+    prettyAnn instancedecl_name <+> annSymbol ":" <+>
+    prettyAnn instancedecl_class <+>
     prettyAnn instancedecl_typ <+>
     braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> instancedecl_cases))))) <>
     semi

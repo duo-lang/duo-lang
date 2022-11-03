@@ -7,12 +7,10 @@ import Data.Map qualified as M
 import Pretty.Pretty
 import Pretty.Types ()
 import Syntax.TST.Types qualified as TST
-import Syntax.RST.Types qualified as RST
-import Syntax.RST.Types (Polarity(..))
+import Syntax.RST.Types (Polarity(..), PolarityRep (..))
 import Syntax.CST.Names
 import TypeInference.Constraints
 import Syntax.CST.Kinds
-import Translate.EmbedTST (EmbedTST(..))
 
 ---------------------------------------------------------------------------------
 -- Generated Constraints
@@ -50,7 +48,7 @@ instance PrettyAnn UVarProvenance where
   prettyAnn (TypeParameter tn tv) = parens ("Instantiation of type parameter" <+> prettyAnn tv <+> "for" <+> prettyAnn tn)
   prettyAnn (TypeClassInstance cn tv) = parens ("Instantiation for type variable"  <+> prettyAnn tv <+> "of type class" <+> prettyAnn cn)
 
-instance PrettyAnn (Constraint ConstraintInfo) where
+instance (PrettyAnn a) => PrettyAnn (Constraint a) where
   prettyAnn (KindEq ann k1 k2) = 
     prettyAnn k1 <+> "~" <+> prettyAnn k2 <+> prettyAnn ann
   prettyAnn (SubType ann t1 t2) =
@@ -79,66 +77,81 @@ instance PrettyAnn ConstraintSet where
     ]
 
 ---------------------------------------------------------------------------------
+-- Witnesses
+---------------------------------------------------------------------------------
+
+instance PrettyAnn SubtypeWitness where
+  prettyAnn (SynL rn w) = "SynL" <> brackets (prettyAnn rn) <> parens (prettyAnn w)
+  prettyAnn (SynR rn w) = "SynR" <> brackets (prettyAnn rn) <> parens (prettyAnn w)
+  prettyAnn (FromTop typ) = "FromTop" <> brackets (prettyAnn typ)
+  prettyAnn (ToBot tyn) = "ToBot" <> brackets (prettyAnn tyn)
+  prettyAnn (Inter w1 w2) = "Inter" <> parens (sep $ intersperse "," $ prettyAnn <$> [w1, w2])
+  prettyAnn (Union w1 w2) = "Union" <> parens (sep $ intersperse "," $ prettyAnn <$> [w1, w2])
+  prettyAnn (UnfoldL recTVar w) = "UnfoldL" <> brackets (prettyAnn recTVar) <> parens (prettyAnn w)
+  prettyAnn (UnfoldR recTVar w) = "UnfoldR" <> brackets (prettyAnn recTVar) <> parens (prettyAnn w)
+  prettyAnn (Data ws) = "Data" <> parens (sep $ intersperse "," $ prettyAnn <$> ws)
+  prettyAnn (Codata ws) = "Codata" <> parens (sep $ intersperse "," $ prettyAnn <$> ws)
+  prettyAnn (DataRefined rn ws) = "DataRefined" <> brackets (prettyAnn rn) <> parens (sep $ intersperse "," $ prettyAnn <$> ws)
+  prettyAnn (CodataRefined rn ws) = "CodataRefined" <> brackets (prettyAnn rn) <> parens (sep $ intersperse "," $ prettyAnn <$> ws)
+  prettyAnn (DataNominal rn ws) = "DataNominal" <> brackets (prettyAnn rn) <> parens (sep $ intersperse "," $ prettyAnn <$> ws)
+  prettyAnn (Refl typ _tyn) = "Refl" <> brackets (prettyAnn typ)
+  prettyAnn (UVarL uv tyn) = "UVarL" <> brackets (prettyAnn uv) <> parens (prettyAnn tyn)
+  prettyAnn (UVarR uv typ) = "UVarR" <> brackets (prettyAnn uv) <> parens (prettyAnn typ)
+  prettyAnn (SubVar cs) = "SubVar" <> braces (prettyAnn cs)
+  prettyAnn (Fix cs) = "Fix" <> braces (prettyAnn cs)
+
+---------------------------------------------------------------------------------
 -- Solved Constraints
 ---------------------------------------------------------------------------------
 
-printRSTLowerBounds :: [RST.Typ 'Pos] -> Doc Annotation
-printRSTLowerBounds [] = mempty
-printRSTLowerBounds lowerbounds =
-  nest 3 $ vsep [ "Lower bounds:"
-                ,  vsep (prettyAnn <$> lowerbounds)
-                ]
+printBounds :: PolarityRep pc -> UniTVar -> [TST.Typ pc] -> Doc Annotation
+printBounds _ _ [] = mempty
+printBounds pc u bounds = prettyAnn u <+> (case pc of PosRep -> "lower bounds:"; NegRep -> "upper bounds:") <> (mkParen True mempty mempty  comma (prettyAnn <$> bounds))
+                
 
-printRSTUpperBounds :: [RST.Typ 'Neg] -> Doc Annotation
-printRSTUpperBounds [] = mempty
-printRSTUpperBounds upperbounds =
-  nest 3 $ vsep [ "Upper bounds:"
-                , vsep (prettyAnn <$> upperbounds)
-                ]
-
-printTSTLowerBounds :: [TST.Typ 'Pos] -> Doc Annotation
-printTSTLowerBounds ls = printRSTLowerBounds (map embedTST ls)
-
-printTSTUpperBounds :: [TST.Typ 'Neg] -> Doc Annotation
-printTSTUpperBounds ls = printRSTUpperBounds (map embedTST ls)
-
-printTypeClassConstraints :: [ClassName] -> Doc Annotation
-printTypeClassConstraints [] = mempty
-printTypeClassConstraints cns =
-  nest 3 $ vsep [ "Type class constraints:"
+printTypeClassConstraints :: UniTVar -> [ClassName] -> Doc Annotation
+printTypeClassConstraints _ [] = mempty
+printTypeClassConstraints u cns =
+  nest 3 $ vsep [ prettyAnn u <+> "type class constraints:" 
                 , vsep (prettyAnn <$> cns)
                 ]
 
-instance PrettyAnn VariableState where
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = []  } =
+
+prettyVariableState :: (UniTVar, VariableState) -> Doc Annotation
+prettyVariableState (_, VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = []  }) =
     mempty
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = cns } =
-    printTypeClassConstraints cns
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = []  } =
-    printTSTLowerBounds lbs
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = cns } =
-    printTSTLowerBounds lbs <> line <> printTypeClassConstraints cns
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = []  } =
-    printTSTUpperBounds ubs
-  prettyAnn VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = cns } =
-    printTSTUpperBounds ubs <> line <> printTypeClassConstraints cns
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = []  } =
-    printTSTLowerBounds lbs <> line <> printTSTUpperBounds ubs
-  prettyAnn VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = cns } =
-    printTSTLowerBounds lbs <> line <> printTSTUpperBounds ubs <> line <> printTypeClassConstraints cns
+prettyVariableState (u, VariableState { vst_lowerbounds = []  , vst_upperbounds = []  , vst_typeclasses = cns }) =
+    printTypeClassConstraints u cns
+prettyVariableState (u, VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = []  }) =
+    printBounds PosRep u lbs
+prettyVariableState (u, VariableState { vst_lowerbounds = lbs , vst_upperbounds = []  , vst_typeclasses = cns }) =
+    printBounds PosRep u lbs <> line <> printTypeClassConstraints u cns
+prettyVariableState (u, VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = []  }) =
+    printBounds NegRep u ubs
+prettyVariableState (u, VariableState { vst_lowerbounds = []  , vst_upperbounds = ubs , vst_typeclasses = cns }) =
+    printBounds NegRep u ubs <> line <> printTypeClassConstraints u cns
+prettyVariableState (u, VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = []  }) =
+    printBounds PosRep u lbs <> line <> printBounds NegRep u ubs
+prettyVariableState (u, VariableState { vst_lowerbounds = lbs , vst_upperbounds = ubs , vst_typeclasses = cns }) =
+    printBounds PosRep u lbs <> line <> printBounds NegRep u ubs <> line <> printTypeClassConstraints u cns
+
 instance PrettyAnn SolverResult where
-  prettyAnn MkSolverResult { tvarSolution } = vsep
+  prettyAnn MkSolverResult { tvarSolution, witnessSolution } = vsep
     
     [ headerise "-" " " "Solved Constraints"
     , ""
-    , vsep $ intersperse "" (solvedConstraintsToDoc <$> M.toList tvarSolution)
+    , vsep $ intersperse "" (prettyVariableState <$> M.toList tvarSolution)
+    , ""
+    , headerise "-" " " "Generated Witnesses:"
+    , ""
+    , vsep $ intersperse "" (solvedWitnessesToDoc <$> M.toList witnessSolution)
     , ""
     ]
     where
-      solvedConstraintsToDoc :: (UniTVar,VariableState) -> Doc Annotation
-      solvedConstraintsToDoc (v, vs) = nest 3 $ vsep ["Type variable:" <+> prettyAnn v
-                                                     , prettyAnn vs
-                                                     ]
+      solvedWitnessesToDoc :: (Constraint (), SubtypeWitness) -> Doc Annotation
+      solvedWitnessesToDoc (cs, w) = nest 3 $ vsep ["Constraint:" <+> prettyAnn cs
+                                                   , prettyAnn w
+                                                   ]
 
 
 ---------------------------------------------------------------------------------
@@ -146,27 +159,19 @@ instance PrettyAnn SolverResult where
 ---------------------------------------------------------------------------------
 
 prettyBisubst :: (UniTVar, (TST.Typ 'Pos, TST.Typ 'Neg)) -> Doc Annotation
-prettyBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Unification variable:" <+> prettyAnn v
-
-                                             , vsep [ "+ |->" <+> prettyAnn typ
-                                                    , "- |->" <+> prettyAnn tyn
-                                                    ]
-                                             ]
+prettyBisubst (v, (typ,tyn)) = nest 3 $ line <> vsep [ prettyAnn v <+> "+ ⤇" <+> prettyAnn typ
+                                                     , prettyAnn v <+> "- ⤇" <+> prettyAnn tyn
+                                                     ]
 
 prettyRecBisubst :: (RecTVar, (TST.Typ 'Pos, TST.Typ 'Neg)) -> Doc Annotation
-prettyRecBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Recursive variable:" <+> prettyAnn v
+prettyRecBisubst (v, (typ,tyn)) = nest 3 $ line <> vsep [ prettyAnn v <+> "+ ⤇" <+> prettyAnn typ
+                                                        , prettyAnn v <+> "- ⤇" <+> prettyAnn tyn
+                                                        ]
 
-                                             , vsep [ "+ |->" <+> prettyAnn typ
-                                                    , "- |->" <+> prettyAnn tyn
-                                                    ]
-                                             ]
 prettySkolBisubst :: (SkolemTVar, (TST.Typ 'Pos, TST.Typ 'Neg)) -> Doc Annotation
-prettySkolBisubst (v, (typ,tyn)) = nest 3 $ vsep ["Skolem variable:" <+> prettyAnn v
-
-                                             , vsep [ "+ |->" <+> prettyAnn typ
-                                                    , "- |->" <+> prettyAnn tyn
-                                                    ]
-                                             ]
+prettySkolBisubst (v, (typ,tyn)) = nest 3 $ line <> vsep [ prettyAnn v <+> "+ ⤇" <+> prettyAnn typ
+                                                         , prettyAnn v <+> "- ⤇" <+> prettyAnn tyn
+                                                         ]
 
 prettyKindSubst :: (KVar, MonoKind) -> Doc Annotation
 prettyKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
@@ -176,7 +181,7 @@ instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
     [ headerise "-" " " "Bisubstitution (UniTVar)"
     , "" 
     , "Unification Variables: "
-    , vsep $ intersperse "" (prettyBisubst <$> M.toList (fst (TST.bisubst_map uvsubst)))
+    , vsep $ prettyBisubst <$> M.toList (fst (TST.bisubst_map uvsubst))
     , ""
     , "Kind Variables: "
     , vsep $ intersperse "" (prettyKindSubst <$> M.toList (snd (TST.bisubst_map uvsubst)))
@@ -186,13 +191,13 @@ instance PrettyAnn (TST.Bisubstitution TST.SkolemVT) where
   prettyAnn skolvsubst = vsep 
     [ headerise "-" " " "Bisubstitution (SkolemTVar)"
     , ""
-    , vsep $ intersperse "" (prettySkolBisubst <$> M.toList (TST.bisubst_map skolvsubst))
+    , vsep $ prettySkolBisubst <$> M.toList (TST.bisubst_map skolvsubst)
     ]
 
 instance PrettyAnn (TST.Bisubstitution TST.RecVT) where
   prettyAnn recvsubst = vsep
     [ headerise "-" " " "Bisubstitution (RecTVar)"
     , ""
-    , vsep $ intersperse "" (prettyRecBisubst <$> M.toList (TST.bisubst_map recvsubst))
+    , vsep $ prettyRecBisubst <$> M.toList (TST.bisubst_map recvsubst)
     ]
 
