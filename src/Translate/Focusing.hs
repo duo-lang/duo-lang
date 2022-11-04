@@ -356,15 +356,17 @@ instance Focus Module where
 
 instance Focus EvalEnv where
   focus :: EvaluationOrder -> EvalEnv -> EvalEnv
-  focus eo (prd, cns, cmd) = (prd', cns', cmd')
+  focus eo (prd, cns, cmd, inst) = (prd', cns', cmd', inst')
     where
         prd' = focus eo <$> prd
         cns' = focus eo <$> cns
         cmd' = focus eo <$> cmd
+        inst' = focus eo <$> inst
 
   isFocused :: EvaluationOrder -> EvalEnv -> Maybe EvalEnv
-  isFocused eo (prd,cns,cmd) = do
+  isFocused eo (prd,cns,cmd,inst) = do
     prd' <- mapM (isFocused eo) prd
     cns' <- mapM (isFocused eo) cns
     cmd' <- mapM (isFocused eo) cmd
-    pure (prd',cns',cmd')
+    inst' <- mapM (isFocused eo) inst
+    pure (prd',cns',cmd',inst')

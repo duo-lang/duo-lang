@@ -16,4 +16,6 @@ instance showBool : Show Bool {
     } >> k
 };
 
-def prd show : String := mu k. Show(True, k);
+def prd show : Bool -> String := \x => mu k. Show(not x, k);
+
+def cmd main := #Print(show False, #ExitSuccess);
