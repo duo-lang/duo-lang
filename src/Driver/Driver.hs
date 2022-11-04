@@ -52,6 +52,7 @@ import qualified Data.Set as S
 import Data.Maybe (catMaybes)
 import Pretty.Common (Header(..))
 import Pretty.Program ()
+import Translate.InsertInstance (InsertInstance(insertInstance))
 
 
 checkAnnot :: PolarityRep pol
@@ -104,6 +105,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 4. Solve the type class constraints.
   instances <- liftEitherErrLoc pcdecl_loc $ solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
+  tmInferred <- liftEitherErrLoc pcdecl_loc (insertInstance instances tmInferred)
   -- 5. Read of the type and generate the resulting type
   let typ = TST.zonk TST.UniRep bisubst (TST.getTypeTerm tmInferred)
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
@@ -165,6 +167,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   -- Solve the type class constraints.
   instances <- liftEitherErrLoc cmddecl_loc $ solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
+  cmdInferred <- liftEitherErrLoc cmddecl_loc (insertInstance instances cmdInferred)
   -- Insert into environment
   let f env = env { cmdEnv = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
   modifyEnvironment mn f

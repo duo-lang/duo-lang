@@ -178,6 +178,7 @@ library
       TypeInference.Constraints
       Translate.Focusing
       Translate.EmbedTST
+      Translate.InsertInstance
       Utils
   other-modules:
       Paths_duo_lang

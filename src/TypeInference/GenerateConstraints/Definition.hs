@@ -154,7 +154,7 @@ freshTVars ((Cns,fv,kv):rest) = do
   return (TST.PrdCnsType CnsRep tn:lctxtP, TST.PrdCnsType CnsRep tp:lctxtN)
 
 freshTVarsForTypeParams :: forall pol. PolarityRep pol -> TST.DataDecl -> GenM ([TST.VariantType pol], TST.Bisubstitution TST.SkolemVT)
-freshTVarsForTypeParams rep decl = 
+freshTVarsForTypeParams rep decl =
   let MkPolyKind { kindArgs } = TST.data_kind decl
       tn = TST.data_name decl
   in do
@@ -175,27 +175,27 @@ freshTVarsForTypeParams rep decl =
       (Contravariant, PosRep) -> pure (TST.ContravariantType tyNeg : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, NegRep) -> pure (TST.ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
-createMethodSubst :: Loc -> ClassDeclaration -> GenM (TST.Bisubstitution TST.SkolemVT)
-createMethodSubst loc decl = 
+createMethodSubst :: Loc -> ClassDeclaration -> GenM (TST.Bisubstitution TST.SkolemVT, [UniTVar])
+createMethodSubst loc decl =
   let kindArgs = classdecl_kinds decl
       cn = classdecl_name decl
   in do
-    vars <- freshTVars cn kindArgs
-    pure $ paramsMap kindArgs vars
+    (vars, uvs) <- freshTVars cn kindArgs
+    pure (paramsMap kindArgs vars, uvs)
    where
-   freshTVars ::  ClassName -> [(Variance,SkolemTVar, MonoKind)] -> GenM [(TST.Typ Pos, TST.Typ Neg)]
-   freshTVars _ [] = pure []
+   freshTVars ::  ClassName -> [(Variance,SkolemTVar, MonoKind)] -> GenM ([(TST.Typ Pos, TST.Typ Neg)], [UniTVar])
+   freshTVars _ [] = pure ([], [])
    freshTVars cn ((variance,tv,mk) : vs) = do
-    vs' <- freshTVars cn vs
+    (vs', uvs) <- freshTVars cn vs
     (tyPos, tyNeg) <- freshTVar (TypeClassInstance cn tv) (Just mk)
     case tyPos of
       (TST.TyUniVar _ _ _ uv) -> do
         addConstraint $ case variance of
           Covariant -> TypeClass (InstanceConstraint loc) cn uv
           Contravariant -> TypeClass (InstanceConstraint loc) cn uv
-        pure ((tyPos, tyNeg) : vs')
+        pure ((tyPos, tyNeg) : vs', uv : uvs)
       _ -> error "freshTVar should have generated a TyUniVar"
-    
+
 
 paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(TST.Typ Pos, TST.Typ Neg)] -> TST.Bisubstitution TST.SkolemVT
 paramsMap kindArgs freshVars =
@@ -206,9 +206,9 @@ insertSkolemsClass decl = do
   let tyParams = classdecl_kinds decl
   skMap <- gets usedSkolemVars
   let newM = insertSkolems tyParams skMap
-  modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM}) 
-  return () 
-  where 
+  modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM})
+  return ()
+  where
     insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar MonoKind -> M.Map SkolemTVar MonoKind
     insertSkolems [] mp = mp
     insertSkolems ((_,tv,mk):rst) mp = insertSkolems rst (M.insert tv mk mp)
@@ -281,7 +281,7 @@ fromMaybeVar (Just fv) = fv
 
 -- | Checks for a given list of XtorNames and a type declaration whether all the xtor names occur in
 -- the type declaration (Correctness).
-checkCorrectness :: Loc 
+checkCorrectness :: Loc
                  -> [XtorName]
                  -> TST.DataDecl
                  -> GenM ()

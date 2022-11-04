@@ -251,7 +251,7 @@ instance Focus Command where
   focus _  (ExitSuccess loc) = ExitSuccess loc
   focus _  (ExitFailure loc) = ExitFailure loc
   focus _  (Jump loc fv) = Jump loc fv
-  focus eo (Method loc mn cn subst) = Method loc mn cn (focus eo <¢> subst)
+  focus eo (Method loc mn cn inst subst) = Method loc mn cn inst (focus eo <¢> subst)
   focus eo (Print loc (isValueTerm eo PrdRep -> Just prd) cmd) = Print loc prd (focus eo cmd)
   focus eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig (CBox eo) (focus eo prd)
                                                               (MuAbs loc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing (Print loc (BoundVar loc PrdRep (getTypeTerm prd) (0,0)) (focus eo cmd)))
@@ -262,13 +262,13 @@ instance Focus Command where
 
   isFocused :: EvaluationOrder -> Command -> Maybe Command
   isFocused eo (Apply loc _annot _kind prd cns) = Apply loc ApplyAnnotOrig (CBox eo) <$> isFocused eo prd <*> isFocused eo cns
-  isFocused _  (ExitSuccess loc)          = Just (ExitSuccess loc)
-  isFocused _  (ExitFailure loc)          = Just (ExitFailure loc)
-  isFocused _  (Jump loc fv)              = Just (Jump loc fv)
-  isFocused eo (Method loc mn cn subst)   = Method loc mn cn <$> isFocused eo subst
-  isFocused eo (Print loc prd cmd)        = Print loc <$> isValueTerm eo PrdRep prd <*> isFocused eo cmd
-  isFocused eo (Read loc cns)             = Read loc <$> isValueTerm eo CnsRep cns
-  isFocused eo (PrimOp loc op subst)      = PrimOp loc op <$> isValueSubst eo subst
+  isFocused _  (ExitSuccess loc)             = Just (ExitSuccess loc)
+  isFocused _  (ExitFailure loc)             = Just (ExitFailure loc)
+  isFocused _  (Jump loc fv)                 = Just (Jump loc fv)
+  isFocused eo (Method loc mn cn inst subst) = Method loc mn cn inst <$> isFocused eo subst
+  isFocused eo (Print loc prd cmd)           = Print loc <$> isValueTerm eo PrdRep prd <*> isFocused eo cmd
+  isFocused eo (Read loc cns)                = Read loc <$> isValueTerm eo CnsRep cns
+  isFocused eo (PrimOp loc op subst)         = PrimOp loc op <$> isValueSubst eo subst
 
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs
