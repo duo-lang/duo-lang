@@ -34,6 +34,7 @@ module TypeInference.GenerateConstraints.Definition
   , initialReader
 ) where
 
+
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -191,10 +192,14 @@ createMethodSubst loc decl =
    freshTVars cn ((variance,tv,mk) : vs) = do
     vs' <- freshTVars cn vs
     (tyPos, tyNeg) <- freshTVar (TypeClassInstance cn tv) (Just mk)
-    addConstraint $ case variance of
-       Covariant -> TypeClassPos (InstanceConstraint loc) cn tyPos
-       Contravariant -> TypeClassPos (InstanceConstraint loc) cn tyPos
-    pure ((tyPos, tyNeg) : vs')
+    case tyPos of
+      (TST.TyUniVar _ _ _ uv) -> do
+        addConstraint $ case variance of
+          Covariant -> TypeClass (InstanceConstraint loc) cn uv
+          Contravariant -> TypeClass (InstanceConstraint loc) cn uv
+        pure ((tyPos, tyNeg) : vs')
+      _ -> error "freshTVar should have generated a TyUniVar"
+    
 
 paramsMap :: [(Variance, SkolemTVar, MonoKind)]-> [(TST.Typ Pos, TST.Typ Neg)] -> TST.Bisubstitution TST.SkolemVT
 paramsMap kindArgs freshVars =
@@ -244,7 +249,7 @@ lookupContext loc rep idx@(i,j) = do
 ---------------------------------------------------------------------------------------------
 --
 instantiateTypeScheme :: FreeVarName -> Loc -> TST.TypeScheme pol -> GenM (TST.Typ pol)
-instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do
+instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do 
   freshVars <- forM ts_vars (\(tv,knd) -> freshTVar (TypeSchemeInstance fv loc) knd >>= \ty -> return (tv, ty))
   forM_ freshVars (\(_,ty) -> addConstraint (KindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ fst ty)))
   forM_ freshVars (\(_,ty) -> addConstraint (KindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ snd ty)))
