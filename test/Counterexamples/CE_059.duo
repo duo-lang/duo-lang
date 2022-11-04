@@ -1,0 +1,7 @@
+module CE_059;
+
+-- no instance definition for nominal type
+import Data.Bool;
+
+class Foo(+a : CBV){ Foo(a, return Bool) };
+def prd foo := mu k. Foo(True, k);

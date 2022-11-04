@@ -46,3 +46,6 @@ instance ordBool : Ord Bool {
         }
     } >> k
 };
+
+def prd trueGtFalse : Bool :=
+    mu k. Compare(True, False, case { GT => True >> k, LT => False >> k, EQ => False >> k });

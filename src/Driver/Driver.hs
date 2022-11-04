@@ -42,7 +42,7 @@ import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
       genConstraintsTermRecursive )
-import TypeInference.SolveConstraints (solveConstraints)
+import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints)
 import Loc ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
@@ -112,10 +112,13 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
-  -- 4. Read of the type and generate the resulting type
+  -- 4. Solve the type class constraints.
+  instances <- liftEitherErrLoc pcdecl_loc $ solveClassConstraints solverResult bisubst env
+  guardVerbose $ ppPrintIO instances
+  -- 5. Read of the type and generate the resulting type
   let typ = TST.zonk TST.UniRep bisubst (TST.getTypeTerm tmInferred)
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
-  -- 5. Simplify
+  -- 6. Simplify
   typSimplified <- if infOptsSimplify infopts then (do
                      printGraphs <- gets (infOptsPrintGraphs . drvOpts)
                      tys <- simplify (TST.generalize typ) printGraphs (T.unpack (unFreeVarName pcdecl_name))
@@ -166,6 +169,12 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
     ppPrintIO ("" :: T.Text)
     ppPrintIO constraints
     ppPrintIO solverResult
+  -- Coalesce the result
+  let bisubst = coalesce solverResult
+  guardVerbose $ ppPrintIO bisubst
+  -- Solve the type class constraints.
+  instances <- liftEitherErrLoc cmddecl_loc $ solveClassConstraints solverResult bisubst env
+  guardVerbose $ ppPrintIO instances
   -- Insert into environment
   let f env = env { cmdEnv = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
   modifyEnvironment mn f
@@ -192,8 +201,9 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
     ppPrintIO constraints
     ppPrintIO solverResult
   -- Insert into environment
-  let instty' = TST.instancedecl_typ instanceInferred
-  let f env = env { instanceEnv = M.adjust (S.insert instty') instancedecl_class (instanceEnv env)}
+  let (typ, tyn) = TST.instancedecl_typ instanceInferred
+  let iname = TST.instancedecl_name instanceInferred
+  let f env = env { instanceEnv = M.adjust (S.insert (iname, typ, tyn)) instancedecl_class (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 
