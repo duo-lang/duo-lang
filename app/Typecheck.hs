@@ -15,7 +15,7 @@ import Control.Monad.IO.Class (liftIO)
 import Parser.Definition (runFileParser)
 import Syntax.CST.Program (adjustModulePath, Module (..))
 import Parser.Program (moduleP)
-import Control.Monad.Error (throwError)
+import Control.Monad.Except (throwError)
 
 runTypecheck :: DebugFlags -> Either FilePath ModuleName -> IO ()
 runTypecheck DebugFlags { df_debug, df_printGraphs } modId = do
