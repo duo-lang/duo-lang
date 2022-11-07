@@ -8,16 +8,19 @@ import Pretty.Errors (printLocatedReport)
 import Syntax.CST.Names
 
 
-runDeps :: ModuleName -> IO ()
-runDeps mn = do
-    res <- createDeps mn
-    case res of
-        Left errs -> mapM_ printLocatedReport errs
-        Right (depGraph, compilationOrder) -> do
-            putStrLn "Dependency graph:"
-            printDepGraph depGraph
-            putStrLn "Compilation order:"
-            printCompilationOrder compilationOrder
+runDeps :: Either FilePath ModuleName -> IO ()
+runDeps modId =
+  case modId of
+    Left fp -> putStrLn $ "Please specify module name instead of filepath " ++ fp
+    Right mn -> do
+      res <- createDeps mn
+      case res of
+          Left errs -> mapM_ printLocatedReport errs
+          Right (depGraph, compilationOrder) -> do
+              putStrLn "Dependency graph:"
+              printDepGraph depGraph
+              putStrLn "Compilation order:"
+              printCompilationOrder compilationOrder
 
 createDeps :: ModuleName -> IO (Either (NonEmpty Error) (DepGraph,CompilationOrder))
 createDeps fp =  do 

@@ -1,6 +1,7 @@
 module Parser.Program
   ( declarationP
   , moduleP
+  , moduleNameP
   , returnP
   , xtorDeclP
   , xtorSignatureP
@@ -303,14 +304,16 @@ instanceDeclarationP doc = do
   try (void (keywordP KwInstance))
   sc
   recoverDeclaration $ do
-    className  <- fst <$> (classNameP <* sc)
-    typ        <- fst <$> typP
-    (cases, _) <- bracesP (termCaseP `sepBy` (symbolP SymComma >> sc))
+    instanceName <- fst <$> (freeVarNameP <* sc)
+    symbolP SymColon <* sc
+    className    <- fst <$> (classNameP <* sc)
+    typ          <- fst <$> typP
+    (cases, _)   <- bracesP (termCaseP `sepBy` (symbolP SymComma >> sc))
     sc
     symbolP SymSemi
     endPos <- getSourcePos
     sc
-    let decl = MkInstanceDeclaration (Loc startPos endPos) doc className typ cases
+    let decl = MkInstanceDeclaration (Loc startPos endPos) doc instanceName className typ cases
     pure (InstanceDecl decl)
 
 

@@ -10,6 +10,6 @@ class Eq(+a : CBV) {
   Differ(a, a, return Bool)
 };
 
-instance Eq Bool {
+instance eqBool : Eq Bool {
   Equals(x, y, k) => or (and x y) (not (or x y)) >> k
 };
