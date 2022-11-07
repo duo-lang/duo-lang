@@ -2,6 +2,7 @@ module Translate.InsertInstance where
 
 import TypeInference.Constraints (InstanceResult(..))
 import Syntax.TST.Terms
+import Syntax.TST.Program (InstanceDeclaration(..))
 import qualified Data.List.NonEmpty as NE
 import Errors
 import qualified Data.Map as M
@@ -37,3 +38,24 @@ instance InsertInstance Command where
         Just (i, _, _) -> Method loc mn cn (InstanceResolved i) <$> insertInstance (MkInstanceResult m) subst
     insertInstance inst (PrimOp loc op subst) = PrimOp loc op <$> insertInstance inst subst
     insertInstance _inst cmd = pure cmd
+
+instance InsertInstance InstanceDeclaration where
+    insertInstance inst (MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases }) = do
+        insertedCases <- mapM (insertInstance inst) instancedecl_cases
+        pure MkInstanceDeclaration
+          { instancedecl_loc = instancedecl_loc
+          , instancedecl_doc = instancedecl_doc
+          , instancedecl_name = instancedecl_name
+          , instancedecl_class = instancedecl_class
+          , instancedecl_typ = instancedecl_typ
+          , instancedecl_cases = insertedCases
+          }
+
+instance InsertInstance InstanceCase where
+    insertInstance inst (MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd }) = do
+        insertedCmd <- insertInstance inst instancecase_cmd
+        pure MkInstanceCase 
+          { instancecase_loc = instancecase_loc
+          , instancecase_pat = instancecase_pat
+          , instancecase_cmd = insertedCmd
+          }
