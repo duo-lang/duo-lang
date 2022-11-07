@@ -1,4 +1,3 @@
-
 module Typecheck where
 
 import Options (DebugFlags(..))
@@ -6,11 +5,11 @@ import Syntax.CST.Names
 import Driver.Driver (runCompilationModule, defaultInferenceOptions)
 import Driver.Definition (defaultDriverState, execDriverM, DriverState(..), setPrintGraphOpts, setDebugOpts, addModule)
 import Pretty.Errors (printLocatedReport)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import System.Exit (exitWith, ExitCode (ExitFailure))
 import Data.List (intersperse)
 import Data.Foldable (fold)
-import qualified Data.Text.IO as T
+import Data.Text.IO qualified as T
 import Control.Monad.IO.Class (liftIO)
 import Parser.Definition (runFileParser)
 import Syntax.CST.Program (adjustModulePath, Module (..))

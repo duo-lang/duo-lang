@@ -3,7 +3,6 @@ module TypeInference.GenerateConstraints.Terms
   , genConstraintsTermRecursive
   ) where
 
-
 import Control.Monad.Reader
 import Errors
 import Syntax.CST.Terms qualified as CST

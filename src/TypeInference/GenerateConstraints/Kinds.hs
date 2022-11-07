@@ -4,6 +4,7 @@ module TypeInference.GenerateConstraints.Kinds
   , resolveDataDecl
   ) where
 
+
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
@@ -594,19 +595,18 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
             else do 
               throwOtherError loc ["Kind of VariantType: " <> ppPrint fstVarty <> " does not match kind of declaration " <> ppPrint fstMk]
 
-            
-
-          
-
+             
   annotateKind (RST.TySyn loc pol tn ty) = do 
     ty' <- annotateKind ty 
     return (TST.TySyn loc pol tn ty')
 
-  annotateKind (RST.TyBot loc) = TST.TyBot loc . KindVar <$> newKVar
+  annotateKind (RST.TyBot loc) = do 
+    TST.TyBot loc . KindVar <$> newKVar
 
-  annotateKind (RST.TyTop loc) = TST.TyTop loc . KindVar <$> newKVar
+  annotateKind (RST.TyTop loc) = do
+    TST.TyTop loc . KindVar <$> newKVar
 
-  annotateKind (RST.TyUnion loc ty1 ty2) = do 
+  annotateKind (RST.TyUnion loc ty1 ty2) = do  
     ty1' <- annotateKind ty1
     ty2' <- annotateKind ty2
     kv <- newKVar 
@@ -622,7 +622,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     addConstraint (KindEq KindConstraint (KindVar kv) (getKind ty1'))
     return (TST.TyInter loc (KindVar kv) ty1' ty2')
     
-  annotateKind (RST.TyRec loc pol rv ty) = do
+  annotateKind (RST.TyRec loc pol rv ty) = do 
     ty' <- annotateKind ty
     return (TST.TyRec loc pol rv ty')
 
