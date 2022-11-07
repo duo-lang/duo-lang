@@ -54,28 +54,24 @@ import Pretty.Common (Header(..))
 import Pretty.Program ()
 import Syntax.RST.Types qualified as RST
 
-checkMaybeAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
-checkMaybeAnnot Nothing _ = return Nothing 
-checkMaybeAnnot (Just tys) loc = do
-  env <- gets drvEnv
-  (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tys)
-  solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs env
-  let bisubstAnnot = coalesce solverResAnnot
-  let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot (TST.ts_monotype annotChecked)
-  let tysAnnot = TST.TypeScheme { ts_loc = TST.ts_loc annotChecked, ts_vars = TST.ts_vars annotChecked, ts_monotype = typAnnotZonked }
-  return $ Just tysAnnot
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
-           -> Maybe (TST.TypeScheme pol) -- ^ Annotated type
+           -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
            -> Loc -- ^ Location for the error message
            -> DriverM (TST.TopAnnot pol)
 checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
-  let isSubsumed = subsume rep tyInferred tyAnnotated
+  env <- gets drvEnv
+  (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
+  solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs env
+  let bisubstAnnot = coalesce solverResAnnot
+  let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot (TST.ts_monotype annotChecked)
+  let tysAnnot = TST.TypeScheme {ts_loc = TST.ts_loc annotChecked, ts_vars = TST.ts_vars annotChecked, ts_monotype= typAnnotZonked }
+  let isSubsumed = subsume rep tyInferred tysAnnot
   case isSubsumed of
       (Left err) -> throwError (attachLoc loc <$> err)
-      (Right True) -> return (TST.Annotated tyAnnotated)
+      (Right True) -> return (TST.Annotated tysAnnot)
       (Right False) -> do
 
         let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
@@ -125,8 +121,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  tysAnnot <- checkMaybeAnnot  pcdecl_annot pcdecl_loc  
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified tysAnnot pcdecl_loc
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified pcdecl_annot pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
