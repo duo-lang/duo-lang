@@ -34,6 +34,7 @@ module TypeInference.GenerateConstraints.Definition
   , initialReader
 ) where
 
+
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -127,20 +128,23 @@ class GenConstraints a b | a -> b where
 ---------------------------------------------------------------------------------------------
 
 freshTVar :: UVarProvenance -> Maybe MonoKind -> GenM (TST.Typ Pos, TST.Typ Neg)
-freshTVar uvp kv = do
+freshTVar uvp Nothing = do
   uVarC <- gets uVarCount
   kVarC <- gets kVarCount
-  uniVMap <- gets usedUniVars
+  uniMap <- gets usedUniVars
   let tVar = MkUniTVar ("u" <> T.pack (show uVarC))
-  let newKVar = MkKVar ("k" <> T.pack (show kVarC))
-  let knd = case kv of Nothing -> KindVar newKVar; Just kv' -> kv'
-  let inc = case kv of Nothing -> 1; Just _ -> 0;
-  -- We need to increment the counter
-  modify (\gs@GenerateState{} -> gs { uVarCount = uVarC + 1, kVarCount = kVarC + inc, usedUniVars = M.insert tVar knd uniVMap })
-  -- We also need to add the uvar to the constraintset.
-  modify (\gs@GenerateState{ constraintSet = cs@ConstraintSet { cs_uvars,cs_kvars } } ->
-            gs { constraintSet = cs { cs_uvars = cs_uvars ++ [(tVar, uvp,knd)], cs_kvars = cs_kvars ++ case kv of Nothing -> [newKVar];Just _->[] } })
-  return (TST.TyUniVar defaultLoc PosRep knd tVar, TST.TyUniVar defaultLoc NegRep knd tVar)
+  let kVar = MkKVar ("k" <> T.pack (show kVarC))
+  modify (\gs@GenerateState{constraintSet=cs@ConstraintSet {cs_uvars, cs_kvars }} -> 
+    gs {uVarCount = uVarC+1, kVarCount = kVarC+1, usedUniVars = M.insert tVar (KindVar kVar) uniMap,  
+        constraintSet = cs {cs_uvars = (tVar, uvp, KindVar kVar) : cs_uvars, cs_kvars = kVar : cs_kvars}})
+  return (TST.TyUniVar defaultLoc PosRep (KindVar kVar) tVar, TST.TyUniVar defaultLoc NegRep (KindVar kVar) tVar)
+freshTVar uvp (Just mk) = do
+  uVarC <- gets uVarCount
+  uniMap <- gets usedUniVars
+  let tVar = MkUniTVar ("u" <> T.pack (show uVarC))
+  modify (\gs@GenerateState{constraintSet = cs@ConstraintSet{cs_uvars}} -> 
+    gs {uVarCount = uVarC+1, usedUniVars = M.insert tVar mk uniMap, constraintSet = cs {cs_uvars = (tVar, uvp,mk):cs_uvars}})
+  return (TST.TyUniVar defaultLoc PosRep mk tVar, TST.TyUniVar defaultLoc NegRep mk tVar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName, Maybe MonoKind)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
 freshTVars [] = return ([],[])
@@ -245,7 +249,7 @@ lookupContext loc rep idx@(i,j) = do
 ---------------------------------------------------------------------------------------------
 --
 instantiateTypeScheme :: FreeVarName -> Loc -> TST.TypeScheme pol -> GenM (TST.Typ pol)
-instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do
+instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do 
   freshVars <- forM ts_vars (\(tv,knd) -> freshTVar (TypeSchemeInstance fv loc) knd >>= \ty -> return (tv, ty))
   forM_ freshVars (\(_,ty) -> addConstraint (KindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ fst ty)))
   forM_ freshVars (\(_,ty) -> addConstraint (KindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ snd ty)))
