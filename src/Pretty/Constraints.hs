@@ -22,7 +22,7 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn (DtorArgsConstraint loc) = parens ("Dtor args constraint at" <+> prettyAnn loc)
   prettyAnn (CaseConstraint loc) = parens ("Case constraint at" <+> prettyAnn loc)
   prettyAnn (PatternMatchConstraint loc) = parens ("Pattern match constraint at" <+> prettyAnn loc)
-  prettyAnn (InstanceConstraint loc) = parens ("Instance constraint at" <+> prettyAnn loc) 
+  prettyAnn (InstanceConstraint loc) = parens ("Instance constraint at" <+> prettyAnn loc)
   prettyAnn (DtorApConstraint loc) = parens ("DtorAp constraint at" <+> prettyAnn loc)
   prettyAnn (CommandConstraint loc) = parens ("Constraint from logical command at" <+> prettyAnn loc)
   prettyAnn (ReadConstraint loc)    = parens ("Constraint from Read command at" <+> prettyAnn loc)
@@ -37,6 +37,7 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn IntersectionUnionSubConstraint = parens "Intersection/Union"
   prettyAnn RecTypeSubConstraint           = parens "muTypeUnfold"
   prettyAnn NominalSubConstraint           = parens "NominalSubConstraint"
+  prettyAnn ClassResolutionConstraint      = parens "ClassResolutionConstraint"
 
 
 instance PrettyAnn UVarProvenance where
@@ -47,15 +48,14 @@ instance PrettyAnn UVarProvenance where
   prettyAnn (TypeSchemeInstance fv loc) = parens ("Instantiation of type scheme" <+> prettyAnn fv <+> "at" <+> prettyAnn loc)
   prettyAnn (TypeParameter tn tv) = parens ("Instantiation of type parameter" <+> prettyAnn tv <+> "for" <+> prettyAnn tn)
   prettyAnn (TypeClassInstance cn tv) = parens ("Instantiation for type variable"  <+> prettyAnn tv <+> "of type class" <+> prettyAnn cn)
+  prettyAnn TypeClassResolution = "TypeClassResolution placeholder"
 
 instance (PrettyAnn a) => PrettyAnn (Constraint a) where
-  prettyAnn (KindEq ann k1 k2) = 
+  prettyAnn (KindEq ann k1 k2) =
     prettyAnn k1 <+> "~" <+> prettyAnn k2 <+> prettyAnn ann
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
-  prettyAnn (TypeClassPos ann cn typ) =
-    prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
-  prettyAnn (TypeClassNeg ann cn typ) =
+  prettyAnn (TypeClass ann cn typ) =
     prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
 
 printUVar :: (UniTVar, UVarProvenance,MonoKind) -> Doc Annotation
@@ -108,15 +108,12 @@ instance PrettyAnn SubtypeWitness where
 
 printBounds :: PolarityRep pc -> UniTVar -> [TST.Typ pc] -> Doc Annotation
 printBounds _ _ [] = mempty
-printBounds pc u bounds = prettyAnn u <+> (case pc of PosRep -> "lower bounds:"; NegRep -> "upper bounds:") <> (mkParen True mempty mempty  comma (prettyAnn <$> bounds))
-                
+printBounds pc u bounds = prettyAnn u <+> (case pc of PosRep -> "lower bounds:"; NegRep -> "upper bounds:") <> mkParen True mempty mempty comma (prettyAnn <$> bounds)
+
 
 printTypeClassConstraints :: UniTVar -> [ClassName] -> Doc Annotation
 printTypeClassConstraints _ [] = mempty
-printTypeClassConstraints u cns =
-  nest 3 $ vsep [ prettyAnn u <+> "type class constraints:" 
-                , vsep (prettyAnn <$> cns)
-                ]
+printTypeClassConstraints u cns = prettyAnn u <+> "type class constraints:" <>  mkParen True mempty mempty comma (prettyAnn <$> cns)
 
 
 prettyVariableState :: (UniTVar, VariableState) -> Doc Annotation
@@ -139,7 +136,7 @@ prettyVariableState (u, VariableState { vst_lowerbounds = lbs , vst_upperbounds 
 
 instance PrettyAnn SolverResult where
   prettyAnn MkSolverResult { tvarSolution, witnessSolution } = vsep
-    
+
     [ headerise "-" " " "Solved Constraints"
     , ""
     , vsep $ intersperse "" (prettyVariableState <$> M.toList tvarSolution)
@@ -181,7 +178,7 @@ prettyKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+
 instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
   prettyAnn uvsubst = vsep
     [ headerise "-" " " "Bisubstitution (UniTVar)"
-    , "" 
+    , ""
     , "Unification Variables: "
     , vsep $ prettyBisubst <$> M.toList (fst (TST.bisubst_map uvsubst))
     , ""
@@ -190,7 +187,7 @@ instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
     ]
 
 instance PrettyAnn (TST.Bisubstitution TST.SkolemVT) where
-  prettyAnn skolvsubst = vsep 
+  prettyAnn skolvsubst = vsep
     [ headerise "-" " " "Bisubstitution (SkolemTVar)"
     , ""
     , vsep $ prettySkolBisubst <$> M.toList (TST.bisubst_map skolvsubst)
@@ -203,3 +200,22 @@ instance PrettyAnn (TST.Bisubstitution TST.RecVT) where
     , vsep $ prettyRecBisubst <$> M.toList (TST.bisubst_map recvsubst)
     ]
 
+
+---------------------------------------------------------------------------------
+-- Instance resolution
+---------------------------------------------------------------------------------
+
+prettyInstanceRes :: (UniTVar, ClassName) -> (FreeVarName, TST.Typ Pos, TST.Typ Neg) -> Doc Annotation
+prettyInstanceRes (uv, cn) (iname, typ, _tyn) = prettyAnn cn <+> prettyAnn uv <+> "~>"
+                                            <+> prettyAnn iname <+> ":" <+> prettyAnn cn <+> prettyAnn typ
+
+instance PrettyAnn InstanceResult where
+  prettyAnn (MkInstanceResult instanceRes) =
+    let instances = M.toList instanceRes
+    in case instances of
+      [] -> mempty
+      _  -> vsep
+              [ headerise "-" " " "Resolved Instances"
+              , ""
+              , vsep $ uncurry prettyInstanceRes <$> instances
+              ]

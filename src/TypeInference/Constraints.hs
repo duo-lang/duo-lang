@@ -35,6 +35,7 @@ data ConstraintInfo
   | RecTypeSubConstraint
   | NominalSubConstraint
   | KindConstraint
+  | ClassResolutionConstraint
   deriving (Show)
 
 -- | Delay to use together with constraint for delayed substitution.
@@ -57,8 +58,7 @@ extractDelay (Delay _ _ x) = x
 data Constraint a where
   SubType :: a -> Typ Pos -> Typ Neg -> Constraint a
   KindEq :: a -> MonoKind -> MonoKind -> Constraint a
-  TypeClassPos :: a -> ClassName -> Typ Pos -> Constraint a
-  TypeClassNeg :: a -> ClassName -> Typ Neg -> Constraint a
+  TypeClass :: a -> ClassName -> UniTVar -> Constraint a
     deriving (Eq, Ord, Functor)
 
 -- | Witnesses generated while solving (sub-)constraints.
@@ -116,6 +116,8 @@ data UVarProvenance
   | TypeSchemeInstance FreeVarName Loc     -- ^ UVar generated for the instantiation of a type scheme.
   | TypeParameter RnTypeName SkolemTVar    -- ^ UVar generated for a type parameter of a nominal type
   | TypeClassInstance ClassName SkolemTVar -- ^ UVar generated for a type parameter of a class instance
+  | TypeClassResolution                    -- ^ Placeholder UVar generated during type class resolution.
+  
 
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
@@ -143,3 +145,6 @@ data SolverResult = MkSolverResult
   , kvarSolution    :: Map KVar MonoKind
   , witnessSolution :: Map (Constraint ()) SubtypeWitness
   }
+
+newtype InstanceResult = MkInstanceResult
+  { instanceResult :: Map (UniTVar, ClassName) (FreeVarName, Typ Pos, Typ Neg) }
