@@ -482,17 +482,13 @@ solveClassConstraints sr bisubst env = do
         Nothing -> throwSolverError defaultLoc [ "UniVar not found in Bisubstitution: " <> ppPrint uv ]
         Just (typ, tyn) -> do
           ty <- getInferredType typ tyn
+          let checkResult :: PrettyAnn a => [(FreeVarName, Typ Pos, Typ Neg)] -> a -> Either (NE.NonEmpty Error) (FreeVarName, Typ Pos, Typ Neg)
+              checkResult [] ty = throwSolverError defaultLoc $ ("Could not resolve instance for " <> ppPrint cn <> " " <> ppPrint ty <> ". Instances checked:")
+                                                              : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> S.toList instances)
+              checkResult [i] _ty = pure i
+              checkResult is ty = throwSolverError defaultLoc $ ("Incoherent instances resolved for " <> ppPrint cn <> " " <> ppPrint ty)
+                                                              : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> is)
           case ty of
-            Left sub -> case resolveCoClass uv k (S.toList instances) sub env of
-              [] -> throwSolverError defaultLoc $ ("Could not resolve instance for " <> ppPrint cn <> " " <> ppPrint sub <> ". Instances checked:")
-                                                : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> S.toList instances)
-              [i] -> pure i
-              is -> throwSolverError defaultLoc $ ("Incoherent instances resolved for " <> ppPrint cn <> " " <> ppPrint sub)
-                                                : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> is)
-            Right sup -> case resolveContraClass uv k (S.toList instances) sup env of
-              [] -> throwSolverError defaultLoc $ ("Could not resolve instance for " <> ppPrint cn <> " " <> ppPrint sup <> ". Instances checked:")
-                                                : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> S.toList instances)
-              [i] -> pure i
-              is -> throwSolverError defaultLoc $ ("Incoherent instances resolved for " <> ppPrint cn <> " " <> ppPrint sup)
-                                                : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> is)
+            Left sub -> checkResult (resolveCoClass uv k (S.toList instances) sub env) sub
+            Right sup -> checkResult (resolveContraClass uv k (S.toList instances) sup env) sup
   return (MkInstanceResult (M.fromList res))
