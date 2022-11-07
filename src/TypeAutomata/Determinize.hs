@@ -80,7 +80,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
   case rs_merged of
     pr@MkPrimitiveNodeLabel{} -> error ("Tried to combine primitive type" <> show pr <> " and algebraic type " <> show fstLabel)
     combLabel@MkNodeLabel{} ->
-      --if nl_kind combLabel == knd then 
+      if nl_kind combLabel == knd then 
         if nl_pol combLabel == pol then
           MkNodeLabel {
             nl_pol = pol,
@@ -93,8 +93,8 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
           }
         else
           error "Tried to combine node labels of different polarity!"
-    --else 
-    --  error "Tried to combine node labels of different kind"
+    else 
+      error "Tried to combine node labels of different kind"
   where
     pol = nl_pol fstLabel
     knd = nl_kind fstLabel
