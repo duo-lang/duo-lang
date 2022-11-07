@@ -122,24 +122,24 @@ argNodesToArgTypes argNodes rep = do
     case ns of
       (Prd, ns) -> do
          typs <- forM ns (nodeToType rep)
-         let knd = checkTypKinds typs
+         knd <- checkTypKinds typs
          pure $ PrdCnsType PrdRep $ case rep of
                                        PosRep -> mkUnion defaultLoc knd typs
                                        NegRep -> mkInter defaultLoc knd typs
       (Cns, ns) -> do
          typs <- forM ns (nodeToType (flipPolarityRep rep))
-         let knd = checkTypKinds typs
+         knd <- checkTypKinds typs
          pure $ PrdCnsType CnsRep $ case rep of
                                        PosRep -> mkInter defaultLoc knd typs
                                        NegRep -> mkUnion defaultLoc knd typs
 
-checkTypKinds :: [Typ pol] -> MonoKind
-checkTypKinds [] = error "Can't get Kind of empty list of types" 
-checkTypKinds [ty] = getKind ty
+checkTypKinds :: [Typ pol] -> AutToTypeM MonoKind
+checkTypKinds [] = throwAutomatonError  defaultLoc [T.pack "Can't get Kind of empty list of types"]
+checkTypKinds [ty] = return $ getKind ty
 checkTypKinds (fst:rst) = do
   let knd = getKind fst 
-  let knd' = checkTypKinds rst 
-  if knd == knd' then knd else error "Kinds of intersection types don't match"
+  knd' <- checkTypKinds rst 
+  if knd == knd' then return knd else throwAutomatonError defaultLoc [T.pack "Kinds of intersection types don't match"]
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToType rep i = do
