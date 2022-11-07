@@ -449,7 +449,7 @@ trySubtype uv k typ tyn env = do
   let css = [SubType ClassResolutionConstraint typ tyn]
   let constraintSet = ConstraintSet css [(uv, TypeClassResolution, k)] []
   catchError
-    (True <$ runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet))
+    (True <$ runSolverM (solve ((Delay M.empty M.empty <$>) <$> css) >> runReaderT substitute S.empty) env (createInitState constraintSet))
     (const $ return False)
 
 -- | Try to resolve type class constraint for a UniVar and its lower/upper bounds with given instance environment.
