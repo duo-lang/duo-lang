@@ -484,13 +484,13 @@ solveClassConstraints sr bisubst env = do
           ty <- getInferredType typ tyn
           case ty of
             Left sub -> case resolveCoClass uv k (S.toList instances) sub env of
-              [] -> throwSolverError defaultLoc $ ("Could not resolve instance for covariant type class " <> ppPrint cn <> ". Instances checked:")
+              [] -> throwSolverError defaultLoc $ ("Could not resolve instance for " <> ppPrint cn <> " " <> ppPrint sub <> ". Instances checked:")
                                                 : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> S.toList instances)
               [i] -> pure i
               is -> throwSolverError defaultLoc $ ("Incoherent instances resolved for " <> ppPrint cn <> " " <> ppPrint sub)
                                                 : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> is)
             Right sup -> case resolveContraClass uv k (S.toList instances) sup env of
-              [] -> throwSolverError defaultLoc $ ("Could not resolve instance for contravariant type class " <> ppPrint cn <> ". Instances checked:")
+              [] -> throwSolverError defaultLoc $ ("Could not resolve instance for " <> ppPrint cn <> " " <> ppPrint sup <> ". Instances checked:")
                                                 : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> S.toList instances)
               [i] -> pure i
               is -> throwSolverError defaultLoc $ ("Incoherent instances resolved for " <> ppPrint cn <> " " <> ppPrint sup)
