@@ -14,7 +14,7 @@ import Syntax.RST.Types (PolarityRep(..),Polarity(..))
 import Syntax.CST.Names
 import TypeInference.Constraints
 import Loc ( defaultLoc )
-import Syntax.CST.Kinds
+
 ---------------------------------------------------------------------------------
 -- Coalescing
 ---------------------------------------------------------------------------------
