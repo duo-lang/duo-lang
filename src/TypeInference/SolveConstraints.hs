@@ -14,8 +14,8 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.List (partition)
-import Data.Maybe (fromJust, isJust)
+import Data.List (partition, intersperse)
+import Data.Maybe (fromJust, isJust, isNothing)
 import Data.Bifunctor (second)
 
 import Driver.Environment (Environment (..))
@@ -198,9 +198,13 @@ computeKVarSolution :: KindPolicy
                     -> Either (NE.NonEmpty Error) (Map KVar MonoKind)
 computeKVarSolution DefaultCBV sets = return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBV); Just mk -> (xs,mk)) <$> sets)
 computeKVarSolution DefaultCBN sets = return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBN); Just mk -> (xs,mk)) <$> sets)
-computeKVarSolution ErrorUnresolved sets = if all (\(_,mk) -> isJust mk) sets
-                                           then return $ computeKVarSolution' (map (Data.Bifunctor.second fromJust) sets)
-                                           else Left $  (NE.:| []) $  ErrConstraintSolver $ SomeConstraintSolverError defaultLoc "Not all kind variables could be resolved"
+computeKVarSolution ErrorUnresolved sets | all (\(_,mk) -> isJust mk) sets = do
+  pure $ computeKVarSolution' (map (Data.Bifunctor.second fromJust) sets)
+                                         | otherwise = do
+  let kvars :: [KVar] = join $ fst <$> filter (\(_,mk) -> isNothing mk) sets
+  let msg = "The following kind variables could not be resolved: " <> mconcat (intersperse ", " (ppPrint <$> kvars))
+  Left $  (NE.:| []) $  ErrConstraintSolver $ SomeConstraintSolverError defaultLoc msg
+
 computeKVarSolution' :: [([KVar],MonoKind)] -> Map KVar MonoKind
 computeKVarSolution' sets = M.fromList (concatMap f sets)
   where
