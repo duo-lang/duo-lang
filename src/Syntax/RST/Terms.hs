@@ -4,6 +4,8 @@ module Syntax.RST.Terms
   , PrdCnsTerm(..)
   , Substitution(..)
   , SubstitutionI(..)
+  , PatternNew(..)
+  , StarPattern(..)
   , Pattern(..)
   , PatternI(..)
   , TermCase(..)
@@ -17,7 +19,7 @@ module Syntax.RST.Terms
 
 import Data.List (elemIndex)
 
-import Loc ( Loc )
+import Loc ( Loc, HasLoc(..) )
 import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.CST.Terms qualified as CST
@@ -70,6 +72,95 @@ deriving instance Show (SubstitutionI pc)
 -- Pattern/copattern match cases
 ---------------------------------------------------------------------------------
 
+data PatternNew where
+  PatXtor     :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> [PatternNew] -> PatternNew
+  PatVar      :: Loc -> PrdCns -> FreeVarName -> PatternNew
+  PatWildcard :: Loc -> PrdCns -> PatternNew
+
+--------------------------------------------
+
+type OverlapMsg = Text
+
+type Overlap = Maybe OverlapMsg
+
+-- | Generates the Overlap of Patterns between one another.
+-- For testing purposes, best display via printOverlap $ overlap test<X>...
+overlap :: [Pattern] -> Overlap
+overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (tails l))
+            in  concatOverlaps pairOverlaps
+  where
+    -- | Reduces multiple potential Overlap Messages into one potential Overlap Message.
+    concatOverlaps :: [Overlap] -> Overlap
+    concatOverlaps xs =
+      let concatRule = \x y -> x <> "\n\n" <> y
+      in  foldr (liftm2 concatRule) Nothing xs
+      where
+        liftm2 :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a
+        liftm2 _ x          Nothing   = x
+        liftm2 _ Nothing    y         = y
+        liftm2 f (Just x)   (Just y)  = Just $ (f x y)
+
+    -- | Generates an Overlap Message for patterns p1 p2.
+    overlapMsg :: Pattern -> Pattern -> OverlapMsg
+    overlapMsg p1 p2 =
+      let p1Str = patternToText p1
+          p2Str = patternToText p2
+      in  "Overlap found:\n" <> p1Str <> " overlaps with " <> p2Str <> "\n"
+
+    -- | Readable Conversion of Pattern to Text.
+    patternToText :: Pattern -> Text
+    patternToText (PatVar loc varName)     = pack("Variable Pattern ") <> (unFreeVarName varName) <> pack(" in: " ++ (show loc))
+    patternToText (PatStar loc)            = pack $ "* Pattern in: " ++ (show loc)
+    patternToText (PatWildcard loc)        = pack $ "Wildcard Pattern in: " ++ (show loc)
+    patternToText (PatXtor loc xtorName _) = pack("Constructor Pattern ") <> (unXtorName xtorName) <> pack(" in: " ++ (show loc))
+
+    -- | Determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.
+    overlapA2 :: Pattern -> Pattern -> Overlap
+    -- An Overlap may occur for two De/Constructors if their Names match.
+    overlapA2 p1@(PatXtor _ xXtorName xPatterns) 
+              p2@(PatXtor _ yXtorName yPatterns) =
+                if    xXtorName /= yXtorName
+                then  Nothing
+                else  let subPatternsOverlaps = zipWith overlapA2 xPatterns yPatterns
+                          --Only if all Pairs of Subpatterns truly overlap is an Overlap found.
+                          subPatternsOverlap =  if   (elem Nothing subPatternsOverlaps) 
+                                                then Nothing 
+                                                else concatOverlaps subPatternsOverlaps
+                      in  case subPatternsOverlap of
+                            Nothing                       -> Nothing
+                            (Just subPatternsOverlapMsg)  ->
+                              Just $
+                                (overlapMsg p1 p2)
+                                <> "due to the all Subpatterns overlapping as follows:\n"
+                                <> "--------------------------------->\n"
+                                <> subPatternsOverlapMsg
+                                <> "---------------------------------<\n"
+                                    
+    -- If either p1 or p2 is no De/Constructor, they already overlap.
+    overlapA2 p1 p2 = Just $ overlapMsg p1 p2
+
+--------------------------------------------
+
+deriving instance Eq PatternNew
+deriving instance Show PatternNew
+
+instance HasLoc PatternNew where
+  getLoc :: PatternNew -> Loc
+  getLoc (PatXtor loc _ _ _ _) = loc
+  getLoc (PatVar loc _ _) = loc
+  getLoc (PatWildcard loc _) = loc
+
+data StarPattern where
+  PatStar     :: Loc -> PrdCns -> StarPattern
+  PatXtorStar :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> ([PatternNew],StarPattern,[PatternNew]) -> StarPattern
+
+deriving instance Eq StarPattern
+deriving instance Show StarPattern
+
+instance HasLoc StarPattern where
+  getLoc :: StarPattern -> Loc
+  getLoc (PatStar loc _) = loc
+  getLoc (PatXtorStar loc _ _ _ _) = loc
 
 data Pattern where
   XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
