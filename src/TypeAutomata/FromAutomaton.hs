@@ -1,3 +1,6 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use tuple-section" #-}
+
 module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.TST.Types
@@ -38,18 +41,17 @@ initializeFromAutomaton TypeAut{..} =
     flowAnalysis = computeFlowMap (genFlowGraph ta_core )
 
     gr = ta_gr ta_core
-    getTVars :: [(Node,Set SkolemTVar)] -> TypeGr -> [KindedSkolem]
-    getTVars [] _ = []
-    getTVars ((nd,skolems):rst) gr = do 
+    getTVars :: (Node,Set SkolemTVar) -> [KindedSkolem]
+    getTVars (nd,skolems) = do
       let skList = S.toList skolems
       let nl = lab gr nd
       let mk = case nl of Nothing -> error "Can't find Node Label (should never happen)"; Just nl -> getKindNL nl
-      map (\x -> (x,mk)) skList ++ getTVars rst gr
+      map (\x -> (x,mk)) skList
   in
     AutToTypeState { tvMap = flowAnalysis
                    , graph = gr
                    , cache = S.empty
-                   , tvars = getTVars (M.toList flowAnalysis) gr 
+                   , tvars = concatMap getTVars (M.toList flowAnalysis)
                    --S.toList $ S.unions (M.elems flowAnalysis)
                    }
 
@@ -74,7 +76,7 @@ autToType aut@TypeAut{..} = do
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
   pure TypeScheme { ts_loc = defaultLoc
                   -- TODO Replace CBV with actual kinds
-                  , ts_vars = tvars startState 
+                  , ts_vars = tvars startState
                   , ts_monotype = monotype
                   }
 
@@ -91,16 +93,16 @@ checkCache i = do
 getNodeKind :: Node -> AutToTypeM MonoKind
 getNodeKind i = do
   gr <- asks graph
-  case lab gr i of 
+  case lab gr i of
     Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
     Just (MkNodeLabel _ _ _ _ _ _ mk) -> return mk
-    Just (MkPrimitiveNodeLabel _ primTy) -> 
-      case primTy of 
-        I64 -> return I64Rep 
+    Just (MkPrimitiveNodeLabel _ primTy) ->
+      case primTy of
+        I64 -> return I64Rep
         F64 -> return F64Rep
         PChar -> return CharRep
         PString -> return StringRep
-   
+
 
 
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
@@ -146,27 +148,26 @@ argNodesToArgTypes argNodes rep = do
 
 checkTypKinds :: [Typ pol] -> AutToTypeM MonoKind
 checkTypKinds [] = throwAutomatonError  defaultLoc [T.pack "Can't get Kind of empty list of types"]
-checkTypKinds [ty] = return $ getKind ty
-checkTypKinds (fst:rst) = do
-  let knd = getKind fst 
-  knd' <- checkTypKinds rst 
-  if knd == knd' then return knd else throwAutomatonError defaultLoc [T.pack "Kinds of intersection types don't match"]
+checkTypKinds (fst:rst) =
+  let knd = getKind fst
+  in if all ((knd ==) . getKind) rst then return knd else throwAutomatonError defaultLoc [T.pack "Kinds of intersection types don't match"]
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToType rep i = do
   -- First we check if i is in the cache.
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
-  knd <- getNodeKind i
   if inCache
-    then pure (TyRecVar defaultLoc rep knd (MkRecTVar ("r" <> T.pack (show i))))
+    then do 
+      knd <- getNodeKind i
+      pure (TyRecVar defaultLoc rep knd (MkRecTVar ("r" <> T.pack (show i))))
     else nodeToTypeNoCache rep i
 
 -- | Should only be called if node is not in cache.
 nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i  = do
   gr <- asks graph
-  knd <- getNodeKind i 
+  knd <- getNodeKind i
   case fromJust (lab gr i) of
     MkPrimitiveNodeLabel _ tp -> do
       let toPrimType :: PolarityRep pol -> PrimitiveType -> Typ pol
@@ -228,9 +229,9 @@ nodeToTypeNoCache rep i  = do
               argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length variances - 1)]]
               let f (node, Covariant) = CovariantType <$> nodeToType rep node
                   f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
-              args <- sequence (f <$> argNodes)
+              args <- mapM f argNodes
               pure $ TyNominal defaultLoc rep knd tn args
-    
+
         let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
         return $ case rep of
           PosRep -> mkUnion defaultLoc knd typs
