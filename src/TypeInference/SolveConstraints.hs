@@ -145,6 +145,7 @@ solve (cs:css) = do
         solve (newCss ++ css)
       (TypeClass _ cn uv) -> do
         addTypeClassConstraint uv cn
+        solve css
       _ -> do
         (w, subCss) <- subConstraints cs
         addToCache cs w
