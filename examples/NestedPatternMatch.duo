@@ -1,158 +1,252 @@
+module NestedPatternMatch;
 
-
-module NestedPatternMatching;
+import Data.List;
+import Data.Peano;
+import Data.Bool;
+import Codata.Function;
+import Codata.Stream;
 -----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------
+
 
 data Pair: (+a:CBV,+b:CBV) -> CBV {
     Pair(a,b)
 };
-codata Stream: (+a:CBV) -> CBV{
-    Head(return a), 
-    Tail(return Stream(a))};
 
-codata BinaryFun(a,b) {BinaryAp(a,a, return a)};
-
--- pairToStream :: Pair(a,a) -> Stream(a)
--- pairToStream :: Pair(x,y) -> x:y:x:y:x:y:...
-prd pairToStream = cocase {
-    Ap(Pair(x,y)), Head(*)) => x
-    Ap(Pair(x,y)), Tail(*)) => push(y, pairToStream(y,x)) -- push :: a -> Stream a -> Stream a
+codata CoPair: (+a:CBV,+b:CBV) -> CBV { 
+    Fst(return a),
+    Snd(return b)
 };
 
--- addPairToStream :: Pair(a,a) -> Stream(a) -> Stream(a)
-addPairToStream = cocase {
-    BinaryAp(Pair(x,y), s, Head(*))       => x 
-    BinaryAp(Pair(x,y), s, Tail(Head(*))) => y 
+--codata Stream: (+a:CBV) -> CBV {
+--    Head(return a), 
+--    Tail(return Stream(a))
+--};
+
+codata BinaryFun: (+a:CBV,+b:CBV, +c:CBV) -> CBV {
+    BinaryAp(a,b, return c)
+};
+
+-- To Compile:
+
+def prd push : BinaryFun(a, Stream(a), Stream(a)) := cocase {
+    BinaryAp(x, s, Head(*)) => x,
+    BinaryAp(x, s, Tail(*)) => s
+};
+-- alternatively with nested Fun instead of BinaryFun:
+-- a -> Stream(a) -> Stream(a) should be equal to
+-- Fun(a, Fun(Stream(a), Stream(a)))
+def prd push2 : a -> Stream(a) -> Stream(a) := cocase {
+    Ap(x, Ap(s, Head(*))) => x,
+    Ap(x, Ap(s, Tail(*))) => s
+};
+
+def prd addPairToStream : BinaryFun(Pair(a,a),Stream(a),Stream(a)) := cocase {
+    BinaryAp(Pair(x,y), s, Head(*))       => x,
+    BinaryAp(Pair(x,y), s, Tail(Head(*))) => y,
     BinaryAp(Pair(x,y), s, Tail(Tail(*))) => s
-}
--- ?????????????????????????????
--- ?????????????????????????????
+};
 
--->
+def prd addCoPairToStream : BinaryFun(CoPair(a,a), Stream(a), Stream(a)) := cocase {
+    BinaryAp(c, s, Head(*)) => c.Fst,
+    BinaryAp(c, s, Tail(Head(*))) => c.Snd,
+    BinaryAp(c, s, Tail(Tail(*))) => s
+};
+-- alternatively with nested Fun instead of BinaryFun:
+-- CoPair(a,a) -> Stream(a) -> Stream(a) should be equal to
+-- Fun(CoPair(a,a), Fun(Stream(a), Stream(a)))
+def prd addCoPairToStream2 : CoPair(a,a) -> Stream(a) -> Stream(a) := cocase {
+    Ap(c, Ap(s, Head(*))) => c.Fst,
+    Ap(c, Ap(s, Tail(Head(*)))) => c.Snd,
+    Ap(c, Ap(s,Tail(Tail(*)))) => s
+};
 
-prd pairToStream = cocase {
-    Ap(x1,k1) => x1 >> case {
-        Pair(x2,x3) => cocase {
-            Head(k2) => x2 >> k2
-            Tail(k3) => push(x3, pairToStream(x3,x2)) >> k3
+-- def prd pairToCyclicStream : Pair(a,a) -> Stream(a) should be equal to
+-- def prd pairToCyclicStream : Fun(Pair(a,a), Stream(a))
+def prd pairToCyclicStream : Fun(Pair(a,a), Stream(a)) := cocase {
+    Ap(Pair(x,y), Head(*)) => x,
+    Ap(Pair(x,y), Tail(*)) => push y (pairToStream y x) 
+};
+
+----------------------------
+
+def prd zipWithStream : (a -> b -> c) -> Stream(a) -> Stream(b) -> Stream(c) := cocase {
+    Ap(f, Ap(s1, Ap(s2, *))) => push 
+                                (f s1.Head s2.Head) 
+                                (zipWithStream s1.Tail s2.Tail)
+};
+
+def prd fib : Stream(Nat) := cocase {
+    Head(*) =>  1,
+    Tail(Head(*)) => 1,
+    Tail(Tail(*)) => zipWithStream add fib fib.Tail
+};
+
+----------------------------
+
+--> Compiled:
+
+def prd pushCompiled : BinaryFun(a, Stream(a), Stream(a)) := cocase {
+    BinaryAp(x, s, k1) => cocase {
+        Head(k2) => x >> k2,
+        Tail(k3) => s >> k3
+    } >> k1
+};
+
+def prd push2Compiled : a -> Stream(a) -> Stream(a) := cocase {
+    Ap(x, k1) => cocase {
+        Ap(s, k2) => cocase {
+            Head(k3) => x >> k3,
+            Tail(k4) => s >> k4
+        } >> k2
+    } >> k1
+};
+
+def prd addPairToStreamCompiled : BinaryFun(Pair(a,a),Stream(a),Stream(a)) := cocase {
+    BinaryAp(p, s, k1) => p >> case {
+        Pair(x,y) => cocase {
+            Head(k2) => x >> k2,
+            Tail(k3) => cocase {
+                Head(k4) => y >> k4,
+                Tail(k5) => s >> k5
+            } >> k3
         } >> k1
     }
 };
 
------------------------------------------------------------------------------------
------------------------------------------------------------------------------------
-
-codata BinaryFun(a,b) {BinaryAp(a,a, return a)};
-
-codata TreeVisitor(a) {VisitLeaf(return Fun(Nat, a)), VisitBranch(return BinaryFun(a,a,a))};
-codata Tree(a) {Walk(Treevisitor(a), return a)};
-
--- leaf :: Fun as Nat -> Tree 
-def prd leaf = cocase {
-    Ap(i, Walk(v,*)) => (v.VisitLeaf)(i)                        --braucht man * hier nicht?
-}
--- branch :: BinaryFun as Tree -> Tree -> Tree
-def prd branch = cocase {
-    BinaryAp(t1, t2, Walk(v,*)) => (v.VisitBranch)(t1,t2)       --braucht man * hier nicht?
-}
-
--->COMPILATION
-
-leaf = cocase {
-    Ap(i,k1) => cocase {
-        Walk(v, k2) => (v.VisitLeaf)(i) >> k2
+def prd addCoPairToStreamCompiled : BinaryFun(CoPair(a,a), Stream(a), Stream(a)) := cocase {
+    BinaryAp(c, s, k1) => cocase {
+        Head(k2) => c.Fst,
+        Tail(k3) => cocase {
+            Head(k4) => c.Snd >> k4,
+            Tail(k5) => s >> k5
+        } >> k3
     } >> k1
-}
+};
 
-branch = cocase {
-    BinaryAp(t1,t2,k1) => cocase {
-        Walk(v,k2) => (v.VisitBranch)(t1,t2) >> k2
+def prd addCoPairToStream2Compiled : CoPair(a,a) -> Stream(a) -> Stream(a) := cocase {
+    Ap(c, k1) => cocase {
+        Ap(s, k2) => cocase {
+            Head(k3) => c.Fst >> k3,
+            Tail(k4) => cocase {
+                Head(k5) => c.Snd >> k5,
+                Tail(k6) => s >> k6
+            } >> k4
+        }
     } >> k1
-}
+};
 
------------------------------------------------------------------------------------
-
--- buildTreeFromList :: List(i) -> Tree(a)
-def prd buildTreeFromList = cocase {
-    Ap(Nil,*)                 => mu x.#ExitFailure
-    Ap(Cons(x,Nil), *)        => leaf(x)
-    Ap(Cons(x,Cons(y,ys)), *) => branch(x, branch(y, buildTreeFromList(ys)))
-}
-
--- buildTreeFromStream :: Stream(i) -> Tree(a)
-def prd buildTreeFromStream = cocase { 
-    Ap(s, k) => branch(leaf(Head(s)), buildTreeFromStream(Tail(s))) >> k
-}
-
--->COMPILATION
-
-def pred buildTreeFromList = cocase {
+def prd pairToCyclicStreamCompiled : Pair(a,a) -> Stream(a) := cocase {
     Ap(x1,k1) => x1 >> case {
-        Nil         => error (? >> k1 ?)
-        Cons(x2,x3) => x3 >> case {
-            Nil         => leaf(x2) >> k1
-            Cons(x4,x5) => branch(x2, branch(x4, buildTreeFromList(x5))) >> k1
+        Pair(x2,x3) => cocase {
+            Head(k2) => x2 >> k2,
+            Tail(k3) => (push x3 (pairToStream x3 x2)) >> k3
+        } >> k1
+    }
+};
+
+def prd zipWithStreamCompiled : (a -> b -> c) -> Stream(a) -> Stream(b) -> Stream(c) := cocase {
+    Ap(f, k1) => cocase {
+        Ap(s1, k2) => cocase {
+            Ap(s2, k3) =>   push 
+                            (f s1.Head s2.Head) 
+                            (zipWithStream s1.Tail s2.Tail)
+                            >> k3
+        } >> k2
+    } >> k1
+};
+
+def prd fibCompiled : Stream(Nat) := cocase {
+    Head(k1) => 1 >> k1,
+    Tail(k2) => cocase { 
+        Head(k3) => 1 >> k3,
+        Tail(k4) => (zipWithStream add fibCompiled fibCompiled.Tail) >> k4
+    } >> k2
+};
+
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+
+codata TreeVisitor : (+a:CBV) -> CBV{
+    VisitLeaf(return Fun(Nat, a)), 
+    VisitBranch(return BinaryFun(a,a,a))
+};
+
+codata Tree : (+a: CBV) -> CBV{
+    Walk(Treevisitor(a), return a)
+};
+
+-- To Compile:
+
+def prd leaf : Fun(Nat, Tree(a)) := cocase {
+    Ap(i, Walk(v,*)) => (v.VisitLeaf) i
+};
+
+def prd branch : BinaryFun(Tree(a), Tree(a), Tree(a)) := cocase {
+    BinaryAp(t1, t2, Walk(v,*)) => (v.VisitBranch) t1 t2
+};
+
+--> Compiled:
+
+def prd leafCompiled : Fun(Nat, a) := cocase {
+    Ap(i,k1) => cocase {
+        Walk(v, k2) => (v.VisitLeaf) i >> k2
+    } >> k1
+};
+
+def prd branchComplied : BinaryFun(Tree(a), Tree(a), Tree(a)) := cocase {
+    BinaryAp(t1,t2,k1) => cocase {
+        Walk(v,k2) => (v.VisitBranch t1 t2) >> k2
+    } >> k1
+};
+
+-----------------------------------------------------------------------------------
+
+-- To Compile:
+
+def prd buildTreeFromList : List(Nat) -> Tree(a) := cocase {
+    Ap(Nil,*)                 => #ExitFailure,
+    Ap(Cons(x,Nil), *)        => leaf x,
+    Ap(Cons(x,Cons(y,ys)), *) => branch x (branch y (buildTreeFromList ys))
+};
+
+def prd buildTreeFromStream : Stream(Nat) -> Tree(a) := cocase { 
+    Ap(s, *) => branch (leaf s.Head) (buildTreeFromStreamTail s)
+};
+
+--> Compiled:
+
+-- important case! >> k needs to be replicated for each case.
+def prd buildTreeFromListCompiled : List(Nat) -> Tree(a) := cocase {
+    Ap(l, k) => l >> case {
+        Nil => #ExitFailure,
+        Cons(x, xs) => xs >> case {
+            Nil => leaf x >> k, -- >> k
+            Cons(y,ys) => branch x (branch y (buildTreeFromList ys)) >> k -- >> k
         }
     }
-}
+};
+
+def prd buildTreeFromStreamCompiled : Stream(Nat) -> Tree(a) := cocase { 
+    Ap(s, k) => branch (leaf s.Head) (buildTreeFromStreamTail s) >> k
+};
 
 -----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------
 
-data Bool = {True, False};
-
-codata Set {IsEmpty(return Bool), 
-            Contains(Nat, return Bool),
-            Insert(Nat, return Set),
-            Union(Set, return Set),
-            toList(Set, return List(Set))};
-
--- listToSet :: List(Nat) -> Set(Nat)
-def prd listToSet = cocase
-    Ap(l, IsEmpty(*))       => l == Nil
-    Ap(l, Contains(i,*))    => elemOf(l, i)
-    Ap(l, Insert(i,*))      => listToSet(Cons(i,l))
-    Ap(l, Union(s,*))       => foldr inserterFun s l
-
-
--- setToList :: Set(Nat) -> List(Nat)
-def prd setToList = cocase
-    Ap(s)
-    Ap(Insert(i, rs), *) => 
-    }
--- ?????????????????????????????
--- ?????????????????????????????
-
-
-
-
--->COMPILATION
-
-def prd listToSet = cocase {
-    Ap(l, k1) => cocase {
-        IsEmpty(k2)     => l == Nil >> k2
-        Contains(k3)    => elemOf(l, i) >> k3
-        Insert(i,k4)    => listToSet(Cons(i,l)) >> k4
-        Union(s, k5)    => foldr inserterFun s l >> k5
-    } >> k1
-}
+--Set stuff 
 
 -----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------
 
-data Tree(a) {Leaf(a), Branch(Tree(a), Tree(a))};
+--Beispiele aus OverlapCheck mit neuen Codaten Typen:
 
--- fib :: Stream Nat 
-fib = cocase {
-    Head(*) =>  1
-    Tail(Head(*)) => 1
-    Tail(Tail(*)) => zipWith (+) fib (Tail(fib))
-} 
--- ?????????????????????????????
--- That shouldn't be overlap!!!
--- How does overlap even look like for consumers?
--- ?????????????????????????????
+
+
+
+
+
+
 
 
 
