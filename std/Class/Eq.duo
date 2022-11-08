@@ -17,7 +17,7 @@ instance eqBool : Eq Bool {
   Differ(x, y, k) => Equals(x, y, mu z. not z >> k )
 };
 
--- | Instance definition for Eq Bool.
+-- | Instance definition for Eq Nat.
 instance eqNat : Eq Nat {
   Equals(x, y, k) => case x of {
     Z => case y of {
