@@ -55,17 +55,17 @@ runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupE
 
 
 -- | Every type variable is mapped to a pair of nodes.
-createNodes :: [SkolemTVar] -> [(SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
+createNodes :: [(SkolemTVar,MonoKind)] -> [(SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
 createNodes tvars = createNode <$> createPairs tvars
   where
-    createNode :: (SkolemTVar, Node, Node) -> (SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode (tv, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos defaultKnd), (negNode, emptyNodeLabel Neg defaultKnd), (negNode, posNode))
+    createNode :: (SkolemTVar, MonoKind, Node, Node) -> (SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
+    createNode (tv, mk, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos mk), (negNode, emptyNodeLabel Neg mk), (negNode, posNode))
 
-    createPairs :: [SkolemTVar] -> [(SkolemTVar,Node,Node)]
-    createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
+    createPairs :: [(SkolemTVar,MonoKind)] -> [(SkolemTVar,MonoKind, Node,Node)]
+    createPairs tvs = (\i -> (fst (tvs !! i),snd (tvs !! i), 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
 
 
-initialize :: [SkolemTVar] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
+initialize :: [(SkolemTVar,MonoKind)] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
 initialize tvars =
   let
     nodes = createNodes tvars
@@ -80,7 +80,7 @@ initialize tvars =
     (initAut, lookupEnv)
 
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
-runTypeAutTvars :: [SkolemTVar]
+runTypeAutTvars :: [(SkolemTVar,MonoKind)]
                 -> TTA a
                 -> Either (NonEmpty Error) (a, TypeAutCore EdgeLabelEpsilon)
 runTypeAutTvars tvars m = do
@@ -281,7 +281,7 @@ insertType (TyFlipPol _ _) =
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either (NonEmpty Error) (TypeAutEps pol)
 typeToAut TypeScheme { ts_vars, ts_monotype } = do
-  (start, aut) <- runTypeAutTvars (map fst ts_vars) (insertType ts_monotype)
+  (start, aut) <- runTypeAutTvars ts_vars (insertType ts_monotype)
   return TypeAut { ta_pol = getPolarity ts_monotype
                  , ta_starts = [start]
                  , ta_core = aut
