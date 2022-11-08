@@ -188,6 +188,13 @@ getPolarityNL :: NodeLabel -> Polarity
 getPolarityNL (MkNodeLabel pol _ _ _ _ _ _) = pol
 getPolarityNL (MkPrimitiveNodeLabel pol _) = pol
 
+getKindNL :: NodeLabel -> MonoKind 
+getKindNL (MkNodeLabel _ _ _ _ _ _ mk) = mk
+getKindNL (MkPrimitiveNodeLabel _ I64) = I64Rep
+getKindNL (MkPrimitiveNodeLabel _ F64) = F64Rep
+getKindNL (MkPrimitiveNodeLabel _ PChar) = CharRep
+getKindNL (MkPrimitiveNodeLabel _ PString) = StringRep
+      
 --------------------------------------------------------------------------------
 -- Edge labels for type automata
 --------------------------------------------------------------------------------

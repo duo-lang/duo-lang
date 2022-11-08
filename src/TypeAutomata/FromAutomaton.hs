@@ -36,11 +36,21 @@ initializeFromAutomaton :: TypeAutDet pol -> AutToTypeState
 initializeFromAutomaton TypeAut{..} =
   let
     flowAnalysis = computeFlowMap (genFlowGraph ta_core )
+
+    gr = ta_gr ta_core
+    getTVars :: [(Node,Set SkolemTVar)] -> TypeGr -> [KindedSkolem]
+    getTVars [] _ = []
+    getTVars ((nd,skolems):rst) gr = do 
+      let skList = S.toList skolems
+      let nl = lab gr nd
+      let mk = case nl of Nothing -> error "Can't find Node Label (should never happen)"; Just nl -> getKindNL nl
+      map (\x -> (x,mk)) skList ++ getTVars rst gr
   in
     AutToTypeState { tvMap = flowAnalysis
-                   , graph = ta_gr ta_core
+                   , graph = gr
                    , cache = S.empty
-                   , tvars = S.toList $ S.unions (M.elems flowAnalysis)
+                   , tvars = getTVars (M.toList flowAnalysis) gr 
+                   --S.toList $ S.unions (M.elems flowAnalysis)
                    }
 
 --------------------------------------------------------------------------
@@ -50,7 +60,7 @@ initializeFromAutomaton TypeAut{..} =
 data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set SkolemTVar)
                                      , graph :: TypeGr
                                      , cache :: Set Node
-                                     , tvars :: [SkolemTVar]
+                                     , tvars :: [KindedSkolem]
                                      }
 type AutToTypeM a = (ReaderT AutToTypeState (Except (NonEmpty Error))) a
 
@@ -64,7 +74,7 @@ autToType aut@TypeAut{..} = do
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
   pure TypeScheme { ts_loc = defaultLoc
                   -- TODO Replace CBV with actual kinds
-                  , ts_vars = zip (tvars startState) (repeat $ CBox CBV)
+                  , ts_vars = tvars startState 
                   , ts_monotype = monotype
                   }
 

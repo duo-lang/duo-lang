@@ -53,17 +53,17 @@ runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupE
 
 
 -- | Every type variable is mapped to a pair of nodes.
-createNodes :: [(SkolemTVar,MonoKind)] -> [(SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
+createNodes :: [KindedSkolem] -> [(SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
 createNodes tvars = createNode <$> createPairs tvars
   where
-    createNode :: (SkolemTVar, MonoKind, Node, Node) -> (SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode (tv, mk, posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos mk), (negNode, emptyNodeLabel Neg mk), (negNode, posNode))
+    createNode :: (KindedSkolem, Node, Node) -> (SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
+    createNode ((tv, mk), posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos mk), (negNode, emptyNodeLabel Neg mk), (negNode, posNode))
 
-    createPairs :: [(SkolemTVar,MonoKind)] -> [(SkolemTVar,MonoKind, Node,Node)]
-    createPairs tvs = (\i -> (fst (tvs !! i),snd (tvs !! i), 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
+    createPairs :: [KindedSkolem] -> [(KindedSkolem, Node,Node)]
+    createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
 
 
-initialize :: [(SkolemTVar,MonoKind)] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
+initialize :: [KindedSkolem] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
 initialize tvars =
   let
     nodes = createNodes tvars
@@ -78,7 +78,7 @@ initialize tvars =
     (initAut, lookupEnv)
 
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
-runTypeAutTvars :: [(SkolemTVar,MonoKind)]
+runTypeAutTvars :: [KindedSkolem]
                 -> TTA a
                 -> Either (NonEmpty Error) (a, TypeAutCore EdgeLabelEpsilon)
 runTypeAutTvars tvars m = do
