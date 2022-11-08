@@ -1,0 +1,165 @@
+
+
+module NestedPatternMatching;
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+
+data Pair: (+a:CBV,+b:CBV) -> CBV {
+    Pair(a,b)
+};
+codata Stream: (+a:CBV) -> CBV{
+    Head(return a), 
+    Tail(return Stream(a))};
+
+codata BinaryFun(a,b) {BinaryAp(a,a, return a)};
+
+-- pairToStream :: Pair(a,a) -> Stream(a)
+-- pairToStream :: Pair(x,y) -> x:y:x:y:x:y:...
+prd pairToStream = cocase {
+    Ap(Pair(x,y)), Head(*)) => x
+    Ap(Pair(x,y)), Tail(*)) => push(y, pairToStream(y,x)) -- push :: a -> Stream a -> Stream a
+};
+
+-- addPairToStream :: Pair(a,a) -> Stream(a) -> Stream(a)
+addPairToStream = cocase {
+    BinaryAp(Pair(x,y), s, Head(*))       => x 
+    BinaryAp(Pair(x,y), s, Tail(Head(*))) => y 
+    BinaryAp(Pair(x,y), s, Tail(Tail(*))) => s
+}
+-- ?????????????????????????????
+-- ?????????????????????????????
+
+-->
+
+prd pairToStream = cocase {
+    Ap(x1,k1) => x1 >> case {
+        Pair(x2,x3) => cocase {
+            Head(k2) => x2 >> k2
+            Tail(k3) => push(x3, pairToStream(x3,x2)) >> k3
+        } >> k1
+    }
+};
+
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+
+codata BinaryFun(a,b) {BinaryAp(a,a, return a)};
+
+codata TreeVisitor(a) {VisitLeaf(return Fun(Nat, a)), VisitBranch(return BinaryFun(a,a,a))};
+codata Tree(a) {Walk(Treevisitor(a), return a)};
+
+-- leaf :: Fun as Nat -> Tree 
+def prd leaf = cocase {
+    Ap(i, Walk(v,*)) => (v.VisitLeaf)(i)                        --braucht man * hier nicht?
+}
+-- branch :: BinaryFun as Tree -> Tree -> Tree
+def prd branch = cocase {
+    BinaryAp(t1, t2, Walk(v,*)) => (v.VisitBranch)(t1,t2)       --braucht man * hier nicht?
+}
+
+-->COMPILATION
+
+leaf = cocase {
+    Ap(i,k1) => cocase {
+        Walk(v, k2) => (v.VisitLeaf)(i) >> k2
+    } >> k1
+}
+
+branch = cocase {
+    BinaryAp(t1,t2,k1) => cocase {
+        Walk(v,k2) => (v.VisitBranch)(t1,t2) >> k2
+    } >> k1
+}
+
+-----------------------------------------------------------------------------------
+
+-- buildTreeFromList :: List(i) -> Tree(a)
+def prd buildTreeFromList = cocase {
+    Ap(Nil,*)                 => mu x.#ExitFailure
+    Ap(Cons(x,Nil), *)        => leaf(x)
+    Ap(Cons(x,Cons(y,ys)), *) => branch(x, branch(y, buildTreeFromList(ys)))
+}
+
+-- buildTreeFromStream :: Stream(i) -> Tree(a)
+def prd buildTreeFromStream = cocase { 
+    Ap(s, k) => branch(leaf(Head(s)), buildTreeFromStream(Tail(s))) >> k
+}
+
+-->COMPILATION
+
+def pred buildTreeFromList = cocase {
+    Ap(x1,k1) => x1 >> case {
+        Nil         => error (? >> k1 ?)
+        Cons(x2,x3) => x3 >> case {
+            Nil         => leaf(x2) >> k1
+            Cons(x4,x5) => branch(x2, branch(x4, buildTreeFromList(x5))) >> k1
+        }
+    }
+}
+
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+
+data Bool = {True, False};
+
+codata Set {IsEmpty(return Bool), 
+            Contains(Nat, return Bool),
+            Insert(Nat, return Set),
+            Union(Set, return Set),
+            toList(Set, return List(Set))};
+
+-- listToSet :: List(Nat) -> Set(Nat)
+def prd listToSet = cocase
+    Ap(l, IsEmpty(*))       => l == Nil
+    Ap(l, Contains(i,*))    => elemOf(l, i)
+    Ap(l, Insert(i,*))      => listToSet(Cons(i,l))
+    Ap(l, Union(s,*))       => foldr inserterFun s l
+
+
+-- setToList :: Set(Nat) -> List(Nat)
+def prd setToList = cocase
+    Ap(s)
+    Ap(Insert(i, rs), *) => 
+    }
+-- ?????????????????????????????
+-- ?????????????????????????????
+
+
+
+
+-->COMPILATION
+
+def prd listToSet = cocase {
+    Ap(l, k1) => cocase {
+        IsEmpty(k2)     => l == Nil >> k2
+        Contains(k3)    => elemOf(l, i) >> k3
+        Insert(i,k4)    => listToSet(Cons(i,l)) >> k4
+        Union(s, k5)    => foldr inserterFun s l >> k5
+    } >> k1
+}
+
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+
+data Tree(a) {Leaf(a), Branch(Tree(a), Tree(a))};
+
+-- fib :: Stream Nat 
+fib = cocase {
+    Head(*) =>  1
+    Tail(Head(*)) => 1
+    Tail(Tail(*)) => zipWith (+) fib (Tail(fib))
+} 
+-- ?????????????????????????????
+-- That shouldn't be overlap!!!
+-- How does overlap even look like for consumers?
+-- ?????????????????????????????
+
+
+
+
+
+
+
+
+
+
