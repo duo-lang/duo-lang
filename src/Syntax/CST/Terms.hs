@@ -3,7 +3,7 @@ module Syntax.CST.Terms where
 import Data.Text (Text, pack)
 import Data.List (tails)
 import Loc (HasLoc (..), Loc)
-import Syntax.CST.Names (FreeVarName, PrimName, XtorName)
+import Syntax.CST.Names (FreeVarName, PrimName, XtorName, unFreeVarName, unXtorName)
 
 --------------------------------------------------------------------------------------------
 -- Substitutions
@@ -71,10 +71,10 @@ overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (t
 
     -- | Readable Conversion of Pattern to Text.
     patternToText :: Pattern -> Text
-    patternToText (PatVar loc varName)     = pack $ "Variable Pattern " ++ (show varName) ++ "in: " ++ (show loc)
+    patternToText (PatVar loc varName)     = pack("Variable Pattern ") <> (unFreeVarName varName) <> pack(" in: " ++ (show loc))
     patternToText (PatStar loc)            = pack $ "* Pattern in: " ++ (show loc)
     patternToText (PatWildcard loc)        = pack $ "Wildcard Pattern in: " ++ (show loc)
-    patternToText (PatXtor loc xtorName _) = pack $ "Constructor Pattern " ++ (show xtorName) ++ "in: " ++ (show loc)
+    patternToText (PatXtor loc xtorName _) = pack("Constructor Pattern ") <> (unXtorName xtorName) <> pack(" in: " ++ (show loc))
 
     -- | Determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.
     overlapA2 :: Pattern -> Pattern -> Overlap
