@@ -419,17 +419,17 @@ instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
     newTVars <- mapM addTVar tvs
     return TST.TypeScheme {ts_loc = loc, ts_vars = newTVars,ts_monotype = ty'}
     where 
-      addTVar :: KindedSkolem -> GenM KindedSkolem
+      addTVar :: MaybeKindedSkolem -> GenM KindedSkolem
       addTVar (sk, mmk) = do 
         skMap <- gets usedSkolemVars
         case M.lookup sk skMap of 
           Nothing -> throwOtherError defaultLoc ["Skolem Variable " <> ppPrint sk <> " is defined but not used"]
           Just mk -> 
             case mmk of 
-              Nothing -> return (sk,Just mk)
+              Nothing -> return (sk,mk)
               Just mk' -> do
                 addConstraint $ KindEq KindConstraint mk mk' 
-                return (sk, Just mk')
+                return (sk, mk')
                 
 instance AnnotateKind (RST.VariantType pol) (TST.VariantType pol) where
   annotateKind ::  RST.VariantType pol -> GenM (TST.VariantType pol)

@@ -206,10 +206,10 @@ deriving instance Show (TopAnnot Neg)
 
 -- | Typeclass for computing free type variables
 class FreeTVars (a :: Type) where
-  freeTVars :: a -> Set SkolemTVar
+  freeTVars :: a -> Set (SkolemTVar, MonoKind)
 
 instance FreeTVars (Typ pol) where
-  freeTVars (TySkolemVar _ _ _ tv)           = S.singleton tv
+  freeTVars (TySkolemVar _ _ knd tv)         = S.singleton (tv,knd)
   freeTVars TyRecVar{}                       = S.empty
   freeTVars TyUniVar{}                       = S.empty
   freeTVars TyTop {}                         = S.empty
@@ -244,7 +244,7 @@ instance FreeTVars (XtorSig pol) where
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
-generalize ty = TypeScheme defaultLoc (zip (S.toList $ freeTVars ty) (repeat Nothing)) ty
+generalize ty = TypeScheme defaultLoc (S.toList $ freeTVars ty) ty
 
 ------------------------------------------------------------------------------
 -- Bisubstitution and Zonking

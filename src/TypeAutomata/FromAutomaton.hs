@@ -63,7 +63,8 @@ autToType aut@TypeAut{..} = do
   let startState = initializeFromAutomaton aut
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
   pure TypeScheme { ts_loc = defaultLoc
-                  , ts_vars = zip (tvars startState) (repeat Nothing)
+                  -- TODO Replace CBV with actual kinds
+                  , ts_vars = zip (tvars startState) (repeat $ CBox CBV)
                   , ts_monotype = monotype
                   }
 
