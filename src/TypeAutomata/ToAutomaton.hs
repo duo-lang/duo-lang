@@ -27,9 +27,6 @@ import Loc ( defaultLoc )
 import Utils ( enumerate )
 import Control.Monad
 
---- default Kind where type is not yet clear 
-defaultKnd :: MonoKind
-defaultKnd = CBox CBV
 --------------------------------------------------------------------------
 -- The TypeToAutomaton (TTA) Monad
 --------------------------------------------------------------------------
