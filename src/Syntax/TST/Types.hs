@@ -361,6 +361,11 @@ instance Zonk (LinearContext pol) where
 instance Zonk (PrdCnsType pol) where
   zonk vt bisubst (PrdCnsType rep ty) = PrdCnsType rep (zonk vt bisubst ty)
 
+instance Zonk (TypeScheme pol) where 
+  zonk UniRep bisubst (TypeScheme {ts_loc = loc, ts_vars = tvars, ts_monotype = ty}) =
+    TypeScheme {ts_loc = loc, ts_vars = map (zonkKind bisubst) tvars, ts_monotype = zonk UniRep bisubst ty}
+  zonk vt bisubst (TypeScheme {ts_loc = loc, ts_vars = tvars, ts_monotype = ty}) =
+    TypeScheme {ts_loc = loc, ts_vars = tvars, ts_monotype = zonk vt bisubst ty}
 
 class ZonkKind (a::Type) where 
   zonkKind :: Bisubstitution UniVT -> a -> a
@@ -428,6 +433,9 @@ instance ZonkKind [VariantType pol] where
 instance ZonkKind (VariantType pol) where 
   zonkKind bisubst (CovariantType ty) = CovariantType (zonkKind bisubst ty)
   zonkKind bisubst (ContravariantType ty) = ContravariantType (zonkKind bisubst ty)
+
+instance ZonkKind KindedSkolem where 
+  zonkKind bisubst (sk,mk) = (sk, zonkKind bisubst mk)
 
 -- This is probably not 100% correct w.r.t alpha-renaming. Postponed until we have a better repr. of types.
 unfoldRecType :: Typ pol -> Typ pol

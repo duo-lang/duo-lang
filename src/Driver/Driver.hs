@@ -66,12 +66,11 @@ checkAnnot rep tyInferred (Just tyAnnotated) loc = do
   (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
   solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs env
   let bisubstAnnot = coalesce solverResAnnot
-  let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot (TST.ts_monotype annotChecked)
-  let tysAnnot = TST.TypeScheme {ts_loc = TST.ts_loc annotChecked, ts_vars = TST.ts_vars annotChecked, ts_monotype= typAnnotZonked }
-  let isSubsumed = subsume rep tyInferred tysAnnot
+  let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot annotChecked
+  let isSubsumed = subsume rep tyInferred typAnnotZonked
   case isSubsumed of
       (Left err) -> throwError (attachLoc loc <$> err)
-      (Right True) -> return (TST.Annotated tysAnnot)
+      (Right True) -> return (TST.Annotated typAnnotZonked)
       (Right False) -> do
 
         let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
