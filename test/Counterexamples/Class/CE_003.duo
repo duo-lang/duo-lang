@@ -1,4 +1,4 @@
-module Class.CE_050;
+module Class.CE_003;
 
 -- Type missmatch in InstanceDeclaration and implementations fails.
 import Data.Bool;

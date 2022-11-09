@@ -1,4 +1,4 @@
-module Class.CE_051;
+module Class.CE_004;
 
 -- unbound type var a is not declared in class kinds
 class Foo(+f : CBV) {

@@ -1,4 +1,4 @@
-module CE_058;
+module CE_051;
 
 import Codata.Function;
 

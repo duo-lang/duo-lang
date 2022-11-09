@@ -1,4 +1,4 @@
-module Class.CE_052;
+module Class.CE_005;
 
 -- wrong variance in method types
 class Eq(+a : CBV, +b : CBN) {

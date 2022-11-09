@@ -1,4 +1,4 @@
-module Class.CE_049;
+module Class.CE_002;
 
 -- Type checking in instance definition fails.
 import Data.Bool;

@@ -1,4 +1,4 @@
-module Class.CE_061;
+module Class.CE_009;
 
 -- incoherent instances
 import Data.Bool;
