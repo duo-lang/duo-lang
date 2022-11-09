@@ -14,7 +14,6 @@ import Control.Monad.State
 
 import Errors
 import Syntax.TST.Types
-import Syntax.CST.Kinds (MonoKind(..), EvaluationOrder(..))
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton (typeToAut)

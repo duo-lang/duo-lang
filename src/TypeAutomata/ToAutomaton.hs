@@ -12,10 +12,10 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
-import Lookup
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
+import Pretty.Pretty (ppPrint)
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..), Polarity(..), polarityRepToPol)
 import Syntax.CST.Types qualified as CST
@@ -237,9 +237,13 @@ insertType (TyRec _ rep rv ty) = do
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
 insertType (TyData _  polrep (CBox mk) xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing mk xtors
+insertType (TyData _ _ mk _) = throwAutomatonError defaultLoc ["Tried to insert TyData into automaton with incorrect kind " <> ppPrint mk]
 insertType (TyCodata _ polrep (CBox mk)  xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing mk xtors
+insertType (TyCodata _ _ mk _) = throwAutomatonError defaultLoc ["Tried to insert TyCodata into automaton with incorrect kind " <> ppPrint mk]
 insertType (TyDataRefined _ polrep (CBox mk) mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) mk xtors
+insertType (TyDataRefined _ _ mk _ _) = throwAutomatonError defaultLoc ["Tried to insert TyDataRefined into automaton with incorrect kind " <> ppPrint mk]
 insertType (TyCodataRefined _ polrep (CBox mk) mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) mk xtors
+insertType (TyCodataRefined _ _ mk _ _) = throwAutomatonError defaultLoc ["Tried to insert TyCodataRefined into automaton with incorrect kind " <> ppPrint mk]
 insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyNominal _ rep mk tn args) = do
   let pol = polarityRepToPol rep
