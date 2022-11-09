@@ -1,4 +1,4 @@
-module CE_048;
+module Class.CE_048;
 
 -- Not all class methods are being implemented.
 
