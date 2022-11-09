@@ -14,14 +14,16 @@ module Syntax.RST.Terms
   , InstanceCase(..)
   , Command(..)
   , PrimitiveOp(..)
+  , Overlap (..)
    -- Functions
-  ) where
+  ,overlap) where
 
-import Data.List (elemIndex)
+import Data.List (elemIndex, tails)
+import Data.Text (Text, pack)
 
 import Loc ( Loc, HasLoc(..) )
 import Syntax.CST.Names
-    ( ClassName, FreeVarName, Index, MethodName, XtorName )
+    ( ClassName, FreeVarName, Index, MethodName, XtorName, unFreeVarName, unXtorName )
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..) )
 import Syntax.LocallyNameless (LocallyNameless (..))
@@ -85,7 +87,7 @@ type Overlap = Maybe OverlapMsg
 
 -- | Generates the Overlap of Patterns between one another.
 -- For testing purposes, best display via printOverlap $ overlap test<X>...
-overlap :: [Pattern] -> Overlap
+overlap :: [PatternNew] -> Overlap
 overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (tails l))
             in  concatOverlaps pairOverlaps
   where
@@ -101,25 +103,24 @@ overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (t
         liftm2 f (Just x)   (Just y)  = Just $ (f x y)
 
     -- | Generates an Overlap Message for patterns p1 p2.
-    overlapMsg :: Pattern -> Pattern -> OverlapMsg
+    overlapMsg :: PatternNew -> PatternNew -> OverlapMsg
     overlapMsg p1 p2 =
       let p1Str = patternToText p1
           p2Str = patternToText p2
       in  "Overlap found:\n" <> p1Str <> " overlaps with " <> p2Str <> "\n"
 
     -- | Readable Conversion of Pattern to Text.
-    patternToText :: Pattern -> Text
-    patternToText (PatVar loc varName)     = pack("Variable Pattern ") <> (unFreeVarName varName) <> pack(" in: " ++ (show loc))
-    patternToText (PatStar loc)            = pack $ "* Pattern in: " ++ (show loc)
-    patternToText (PatWildcard loc)        = pack $ "Wildcard Pattern in: " ++ (show loc)
-    patternToText (PatXtor loc xtorName _) = pack("Constructor Pattern ") <> (unXtorName xtorName) <> pack(" in: " ++ (show loc))
+    patternToText :: PatternNew -> Text
+    patternToText (PatVar       loc prdcns varName)      = pack(show prdcns) <> pack(" Variable Pattern ") <> pack("'") <> (unFreeVarName varName) <> pack("'") <> pack(" in: " ++ (show loc))
+    patternToText (PatWildcard  loc prdcns)              = pack(show prdcns) <> pack(" Wildcard Pattern in: ") <> pack(show loc)
+    patternToText (PatXtor      loc prdcns _ xtorName _) = pack(show prdcns) <> pack(" Constructor Pattern ") <> pack("'") <> (unXtorName xtorName) <> pack("'") <> pack(" in: " ++ (show loc))
 
     -- | Determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.
-    overlapA2 :: Pattern -> Pattern -> Overlap
+    overlapA2 :: PatternNew -> PatternNew -> Overlap
     -- An Overlap may occur for two De/Constructors if their Names match.
-    overlapA2 p1@(PatXtor _ xXtorName xPatterns) 
-              p2@(PatXtor _ yXtorName yPatterns) =
-                if    xXtorName /= yXtorName
+    overlapA2 p1@(PatXtor _ xprdcns _ xXtorName xPatterns) 
+              p2@(PatXtor _ yprdcns _ yXtorName yPatterns) =
+                if    (xXtorName /= yXtorName) && (xprdcns /= yprdcns)
                 then  Nothing
                 else  let subPatternsOverlaps = zipWith overlapA2 xPatterns yPatterns
                           --Only if all Pairs of Subpatterns truly overlap is an Overlap found.
