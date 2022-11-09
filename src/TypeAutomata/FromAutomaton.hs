@@ -95,7 +95,7 @@ getNodeKind i = do
   gr <- asks graph
   case lab gr i of
     Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
-    Just (MkNodeLabel _ _ _ _ _ _ mk) -> return mk
+    Just (MkNodeLabel _ _ _ _ _ _ mk) -> return (CBox mk)
     Just (MkPrimitiveNodeLabel _ primTy) ->
       case primTy of
         I64 -> return I64Rep

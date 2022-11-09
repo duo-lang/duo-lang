@@ -176,7 +176,7 @@ lookupTRecVar NegRep tv = do
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 
-insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> MonoKind -> [XtorSig pol] -> TTA Node
+insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> EvaluationOrder -> [XtorSig pol] -> TTA Node
 insertXtors dc pol mtn mk xtors = do
   newNode <- newNodeM
   insertNode newNode (singleNodeLabel pol dc mtn (S.fromList (sigToLabel <$> xtors)) mk)
@@ -236,10 +236,10 @@ insertType (TyRec _ rep rv ty) = do
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData _  polrep mk xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing mk xtors
-insertType (TyCodata _ polrep mk  xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing mk xtors
-insertType (TyDataRefined _ polrep mk mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) mk xtors
-insertType (TyCodataRefined _ polrep mk mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) mk xtors
+insertType (TyData _  polrep (CBox mk) xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing mk xtors
+insertType (TyCodata _ polrep (CBox mk)  xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing mk xtors
+insertType (TyDataRefined _ polrep (CBox mk) mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) mk xtors
+insertType (TyCodataRefined _ polrep (CBox mk) mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) mk xtors
 insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyNominal _ rep mk tn args) = do
   let pol = polarityRepToPol rep
