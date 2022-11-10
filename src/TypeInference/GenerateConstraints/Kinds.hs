@@ -293,6 +293,12 @@ annotTy (RST.TyString loc pol) = return $ TST.TyString loc pol
 annotTy (RST.TyFlipPol pol ty) = do 
   ty' <- annotTy ty 
   return $ TST.TyFlipPol pol ty'
+annotTy (RST.TyKindAnnot _ _ _ ty) = do
+  ty' <- annotTy ty
+  --addConstraint $ KindEq KindConstraint (TST.getKind ty') mk
+  return ty'
+
+  
 
 
 -- | Given the polarity (data/codata) and the name of a type, compute the empty refinement of that type.
@@ -634,5 +640,11 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyFlipPol pol ty) = do 
     ty' <- annotateKind ty
     return (TST.TyFlipPol pol ty')
+  
+  annotateKind (RST.TyKindAnnot _ _ mk ty) = do 
+    ty' <- annotateKind ty 
+    addConstraint $ KindEq KindConstraint (TST.getKind ty') mk 
+    return ty'
+
 
 

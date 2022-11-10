@@ -173,6 +173,7 @@ instance ToJumpMap (RST.Typ pol) where
   toJumpMap RST.TyChar {} = M.empty
   toJumpMap RST.TyString {} = M.empty
   toJumpMap (RST.TyFlipPol _ ty) = toJumpMap ty
+  toJumpMap (RST.TyKindAnnot _ _ _ ty) = toJumpMap ty
 
 instance ToJumpMap (RST.XtorSig pol) where
   toJumpMap (RST.MkXtorSig _ ctx) =
