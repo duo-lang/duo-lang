@@ -67,8 +67,7 @@ autToType aut@TypeAut{..} = do
   let startState = initializeFromAutomaton aut
   monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
   pure TypeScheme { ts_loc = defaultLoc
-                  --  , ts_vars = [] --tvars startState
-                  , ts_vars = tvars startState
+                  , ts_vars = zip (tvars startState) (repeat Nothing)
                   , ts_monotype = monotype
                   }
 

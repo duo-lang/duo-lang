@@ -4,6 +4,7 @@ module TypeInference.GenerateConstraints.Kinds
   , resolveDataDecl
   ) where
 
+
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
@@ -398,6 +399,12 @@ annotateDataDecl RST.RefinementDecl {
 class AnnotateKind a b | a -> b where
   annotateKind :: a -> GenM b
 
+instance AnnotateKind (Maybe (RST.TypeScheme pol)) (Maybe (TST.TypeScheme pol)) where 
+  annotateKind Nothing = return Nothing
+  annotateKind (Just ty) = do 
+   ty' <- annotateKind ty 
+   return (Just ty')
+
 instance AnnotateKind  (RST.Typ RST.Pos, RST.Typ RST.Neg) (TST.Typ RST.Pos, TST.Typ RST.Neg) where
   annotateKind ::  (RST.Typ RST.Pos, RST.Typ RST.Neg) -> GenM (TST.Typ RST.Pos, TST.Typ RST.Neg)
   annotateKind (ty1, ty2) = do 
@@ -409,7 +416,21 @@ instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
   annotateKind ::  RST.TypeScheme pol -> GenM (TST.TypeScheme pol)
   annotateKind RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = do
     ty' <- annotateKind ty
-    return TST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty'}
+    mapM_ addTVar tvs
+    return TST.TypeScheme {ts_loc = loc, ts_vars = tvs,ts_monotype = ty'}
+    where 
+      addTVar :: KindedSkolem -> GenM () 
+      addTVar (_,Nothing) = return () 
+      addTVar (sk,Just mk) = do
+        skMap <- gets usedSkolemVars
+        case M.lookup sk skMap of 
+          Nothing -> do
+            let newM = M.insert sk mk skMap
+            modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
+            return ()
+          Just mk' -> do
+            addConstraint $ KindEq KindConstraint mk mk' 
+            return ()
 
 instance AnnotateKind (RST.VariantType pol) (TST.VariantType pol) where
   annotateKind ::  RST.VariantType pol -> GenM (TST.VariantType pol)
@@ -574,19 +595,18 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
             else do 
               throwOtherError loc ["Kind of VariantType: " <> ppPrint fstVarty <> " does not match kind of declaration " <> ppPrint fstMk]
 
-            
-
-          
-
+             
   annotateKind (RST.TySyn loc pol tn ty) = do 
     ty' <- annotateKind ty 
     return (TST.TySyn loc pol tn ty')
 
-  annotateKind (RST.TyBot loc) = TST.TyBot loc . KindVar <$> newKVar
+  annotateKind (RST.TyBot loc) = do 
+    TST.TyBot loc . KindVar <$> newKVar
 
-  annotateKind (RST.TyTop loc) = TST.TyTop loc . KindVar <$> newKVar
+  annotateKind (RST.TyTop loc) = do
+    TST.TyTop loc . KindVar <$> newKVar
 
-  annotateKind (RST.TyUnion loc ty1 ty2) = do 
+  annotateKind (RST.TyUnion loc ty1 ty2) = do  
     ty1' <- annotateKind ty1
     ty2' <- annotateKind ty2
     kv <- newKVar 
@@ -602,7 +622,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     addConstraint (KindEq KindConstraint (KindVar kv) (getKind ty1'))
     return (TST.TyInter loc (KindVar kv) ty1' ty2')
     
-  annotateKind (RST.TyRec loc pol rv ty) = do
+  annotateKind (RST.TyRec loc pol rv ty) = do 
     ty' <- annotateKind ty
     return (TST.TyRec loc pol rv ty')
 

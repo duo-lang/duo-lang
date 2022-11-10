@@ -10,7 +10,7 @@ import Errors
 import Pretty.Pretty ( ppPrint )
 import Resolution.Definition
 import Resolution.SymbolTable
-import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases)
+import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCase)
 import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp, resolveMethodSigs)
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
@@ -285,13 +285,14 @@ resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, c
 
 resolveInstanceDeclaration :: CST.InstanceDeclaration
                         -> ResolverM RST.InstanceDeclaration
-resolveInstanceDeclaration CST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
+resolveInstanceDeclaration CST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } = do
   typ <- resolveTyp PosRep instancedecl_typ
   tyn <- resolveTyp NegRep instancedecl_typ
-  tc <- resolveInstanceCases instancedecl_cases
+  tc <- mapM resolveInstanceCase instancedecl_cases
   pure RST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                  , instancedecl_doc = instancedecl_doc
                                  , instancedecl_name = instancedecl_name
+                                 , instancedecl_class = instancedecl_class
                                  , instancedecl_typ = (typ, tyn)
                                  , instancedecl_cases = tc
                                  }

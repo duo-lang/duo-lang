@@ -4,7 +4,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Kind ( Type )
 
-import Syntax.CST.Kinds ( Variance(..) )
+import Syntax.CST.Kinds ( Variance(..),KindedSkolem)
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
     ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
@@ -244,7 +244,7 @@ instance ReplaceNominal (VariantType pol) where
 
 data TypeScheme (pol :: Polarity) = TypeScheme
   { ts_loc :: Loc
-  , ts_vars :: [SkolemTVar]
+  , ts_vars :: [KindedSkolem]
   , ts_monotype :: Typ pol
   }
 
@@ -303,4 +303,14 @@ instance FreeTVars (XtorSig pol) where
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
-generalize ty = TypeScheme defaultLoc (S.toList (freeTVars ty)) ty
+generalize ty = TypeScheme defaultLoc (zip (S.toList $ freeTVars ty) (repeat Nothing)) ty
+
+
+
+
+
+
+
+
+
+

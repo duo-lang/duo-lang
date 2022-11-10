@@ -3,7 +3,6 @@ module TypeInference.GenerateConstraints.Terms
   , genConstraintsTermRecursive
   ) where
 
-
 import Control.Monad.Reader
 import Errors
 import Syntax.CST.Terms qualified as CST
@@ -166,7 +165,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- Check the command in the context extended with the positive unification variables
                         cmdInferred <- withContext uvarsPos (genConstraints cmdcase_cmd)
                         -- Return the negative unification variables in the returned type.
-                        return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
+                        return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
     let xtors = snd <$> inferredCases
     case rep of
       -- The return type is a structural type consisting of a XtorSig for each case.
@@ -205,7 +204,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                     -- We generate constraints for the command in the context extended
                     -- with the types from the signature.
                     cmdInferred <- withContext posTypes' (genConstraints cmdcase_cmd)
-                    return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc' xt args) cmdInferred, TST.MkXtorSig xt negTypes'))
+                    return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc' xt args) cmdInferred, TST.MkXtorSig xt negTypes'))
     knd <- getKindDecl decl
     case rep of
       PrdRep -> return $ TST.XCase loc annot rep (TST.TyNominal defaultLoc PosRep (fst knd) (TST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
@@ -242,7 +241,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         genConstraintsCtxts uvarsPos upperBound' (PatternMatchConstraint loc)
                         -- For the type, we return the unification variables which are now bounded by the least
                         -- and greatest type translation.
-                        return (TST.MkCmdCase cmdcase_loc (TST.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
+                        return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
     knd <- getKindDecl decl
     case rep of
       PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep (fst knd) (TST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
@@ -316,9 +315,9 @@ instance GenConstraints Core.Command TST.Command where
   
 instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
   genConstraints :: Core.InstanceDeclaration -> GenM TST.InstanceDeclaration
-  genConstraints Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
+  genConstraints Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } = do
     -- We lookup the class declaration  of the instance.
-    decl <- lookupClassDecl instancedecl_loc instancedecl_name
+    decl <- lookupClassDecl instancedecl_loc instancedecl_class
     insertSkolemsClass decl
     -- We check that all implementations belong to the same type class.
     checkInstanceCoverage instancedecl_loc decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
@@ -344,11 +343,12 @@ instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
                                             , instancecase_cmd = cmdInferred
                                             })
     pure TST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
-                                  , instancedecl_doc = instancedecl_doc
-                                  , instancedecl_name = instancedecl_name
-                                  , instancedecl_typ = instancety
-                                  , instancedecl_cases = inferredCases
-                                  }
+                                   , instancedecl_doc = instancedecl_doc
+                                   , instancedecl_name = instancedecl_name
+                                   , instancedecl_class = instancedecl_class
+                                   , instancedecl_typ = instancety
+                                   , instancedecl_cases = inferredCases
+                                   }
 
 
 

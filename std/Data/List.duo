@@ -14,7 +14,7 @@ data List : (+a : CBV) -> CBV {
 def rec prd length : forall a. List(a) -> Nat :=
     \xs => case xs of {
         Nil => Z,
-        Cons(x, xs) => S(length xs)
+        Cons(_, xs) => S(length xs)
     };
 
 -- | Append two lists together.

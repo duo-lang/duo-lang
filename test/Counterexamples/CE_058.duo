@@ -1,0 +1,7 @@
+module CE_058;
+
+import Codata.Function;
+
+-- a can't be CBN
+def prd idAnnotWrong : forall (a:CBN). a -> a :=
+  \x => x;

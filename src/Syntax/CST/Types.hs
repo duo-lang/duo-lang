@@ -73,6 +73,7 @@ instance HasLoc Typ where
   getLoc (TyParens loc _) = loc
   getLoc (TyKindAnnot loc _ _) = loc
 
+
 data XtorSig = MkXtorSig
   { sig_name :: XtorName
   , sig_args :: LinearContext
@@ -92,9 +93,10 @@ linearContextToArity = map f
     f (PrdType _) = Prd
     f (CnsType _) = Cns
 
+
 data TypeScheme = TypeScheme
   { ts_loc :: Loc
-  , ts_vars :: [SkolemTVar]
+  , ts_vars :: [KindedSkolem]
   , ts_constraints :: [Constraint]
   , ts_monotype :: Typ
   }
