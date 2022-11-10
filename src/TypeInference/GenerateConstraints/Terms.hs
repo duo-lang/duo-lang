@@ -284,7 +284,9 @@ instance GenConstraints Core.Command TST.Command where
     substInferred <- genConstraints subst
     let substTypes = TST.getTypArgs substInferred
     genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
-    pure (TST.Method loc mn cn (TST.InstanceUnresolved (head uvs)) substInferred)
+    case uvs of
+      [] -> throwGenError (NumberOfTypeClassParam loc)
+      (uv:_) -> pure (TST.Method loc mn cn (TST.InstanceUnresolved uv) substInferred)
   genConstraints (Core.Print loc prd cmd) = do
     prd' <- genConstraints prd
     cmd' <- genConstraints cmd
