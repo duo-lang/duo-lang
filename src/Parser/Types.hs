@@ -181,17 +181,9 @@ tyStringP = primTypeP KwString TyString
 tyParensP :: Parser (Typ, SourcePos)
 tyParensP = do
   startPos <- getSourcePos
-  symbolP SymParenLeft
+  (typ, endPos) <- parensP (fst <$> typP)
   sc
-  (typ, _) <- typP
-  sc
-  mmk <- optional (symbolP SymColon >> sc >> monoKindP)
-  sc
-  symbolP SymParenRight
-  endPos <- getSourcePos
-  case mmk of 
-    Nothing -> pure (TyParens (Loc startPos endPos) typ, endPos)
-    Just mk -> pure (TyKindAnnot (Loc startPos endPos) mk typ, endPos)
+  pure (TyParens (Loc startPos endPos) typ, endPos)
 
 tyTopKwP :: Parser SourcePos
 tyTopKwP = kwASCII <|> kwUnicode
