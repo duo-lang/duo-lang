@@ -476,24 +476,23 @@ solveConstraints constraintSet@(ConstraintSet css _ _) env = do
 -- | Resolves and returns the correct instance for each type-class-constrained unification variable.
 solveClassConstraints :: SolverResult -> Bisubstitution 'UniVT -> Map ModuleName Environment -> Either (NE.NonEmpty Error) InstanceResult
 solveClassConstraints sr bisubst env = do
-  let uvs = M.map (\VariableState { vst_typeclasses, vst_kind } -> (head vst_typeclasses, TypeClassResolution, vst_kind))
-          $ M.filter (\VariableState { vst_typeclasses } -> not (null vst_typeclasses))
-          $ tvarSolution sr
-  let tys = M.mapWithKey (\k x -> (x,  getUniVType bisubst k)) uvs
-  res <- forM (M.toList tys) $ \(uv, ((cn, _uvarprov, k) , mTy)) -> ((uv,cn),) <$>
-    case getInstances cn env of
-      Nothing -> throwSolverError defaultLoc [ "There are no instances defined for type class: " <> ppPrint cn ]
-      Just instances -> case mTy of
-        Nothing -> throwSolverError defaultLoc [ "UniVar not found in Bisubstitution: " <> ppPrint uv ]
-        Just (typ, tyn) -> do
-          ty <- getInferredType typ tyn
-          let checkResult :: PrettyAnn a => [(FreeVarName, Typ Pos, Typ Neg)] -> a -> Either (NE.NonEmpty Error) (FreeVarName, Typ Pos, Typ Neg)
-              checkResult [] ty = throwSolverError defaultLoc $ ("Could not resolve instance for " <> ppPrint cn <> " " <> ppPrint ty <> ". Instances checked:")
-                                                              : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> S.toList instances)
-              checkResult [i] _ty = pure i
-              checkResult is ty = throwSolverError defaultLoc $ ("Incoherent instances resolved for " <> ppPrint cn <> " " <> ppPrint ty)
-                                                              : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> is)
-          case ty of
-            Left sub -> checkResult (resolveCoClass uv k (S.toList instances) sub env) sub
-            Right sup -> checkResult (resolveContraClass uv k (S.toList instances) sup env) sup
-  return (MkInstanceResult (M.fromList res))
+  let uvs = fmap (\(uv, vst) -> (uv, vst_typeclasses vst, vst_kind vst)) $ M.toList $ tvarSolution sr
+  res <- forM uvs $ \(uv, cns, k) -> do
+    let mTy = getUniVType bisubst uv
+    forM cns $ \cn -> ((uv,cn),) <$>
+      case getInstances cn env of
+        Nothing -> throwSolverError defaultLoc [ "There are no instances defined for type class: " <> ppPrint cn ]
+        Just instances -> case mTy of
+          Nothing -> throwSolverError defaultLoc [ "UniVar not found in Bisubstitution: " <> ppPrint uv ]
+          Just (typ, tyn) -> do
+            ty <- getInferredType typ tyn
+            let checkResult :: PrettyAnn a => [(FreeVarName, Typ Pos, Typ Neg)] -> a -> Either (NE.NonEmpty Error) (FreeVarName, Typ Pos, Typ Neg)
+                checkResult [] ty = throwSolverError defaultLoc $ ("Could not resolve instance for " <> ppPrint cn <> " " <> ppPrint ty <> ". Instances checked:")
+                                                                : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> S.toList instances)
+                checkResult [i] _ty = pure i
+                checkResult is ty = throwSolverError defaultLoc $ ("Incoherent instances resolved for " <> ppPrint cn <> " " <> ppPrint ty)
+                                                                : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> is)
+            case ty of
+              Left sub -> checkResult (resolveCoClass uv k (S.toList instances) sub env) sub
+              Right sup -> checkResult (resolveContraClass uv k (S.toList instances) sup env) sup
+  return (MkInstanceResult (M.fromList (concat res)))
