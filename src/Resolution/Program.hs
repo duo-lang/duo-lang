@@ -91,7 +91,6 @@ checkVarianceTyp loc var polyKind (CST.TyBinOp _loc' ty _binOp ty') = do
   checkVarianceTyp loc var polyKind ty
   checkVarianceTyp loc var polyKind ty'
 checkVarianceTyp loc var polyKind (CST.TyParens _loc' ty) = checkVarianceTyp loc var polyKind ty
-checkVarianceTyp loc var polyKind (CST.TyKindAnnot _loc' _ ty) = checkVarianceTyp loc var polyKind ty
 
 checkVarianceXtor :: Loc -> Variance -> PolyKind -> CST.XtorSig -> ResolverM ()
 checkVarianceXtor loc var polyKind xtor = do
