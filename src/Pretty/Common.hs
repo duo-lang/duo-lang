@@ -24,7 +24,7 @@ import Syntax.CST.Names
       XtorName(MkXtorName) )
 import Syntax.CST.Types (Arity, PrdCns(..))      
 import Syntax.CST.Kinds
-    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), KindedSkolem)
+    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), KindedSkolem, MaybeKindedSkolem)
 import Loc ( Loc(..) )
 import Data.Foldable (fold)
 import Data.List (intersperse)
@@ -114,9 +114,12 @@ prettyPrdCns Cns = "cns"
 -- Kinds
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn KindedSkolem where 
+instance PrettyAnn MaybeKindedSkolem where 
   prettyAnn (sk,Nothing) = prettyAnn sk
   prettyAnn (sk,Just mk) = parens (prettyAnn sk <+> ":" <+> prettyAnn mk)
+
+instance PrettyAnn KindedSkolem where 
+  prettyAnn (sk,mk) = parens (prettyAnn sk <+> ":" <+> prettyAnn mk)
 
 instance PrettyAnn EvaluationOrder where
   prettyAnn CBV = annKeyword "CBV"
