@@ -181,14 +181,13 @@ tyStringP = primTypeP KwString TyString
 tyParensP :: Parser (Typ, SourcePos)
 tyParensP = do
   startPos <- getSourcePos
-  sc
   symbolP SymParenLeft
   sc
   (typ, _) <- typP
   sc
   mmk <- optional (symbolP SymColon >> sc >> monoKindP)
-  symbolP SymParenRight
   sc
+  symbolP SymParenRight
   endPos <- getSourcePos
   case mmk of 
     Nothing -> pure (TyParens (Loc startPos endPos) typ, endPos)
