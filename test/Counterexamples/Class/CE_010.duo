@@ -1,4 +1,4 @@
-module CE_062;
+module Class.CE_010;
 
 -- no instance for union
 import Data.Bool;
