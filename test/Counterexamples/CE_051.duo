@@ -1,6 +1,7 @@
 module CE_051;
 
--- unbound type var a is not declared in class kinds
-class Foo(+f : CBV) {
-  Bar(a)
-};
+import Codata.Function;
+
+-- a can't be CBN
+def prd idAnnotWrong : forall (a:CBN). a -> a :=
+  \x => x;
