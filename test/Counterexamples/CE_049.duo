@@ -1,15 +1,10 @@
 module CE_049;
 
--- Type checking in instance definition fails.
-import Data.Bool;
-import Data.List;
+-- Regression test for #427
 
-class Eq(+a : CBV) {
-  Equals(a, a, return Bool),
-  Differ(a, a, return Bool)
+codata Fun : (-a : CBV, +b : CBV) -> CBN {
+    Ap(a,return b)
 };
 
-instance eqBool : Eq Bool {
-  Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
-  Differ(x, y, k) => Cons((or x y), (not (and x y))) >> k
-};
+type operator -> rightassoc at 0 := Fun;
+type operator -> rightassoc at 0 := Fun;
