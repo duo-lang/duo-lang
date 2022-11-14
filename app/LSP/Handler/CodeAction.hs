@@ -30,7 +30,6 @@ import Language.LSP.Server
     (  requestHandler, sendRequest, Handlers, getConfig )
 import System.Log.Logger ( debugM )
 import Syntax.TST.Types qualified as TST ( TopAnnot(..))
-import Syntax.CST.Kinds ( EvaluationOrder(..) )
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Types (PrdCnsRep(..))
 import Driver.Definition
@@ -146,11 +145,10 @@ instance GetCodeActions (TST.PrdCnsDeclaration pc) where
   getCodeActions id _ decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _, pcdecl_term } =
     let
       desugar  = [ workspaceEditToCodeAction (generateDesugarEdit id decl) ("Desugar " <> unFreeVarName (TST.pcdecl_name decl)) | not (isDesugaredTerm pcdecl_term)]
-      cbvfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBV decl) ("Focus CBV " <> unFreeVarName (TST.pcdecl_name decl)) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBV pcdecl_term)]
-      cbnfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBN decl) ("Focus CBN " <> unFreeVarName (TST.pcdecl_name decl)) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
+      focusing = [ workspaceEditToCodeAction (generateFocusEdit id decl) ("Focus " <> unFreeVarName (TST.pcdecl_name decl)) | isDesugaredTerm pcdecl_term, isNothing (isFocused pcdecl_term)]
       dualize  = [ workspaceEditToCodeAction (generateDualizeEdit id decl) ("Dualize term " <> ppPrint (TST.pcdecl_name decl)) ]
     in
-      List (desugar <> cbvfocus <> cbnfocus <> dualize)
+      List (desugar <> focusing <> dualize)
 
 instance GetCodeActions TST.CommandDeclaration where
   getCodeActions :: TextDocumentIdentifier -> Range -> TST.CommandDeclaration -> List (Command |? CodeAction)
@@ -160,12 +158,11 @@ instance GetCodeActions TST.CommandDeclaration where
   getCodeActions id _ decl@TST.MkCommandDeclaration {cmddecl_cmd } =
     let
       desugar  = [ workspaceEditToCodeAction (generateCmdDesugarEdit id decl) ("Desugar " <> unFreeVarName (TST.cmddecl_name decl)) | not (isDesugaredCommand cmddecl_cmd)]
-      cbvfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBV decl) ("Focus CBV " <> unFreeVarName (TST.cmddecl_name decl)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBV cmddecl_cmd)]
-      cbnfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBN decl) ("Focus CBN " <> unFreeVarName (TST.cmddecl_name decl)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
+      focusing = [ workspaceEditToCodeAction (generateCmdFocusEdit id decl) ("Focus " <> unFreeVarName (TST.cmddecl_name decl)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused cmddecl_cmd)]
       eval     = [ generateCmdEvalCodeAction id decl ]
       dualize  = [ workspaceEditToCodeAction (generateDualizeCommandEdit id decl) ("Dualize command " <> ppPrint (TST.cmddecl_name decl)) ]
     in
-      List (desugar <> cbvfocus <> cbnfocus <> dualize <> eval)
+      List (desugar <> focusing <> dualize <> eval)
 
 instance GetCodeActions TST.DataDecl where
   getCodeActions :: TextDocumentIdentifier -> Range -> TST.DataDecl -> List (Command |? CodeAction)
@@ -241,11 +238,11 @@ generateDualizeDeclEdit (TextDocumentIdentifier uri) loc decl =
 -- Provide Focus Actions
 ---------------------------------------------------------------------------------
 
-generateFocusEdit :: forall pc.TextDocumentIdentifier -> EvaluationOrder -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
-generateFocusEdit (TextDocumentIdentifier uri) eo decl =
+generateFocusEdit :: forall pc.TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
+generateFocusEdit (TextDocumentIdentifier uri) decl =
   let
     newDecl :: TST.Declaration
-    newDecl = TST.PrdCnsDecl (TST.pcdecl_pc decl) (focus eo decl)
+    newDecl = TST.PrdCnsDecl (TST.pcdecl_pc decl) (focus decl)
     replacement = ppPrint newDecl
     edit = TextEdit {_range = locToRange (TST.pcdecl_loc decl), _newText = replacement }
   in
@@ -254,10 +251,10 @@ generateFocusEdit (TextDocumentIdentifier uri) eo decl =
                   , _changeAnnotations = Nothing
                   }
 
-generateCmdFocusEdit :: TextDocumentIdentifier -> EvaluationOrder -> TST.CommandDeclaration -> WorkspaceEdit
-generateCmdFocusEdit (TextDocumentIdentifier uri) eo decl =
+generateCmdFocusEdit :: TextDocumentIdentifier -> TST.CommandDeclaration -> WorkspaceEdit
+generateCmdFocusEdit (TextDocumentIdentifier uri) decl =
   let
-    newDecl = TST.CmdDecl (focus eo decl)
+    newDecl = TST.CmdDecl (focus decl)
     replacement = ppPrint newDecl
     edit = TextEdit {_range= locToRange (TST.cmddecl_loc decl), _newText= replacement }
   in
@@ -356,7 +353,7 @@ evalInModule mn cmd stop = do
       (_, MkDriverState { drvEnv }) <- case res of
                   Left errs -> stop $ unlines $ (\(x :| xs) -> x:xs) $ show <$> errs
                   Right drvEnv -> return drvEnv
-      let compiledEnv :: EvalEnv = focus CBV ((\map -> fold $ desugarEnv <$> M.elems map) drvEnv)
+      let compiledEnv :: EvalEnv = focus ((\map -> fold $ desugarEnv <$> M.elems map) drvEnv)
       return $ execWriter $ flip execStateT [] $ unEvalMWrapper $ eval (TST.Jump defaultLoc cmd) compiledEnv
 
 addCommentedAbove :: Foldable t => Range -> Uri -> t String -> ApplyWorkspaceEditParams
