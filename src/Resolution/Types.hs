@@ -27,11 +27,20 @@ import Control.Monad.Reader (asks, MonadReader (local))
 ---------------------------------------------------------------------------------
 
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
-resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
+resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype, ts_constraints } = do
     monotype <- resolveTyp rep ts_monotype
+    constraints <- mapM resolveConstraint ts_constraints
     if RST.freeTVars monotype `S.isSubsetOf` S.fromList (map fst ts_vars)
-    then pure (RST.TypeScheme ts_loc ts_vars monotype)
+    then pure (RST.TypeScheme ts_loc ts_vars constraints monotype)
         else throwError (ErrResolution (MissingVarsInTypeScheme ts_loc) :| [])
+
+resolveConstraint :: FreeConstraint -> ResolverM RST.FreeConstraint
+resolveConstraint (SubTypeConstraint typ tyn) = do
+    typResolved <- resolveTyp PosRep typ
+    tynResolved <- resolveTyp NegRep tyn
+    pure (RST.SubTypeConstraint typResolved tynResolved)
+resolveConstraint (TypeClassConstraint cn tvar) = pure (RST.TypeClassConstraint cn tvar)
+
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyUniVar loc v) =

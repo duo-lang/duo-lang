@@ -33,9 +33,9 @@ instance InsertInstance Command where
     insertInstance inst (Print loc prd cmd) = Print loc <$> insertInstance inst prd <*> insertInstance inst cmd
     insertInstance inst (Read loc cns) = Read loc <$> insertInstance inst cns
     insertInstance inst (Method loc mn cn (InstanceResolved i) subst) = Method loc mn cn (InstanceResolved i) <$> insertInstance inst subst
-    insertInstance (MkInstanceResult m) (Method loc mn cn (InstanceUnresolved uv) subst) = case M.lookup (uv, cn) m of
+    insertInstance (MkInstanceResult m cs) (Method loc mn cn (InstanceUnresolved uv) subst) = case M.lookup (uv, cn) m of
         Nothing -> throwOtherError loc [ "Something went wrong. No instance could be resolved for " <> ppPrint cn <> " " <> ppPrint uv ]
-        Just (i, _, _) -> Method loc mn cn (InstanceResolved i) <$> insertInstance (MkInstanceResult m) subst
+        Just (i, _, _) -> Method loc mn cn (InstanceResolved i) <$> insertInstance (MkInstanceResult m cs) subst
     insertInstance inst (PrimOp loc op subst) = PrimOp loc op <$> insertInstance inst subst
     insertInstance _inst cmd = pure cmd
 

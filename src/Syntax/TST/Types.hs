@@ -9,7 +9,7 @@ import Data.Kind ( Type )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), FlipPol ,PrdCnsFlip)
 import Syntax.CST.Kinds
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
-import Syntax.CST.Names ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
+import Syntax.CST.Names ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName, ClassName )
 
 import Loc
 
@@ -186,6 +186,7 @@ instance GetKind (VariantType pol) where
 data TypeScheme (pol :: Polarity) = TypeScheme
   { ts_loc :: Loc
   , ts_vars :: [KindedSkolem]
+  , ts_constraints :: [FreeConstraint]
   , ts_monotype :: Typ pol
   }
 
@@ -243,8 +244,8 @@ instance FreeTVars (XtorSig pol) where
   freeTVars MkXtorSig { sig_args } = freeTVars sig_args
 
 -- | Generalize over all free type variables of a type.
-generalize :: Typ pol -> TypeScheme pol
-generalize ty = TypeScheme defaultLoc (S.toList $ freeTVars ty) ty
+generalize :: Typ pol -> [FreeConstraint] -> TypeScheme pol
+generalize ty cs = TypeScheme defaultLoc (S.toList $ freeTVars ty) cs ty
 
 ------------------------------------------------------------------------------
 -- Bisubstitution and Zonking
@@ -362,8 +363,8 @@ instance Zonk (PrdCnsType pol) where
   zonk vt bisubst (PrdCnsType rep ty) = PrdCnsType rep (zonk vt bisubst ty)
 
 instance Zonk (TypeScheme pol) where 
-  zonk UniRep bisubst (TypeScheme {ts_loc = loc, ts_vars = tvars, ts_monotype = ty}) =
-    TypeScheme {ts_loc = loc, ts_vars = map (zonkKind bisubst) tvars, ts_monotype = zonk UniRep bisubst ty}
+  zonk UniRep bisubst (TypeScheme {ts_loc = loc, ts_vars = tvars, ts_constraints, ts_monotype = ty}) =
+    TypeScheme {ts_loc = loc, ts_vars = map (zonkKind bisubst) tvars, ts_constraints = ts_constraints, ts_monotype = zonk UniRep bisubst ty}
   zonk _ _ _ = error "Not implemented"
 
 class ZonkKind (a::Type) where 
@@ -441,3 +442,13 @@ unfoldRecType :: Typ pol -> Typ pol
 unfoldRecType recty@(TyRec _ PosRep var ty) = zonk RecRep (MkBisubstitution (M.fromList [(var,(recty, error "unfoldRecType"))])) ty
 unfoldRecType recty@(TyRec _ NegRep var ty) = zonk RecRep (MkBisubstitution (M.fromList [(var,(error "unfoldRecType", recty))])) ty
 unfoldRecType ty = ty
+
+
+---------------------------------------------------------------------------------
+-- Constraints
+---------------------------------------------------------------------------------
+
+data FreeConstraint
+  = SubTypeConstraint (Typ Pos) (Typ Neg)
+  | TypeClassConstraint ClassName SkolemTVar
+ deriving (Eq, Ord, Show)

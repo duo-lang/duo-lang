@@ -77,6 +77,7 @@ autToType aut@TypeAut{..} = do
   pure TypeScheme { ts_loc = defaultLoc
                   -- TODO Replace CBV with actual kinds
                   , ts_vars = tvars startState
+                  , ts_constraints = [] -- TODO: fill in type class constraints
                   , ts_monotype = monotype
                   }
 
@@ -95,7 +96,7 @@ getNodeKind i = do
   gr <- asks graph
   case lab gr i of
     Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
-    Just (MkNodeLabel _ _ _ _ _ _ mk) -> return (CBox mk)
+    Just (MkNodeLabel _ _ _ _ _ _ _ mk) -> return (CBox mk)
     Just (MkPrimitiveNodeLabel _ primTy) ->
       case primTy of
         I64 -> return I64Rep
@@ -176,7 +177,7 @@ nodeToTypeNoCache rep i  = do
           toPrimType rep PChar = TyChar defaultLoc rep
           toPrimType rep PString = TyString defaultLoc rep
       pure (toPrimType rep tp)
-    MkNodeLabel _ datSet codatSet tns refDat refCodat _ -> do
+    MkNodeLabel _ datSet codatSet tns refDat refCodat _ _ -> do
       outs <- nodeToOuts i
       let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
       let refDatTypes = M.toList refDat -- Unique data ref types

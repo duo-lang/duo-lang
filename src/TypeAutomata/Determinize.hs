@@ -84,11 +84,12 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
         if nl_pol combLabel == pol then
           MkNodeLabel {
             nl_pol = pol,
-            nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ _ <- [fstLabel,combLabel]],
-            nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ _ <- [fstLabel,combLabel]],
-            nl_nominal = S.unions [tn | MkNodeLabel _ _ _ tn _ _ _ <- [fstLabel, combLabel]],
-            nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ _ <- [fstLabel, combLabel]],
-            nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ <- [fstLabel, combLabel]],
+            nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ _ _ <- [fstLabel,combLabel]],
+            nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ _ _ <- [fstLabel,combLabel]],
+            nl_nominal = S.unions [tn | MkNodeLabel _ _ _ tn _ _ _ _ <- [fstLabel, combLabel]],
+            nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ _ _ <- [fstLabel, combLabel]],
+            nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ _ <- [fstLabel, combLabel]],
+            nl_constraints = S.unions [cns | MkNodeLabel _ _ _ _ _ _ cns _ <- [fstLabel, combLabel]],
             nl_kind = knd
           }
         else

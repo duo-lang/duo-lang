@@ -208,7 +208,7 @@ prettyInstanceRes (uv, cn) (iname, typ, _tyn) = prettyAnn cn <+> prettyAnn uv <+
                                             <+> prettyAnn iname <+> ":" <+> prettyAnn cn <+> prettyAnn typ
 
 instance PrettyAnn InstanceResult where
-  prettyAnn (MkInstanceResult instanceRes) =
+  prettyAnn (MkInstanceResult instanceRes _constraintRes) =
     let instances = M.toList instanceRes
     in case instances of
       [] -> mempty

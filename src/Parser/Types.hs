@@ -273,18 +273,18 @@ typeSchemeP = do
   (monotype, endPos) <- typP
   pure (TypeScheme (Loc startPos endPos) (fst <$> tvars') tConstraints monotype)
 
-typeClassConstraintP :: Parser (Constraint, SourcePos)
+typeClassConstraintP :: Parser (FreeConstraint, SourcePos)
 typeClassConstraintP = try $ do
   (cname,_) <- classNameP
   sc
   (tvar, pos) <- tvarP
   sc
-  return (TypeClass cname tvar, pos)
+  return (TypeClassConstraint cname tvar, pos)
 
-subTypeConstraintP :: Parser (Constraint, SourcePos)
+subTypeConstraintP :: Parser (FreeConstraint, SourcePos)
 subTypeConstraintP = try $ do
   t1 <- fst <$> typP
   symbolP SymSubtype
   sc
   (t2, pos) <- typP
-  return (SubType t1 t2, pos)
+  return (SubTypeConstraint t1 t2, pos)

@@ -420,6 +420,7 @@ getUniVType bisubst uv = M.lookup uv (fst $ bisubst_map bisubst)
 getInferredType :: Typ Pos -> Typ Neg -> Either (NE.NonEmpty Error) (Either (Typ Pos) (Typ Neg))
 getInferredType TySkolemVar{} (TyInter _ _ TySkolemVar{} tyn) = pure $ Right tyn
 getInferredType (TyUnion _ _ TySkolemVar{} typ) TySkolemVar{} = pure $ Left typ
+getInferredType TySkolemVar{} TySkolemVar{} = throwSolverError defaultLoc [ "Contraints not implemented yet." ]
 getInferredType _ _ = throwSolverError defaultLoc [ "UniVar constrained by type class does not have the expected Bisubstitution." ]
 
 -- | Try to solve subtyping constraint between two types.
@@ -495,4 +496,4 @@ solveClassConstraints sr bisubst env = do
             case ty of
               Left sub -> checkResult (resolveCoClass uv k (S.toList instances) sub env) sub
               Right sup -> checkResult (resolveContraClass uv k (S.toList instances) sup env) sup
-  return (MkInstanceResult (M.fromList (concat res)))
+  return (MkInstanceResult (M.fromList (concat res)) M.empty)

@@ -7,7 +7,7 @@ import Data.Kind ( Type )
 import Syntax.CST.Kinds ( Variance(..),MaybeKindedSkolem)
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
-    ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
+    ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName, ClassName )
 import Loc ( Loc, defaultLoc )
 
 ------------------------------------------------------------------------------
@@ -19,7 +19,7 @@ data Polarity = Pos | Neg deriving (Eq, Ord, Show)
 data PolarityRep pol where
   PosRep :: PolarityRep Pos
   NegRep :: PolarityRep Neg
-
+ 
 deriving instance Show (PolarityRep pol)
 deriving instance Eq (PolarityRep pol)
 deriving instance Ord (PolarityRep pol)
@@ -245,6 +245,7 @@ instance ReplaceNominal (VariantType pol) where
 data TypeScheme (pol :: Polarity) = TypeScheme
   { ts_loc :: Loc
   , ts_vars :: [MaybeKindedSkolem]
+  , ts_constraints :: [FreeConstraint]
   , ts_monotype :: Typ pol
   }
 
@@ -303,14 +304,14 @@ instance FreeTVars (XtorSig pol) where
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
-generalize ty = TypeScheme defaultLoc (zip (S.toList $ freeTVars ty) (repeat Nothing)) ty
+generalize ty = TypeScheme defaultLoc (zip (S.toList $ freeTVars ty) (repeat Nothing)) [] ty
 
 
+---------------------------------------------------------------------------------
+-- Constraints
+---------------------------------------------------------------------------------
 
-
-
-
-
-
-
-
+data FreeConstraint
+  = SubTypeConstraint (Typ Pos) (Typ Neg)
+  | TypeClassConstraint ClassName SkolemTVar
+ deriving (Show, Eq, Ord)

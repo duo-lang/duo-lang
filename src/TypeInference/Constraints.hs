@@ -7,6 +7,7 @@ import Syntax.CST.Names
 import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Kinds
 import Loc ( Loc )
+import Data.Set (Set)
 
 
 ------------------------------------------------------------------------------
@@ -125,5 +126,7 @@ data SolverResult = MkSolverResult
   , witnessSolution :: Map (Constraint ()) SubtypeWitness
   }
 
-newtype InstanceResult = MkInstanceResult
-  { instanceResult :: Map (UniTVar, ClassName) (FreeVarName, Typ Pos, Typ Neg) }
+data InstanceResult = MkInstanceResult
+  { instanceResult   :: Map (UniTVar, ClassName) (FreeVarName, Typ Pos, Typ Neg)
+  , constraintResult :: Map SkolemTVar (Set ClassName)
+  }

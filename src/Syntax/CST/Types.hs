@@ -95,7 +95,7 @@ linearContextToArity = map f
 data TypeScheme = TypeScheme
   { ts_loc :: Loc
   , ts_vars :: [MaybeKindedSkolem]
-  , ts_constraints :: [Constraint]
+  , ts_constraints :: [FreeConstraint]
   , ts_monotype :: Typ
   }
   deriving Show
@@ -107,8 +107,8 @@ instance HasLoc TypeScheme where
 -- Constraints
 ---------------------------------------------------------------------------------
 
-data Constraint
-  = SubType Typ Typ
-  | TypeClass ClassName SkolemTVar
+data FreeConstraint
+  = SubTypeConstraint Typ Typ
+  | TypeClassConstraint ClassName SkolemTVar
  deriving Show
 

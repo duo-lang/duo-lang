@@ -54,6 +54,7 @@ import Pretty.Common (Header(..))
 import Pretty.Program ()
 import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
+import TypeInference.Constraints (InstanceResult(constraintResult))
 
 
 checkAnnot :: PolarityRep pol
@@ -110,6 +111,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   guardVerbose $ ppPrintIO bisubst
   -- 4. Solve the type class constraints.
   instances <- liftEitherErrLoc pcdecl_loc $ solveClassConstraints solverResult bisubst env
+  let constraints = concatMap (\(tvar, cns) -> flip TST.TypeClassConstraint tvar <$> S.toList cns) (M.toList (constraintResult instances))
   guardVerbose $ ppPrintIO instances
   tmInferred <- liftEitherErrLoc pcdecl_loc (insertInstance instances tmInferred)
   -- 5. Read of the type and generate the resulting type
@@ -118,9 +120,9 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 6. Simplify
   typSimplified <- if infOptsSimplify infopts then (do
                      printGraphs <- gets (infOptsPrintGraphs . drvOpts)
-                     tys <- simplify (TST.generalize typ) printGraphs (T.unpack (unFreeVarName pcdecl_name))
+                     tys <- simplify (TST.generalize typ constraints) printGraphs (T.unpack (unFreeVarName pcdecl_name))
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
-                     return tys) else return (TST.generalize typ)
+                     return tys) else return (TST.generalize typ constraints)
   -- 6. Check type annotation.
   ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified pcdecl_annot pcdecl_loc
   -- 7. Insert into environment
@@ -209,12 +211,12 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   env <- gets drvEnv
   instances <- liftEitherErrLoc instancedecl_loc $ solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
-  instanceInferred <- liftEitherErrLoc instancedecl_loc (insertInstance instances instanceInferred)      
+  instanceInferred <- liftEitherErrLoc instancedecl_loc (insertInstance instances instanceInferred)
   -- Insert inferred instance into environment   
   let f env = env { instanceDeclEnv = M.insert instancedecl_name instanceInferred (instanceDeclEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
-  
+
 
 inferClassDeclaration :: ModuleName
                       -> RST.ClassDeclaration
