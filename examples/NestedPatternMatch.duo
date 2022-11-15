@@ -8,7 +8,6 @@ import Codata.Stream;
 -----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------
 
-
 data Pair: (+a:CBV,+b:CBV) -> CBV {
     Pair(a,b)
 };
@@ -28,6 +27,18 @@ codata BinaryFun: (+a:CBV,+b:CBV, +c:CBV) -> CBV {
 };
 
 -- To Compile:
+
+----------------------------------------------------------
+-- hier ist x eine Cns Variable!
+-- Aber x bindet eigentlich alles...
+def prd isFun: a -> Bool := cocase {
+    Ap(x, k)         => cocase {
+        Ap(_, _)    => True  >> k,
+        _           => False >> k
+    } >> x
+};
+
+----------------------------------------------------------
 
 def prd push : BinaryFun(a, Stream(a), Stream(a)) := cocase {
     BinaryAp(x, s, Head(*)) => x,
@@ -234,12 +245,30 @@ def prd buildTreeFromStreamCompiled : Stream(Nat) -> Tree(a) := cocase {
 -----------------------------------------------------------------------------------
 -----------------------------------------------------------------------------------
 
---Set stuff 
+-- Example for Mixed Case Compilation
 
------------------------------------------------------------------------------------
------------------------------------------------------------------------------------
+data APair: (+a: CBV) -> CBV{
+    MkPair1(a,a),
+    MkPair2(a)
+};
 
---Beispiele aus OverlapCheck mit neuen Codaten Typen:
+-- The patterns here should NOT overlap, meaning that return patterns and normal patterns
+-- are not checked separatedly but as one list. 
+-- It stands that order DOES NOT matter. 
+def prd aPairToStream : APair(a) -> Steam(a) := cocase {
+    Ap(MkPair1(x,y), Head(*)) => x,
+    Ap(MkPair1(x,y), Tail(Head(*))) => y,
+
+    Ap(MkPair2(x), Tail(Head(*))) => x,
+    Ap(MkPair2(x), Head(*)) => x,
+
+    Ap(p, Tail(Tail(*))) => aPairToStream p
+};
+
+--> Compiled: 
+-- Given how one column expands into one (co)case match,
+-- it must be transformed in a way that is both exhaustive and devoid of overlap!
+
 
 
 
