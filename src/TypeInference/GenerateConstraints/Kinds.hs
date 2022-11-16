@@ -293,10 +293,13 @@ annotTy (RST.TyString loc pol) = return $ TST.TyString loc pol
 annotTy (RST.TyFlipPol pol ty) = do 
   ty' <- annotTy ty 
   return $ TST.TyFlipPol pol ty'
-annotTy (RST.TyKindAnnot _ _ _ ty) = do
+annotTy (RST.TyKindAnnot _ loc mk ty) = do
   ty' <- annotTy ty
-  --addConstraint $ KindEq KindConstraint (TST.getKind ty') mk
-  return ty'
+  let knd = getKind ty'
+  if knd == mk then
+    return ty' 
+  else 
+    throwOtherError loc ["Annotated Kind " <> ppPrint mk <> " and Inferred Kind " <> ppPrint knd <> " do not match"]
 
   
 
