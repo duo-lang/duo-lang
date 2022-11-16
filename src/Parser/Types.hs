@@ -192,7 +192,7 @@ tyParensP = do
   endPos <- getSourcePos
   case mmk of 
     Nothing -> pure (TyParens (Loc startPos endPos) typ, endPos)
-    Just mk -> pure (TyKindAnnot (Loc startPos endPos) mk typ, endPos)
+    Just mk -> pure (TyKindAnnot mk typ, endPos)
 
 tyTopKwP :: Parser SourcePos
 tyTopKwP = kwASCII <|> kwUnicode

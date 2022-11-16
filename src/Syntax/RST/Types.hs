@@ -151,7 +151,7 @@ data Typ (pol     :: Polarity) where
   -- | TyFlipPol is only generated during focusing, and cannot be parsed!
   TyFlipPol       :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol
   -- | Kind Annotated Type
-  TyKindAnnot     :: PolarityRep pol -> Loc -> MonoKind -> Typ pol -> Typ pol
+  TyKindAnnot     :: MonoKind -> Typ pol -> Typ pol
 
 deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
@@ -187,7 +187,7 @@ getPolarity (TyF64 _ rep)               = rep
 getPolarity (TyChar _ rep)              = rep
 getPolarity (TyString _ rep)            = rep
 getPolarity (TyFlipPol rep _)           = rep
-getPolarity (TyKindAnnot rep _ _ _)     = rep
+getPolarity (TyKindAnnot _ ty)          = getPolarity ty
 
 
 ------------------------------------------------------------------------------
@@ -226,7 +226,7 @@ instance ReplaceNominal (Typ pol) where
   replaceNominal _ _ _ ty@TyChar {}                      = ty
   replaceNominal _ _ _ ty@TyString {}                    = ty
   replaceNominal p n t (TyFlipPol rep ty)                = TyFlipPol rep (replaceNominal p n t ty)
-  replaceNominal p n t (TyKindAnnot rep loc mk ty)            = TyKindAnnot rep loc mk (replaceNominal p n t ty)
+  replaceNominal p n t (TyKindAnnot mk ty)               = TyKindAnnot mk (replaceNominal p n t ty)
 
 instance ReplaceNominal (XtorSig pol) where
   replaceNominal :: forall pol. Typ Pos -> Typ Neg -> RnTypeName -> XtorSig pol -> XtorSig pol
@@ -291,7 +291,7 @@ instance FreeTVars (Typ pol) where
   freeTVars (TyChar _ _)                  = S.empty
   freeTVars (TyString _ _)                = S.empty
   freeTVars (TyFlipPol _ ty)              = freeTVars ty
-  freeTVars (TyKindAnnot _ _ _ ty)        = freeTVars ty
+  freeTVars (TyKindAnnot _ ty)            = freeTVars ty
 
 instance FreeTVars (PrdCnsType pol) where
   freeTVars (PrdCnsType _ ty) = freeTVars ty

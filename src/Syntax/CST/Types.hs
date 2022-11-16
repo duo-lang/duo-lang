@@ -51,7 +51,7 @@ data Typ where
   -- should never be directly constructed elsewhere.
   TyBinOp :: Loc -> Typ -> BinOp -> Typ -> Typ
   TyParens :: Loc -> Typ -> Typ
-  TyKindAnnot :: Loc -> MonoKind -> Typ -> Typ
+  TyKindAnnot :: MonoKind -> Typ -> Typ
   deriving Show
 
 instance HasLoc Typ where
@@ -71,7 +71,7 @@ instance HasLoc Typ where
   getLoc (TyBinOpChain ty _) = getLoc ty
   getLoc (TyBinOp loc _ _ _) = loc
   getLoc (TyParens loc _) = loc
-  getLoc (TyKindAnnot loc _ _) = loc
+  getLoc (TyKindAnnot _ ty) = getLoc ty
 
 
 data XtorSig = MkXtorSig
