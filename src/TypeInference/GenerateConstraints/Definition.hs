@@ -83,9 +83,8 @@ initialConstraintSet =
                 }
 
 addKindAnnotConstr :: MonoKind -> MonoKind -> ConstraintSet -> ConstraintSet 
-addKindAnnotConstr mk mk' cs@ConstraintSet { cs_constraints = cstrs } = do 
-  let kindCstr = KindEq KindConstraint mk mk'
-  cs { cs_constraints = kindCstr:cstrs }
+addKindAnnotConstr mk mk' cs@ConstraintSet { cs_constraints } = 
+  cs { cs_constraints = (KindEq KindConstraint mk mk'):cs_constraints }
 
 initialState :: GenerateState
 initialState = GenerateState {   uVarCount = 0

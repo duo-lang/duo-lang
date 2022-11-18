@@ -9,7 +9,6 @@ module Driver.Driver
   ) where
 
 
-
 import Control.Monad.State
 import Control.Monad.Except
 import Data.List.NonEmpty ( NonEmpty ((:|)) )
@@ -53,7 +52,6 @@ import Data.Maybe (catMaybes)
 import Pretty.Common (Header(..))
 import Pretty.Program ()
 import Syntax.RST.Types qualified as RST
-import TypeInference.Constraints (Constraint(KindEq), ConstraintInfo (KindConstraint))
 
 checkMaybeAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
 checkMaybeAnnot Nothing _ = return Nothing 
@@ -104,8 +102,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
   let constraintSetModified =  case pcdecl_annot of 
         Nothing -> constraintSet 
-        Just (RST.TypeScheme _ _ (RST.TyKindAnnot mk _)) -> 
-          addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
+        Just (RST.TypeScheme _ _ (RST.TyKindAnnot mk _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
         _ -> constraintSet 
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName pcdecl_name))
