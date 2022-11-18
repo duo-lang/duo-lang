@@ -120,32 +120,32 @@ instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
 
 instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST :: TST.Typ pol -> RST.Typ pol
-  embedTST (TST.TySkolemVar loc pol _ tv) =
-    RST.TySkolemVar loc pol tv
-  embedTST (TST.TyUniVar loc pol _ tv) =
-    RST.TyUniVar loc pol tv
-  embedTST (TST.TyRecVar loc pol _ tv) =
-    RST.TyRecVar loc pol tv
-  embedTST (TST.TyData loc pol _ xtors) =
-    RST.TyData loc pol (map embedTST xtors)
-  embedTST (TST.TyCodata loc pol _ xtors) =
-    RST.TyCodata loc pol (map embedTST xtors)
-  embedTST (TST.TyDataRefined loc pol _ tn xtors) =
-    RST.TyDataRefined loc pol tn (map embedTST xtors)
-  embedTST (TST.TyCodataRefined loc pol _ tn xtors) =
-    RST.TyCodataRefined loc pol tn (map embedTST xtors)
-  embedTST (TST.TyNominal loc pol _ tn varty) =
-    RST.TyNominal loc pol tn (map embedTST varty)
+  embedTST (TST.TySkolemVar loc pol mk tv) =
+    RST.TyKindAnnot mk $ RST.TySkolemVar loc pol tv
+  embedTST (TST.TyUniVar loc pol mk tv) =
+    RST.TyKindAnnot mk $ RST.TyUniVar loc pol tv
+  embedTST (TST.TyRecVar loc pol mk tv) =
+    RST.TyKindAnnot mk $ RST.TyRecVar loc pol tv
+  embedTST (TST.TyData loc pol mk xtors) =
+    RST.TyKindAnnot mk $ RST.TyData loc pol (map embedTST xtors)
+  embedTST (TST.TyCodata loc pol mk xtors) =
+    RST.TyKindAnnot mk $ RST.TyCodata loc pol (map embedTST xtors)
+  embedTST (TST.TyDataRefined loc pol mk tn xtors) =
+    RST.TyKindAnnot mk $ RST.TyDataRefined loc pol tn (map embedTST xtors)
+  embedTST (TST.TyCodataRefined loc pol mk tn xtors) =
+    RST.TyKindAnnot mk $ RST.TyCodataRefined loc pol tn (map embedTST xtors)
+  embedTST (TST.TyNominal loc pol mk tn varty) =
+    RST.TyKindAnnot mk $ RST.TyNominal loc pol tn (map embedTST varty)
   embedTST (TST.TySyn loc pol tn tp) =
     RST.TySyn loc pol tn (embedTST  tp)
-  embedTST (TST.TyBot loc _ ) =
-    RST.TyBot loc
-  embedTST (TST.TyTop loc _ ) =
-    RST.TyTop loc
-  embedTST (TST.TyUnion loc _ tp1 tp2) =
-    RST.TyUnion loc (embedTST tp1) (embedTST tp2)
-  embedTST (TST.TyInter loc _ tn1 tn2) =
-    RST.TyInter loc (embedTST tn1) (embedTST tn2)
+  embedTST (TST.TyBot loc mk ) =
+    RST.TyKindAnnot mk $ RST.TyBot loc
+  embedTST (TST.TyTop loc mk ) =
+    RST.TyKindAnnot mk $ RST.TyTop loc
+  embedTST (TST.TyUnion loc mk tp1 tp2) =
+    RST.TyKindAnnot mk $ RST.TyUnion loc (embedTST tp1) (embedTST tp2)
+  embedTST (TST.TyInter loc mk tn1 tn2) =
+    RST.TyKindAnnot mk $ RST.TyInter loc (embedTST tn1) (embedTST tn2)
   embedTST (TST.TyRec loc pol rv tp) =
     RST.TyRec loc pol rv (embedTST  tp)
   embedTST (TST.TyI64 loc pol) =
