@@ -3,7 +3,7 @@ module Data.PeanoStructural;
 -- Peano Natural Numbers (Structural)
 
 import Codata.Function;
-import Data.Bool;
+import Data.BoolStructural;
 
 -- | The type of Peano natural numbers.
 constructor Z;
