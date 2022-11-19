@@ -8,9 +8,6 @@ import Data.PeanoStructural;
 
 -- Subsumptions which should hold
 
--- ex01 will get a kvar as kind, then the kvar gets constrained by the recursively calculated kind of the rhs
--- but since the rhs is just ex01, the only constraint will be k0~k0, which can't be resolved
--- the remaining examples have the same problem
 
 def rec prd ex01    : forall a. (a->a:CBV)                                   := ex01;
 def rec prd ex01sub : (< True >->< True >:CBV)                               := ex01;
@@ -21,9 +18,9 @@ def rec prd ex02sub : (< True >->< True >:CBV)                               := 
 def rec prd ex03    : (< True >->< True >:CBV)                               := ex03; 
 def rec prd ex03sub : (< True >->< True >:CBV)                                := ex03;
 
+-- currently, typeschemes with unused skolems are not allowed, so the following two subsumptions fail
 --def rec prd ex04    : forall a. (< True >->< True >:CBV)                     := ex04;
 --def rec prd ex04sub : (< True >->< True >:CBV)                               := ex04;
-
 --def rec prd ex05    : (< True >->< True >:CBV)                               := ex05;
 --def rec prd ex05sub : forall a. (< True >->< True >:CBV)                      := ex05;
 
@@ -33,8 +30,8 @@ def rec prd ex06sub : (< True >->< True , False >:CBV)                       := 
 def rec prd ex07    : ( SNat -> SNat -> SBool:CBV)         := ex07;
 def rec prd ex07sub : ( SNat -> SNat -> SBool:CBV)      := ex07;
 
---def rec prd ex08    : (SNat:CBV) := ex08;
---def rec prd ex08sub : (SNat:CBV) := ex08;
+def rec prd ex08    : (SNat:CBV) := ex08;
+def rec prd ex08sub : (SNat:CBV) := ex08;
 
 def rec prd ex09    : (SNat->SBool:CBV) := ex09;
 def rec prd ex09sub : (SNat->SBool:CBV) := ex09; 
