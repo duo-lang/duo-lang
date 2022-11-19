@@ -425,22 +425,21 @@ instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
   annotateKind ::  RST.TypeScheme pol -> GenM (TST.TypeScheme pol)
   annotateKind RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = do
     ty' <- annotateKind ty
-    mapM_ addTVar tvs
-    return TST.TypeScheme {ts_loc = loc, ts_vars = tvs,ts_monotype = ty'}
+    newTVars <- mapM addTVar tvs
+    return TST.TypeScheme {ts_loc = loc, ts_vars = newTVars,ts_monotype = ty'}
     where 
-      addTVar :: KindedSkolem -> GenM () 
-      addTVar (_,Nothing) = return () 
-      addTVar (sk,Just mk) = do
+      addTVar :: MaybeKindedSkolem -> GenM KindedSkolem
+      addTVar (sk, mmk) = do 
         skMap <- gets usedSkolemVars
         case M.lookup sk skMap of 
-          Nothing -> do
-            let newM = M.insert sk mk skMap
-            modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
-            return ()
-          Just mk' -> do
-            addConstraint $ KindEq KindConstraint mk mk' 
-            return ()
-
+          Nothing -> throwOtherError defaultLoc ["Skolem Variable " <> ppPrint sk <> " is defined but not used"]
+          Just mk -> 
+            case mmk of 
+              Nothing -> return (sk,mk)
+              Just mk' -> do
+                addConstraint $ KindEq KindConstraint mk mk' 
+                return (sk, mk')
+                
 instance AnnotateKind (RST.VariantType pol) (TST.VariantType pol) where
   annotateKind ::  RST.VariantType pol -> GenM (TST.VariantType pol)
   annotateKind (RST.CovariantType ty) = TST.CovariantType <$> annotateKind ty

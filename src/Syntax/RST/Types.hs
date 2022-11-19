@@ -4,7 +4,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Kind ( Type )
 
-import Syntax.CST.Kinds ( Variance(..),KindedSkolem, MonoKind(..))
+import Syntax.CST.Kinds ( Variance(..),MaybeKindedSkolem)
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
     ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
@@ -248,7 +248,7 @@ instance ReplaceNominal (VariantType pol) where
 
 data TypeScheme (pol :: Polarity) = TypeScheme
   { ts_loc :: Loc
-  , ts_vars :: [KindedSkolem]
+  , ts_vars :: [MaybeKindedSkolem]
   , ts_monotype :: Typ pol
   }
 

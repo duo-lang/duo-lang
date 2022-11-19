@@ -96,7 +96,7 @@ linearContextToArity = map f
 
 data TypeScheme = TypeScheme
   { ts_loc :: Loc
-  , ts_vars :: [KindedSkolem]
+  , ts_vars :: [MaybeKindedSkolem]
   , ts_constraints :: [Constraint]
   , ts_monotype :: Typ
   }

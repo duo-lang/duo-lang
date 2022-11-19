@@ -1,4 +1,4 @@
-module CE_059;
+module Class.CE_007;
 
 -- no instance definition for nominal type
 import Data.Bool;

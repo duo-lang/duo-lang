@@ -11,6 +11,8 @@ import qualified Data.Bifunctor as BF (bimap)
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
+import Data.Bifunctor (second)
+
 ---------------------------------------------------------------------------------
 -- A typeclass for embedding TST.X into Core.X
 ---------------------------------------------------------------------------------
@@ -112,7 +114,7 @@ instance EmbedTST (TST.VariantType pol) (RST.VariantType pol) where
 instance EmbedTST (TST.TypeScheme pol) (RST.TypeScheme pol) where
   embedTST :: TST.TypeScheme pol -> RST.TypeScheme pol
   embedTST TST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = mt} =
-    RST.TypeScheme {ts_loc = loc, ts_vars = tyvars,  ts_monotype = embedTST mt}
+    RST.TypeScheme {ts_loc = loc, ts_vars = map (Data.Bifunctor.second Just) tyvars,  ts_monotype = embedTST mt}
 
 instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
   embedTST :: TST.LinearContext pol-> RST.LinearContext pol
