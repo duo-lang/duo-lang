@@ -36,17 +36,17 @@ def rec prd ex08sub : (SNat:CBV) := ex08;
 def rec prd ex09    : (SNat->SBool:CBV) := ex09;
 def rec prd ex09sub : (SNat->SBool:CBV) := ex09; 
 
---def rec prd ex10    : (rec a.  <Z, S(< S(a) >)>:CBV)                                       := ex10;
---def rec prd ex10sub : rec a. <Z, S(a)>                                               := ex10;
+def rec prd ex10    : (rec a.  <Z, S(< S(a) >)>:CBV)                                       := ex10;
+def rec prd ex10sub : rec a. <Z, S(a)>                                               := ex10;
 
 --def rec prd ex11    : (rec a. < Z, S(a) >->(rec a.  <Z, S(< S(a) >)>):CBV)  := ex11;
 --def rec prd ex11sub : { Ap(rec a.  <Z, S(< S(a) >)>, return (rec a. < Z, S(a) >) ) } := ex11;
 
---def rec prd ex12    : (SNat:CBV)       := ex12;
---def rec prd ex12sub : (SNat \/ SNat:CBV):= ex12;
+def rec prd ex12    : (SNat:CBV)       := ex12;
+def rec prd ex12sub : (SNat \/ SNat:CBV):= ex12;
 
---def rec prd ex13    : (rec a. < Z, S(a) >:CBV)                                             := ex13;
---def rec prd ex13sub : rec a. < Z > \/ < S(a) >                                       := ex13;
+def rec prd ex13    : (rec a. < Z, S(a) >:CBV)                                             := ex13;
+def rec prd ex13sub : rec a. < Z > \/ < S(a) >                                       := ex13;
 
 def rec prd ex14    : (< S(<Z>) >:CBV)                                                     := ex14;
 def rec prd ex14sub : (< Z> \/ < S(<Z>) >:CBV)                                             := ex14;

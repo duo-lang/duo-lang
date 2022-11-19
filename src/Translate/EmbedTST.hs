@@ -138,7 +138,7 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     RST.TyKindAnnot mk $ RST.TyCodataRefined loc pol tn (map embedTST xtors)
   embedTST (TST.TyNominal loc pol mk tn varty) =
     RST.TyKindAnnot mk $ RST.TyNominal loc pol tn (map embedTST varty)
-  embedTST (TST.TySyn loc pol tn tp) =do 
+  embedTST (TST.TySyn loc pol tn tp) = do 
     let knd = TST.getKind tp 
     RST.TyKindAnnot knd $ RST.TySyn loc pol tn (embedTST tp)
   embedTST (TST.TyBot loc mk ) =
@@ -149,8 +149,9 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     RST.TyKindAnnot mk $ RST.TyUnion loc (embedTST tp1) (embedTST tp2)
   embedTST (TST.TyInter loc mk tn1 tn2) =
     RST.TyKindAnnot mk $ RST.TyInter loc (embedTST tn1) (embedTST tn2)
-  embedTST (TST.TyRec loc pol rv tp) =
-    RST.TyRec loc pol rv (embedTST  tp)
+  embedTST (TST.TyRec loc pol rv tp) = do
+    let knd = TST.getKind tp
+    RST.TyKindAnnot knd $ RST.TyRec loc pol rv (embedTST  tp)
   embedTST (TST.TyI64 loc pol) =
     RST.TyI64 loc pol
   embedTST (TST.TyF64 loc pol) =
