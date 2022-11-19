@@ -21,11 +21,11 @@ def rec prd ex02sub : (< True >->< True >:CBV)                               := 
 def rec prd ex03    : (< True >->< True >:CBV)                               := ex03; 
 def rec prd ex03sub : (< True >->< True >:CBV)                                := ex03;
 
-def rec prd ex04    : forall a. (< True >->< True >:CBV)                     := ex04;
-def rec prd ex04sub : (< True >->< True >:CBV)                               := ex04;
+--def rec prd ex04    : forall a. (< True >->< True >:CBV)                     := ex04;
+--def rec prd ex04sub : (< True >->< True >:CBV)                               := ex04;
 
-def rec prd ex05    : (< True >->< True >:CBV)                               := ex05;
-def rec prd ex05sub : forall a. (< True >->< True >:CBV)                      := ex05;
+--def rec prd ex05    : (< True >->< True >:CBV)                               := ex05;
+--def rec prd ex05sub : forall a. (< True >->< True >:CBV)                      := ex05;
 
 def rec prd ex06    : (< True , False >->< True >:CBV)                       := ex06;
 def rec prd ex06sub : (< True >->< True , False >:CBV)                       := ex06;
