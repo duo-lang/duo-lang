@@ -3,20 +3,17 @@ module Subsumption;
 import Codata.Function;
 import Data.BoolStructural;
 import Data.PeanoStructural;
---import Data.Peano;
---import Data.Bool;
 
 -- Subsumptions which should hold
 
+def rec prd ex01    : forall a. (a->a:CBV)                                       := ex01;
+def rec prd ex01sub : (< True >->< True >:CBV)                                   := ex01;
 
-def rec prd ex01    : forall a. (a->a:CBV)                                   := ex01;
-def rec prd ex01sub : (< True >->< True >:CBV)                               := ex01;
+def rec prd ex02    : forall a. (a->a:CBV)                                       := ex02;
+def rec prd ex02sub : (< True >->< True >:CBV)                                   := ex02;
 
-def rec prd ex02    : forall a. (a->a:CBV)                                   := ex02;
-def rec prd ex02sub : (< True >->< True >:CBV)                               := ex02;
-
-def rec prd ex03    : (< True >->< True >:CBV)                               := ex03; 
-def rec prd ex03sub : (< True >->< True >:CBV)                                := ex03;
+def rec prd ex03    : (< True >->< True >:CBV)                                   := ex03; 
+def rec prd ex03sub : (< True >->< True >:CBV)                                   := ex03;
 
 -- currently, typeschemes with unused skolems are not allowed, so the following two subsumptions fail
 --def rec prd ex04    : forall a. (< True >->< True >:CBV)                     := ex04;
@@ -24,32 +21,33 @@ def rec prd ex03sub : (< True >->< True >:CBV)                                :=
 --def rec prd ex05    : (< True >->< True >:CBV)                               := ex05;
 --def rec prd ex05sub : forall a. (< True >->< True >:CBV)                      := ex05;
 
-def rec prd ex06    : (< True , False >->< True >:CBV)                       := ex06;
-def rec prd ex06sub : (< True >->< True , False >:CBV)                       := ex06;
+def rec prd ex06    : (< True , False >->< True >:CBV)                           := ex06;
+def rec prd ex06sub : (< True >->< True , False >:CBV)                           := ex06;
 
-def rec prd ex07    : ( SNat -> SNat -> SBool:CBV)         := ex07;
-def rec prd ex07sub : ( SNat -> SNat -> SBool:CBV)      := ex07;
+def rec prd ex07    : ( SNat -> SNat -> SBool:CBV)                               := ex07;
+def rec prd ex07sub : ( SNat -> SNat -> SBool:CBV)                               := ex07;
 
-def rec prd ex08    : (SNat:CBV) := ex08;
-def rec prd ex08sub : (SNat:CBV) := ex08;
+def rec prd ex08    : (SNat:CBV)                                                 := ex08;
+def rec prd ex08sub : (SNat:CBV)                                                 := ex08;
 
-def rec prd ex09    : (SNat->SBool:CBV) := ex09;
-def rec prd ex09sub : (SNat->SBool:CBV) := ex09; 
+def rec prd ex09    : (SNat->SBool:CBV)                                          := ex09;
+def rec prd ex09sub : (SNat->SBool:CBV)                                          := ex09; 
 
-def rec prd ex10    : (rec a.  <Z, S(< S(a) >)>:CBV)                                       := ex10;
-def rec prd ex10sub : rec a. <Z, S(a)>                                               := ex10;
+def rec prd ex10    : (rec a.  <Z, S(< S(a) >)>:CBV)                             := ex10;
+def rec prd ex10sub : rec a. <Z, S(a)>                                           := ex10;
 
+--this example doesn't work because of a polarity mismatch in the type automaton
 --def rec prd ex11    : (rec a. < Z, S(a) >->(rec a.  <Z, S(< S(a) >)>):CBV)  := ex11;
 --def rec prd ex11sub : { Ap(rec a.  <Z, S(< S(a) >)>, return (rec a. < Z, S(a) >) ) } := ex11;
 
-def rec prd ex12    : (SNat:CBV)       := ex12;
-def rec prd ex12sub : (SNat \/ SNat:CBV):= ex12;
+def rec prd ex12    : (SNat:CBV)                                                 := ex12;
+def rec prd ex12sub : (SNat \/ SNat:CBV)                                         := ex12;
 
-def rec prd ex13    : (rec a. < Z, S(a) >:CBV)                                             := ex13;
-def rec prd ex13sub : rec a. < Z > \/ < S(a) >                                       := ex13;
+def rec prd ex13    : (rec a. < Z, S(a) >:CBV)                                   := ex13;
+def rec prd ex13sub : rec a. < Z > \/ < S(a) >                                   := ex13;
 
-def rec prd ex14    : (< S(<Z>) >:CBV)                                                     := ex14;
-def rec prd ex14sub : (< Z> \/ < S(<Z>) >:CBV)                                             := ex14;
+def rec prd ex14    : (< S(<Z>) >:CBV)                                           := ex14;
+def rec prd ex14sub : (< Z> \/ < S(<Z>) >:CBV)                                   := ex14;
 
-def rec prd ex15    : forall t0. (t0 -> (rec r4.(t0 \/ < S( r4 ) >)):CBV)                := ex15;
-def rec prd ex15sub : ((rec b. < Z , S( b ) > ) -> (rec c. < Z , S( c ) > ):CBV)           := ex15;
+def rec prd ex15    : forall t0. (t0 -> (rec r4.(t0 \/ < S( r4 ) >)):CBV)        := ex15;
+def rec prd ex15sub : ((rec b. < Z , S( b ) > ) -> (rec c. < Z , S( c ) > ):CBV) := ex15;
