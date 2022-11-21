@@ -1,0 +1,58 @@
+\documentclass[11pt, oneside]{scrbook}
+
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{stmaryrd}
+\usepackage{mathtools}
+\usepackage{xcolor}
+\usepackage{csquotes}
+\usepackage{cleveref}
+
+\newcommand{\desugar}[1]{\llbracket #1 \rrbracket}
+\newcommand{\C}{\mathcal{C}}
+
+\newcommand{\case}[1]{\mathbf{case}\ \{\ #1\ \}}
+\newcommand{\caseof}[2]{\mathbf{case}\ #1\ \mathbf{of}\ \{\ #2\ \}}
+
+\newcommand{\pat}[1]{\C\Gamma \Rightarrow #1 }
+\newcommand{\prdpat}[2]{\C\Gamma(#1)\Delta \Rightarrow #2 }
+\newcommand{\cnspat}[2]{\C\Gamma[#1]\Delta \Rightarrow #2 }
+
+\newcommand{\nonterminal}[1]{\langle #1 \rangle}
+\newcommand{\terminal}[1]{\colorbox{lightgray}{\vphantom{X}#1}}
+\newcommand{\cut}[2]{\langle\ #1\ |\ #2\ \rangle}
+\newcommand{\commalist}[1]{#1^{\dagger}}
+\newcommand{\semicolonlist}[1]{#1^{\ddagger}}
+\newcommand{\sep}{\ |\ }
+
+\title{The Duo Language Reference}
+\author{The Duo Research Team}
+\begin{document}
+
+\maketitle
+\tableofcontents
+
+\chapter{Compiler Architecture}
+\label{chapter:architecture}
+
+
+\chapter{Surface Syntax}
+\label{chapter:syntax}
+\input{syntax.tex}
+
+\chapter{Core Language}
+\label{chapter:core}
+\input{core.tex}
+
+\chapter{Desugaring}
+\label{chapter:desugaring}
+\input{desugaring.tex}
+
+\chapter{Compiling (Co)Pattern Matching}
+\label{chapter:patterncompilation}
+
+\chapter{Type Theory}
+\label{chapter:typetheory}
+
+\end{document}
