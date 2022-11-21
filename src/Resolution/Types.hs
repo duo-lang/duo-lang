@@ -61,7 +61,17 @@ resolveTyp rep (TyXRefined loc Codata tn sigs) = do
     NominalResult tn' _ _ _ <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
     pure $ RST.TyCodataRefined loc rep tn' sigs
-resolveTyp rep (TyNominal loc name args) = do
+resolveTyp rep (TyNominal loc name) = do
+  res <- lookupTypeConstructor loc name
+  case res of 
+    SynonymResult name' typ -> do 
+      typ' <- resolveTyp rep typ
+      pure $ RST.TySyn loc rep name' typ'
+    NominalResult rtn _ CST.Refined _ -> 
+      throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
+    NominalResult name' _ CST.NotRefined _ -> 
+      pure $ RST.TyNominal loc rep name' []
+resolveTyp rep (TyApp loc args (TyNominal _ name)) = do
     res <- lookupTypeConstructor loc name
     case res of
         SynonymResult name' typ -> case args of
@@ -74,6 +84,7 @@ resolveTyp rep (TyNominal loc name args) = do
         NominalResult name' _ CST.NotRefined polykind -> do
             args' <- resolveTypeArgs loc rep name polykind args
             pure $ RST.TyNominal loc rep name' args'
+resolveTyp _ (TyApp loc _ _) = throwOtherError loc ["Types can only be applied to nominal types"]
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v
         local (\r -> r { rr_recVars = S.insert vr $ rr_recVars r  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
@@ -156,7 +167,7 @@ desugaring loc NegRep InterDesugaring tl tr = do
 desugaring loc PosRep InterDesugaring _ _ =
     throwError (ErrResolution (IntersectionInPosPolarity loc) :| [])
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
-    resolveTyp rep (TyNominal loc tyname [tl, tr])
+    resolveTyp rep (TyApp loc [tl,tr] $ TyNominal loc tyname)
 
 -- | Operator precedence parsing
 -- Transforms "TyBinOpChain" into "TyBinOp"'s while nesting nodes

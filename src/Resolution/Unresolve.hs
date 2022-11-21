@@ -587,9 +587,9 @@ instance Unresolve (RST.Typ pol) CST.Typ where
     pure $ CST.TyXRefined loc CST.Codata (rnTnName tn) xtors'
   unresolve (RST.TyNominal loc _ nm args) = do
     args' <- mapM unresolve args
-    pure $ CST.TyNominal loc (rnTnName nm) args'
+    pure $ CST.TyApp loc args' $ CST.TyNominal loc (rnTnName nm)
   unresolve (RST.TySyn loc _ nm _) =
-    pure $ CST.TyNominal loc (rnTnName nm) []
+    pure $ CST.TyNominal loc (rnTnName nm)
   unresolve (RST.TyTop loc) =
     pure $ CST.TyTop loc
   unresolve (RST.TyBot loc) =
