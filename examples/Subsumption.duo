@@ -36,7 +36,6 @@ def rec prd ex09sub : (SNat->SBool:CBV)                                         
 def rec prd ex10    : (rec a.  <Z, S(< S(a) >)>:CBV)                             := ex10;
 def rec prd ex10sub : rec a. <Z, S(a)>                                           := ex10;
 
---this example doesn't work because of a polarity mismatch in the type automaton
 def rec prd ex11    : ( (rec a. < Z, S(a) >) -> (rec a.  <Z, S(< S(a) >)>):CBV)  := ex11;
 def rec prd ex11sub : ( (rec a.  <Z, S(< S(a) >)>) -> (rec a. < Z, S(a) >) )     := ex11;
 
