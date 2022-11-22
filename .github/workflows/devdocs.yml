@@ -13,7 +13,8 @@ jobs:
       - uses: actions/checkout@v2
       - uses: xu-cheng/latex-action@v2
         with:
-          root_file: docs/spec.tex
+          root_file: spec.tex
+        working-directory: docs
       - uses: marvinpinto/action-automatic-releases@v1.2.1
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
