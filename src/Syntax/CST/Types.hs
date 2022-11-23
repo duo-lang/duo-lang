@@ -35,7 +35,8 @@ data Typ where
   TySkolemVar :: Loc -> SkolemTVar -> Typ
   TyXData    :: Loc -> DataCodata             -> [XtorSig] -> Typ
   TyXRefined :: Loc -> DataCodata -> TypeName -> [XtorSig] -> Typ
-  TyNominal :: Loc -> TypeName -> [Typ] -> Typ
+  TyNominal :: Loc -> TypeName -> Typ
+  TyApp :: Loc -> Typ -> NonEmpty Typ -> Typ
   TyRec :: Loc -> SkolemTVar -> Typ -> Typ
   TyTop :: Loc -> Typ
   TyBot :: Loc -> Typ
@@ -59,7 +60,8 @@ instance HasLoc Typ where
   getLoc (TySkolemVar loc _) = loc
   getLoc (TyXData loc _ _) = loc
   getLoc (TyXRefined loc _ _ _) = loc
-  getLoc (TyNominal loc _ _) = loc
+  getLoc (TyNominal loc _ ) = loc
+  getLoc (TyApp loc _ _) = loc
   getLoc (TyRec loc _ _) = loc
   getLoc (TyTop loc) = loc
   getLoc (TyBot loc) = loc
