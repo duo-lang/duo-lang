@@ -35,12 +35,12 @@ runUnresolveM m = evalState (unUnresolveM m) names
 
 fresh :: PrdCns -> UnresolveM FreeVarName
 fresh Prd = do
-  var <- gets (Prelude.head . fst)
-  modify (first Prelude.tail)
+  var <- gets (head . fst)
+  modify (first tail)
   pure var
 fresh Cns = do
-  var  <- gets (Prelude.head . snd)
-  modify (second Prelude.tail)
+  var  <- gets (head . snd)
+  modify (second tail)
   pure var
 
 patternToSubst :: RST.Pattern -> RST.Substitution
