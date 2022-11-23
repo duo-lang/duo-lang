@@ -615,6 +615,9 @@ instance Unresolve (RST.Typ pol) CST.Typ where
     pure $ CST.TyString loc
   unresolve (RST.TyFlipPol _ ty) =
     unresolve ty
+  unresolve (RST.TyKindAnnot mk ty) = do 
+    ty' <- unresolve ty
+    pure $ CST.TyKindAnnot mk ty'
 
 instance Unresolve (RST.TypeScheme pol) CST.TypeScheme where
   unresolve :: RST.TypeScheme pol -> UnresolveM CST.TypeScheme
