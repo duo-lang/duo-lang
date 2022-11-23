@@ -1,0 +1,136 @@
+This section describes the syntax as it is implemented in the parser.
+Only a subset of this syntax is a valid Duo program.
+We use the abbreviation $\commalist{x}$ in the grammar for a comma-separated list.
+We use the abbreviation $\semicolonlist{x}$ in the grammar for a semicolon-separated list.
+
+\section{Variables and Identifiers}
+
+\[
+  \begin{array}{lclr}
+    \nonterminal{var} & \Coloneqq & [a..z][a..zA..Z0..9]^{\ast} & \emph{Variable} \\
+    \nonterminal{tyvar} & \Coloneqq & [a..z][a..zA..Z0..9]^{\ast} & \emph{Type Variable} \\
+    \nonterminal{tyname} & \Coloneqq & [A..Z][a..zA..Z0..9]^{\ast} & \emph{Type Name} \\
+    \nonterminal{xtorname} & \Coloneqq & [A..Z][a..zA..Z0..9]^{\ast} & \emph{Xtor Name} \\
+    \nonterminal{modname} & \Coloneqq &  [A..Z][a..zA..Z0..9]^{\ast} & \emph{Module Name} \\
+    \nonterminal{binop} & \Coloneqq & \ldots & \emph{Binary operators} \\
+    \nonterminal{hmodname} & \Coloneqq & \nonterminal{modname}(\terminal{.}\nonterminal{modname})^{\ast} & \emph{Hierarchical M. Name}
+  \end{array}
+\]
+
+\section{Primitive Literals}
+\[
+  \begin{array}{lclr}
+    \nonterminal{intlit} & \Coloneqq & \ldots & \emph{Integer Literal} \\
+    \nonterminal{floatlit} & \Coloneqq & \ldots & \emph{Float Literal} \\
+    \nonterminal{charlit} & \Coloneqq & \ldots & \emph{Char Literal} \\
+    \nonterminal{stringlit} & \Coloneqq & \ldots & \emph{String Literal} \\
+  \end{array}
+\]
+
+\section{Patterns}
+\[
+  \begin{array}{lclr}
+    \nonterminal{pat} & \Coloneqq & \nonterminal{var} & \emph{Variable Pattern} \\
+    & | & \terminal{\_} & \emph{Wildcard Pattern} \\
+    & | & \nonterminal{xtorname}\terminal{(}\commalist{\nonterminal{pat}} \terminal{)} & \emph{Xtor Pattern}\\
+    & | & \terminal{$\ast$} & \emph{Star Pattern} \\
+  \end{array}
+\]
+
+\section{Terms and Commands}
+\[
+  \begin{array}{lclr}
+    \nonterminal{mu} & \Coloneqq & \terminal{mu}\ | \terminal{$\mu$} & \emph{Mu} \\
+    \nonterminal{tm} & \Coloneqq & \nonterminal{var} & \emph{Variable} \\
+    & | & \nonterminal{mu}\ \nonterminal{var} \terminal{.} \nonterminal{tm} & \textit{Mu Abstraction} \\
+    & | & \nonterminal{tm} \terminal{$>>$} \nonterminal{tm} & \textit{Apply} \\
+    & | & \nonterminal{xtorname}\nonterminal{subst} & \emph{Xtor} \\
+    & | & \terminal{case}\ \terminal{\{} (\nonterminal{pat} \terminal{$=>$} \nonterminal{tm})^{\ast} \terminal{\}} & \emph{Case} \\
+    & | & \terminal{case}\ \nonterminal{tm}\ \terminal{of}\ \terminal{\{} (\nonterminal{pat} \terminal{$=>$} \nonterminal{tm})^{\ast} \terminal{\}} & \emph{CaseOf} \\
+    & | & \terminal{cocase}\ \terminal{\{} (\nonterminal{pat} \terminal{$=>$} \nonterminal{tm})^{\ast} \terminal{\}} & \emph{Cocase} \\
+    & | & \terminal{cocase}\ \nonterminal{tm}\ \terminal{of}\ \terminal{\{} (\nonterminal{pat} \terminal{$=>$} \nonterminal{tm})^{\ast} \terminal{\}} & \emph{CocaseOf} \\
+    & | & \nonterminal{xtorname}[\nonterminal{starsubst}]\terminal{;;}\nonterminal{tm} & \emph{Semi} \\
+    & | & \nonterminal{tm}\terminal{.}\nonterminal{xtorname}[\nonterminal{starsubst}] & \emph{Dtor} \\
+    & | & \terminal{$\backslash$} \nonterminal{var}^{\ast}\terminal{$=>$} \nonterminal{tm} & \emph{MultiLambda} \\
+    & | & \terminal{$\backslash$} \nonterminal{var}^{\ast}\terminal{$<=$} \nonterminal{tm} & \emph{MultiCo  Lambda} \\
+    & | & \nonterminal{tm} \nonterminal{tm} & \emph{FunApp} \\
+    & | & \nonterminal{floatlit}\terminal{$\#F64$} & \emph{PrimLitF64} \\
+    & | & \nonterminal{intlit}\terminal{$\#I64$} & \emph{PrimLitI64} \\
+    & | & \nonterminal{stringlit} & \emph{Primitive String} \\
+    & | & \nonterminal{charlit} & \emph{Primitive Char} \\
+    & | & \terminal{(} \nonterminal{tm} \terminal{)} & \emph{Parens} \\
+    \nonterminal{subst} & \Coloneqq & \terminal{(} \commalist{\nonterminal{tm}} \terminal{)} & \emph{Substitution} \\
+    \nonterminal{starsubst} & \Coloneqq & \terminal{(} \commalist{[\nonterminal{tm}}\terminal{,}] \terminal{*} [\terminal{,}\commalist{\nonterminal{tm}}] \terminal{)} & \emph{Star Substitution} \\ 
+  \end{array}
+\]
+
+\section{Kinds}
+\[
+  \begin{array}{lclr}
+    \nonterminal{evalorder} & \Coloneqq & \terminal{CBV}\ |\ \terminal{CBN} & \emph{Evaluation Order} \\
+    \nonterminal{monokind} & \Coloneqq & \nonterminal{evalorder} & \emph{Monokind} \\
+    & | & \terminal{I64Rep} & \emph{I64Rep} \\
+    & | & \terminal{F64Rep} & \emph{F64Rep} \\
+    & | & \terminal{StringRep} & \emph{StringRep} \\
+    & | & \terminal{CharRep} & \emph{CharRep} \\[4mm]
+    \nonterminal{variance} & \Coloneqq & \terminal{+}\ |\ \terminal{-} & \emph{Variance} \\
+    \nonterminal{polykind$-$p} & \Coloneqq & \nonterminal{variance}\nonterminal{tyvar} \terminal{:} \nonterminal{monokind} & \emph{Polykind Parameter} \\
+    \nonterminal{polykind} & \Coloneqq & \terminal{(} \commalist{\nonterminal{polykind$-$p}}\terminal{)} \terminal{$->$} \nonterminal{evalorder} & \emph{Polykind} \\
+    & | & \nonterminal{evalorder} & \emph{Evaluation Order}
+  \end{array}
+\]
+\section{Types}
+\[
+  \begin{array}{lclr}
+    \nonterminal{top} & \Coloneqq & \terminal{Top}\ |\ \terminal{$\top$} & \emph{Top Type} \\
+    \nonterminal{bot} & \Coloneqq & \terminal{Bot}\ |\ \terminal{$\bot$} & \emph{Bot Type} \\
+    \nonterminal{union} & \Coloneqq & \terminal{$/\backslash$}\ |\ \terminal{$\wedge$} & \emph{Union Type} \\
+    \nonterminal{inter} & \Coloneqq & \terminal{$\backslash /$}\ |\ \terminal{$\vee$} & \emph{Intersection Type} \\
+    \nonterminal{tybinop} & \Coloneqq & \nonterminal{union}\ |\ \nonterminal{inter}\ |\ \nonterminal{binop} & \emph{Binary type operator} \\
+    \nonterminal{struct$-$p} & \Coloneqq & \nonterminal{xtorname}[\terminal{(}\commalist{\nonterminal{monotype}} \terminal{)}] & \emph{Structural type parameter} \\
+    \nonterminal{monotype} & \Coloneqq & \nonterminal{top}\ |\ \nonterminal{bot} & \emph{Monotype} \\
+    & | & \nonterminal{monotype} \nonterminal{tybinop} \nonterminal{monotype} & \emph{Binary Type Operator} \\
+    & | & \terminal{$<$} \commalist{\nonterminal{struct$-$p}} \terminal{$>$} & \emph{Struct. Data Type} \\
+    & | & \terminal{$<$} \nonterminal{tyname} \terminal{$|$} \commalist{\nonterminal{struct$-$p}} \terminal{$>$} & \emph{Struct. Data Ref.Type} \\
+    & | & \terminal{$\{$} \commalist{\nonterminal{struct$-$p}} \terminal{$\}$} & \emph{Struct. Codata Type} \\
+    & | & \terminal{$\{$} \nonterminal{tyname} \terminal{$|$} \commalist{\nonterminal{struct$-$p}} \terminal{$\}$} & \emph{Struct. Codata Ref.Type} \\
+    & | & \terminal{rec} \nonterminal{tyvar} \terminal{.} \nonterminal{monotype} & \emph{Recursive type} \\
+    & | & \nonterminal{tyname}[\terminal{(} \commalist{\nonterminal{monotype}}\terminal{)}] & \emph{Named Type} \\
+    & | & \nonterminal{tyvar} & \emph{Type variable} \\
+    & | & \terminal{(} \nonterminal{monotype} \terminal{)} & \emph{Parens} \\[4mm]
+    \nonterminal{forall} & \Coloneqq & \terminal{$\forall$}\ |\ \terminal{forall} & \emph{Forall} \\
+    \nonterminal{polytype$-$p} & \Coloneqq & \nonterminal{tyvar}\ |\ \terminal{(} \nonterminal{tyvar} \terminal{:} \nonterminal{evalorder}\terminal{)} & \emph{Polytype Parameter} \\
+    \nonterminal{polytype} & \Coloneqq & \nonterminal{monotype} & \emph{Polytype} \\
+    & | & \nonterminal{forall} \nonterminal{polytype$-$p}^{\ast}\terminal{.} \nonterminal{monotype} & \emph{Typescheme} \\
+  \end{array}
+\]
+
+\section{Declarations and Modules}
+
+\[
+  \begin{array}{lclr}
+    \nonterminal{dc} & \Coloneqq & \terminal{data}\ |\ \terminal{codata} & \emph{Data / Codata} \\
+    \nonterminal{xtor} & \Coloneqq & \nonterminal{xtorname}[\terminal{(}\commalist{\nonterminal{monotype}}\terminal{)}] & \emph{Xtor} \\
+    \nonterminal{datadecl} & \Coloneqq & \nonterminal{dc} \nonterminal{tyname} [\terminal{:} \nonterminal{polykind}] \terminal{$\{$} \commalist{\nonterminal{xtor}}\terminal{$\};$} & \emph{Data declaration} \\
+    \nonterminal{xtordecl$-$p} & \Coloneqq & [\terminal{(} \commalist{\nonterminal{evalorder}} \terminal{)}] [\terminal{:} \nonterminal{evalorder}] & \emph{Xtor Parameter} \\
+    \nonterminal{xtordecl} & \Coloneqq & \terminal{constructor} \nonterminal{xtorname} \nonterminal{xtordecl$-$p}\terminal{;} & \emph{Constructor} \\
+    & | & \terminal{destructor} \nonterminal{xtorname}\nonterminal{xtordecl$-$p} \terminal{;} & \emph{Destructor} \\
+    \nonterminal{tysyndecl} & \Coloneqq & \terminal{type} \nonterminal{tyname} \terminal{$:=$} \nonterminal{monotype}\terminal{;} & \emph{Type Synonym} \\
+    \nonterminal{assoc} & \Coloneqq & \terminal{leftassoc}\ |\ \terminal{rightassoc} & \emph{Associativity} \\
+    \nonterminal{tyopdecl} & \Coloneqq & \terminal{type operator} \nonterminal{binop} \nonterminal{assoc} \terminal{at} \nonterminal{int} \terminal{;} & \emph{Type Operator} \\
+    \nonterminal{cmddecl} & \Coloneqq & \terminal{def cmd} \nonterminal{varname} \terminal{$:=$} \nonterminal{tm} \terminal{;} & \emph{Command} \\
+    \nonterminal{pc} & \Coloneqq & \terminal{prd}\ |\ \terminal{cns} & \emph{Prd / Cns} \\
+    \nonterminal{prdcnsdecl} & \Coloneqq & \terminal{def} [\terminal{rec}] \nonterminal{pc} \nonterminal{varname} [\terminal{:} \nonterminal{polytype}] \terminal{$:=$} \nonterminal{tm} \terminal{;}& \emph{Producer / Consumer} \\
+    \nonterminal{importdecl} & \Coloneqq & \terminal{import} \nonterminal{hmodname}\terminal{;} & \emph{Import} \\[4mm]
+    \nonterminal{decl} & \Coloneqq & \nonterminal{importdecl}  & \emph{Import} \\
+    & | & \nonterminal{datadecl} & \emph{Data / Codata Type} \\
+    & | & \nonterminal{xtordecl} & \emph{Constructor / Destructor} \\
+    & | & \nonterminal{tysyndecl} & \emph{Type synonym} \\
+    & | & \nonterminal{tyopdecl} & \emph{Type operator} \\
+    & | & \nonterminal{cmddecl} & \emph{Command} \\
+    & | & \nonterminal{prdcnsdecl} & \emph{Producer / Consumer} \\
+    \nonterminal{annot} & \Coloneqq & \terminal{- - $|$} \nonterminal{string} & \emph{Doc Comment} \\
+    \nonterminal{adecl} & \Coloneqq & \nonterminal{annot}\nonterminal{decl} & \emph{Annotated Declaration} \\
+    \nonterminal{mod} & \Coloneqq & \terminal{module} \nonterminal{hmodname} \terminal{;} \nonterminal{adecl}^{\ast}& \emph{Module}
+  \end{array}
+\]
