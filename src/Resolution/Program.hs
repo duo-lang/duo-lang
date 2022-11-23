@@ -59,7 +59,7 @@ checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn xtorSigs
                       CST.Data   -> Covariant
                       CST.Codata -> Contravariant
   sequence_ $ checkVarianceXtor loc var' polyKind <$> xtorSigs
-checkVarianceTyp loc var polyKind (CST.TyApp _ tys (CST.TyNominal _loc' tyName)) = do
+checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) tys) = do
 
   NominalResult _ _ _ polyKind' <- lookupTypeConstructor loc tyName
   go ((\(v,_,_) -> v) <$> kindArgs polyKind') tys

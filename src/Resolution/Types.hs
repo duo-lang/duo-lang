@@ -71,7 +71,7 @@ resolveTyp rep (TyNominal loc name) = do
       throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
     NominalResult name' _ CST.NotRefined _ -> 
       pure $ RST.TyNominal loc rep name' []
-resolveTyp rep (TyApp loc args (TyNominal _ name)) = do
+resolveTyp rep (TyApp loc (TyNominal _ name) args) = do
     res <- lookupTypeConstructor loc name
     case res of
         SynonymResult name' typ -> case args of
@@ -167,7 +167,7 @@ desugaring loc NegRep InterDesugaring tl tr = do
 desugaring loc PosRep InterDesugaring _ _ =
     throwError (ErrResolution (IntersectionInPosPolarity loc) :| [])
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
-    resolveTyp rep (TyApp loc [tl,tr] $ TyNominal loc tyname)
+    resolveTyp rep (TyApp loc (TyNominal loc tyname) [tl,tr])
 
 -- | Operator precedence parsing
 -- Transforms "TyBinOpChain" into "TyBinOp"'s while nesting nodes
