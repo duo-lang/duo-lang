@@ -19,7 +19,7 @@ import Loc (defaultLoc)
 -- (4) *
 -- (5) _
 -- (6) Branch (Leaf y) (Leaf z)
--- (7) Branch t1 t2 
+-- (7) Branch t1 * 
 -- (8) t
 -- -> Overlap expected between:
 --    (1) and (3)
@@ -30,7 +30,7 @@ import Loc (defaultLoc)
 --    (2) and (4)
 --    (2) and (5)
 --    (2) and (6) due to Subpattern matches of (Leaf y) and (Leaf y), t2 and (Leaf z)
---    (2) and (7) due to Subpattern matches of (Leaf y) and t1, t2 and t2
+--    (2) and (7) due to Subpattern matches of (Leaf y) and t1, t2 and *
 --    (2) and (8)
 --    (3) and (4)
 --    (3) and (5)
@@ -41,34 +41,32 @@ import Loc (defaultLoc)
 --    (4) and (6)
 --    (4) and (7)
 --    (4) and (8)
---    (6) and (7) due to Subpattern matches of (Leaf y) and t1, (Leaf z) and t2
+--    (6) and (7) due to Subpattern matches of (Leaf y) and t1, (Leaf z) and *
 --    (6) and (8)
 --    (7) and (8)
-test1 :: [PatternNew]
+test1 :: [GenericPattern]
 test1 =
-  [ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
-    PatXtor
+  [ Left $ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
+    Left $ PatXtor
       defaultLoc Prd Nominal 
       (MkXtorName (pack "Branch"))
       [ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y"))],
         PatVar defaultLoc Prd (MkFreeVarName (pack "t2"))
       ],
-    PatVar defaultLoc Prd (MkFreeVarName (pack "x")),
-    --PatStar defaultLoc Prd,
-    PatWildcard defaultLoc Prd,
-    PatXtor
+    Left $ PatVar defaultLoc Prd (MkFreeVarName (pack "x")),
+    Right $ PatStar defaultLoc Prd,
+    Left $ PatWildcard defaultLoc Prd,
+    Left $ PatXtor
       defaultLoc Prd Nominal 
       (MkXtorName (pack "Branch"))
       [ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y"))],
         PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "z"))]
       ],
-    PatXtor
+    Right $ PatXtorStar
       defaultLoc Prd Nominal 
       (MkXtorName (pack "Branch"))
-      [ PatVar defaultLoc Prd (MkFreeVarName (pack "t1")),
-        PatVar defaultLoc Prd (MkFreeVarName (pack "t2"))
-      ],
-    PatVar defaultLoc Prd (MkFreeVarName (pack "t"))
+      ([ PatVar defaultLoc Prd (MkFreeVarName (pack "t1"))], PatStar defaultLoc Prd, []),
+    Left $ PatVar defaultLoc Prd (MkFreeVarName (pack "t"))
   ]
 
 -- (1) m
@@ -86,31 +84,31 @@ test1 =
 --    (2) and (5)
 --    (3) and (5)
 --    (4) and (5)
-test2 :: [PatternNew]
+test2 :: [GenericPattern]
 test2 =
-  [ PatVar defaultLoc Prd (MkFreeVarName (pack "m")),
-    --PatStar defaultLoc Prd,
-    PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Nothing")) [],
-    PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Maybe")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
-    PatWildcard defaultLoc Prd
+  [ Left $ PatVar defaultLoc Prd (MkFreeVarName (pack "m")),
+    Right $ PatStar defaultLoc Prd,
+    Left $ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Nothing")) [],
+    Left $ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Maybe")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
+    Left $ PatWildcard defaultLoc Prd
   ]
 
 -- No Overlap expected.
-test3 :: [PatternNew]
+test3 :: [GenericPattern]
 test3 = []
 
 -- No Overlap expected.
-test4 :: [PatternNew]
+test4 :: [GenericPattern]
 test4 = [
-  --PatStar defaultLoc Prd
+  Right $ PatStar defaultLoc Prd
   ]
 
 -- (1) Node y Empty (Node z Empty Empty)
 -- (2) Node z Empty Empty
 -- No Overlap expected.
-test5 :: [PatternNew]
+test5 :: [GenericPattern]
 test5 =
-  [ PatXtor
+  [ Left $ PatXtor
       defaultLoc Prd Nominal 
       (MkXtorName (pack "Node"))
       [ PatVar defaultLoc Prd (MkFreeVarName (pack "y")),
@@ -118,7 +116,7 @@ test5 =
         PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Node")) [ PatVar defaultLoc Prd (MkFreeVarName (pack "z")),
                                                         PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Empty")) [],
                                                         PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Empty")) []]],
-    PatXtor
+    Left $ PatXtor
       defaultLoc Prd Nominal 
       (MkXtorName (pack "Node"))
       [ PatVar defaultLoc Prd (MkFreeVarName (pack "z")),
@@ -132,24 +130,24 @@ test5 =
 --    (1) and (2)
 --    (1) and (3)
 --    (2) and (3)
-test6 :: [PatternNew]
+test6 :: [GenericPattern]
 test6 =
-  [ PatVar defaultLoc Prd (MkFreeVarName (pack "x")),
-    PatVar defaultLoc Prd (MkFreeVarName (pack "z")),
-    PatVar defaultLoc Prd (MkFreeVarName (pack "x"))
+  [ Left $ PatVar defaultLoc Prd (MkFreeVarName (pack "x")),
+    Left $ PatVar defaultLoc Prd (MkFreeVarName (pack "z")),
+    Left $ PatVar defaultLoc Prd (MkFreeVarName (pack "x"))
   ]
 
 -- (1) Cons x (Cons y (Cons z zs))
 -- (2) Cons x (Cons y (Cons z (Cons m ms)))
 -- -> Overlap expected between:
 --    (1) and (2) (due to Subpattern Overlap between x and x, (Cons y (Cons z zs)) and (Cons y (Cons z (Cons m ms))))
-test7 :: [PatternNew]
-test7 = [PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) 
+test7 :: [GenericPattern]
+test7 = [Left $ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) 
           [ PatVar defaultLoc Prd (MkFreeVarName (pack "x")),
             PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) 
               [ PatVar defaultLoc Prd (MkFreeVarName (pack "y")),
                 PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) [PatVar defaultLoc Prd (MkFreeVarName (pack "z")), PatVar defaultLoc Prd (MkFreeVarName (pack "zs"))]]],
-         PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) 
+         Left $ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) 
           [PatVar defaultLoc Prd (MkFreeVarName (pack "x")),
           PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) 
             [PatVar defaultLoc Prd (MkFreeVarName (pack "y")),
@@ -160,14 +158,14 @@ test7 = [PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons"))
 -- (1) Branch (Leaf x) (Leaf y)
 -- (2) Branch (Leaf x) (Branch (Leaf y1) (Leaf y2))
 -- No Overlap expected.
-test8 :: [PatternNew]
-test8 = [PatXtor
+test8 :: [GenericPattern]
+test8 = [Left $ PatXtor
           defaultLoc Prd Nominal 
           (MkXtorName (pack "Branch"))
           [ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
             PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y"))]
           ],
-         PatXtor
+         Left $ PatXtor
           defaultLoc Prd Nominal 
           (MkXtorName (pack "Branch"))
           [ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
@@ -178,13 +176,6 @@ test8 = [PatXtor
               PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y2"))]
             ]
           ]]
-
------------------------------------------------------------
--- Mixed Producer & Consumer tests (taken from examples\NestedPatternMatch.duo):
------------------------------------------------------------
-
-
-
 
 -----------------------------------------------------------
 -- Executing tests:
