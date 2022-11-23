@@ -82,7 +82,9 @@ nominalTypeP = do
   (args, endPos') <- nominalTypeArgsP endPos
   sc
   let loc = Loc startPos endPos'
-  pure (TyApp loc (TyNominal loc name) args, endPos')
+  case args of 
+    [] -> pure (TyNominal loc name, endPos')
+    (fst:rst) -> pure (TyApp loc (TyNominal loc name) (fst:|rst), endPos')
 
 -- | Parse a data or codata type. E.g.:
 -- - "< ctor1 | ctor2 | ctor3 >"

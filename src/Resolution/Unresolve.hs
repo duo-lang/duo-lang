@@ -4,6 +4,7 @@ import Control.Monad.State
 import Data.Bifunctor
 import Data.Text qualified as T
 import Data.Maybe (fromJust)
+import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
@@ -34,12 +35,12 @@ runUnresolveM m = evalState (unUnresolveM m) names
 
 fresh :: PrdCns -> UnresolveM FreeVarName
 fresh Prd = do
-  var <- gets (head . fst)
-  modify (first tail)
+  var <- gets (Prelude.head . fst)
+  modify (first Prelude.tail)
   pure var
 fresh Cns = do
-  var  <- gets (head . snd)
-  modify (second tail)
+  var  <- gets (Prelude.head . snd)
+  modify (second Prelude.tail)
   pure var
 
 patternToSubst :: RST.Pattern -> RST.Substitution
@@ -587,7 +588,9 @@ instance Unresolve (RST.Typ pol) CST.Typ where
     pure $ CST.TyXRefined loc CST.Codata (rnTnName tn) xtors'
   unresolve (RST.TyNominal loc _ nm args) = do
     args' <- mapM unresolve args
-    pure $ CST.TyApp loc (CST.TyNominal loc (rnTnName nm)) args'
+    case args' of 
+      [] -> pure $ CST.TyNominal loc (rnTnName nm)
+      (fst:rst) -> pure $ CST.TyApp loc (CST.TyNominal loc (rnTnName nm)) (fst :| rst)
   unresolve (RST.TySyn loc _ nm _) =
     pure $ CST.TyNominal loc (rnTnName nm)
   unresolve (RST.TyTop loc) =

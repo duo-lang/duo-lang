@@ -8,6 +8,7 @@ module Resolution.Types
 import Control.Monad.Except (throwError)
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List.NonEmpty qualified as NE
 
 import Errors
 import Pretty.Pretty
@@ -74,15 +75,11 @@ resolveTyp rep (TyNominal loc name) = do
 resolveTyp rep (TyApp loc (TyNominal _ name) args) = do
     res <- lookupTypeConstructor loc name
     case res of
-        SynonymResult name' typ -> case args of
-            [] -> do
-                typ' <- resolveTyp rep typ
-                pure $ RST.TySyn loc rep name' typ'
-            _ -> throwOtherError loc ["Type synonyms cannot be applied to arguments (yet)."]
-        NominalResult rtn _ CST.Refined _ -> do
-            throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
+        SynonymResult _ _  -> throwOtherError loc ["Type synonyms cannot be applied to arguments (yet)."]
+
+        NominalResult rtn _ CST.Refined _ -> throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
         NominalResult name' _ CST.NotRefined polykind -> do
-            args' <- resolveTypeArgs loc rep name polykind args
+            args' <- resolveTypeArgs loc rep name polykind (NE.toList args)
             pure $ RST.TyNominal loc rep name' args'
 resolveTyp _ (TyApp loc _ _) = throwOtherError loc ["Types can only be applied to nominal types"]
 resolveTyp rep (TyRec loc v typ) = do
@@ -167,7 +164,7 @@ desugaring loc NegRep InterDesugaring tl tr = do
 desugaring loc PosRep InterDesugaring _ _ =
     throwError (ErrResolution (IntersectionInPosPolarity loc) :| [])
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
-    resolveTyp rep (TyApp loc (TyNominal loc tyname) [tl,tr])
+    resolveTyp rep (TyApp loc (TyNominal loc tyname) (tl:|[tr]))
 
 -- | Operator precedence parsing
 -- Transforms "TyBinOpChain" into "TyBinOp"'s while nesting nodes

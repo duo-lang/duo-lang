@@ -143,7 +143,7 @@ instance PrettyAnn CST.Typ where
   prettyAnn (CST.TyNominal _ tn) =
     prettyAnn tn 
   prettyAnn (CST.TyApp _ ty args) = 
-    prettyAnn ty <> parens' commaSym (prettyAnn <$> args)
+    prettyAnn ty <> parens' commaSym (NE.toList $ prettyAnn <$> args)
   -- Type operators
   prettyAnn (CST.TyBinOp _ t1 op t2) =
     parens $ prettyAnn t1 <+> prettyAnn op <+> prettyAnn t2

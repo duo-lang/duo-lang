@@ -2,6 +2,7 @@ module Resolution.Program (resolveModule, resolveDecl) where
 
 import Control.Monad.Reader
 import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 
@@ -62,7 +63,7 @@ checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn xtorSigs
 checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) tys) = do
 
   NominalResult _ _ _ polyKind' <- lookupTypeConstructor loc tyName
-  go ((\(v,_,_) -> v) <$> kindArgs polyKind') tys
+  go ((\(v,_,_) -> v) <$> kindArgs polyKind') (NE.toList tys)
   where
     go :: [Variance] -> [CST.Typ] -> ResolverM ()
     go [] []          = return ()
@@ -71,8 +72,11 @@ checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) tys)
       go vs ts
     go [] (_:_)       = throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too many arguments"]
     go (_:_) []       = throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too few arguments"]
-checkVarianceTyp loc _ _ (CST.TyNominal _loc' _) = 
-  throwOtherError loc ["Nominal Type occurred not fully applied"]
+checkVarianceTyp loc _ _ (CST.TyNominal _loc' tyName) = do
+  NominalResult _ _ _ polyKnd' <- lookupTypeConstructor loc tyName
+  case kindArgs polyKnd' of 
+    [] -> return () 
+    _ -> throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too few arguments"]
 checkVarianceTyp loc _ _ CST.TyApp{} = 
   throwOtherError loc ["Types can only be applied to nominal types"]
 checkVarianceTyp loc var polyKind (CST.TyRec _loc' _tVar ty) =
