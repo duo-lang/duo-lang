@@ -12,7 +12,7 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
 import Data.Bifunctor (second)
-
+import Data.List.NonEmpty (NonEmpty((:|)))
 ---------------------------------------------------------------------------------
 -- A typeclass for embedding TST.X into Core.X
 ---------------------------------------------------------------------------------
@@ -136,8 +136,14 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     RST.TyKindAnnot mk $ RST.TyDataRefined loc pol tn (map embedTST xtors)
   embedTST (TST.TyCodataRefined loc pol mk tn xtors) =
     RST.TyKindAnnot mk $ RST.TyCodataRefined loc pol tn (map embedTST xtors)
-  embedTST (TST.TyNominal loc pol mk tn varty) =
-    RST.TyKindAnnot mk $ RST.TyNominal loc pol tn (map embedTST varty)
+  embedTST (TST.TyNominal loc pol mk tn _varty) = do
+    -- TODO how to embed with correct polarity
+    --let args = map (varTyToTyp . embedTST) varty
+    let nomty = RST.TyNominal loc pol tn 
+    RST.TyKindAnnot mk nomty
+    --case varty of 
+    --  [] -> RST.TyKindAnnot mk nomty
+    --  (fst:rst) -> RST.TyKindAnnot mk $ RST.TyApp loc pol nomty [] --(fst:|rst)
   embedTST (TST.TySyn loc pol tn tp) = do 
     let knd = TST.getKind tp 
     RST.TyKindAnnot knd $ RST.TySyn loc pol tn (embedTST tp)
