@@ -5,7 +5,7 @@ import Data.Set qualified as S
 import Data.Kind ( Type )
 import Data.List.NonEmpty (NonEmpty)
 
-import Syntax.CST.Kinds ( Variance(..),MaybeKindedSkolem, MonoKind(..))
+import Syntax.CST.Kinds ( Variance(..),MaybeKindedSkolem, MonoKind(..), PolyKind(..))
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
     ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
@@ -134,7 +134,7 @@ data Typ (pol     :: Polarity) where
   TyDataRefined   :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig pol]           -> Typ pol
   TyCodataRefined :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
-  TyNominal       :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol
+  TyNominal       :: Loc -> PolarityRep pol -> RnTypeName -> PolyKind -> Typ pol
   TyApp           :: Loc -> PolarityRep pol -> Typ pol -> NonEmpty (VariantType pol) -> Typ pol
   -- | Type synonym
   TySyn           :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
@@ -177,7 +177,7 @@ getPolarity (TyData _ rep _)            = rep
 getPolarity (TyCodata _ rep _)          = rep
 getPolarity (TyDataRefined _ rep _ _)   = rep
 getPolarity (TyCodataRefined _ rep _ _) = rep
-getPolarity (TyNominal _ rep  _ )      = rep
+getPolarity (TyNominal _ rep  _ _)      = rep
 getPolarity (TyApp _ rep _ _)           = rep
 getPolarity (TySyn _ rep _ _)           = rep
 getPolarity TyTop {}                    = NegRep
@@ -215,9 +215,9 @@ instance ReplaceNominal (Typ pol) where
   replaceNominal p n t (TyCodata loc rep args)           = TyCodata loc rep (replaceNominal p n t <$> args)
   replaceNominal p n t (TyDataRefined loc rep tn args)   = TyDataRefined loc rep tn (replaceNominal p n t <$> args)
   replaceNominal p n t (TyCodataRefined loc rep tn args) = TyCodataRefined loc rep tn (replaceNominal p n t <$> args)
-  replaceNominal p n t (TyNominal loc rep t')       = if t == t'
+  replaceNominal p n t (TyNominal loc rep t' pk)         = if t == t'
                                                            then case rep of { PosRep -> p; NegRep -> n }
-                                                           else TyNominal loc rep t' 
+                                                           else TyNominal loc rep t' pk
   replaceNominal p n t (TyApp loc rep ty args)           = TyApp loc rep (replaceNominal p n t ty) (replaceNominal p n t <$> args)
   replaceNominal p n t (TySyn loc rep tn ty)             = TySyn loc rep tn (replaceNominal p n t ty)
   replaceNominal _ _ _ ty@TyTop {}                       = ty

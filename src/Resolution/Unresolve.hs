@@ -548,15 +548,15 @@ instance Unresolve (RST.VariantType pol) CST.Typ where
   unresolve (RST.ContravariantType ty) = unresolve ty
 
 resugarType :: RST.Typ pol -> UnresolveM (Maybe CST.Typ)
-resugarType (RST.TyApp _loc' _ (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Fun" }) (RST.ContravariantType tl:|[RST.CovariantType tr])) = do
+resugarType (RST.TyApp _loc' _ (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Fun" } _) (RST.ContravariantType tl:|[RST.CovariantType tr])) = do
   tl' <- unresolve tl
   tr' <- unresolve tr
   pure $ Just (CST.TyBinOp loc tl' (CustomOp (MkTyOpName "->")) tr')
-resugarType (RST.TyApp _loc' _ (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "CoFun" }) (RST.CovariantType tl:| [RST.ContravariantType tr])) = do
+resugarType (RST.TyApp _loc' _ (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "CoFun" } _) (RST.CovariantType tl:| [RST.ContravariantType tr])) = do
   tl' <- unresolve tl
   tr' <- unresolve tr
   pure $ Just (CST.TyBinOp loc tl' (CustomOp (MkTyOpName "-<")) tr')
-resugarType (RST.TyApp _loc' _ (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Par" }) (RST.CovariantType tl:| [RST.CovariantType tr])) = do
+resugarType (RST.TyApp _loc' _ (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Par" } _) (RST.CovariantType tl:| [RST.CovariantType tr])) = do
   tl' <- unresolve tl
   tr' <- unresolve tr
   pure $ Just (CST.TyBinOp loc tl' (CustomOp (MkTyOpName "⅋")) tr')
@@ -586,10 +586,10 @@ instance Unresolve (RST.Typ pol) CST.Typ where
   unresolve (RST.TyCodataRefined loc _ tn xtors) = do
     xtors' <- mapM unresolve xtors
     pure $ CST.TyXRefined loc CST.Codata (rnTnName tn) xtors'
-  unresolve (RST.TyApp loc' _ (RST.TyNominal loc _ nm) args) = do
+  unresolve (RST.TyApp loc' _ (RST.TyNominal loc _ nm _) args) = do
     args' <- mapM unresolve args
     pure $ CST.TyApp loc' (CST.TyNominal loc (rnTnName nm)) args'
-  unresolve (RST.TyNominal loc _ nm) = pure $ CST.TyNominal loc (rnTnName nm)
+  unresolve (RST.TyNominal loc _ nm _) = pure $ CST.TyNominal loc (rnTnName nm)
   unresolve RST.TyApp{} = error "Types can only be applied to nominal types"
   unresolve (RST.TySyn loc _ nm _) =
     pure $ CST.TyNominal loc (rnTnName nm)

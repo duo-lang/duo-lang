@@ -157,7 +157,7 @@ instance ToJumpMap (RST.Typ pol) where
     M.unions (M.fromList [(locToRange loc, toLocation tn)] : (toJumpMap <$> xtors))
   toJumpMap (RST.TyCodata _ _ xtors) =
     M.unions (toJumpMap <$> xtors)
-  toJumpMap (RST.TyNominal loc _ rn) = 
+  toJumpMap (RST.TyNominal loc _ rn _) = 
     M.fromList [(locToRange loc, toLocation rn)]
   toJumpMap (RST.TyApp _ _ ty args) = 
     M.unions (toJumpMap ty : (NE.toList $ toJumpMap <$> args))
