@@ -72,11 +72,18 @@ resolveTyp rep (TyNominal loc name) = do
       throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
     NominalResult name' _ CST.NotRefined _ -> 
       pure $ RST.TyNominal loc rep name' 
-resolveTyp rep (TyApp loc ty args) = do 
-  ty' <- resolveTyp rep ty
-  args' <- mapM (resolveTyp rep) args
-  let varTys = NE.map RST.CovariantType args'
-  pure $ RST.TyApp loc rep ty' varTys
+resolveTyp rep (TyApp loc ty@(TyNominal _loc tyn) args) = do 
+  res <- lookupTypeConstructor loc tyn
+  case res of 
+    SynonymResult _ _ -> throwOtherError loc ["Type synonmys cannot be applied to arguments (yet)"]
+    NominalResult rtn _ CST.Refined _ -> throwOtherError loc ["Refined type "<>ppPrint rtn <> " cannot be used as a nominal type constructor"]
+    NominalResult _tyn' _ CST.NotRefined polyknd -> do 
+      ty' <- resolveTyp rep ty
+      args' <- resolveTypeArgs loc rep tyn polyknd (NE.toList args)
+      case args' of 
+        [] -> pure ty'
+        (fst:rst) -> pure $ RST.TyApp loc rep ty' (fst:|rst)
+resolveTyp _ (TyApp loc _ _) = throwOtherError loc ["Types can only be applied to nominal types"]
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v
         local (\r -> r { rr_recVars = S.insert vr $ rr_recVars r  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
