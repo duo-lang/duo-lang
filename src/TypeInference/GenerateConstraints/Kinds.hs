@@ -226,10 +226,10 @@ annotTy (RST.TyCodataRefined loc pol tyn xtors) = do
     return $ TST.TyCodataRefined loc pol (CBox $ returnKind (TST.data_kind decl)) tyn xtors'
 annotTy (RST.TyApp _loc' _pol' (RST.TyNominal loc pol tyn polyknd) vartys) = do  
   vartys' <- annotVarTys (NE.toList vartys)
-  return $ TST.TyNominal loc pol (CBox $ returnKind polyknd) tyn vartys' 
+  return $ TST.TyNominal loc pol polyknd tyn vartys' 
 annotTy (RST.TyNominal loc pol tyn polyknd) = do 
   case kindArgs polyknd of 
-    [] -> return $ TST.TyNominal loc pol (CBox $ returnKind polyknd) tyn [] 
+    [] -> return $ TST.TyNominal loc pol polyknd tyn [] 
     _ -> throwOtherError loc ["Nominal Type " <> ppPrint tyn <> " is not fully applied"]
 annotTy (RST.TyApp loc _ _ _) =  throwOtherError loc ["Types can only be applied to nominal types"]
 annotTy (RST.TySyn loc pol tyn ty) =  do 
@@ -584,7 +584,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     vartys' <- mapM annotateKind vartys
     let argKnds = map (\(_, _, mk) -> mk) (kindArgs polyknd)
     checkArgKnds loc (NE.toList vartys') argKnds
-    return (TST.TyNominal loc pol (CBox $ returnKind polyknd) tyn (NE.toList vartys'))
+    return (TST.TyNominal loc pol polyknd tyn (NE.toList vartys'))
     where
       checkArgKnds :: Loc -> [TST.VariantType pol] -> [MonoKind] -> GenM () 
       checkArgKnds _ [] [] = return () 
@@ -602,7 +602,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
               throwOtherError loc ["Kind of VariantType: " <> ppPrint fstVarty <> " does not match kind of declaration " <> ppPrint fstMk]
   annotateKind (RST.TyNominal loc pol tyn polyknd) = do 
     case kindArgs polyknd of 
-      [] -> return $ TST.TyNominal loc pol (CBox $ returnKind polyknd) tyn []
+      [] -> return $ TST.TyNominal loc pol polyknd tyn []
       _ -> throwOtherError loc ["Nominal Type " <> ppPrint tyn <> " was not fully applied"]
   annotateKind (RST.TyApp loc _ _ _ ) = throwOtherError loc ["Types can only be applied to nominal types"]
              

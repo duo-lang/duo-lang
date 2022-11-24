@@ -94,7 +94,7 @@ data Typ (pol :: Polarity) where
   TyDataRefined   :: Loc -> PolarityRep pol -> MonoKind   -> RnTypeName  -> [XtorSig pol]           -> Typ pol
   TyCodataRefined :: Loc -> PolarityRep pol -> MonoKind   -> RnTypeName  -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
-  TyNominal       :: Loc -> PolarityRep pol -> MonoKind -> RnTypeName -> [VariantType pol] -> Typ pol
+  TyNominal       :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName -> [VariantType pol] -> Typ pol
   -- | Type synonym
   TySyn           :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | Lattice types
@@ -158,7 +158,7 @@ instance GetKind (Typ pol) where
   getKind (TyCodata _ _ mk _ )          = mk
   getKind (TyDataRefined _ _ mk _ _ )   = mk
   getKind (TyCodataRefined _ _ mk _ _ ) = mk
-  getKind (TyNominal _ _ mk _ _)        = mk
+  getKind (TyNominal _ _ pk _ _)        = CBox $ returnKind pk
   getKind (TySyn _ _ _ ty)              = getKind ty
   getKind (TyTop _ mk)                  = mk
   getKind (TyBot _ mk)                  = mk
@@ -377,6 +377,9 @@ instance ZonkKind MonoKind where
   zonkKind _ StringRep = StringRep
   zonkKind bisubst kindV@(KindVar kv) = Data.Maybe.fromMaybe kindV (M.lookup kv (snd (bisubst_map bisubst)))
 
+instance ZonkKind PolyKind where 
+  zonkKind bisubst (MkPolyKind args eval) = 
+    MkPolyKind (map (\(x,y,z) -> (x,y, zonkKind bisubst z)) args) eval 
 
 instance ZonkKind (Typ pol) where 
   zonkKind bisubst (TySkolemVar loc rep mk tv) = 

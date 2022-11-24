@@ -60,7 +60,7 @@ checkArgs cmd args (MkSubstitution subst) = checkArgs' args subst
                                                   ]
 
 natType :: TST.Typ 'Pos
-natType = TST.TyNominal defaultLoc PosRep (CBox CBV) peanoNm []
+natType = TST.TyNominal defaultLoc PosRep (MkPolyKind [] CBV) peanoNm []
 
 convertInt :: Int -> Term Prd
 convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "Z") $ MkSubstitution []

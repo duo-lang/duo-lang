@@ -229,8 +229,9 @@ nodeToTypeNoCache rep i  = do
               argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length variances - 1)]]
               let f (node, Covariant) = CovariantType <$> nodeToType rep node
                   f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
-              args <- mapM f argNodes
-              pure $ TyNominal defaultLoc rep knd tn args
+              args <- mapM f argNodes 
+              polyknd <- getPolyKnd knd args 
+              pure $ TyNominal defaultLoc rep polyknd tn args
 
         let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
         return $ case rep of
@@ -241,3 +242,14 @@ nodeToTypeNoCache rep i  = do
       if i `elem` dfs (suc gr i) gr
         then return $ TyRec defaultLoc rep (MkRecTVar ("r" <> T.pack (show i))) resType
         else return resType
+      where 
+        getPolyKnd :: MonoKind -> [VariantType pol] -> AutToTypeM PolyKind
+        getPolyKnd (CBox ev) args = do 
+          let args' = zip args [1..length args-1]
+          return $ MkPolyKind (map argToKindArg args') ev
+        getPolyKnd _ _ = throwOtherError defaultLoc ["Nominal Type can only have CBV or CBN as kind"]
+        argToKindArg :: (VariantType pol,Int) -> (Variance, SkolemTVar, MonoKind)
+        argToKindArg (ContravariantType ty, n) = 
+          (Contravariant, MkSkolemTVar $ "a" <> T.pack (show n),getKind ty)
+        argToKindArg (CovariantType ty, n) = 
+          (Covariant, MkSkolemTVar $ "a" <> T.pack (show n), getKind ty)
