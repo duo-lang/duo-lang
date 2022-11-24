@@ -4,7 +4,7 @@ module Syntax.RST.Terms
   , PrdCnsTerm(..)
   , Substitution(..)
   , SubstitutionI(..)
-  , GenericPattern (..)
+  , GenericPattern
   , PatternNew(..)
   , StarPattern(..)
   , Pattern(..)
@@ -15,7 +15,7 @@ module Syntax.RST.Terms
   , InstanceCase(..)
   , Command(..)
   , PrimitiveOp(..)
-  , Overlap (..)
+  , Overlap 
    -- Functions
   ,overlap) where
 
@@ -122,7 +122,7 @@ overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (t
 
     -- | Determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.
     overlapA2 :: GenericPattern -> GenericPattern -> Overlap
-    -- Basic Idea:  Only if both ARE De/Constructors, overlap occurs when their names match and all subpatterns match pairwise.
+    -- Basic Idea:  Only if both ARE De/Constructors, overlap occurs when their names match and all subpatterns overlap pairwise.
     --              If one or both of p1,p2 are NOT a De/Constructor we always already have overlap (last case as catchall).
     -- Xtor Cases: In our current Pattern Syntax, a Xtor Pattern can be constructed as either a Base Pattern or Star Pattern,
     --             meaning that 4 match cases are needed for covering all overlapA2 Xtor Pattern cases.
@@ -156,7 +156,7 @@ overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (t
     overlapA2 p1 p2 = Just $ overlapMsg p1 p2
 
     -- | For 2 Patterns with their Subpatterns, returns Overlap Message if all Pairs of Subatterns overlap,
-    -- | and returns Nothing if at least one Pair of Sunatterns does not overlap 
+    -- | and returns Nothing if at least one Pair of Subpatterns does not overlap 
     overlapSubpatterns ::  (GenericPattern, [GenericPattern]) -> (GenericPattern, [GenericPattern]) -> Overlap
     overlapSubpatterns (p1,xPatterns) (p2,yPatterns) = 
       let subPatternsOverlaps = zipWith overlapA2 xPatterns yPatterns

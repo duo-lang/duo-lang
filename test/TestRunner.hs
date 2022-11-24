@@ -44,7 +44,7 @@ getAvailableCounterExamples = do
   pure  $ zip (repeat counterExFp) $ sort examples
 
 excluded :: [ModuleName]
-excluded = []
+excluded = [MkModuleName [] "NestedPatternMatch"]
 
 getAvailableExamples :: IO [(FilePath, ModuleName)]
 getAvailableExamples = do
