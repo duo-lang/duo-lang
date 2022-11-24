@@ -1,0 +1,9 @@
+module KindAnnotations;
+
+import Codata.Function;
+
+-- here a is annotated as CBV
+def prd idAnnotRight : forall (a : CBV). a -> a :=
+  \x => x;
+
+def prd floatAnnot : (#F64:F64Rep) := 1.0#F64;

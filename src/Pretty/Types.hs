@@ -94,6 +94,9 @@ instance PrettyAnn (RST.PrdCnsType pol) where
 instance PrettyAnn (TST.PrdCnsType pol) where 
   prettyAnn pctype = prettyAnn (embedTST pctype)
 
+instance PrettyAnn (TST.VariantType pol) where 
+  prettyAnn varty = prettyAnn (embedTST varty)
+
 instance PrettyAnn CST.PrdCnsTyp where
   prettyAnn (CST.PrdType ty) = prettyAnn ty
   prettyAnn (CST.CnsType ty) = returnKw <+> prettyAnn ty
@@ -137,8 +140,10 @@ instance PrettyAnn CST.Typ where
   prettyAnn (CST.TyRec _ rv t) =
     parens (recSym <+> prettyAnn rv <> "." <> align (prettyAnn t))
   -- Nominal types
-  prettyAnn (CST.TyNominal _ tn args) =
-    prettyAnn tn <> parens' commaSym (prettyAnn <$> args)
+  prettyAnn (CST.TyNominal _ tn) =
+    prettyAnn tn 
+  prettyAnn (CST.TyApp _ ty args) = 
+    prettyAnn ty <> parens' commaSym (NE.toList $ prettyAnn <$> args)
   -- Type operators
   prettyAnn (CST.TyBinOp _ t1 op t2) =
     parens $ prettyAnn t1 <+> prettyAnn op <+> prettyAnn t2
@@ -163,6 +168,7 @@ instance PrettyAnn CST.Typ where
   prettyAnn (CST.TyChar _) = "#Char"
   prettyAnn (CST.TyString _) = "#String"
   prettyAnn (CST.TyParens _ ty) = parens (prettyAnn ty)
+  prettyAnn (CST.TyKindAnnot mk ty) = parens (prettyAnn ty <> ":" <> prettyAnn mk)
 
 ---------------------------------------------------------------------------------
 -- TypScheme

@@ -4,6 +4,7 @@ import Control.Monad.State
 import Data.Bifunctor
 import Data.Text qualified as T
 import Data.Maybe (fromJust)
+import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
@@ -587,9 +588,11 @@ instance Unresolve (RST.Typ pol) CST.Typ where
     pure $ CST.TyXRefined loc CST.Codata (rnTnName tn) xtors'
   unresolve (RST.TyNominal loc _ nm args) = do
     args' <- mapM unresolve args
-    pure $ CST.TyNominal loc (rnTnName nm) args'
+    case args' of 
+      [] -> pure $ CST.TyNominal loc (rnTnName nm)
+      (fst:rst) -> pure $ CST.TyApp loc (CST.TyNominal loc (rnTnName nm)) (fst :| rst)
   unresolve (RST.TySyn loc _ nm _) =
-    pure $ CST.TyNominal loc (rnTnName nm) []
+    pure $ CST.TyNominal loc (rnTnName nm)
   unresolve (RST.TyTop loc) =
     pure $ CST.TyTop loc
   unresolve (RST.TyBot loc) =
@@ -615,6 +618,9 @@ instance Unresolve (RST.Typ pol) CST.Typ where
     pure $ CST.TyString loc
   unresolve (RST.TyFlipPol _ ty) =
     unresolve ty
+  unresolve (RST.TyKindAnnot mk ty) = do 
+    ty' <- unresolve ty
+    pure $ CST.TyKindAnnot mk ty'
 
 instance Unresolve (RST.TypeScheme pol) CST.TypeScheme where
   unresolve :: RST.TypeScheme pol -> UnresolveM CST.TypeScheme
@@ -707,12 +713,13 @@ instance Unresolve RST.ClassDeclaration CST.ClassDeclaration where
 
 instance Unresolve RST.InstanceDeclaration CST.InstanceDeclaration where
   unresolve :: RST.InstanceDeclaration -> UnresolveM CST.InstanceDeclaration
-  unresolve RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
+  unresolve RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } = do
     typ' <- unresolve (fst instancedecl_typ)
     cases' <- mapM unresolve instancedecl_cases
     pure $ CST.MkInstanceDeclaration { instancedecl_loc   = instancedecl_loc
                                      , instancedecl_doc   = instancedecl_doc
                                      , instancedecl_name  = instancedecl_name
+                                     , instancedecl_class = instancedecl_class
                                      , instancedecl_typ   = typ'
                                      , instancedecl_cases = cases'
                                      }

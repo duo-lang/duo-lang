@@ -2,6 +2,7 @@ module Resolution.Program (resolveModule, resolveDecl) where
 
 import Control.Monad.Reader
 import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 
@@ -10,7 +11,7 @@ import Errors
 import Pretty.Pretty ( ppPrint )
 import Resolution.Definition
 import Resolution.SymbolTable
-import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCases)
+import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCase)
 import Resolution.Types (resolveTypeScheme, resolveXTorSigs, resolveTyp, resolveMethodSigs)
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
@@ -59,9 +60,10 @@ checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn xtorSigs
                       CST.Data   -> Covariant
                       CST.Codata -> Contravariant
   sequence_ $ checkVarianceXtor loc var' polyKind <$> xtorSigs
-checkVarianceTyp loc var polyKind (CST.TyNominal _loc' tyName tys) = do
+checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) tys) = do
+
   NominalResult _ _ _ polyKind' <- lookupTypeConstructor loc tyName
-  go ((\(v,_,_) -> v) <$> kindArgs polyKind') tys
+  go ((\(v,_,_) -> v) <$> kindArgs polyKind') (NE.toList tys)
   where
     go :: [Variance] -> [CST.Typ] -> ResolverM ()
     go [] []          = return ()
@@ -70,6 +72,13 @@ checkVarianceTyp loc var polyKind (CST.TyNominal _loc' tyName tys) = do
       go vs ts
     go [] (_:_)       = throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too many arguments"]
     go (_:_) []       = throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too few arguments"]
+checkVarianceTyp loc _ _ (CST.TyNominal _loc' tyName) = do
+  NominalResult _ _ _ polyKnd' <- lookupTypeConstructor loc tyName
+  case kindArgs polyKnd' of 
+    [] -> return () 
+    _ -> throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too few arguments"]
+checkVarianceTyp loc _ _ CST.TyApp{} = 
+  throwOtherError loc ["Types can only be applied to nominal types"]
 checkVarianceTyp loc var polyKind (CST.TyRec _loc' _tVar ty) =
   checkVarianceTyp loc var polyKind ty
 checkVarianceTyp _loc _var _polyKind (CST.TyTop _loc') = return ()
@@ -91,6 +100,7 @@ checkVarianceTyp loc var polyKind (CST.TyBinOp _loc' ty _binOp ty') = do
   checkVarianceTyp loc var polyKind ty
   checkVarianceTyp loc var polyKind ty'
 checkVarianceTyp loc var polyKind (CST.TyParens _loc' ty) = checkVarianceTyp loc var polyKind ty
+checkVarianceTyp loc var polyKind (CST.TyKindAnnot _ ty) = checkVarianceTyp loc var polyKind ty
 
 checkVarianceXtor :: Loc -> Variance -> PolyKind -> CST.XtorSig -> ResolverM ()
 checkVarianceXtor loc var polyKind xtor = do
@@ -284,13 +294,14 @@ resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, c
 
 resolveInstanceDeclaration :: CST.InstanceDeclaration
                         -> ResolverM RST.InstanceDeclaration
-resolveInstanceDeclaration CST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } = do
+resolveInstanceDeclaration CST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } = do
   typ <- resolveTyp PosRep instancedecl_typ
   tyn <- resolveTyp NegRep instancedecl_typ
-  tc <- resolveInstanceCases instancedecl_cases
+  tc <- mapM resolveInstanceCase instancedecl_cases
   pure RST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                  , instancedecl_doc = instancedecl_doc
                                  , instancedecl_name = instancedecl_name
+                                 , instancedecl_class = instancedecl_class
                                  , instancedecl_typ = (typ, tyn)
                                  , instancedecl_cases = tc
                                  }

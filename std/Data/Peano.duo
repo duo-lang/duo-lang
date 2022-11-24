@@ -21,7 +21,7 @@ def rec prd  mul : Nat -> Nat -> Nat :=
                     , S(n) => add m (mul n m)};
 
 def rec prd nateq : Nat -> Nat -> Bool :=
-  \n m => case n of { Z    => case m of { Z => True,  S(m) => False}
+  \n m => case n of { Z    => case m of { Z => True,  S(_) => False}
                     , S(n) => case m of { Z => False, S(m) => nateq n m}};
 
 def rec prd natmax : Nat -> Nat -> Nat := 

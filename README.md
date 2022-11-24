@@ -1,5 +1,7 @@
 # Duo Lang
+
 [![CI](https://github.com/duo-lang/duo-lang/actions/workflows/ci.yml/badge.svg)](https://github.com/duo-lang/duo-lang/actions/workflows/ci.yml)
+[![Publish DevDocs](https://github.com/duo-lang/duo-lang/actions/workflows/devdocs.yml/badge.svg)](https://github.com/duo-lang/duo-lang/actions/workflows/devdocs.yml)
 
 Duo is research language focused on the combination of subtyping, type inference and type-theoretic dualities.
 

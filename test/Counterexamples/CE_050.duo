@@ -1,19 +1,14 @@
 module CE_050;
 
--- Type missmatch in InstanceDeclaration and implementations fails.
-import Data.Bool;
-import Data.Peano;
+-- make  sure idLRec is not typechecked as List(⊤) -> List(⊥)
+import Codata.Function;
 import Data.List;
+import Data.Bool;
+import Data.Unit;
 
--- | Class definition.
-class Eq(+a : CBV) {
-  Equals(a, a, return Bool),
-  Differ(a, a, return Bool)
+def rec prd idLRec := \l => case l of {
+    Nil => Nil,
+    Cons(x,xs) => Cons(x,idLRec xs)
 };
 
-
--- | Nat instance definition.
-instance Eq Nat {
-  Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
-  Differ(x, y, k) => and (or x y) (not (and x y)) >> k
-};
+def prd fail : List(Bool) := Cons(True, idLRec Cons(MkUnit,Nil));

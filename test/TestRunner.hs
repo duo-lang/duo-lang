@@ -23,6 +23,8 @@ import Syntax.CST.Names
 import Syntax.TST.Program qualified as TST
 import Options.Applicative
 import Utils (listRecursiveDuoFiles, filePathToModuleName, moduleNameToFullPath)
+import GHC.IO.Encoding (setLocaleEncoding)
+import System.IO (utf8)
 
 data Options where
   OptEmpty  :: Options
@@ -81,6 +83,7 @@ getSymbolTable fp mn = do
 
 main :: IO ()
 main = do
+    setLocaleEncoding utf8
     o <- execParser getOpts
     examples <- case o of
       -- Collect the filepaths of all the available examples

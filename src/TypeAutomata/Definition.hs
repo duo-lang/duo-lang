@@ -14,7 +14,7 @@ import Data.Void
 import Syntax.CST.Names ( RnTypeName, XtorName )
 import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..))
 import Syntax.RST.Types ( Polarity, PolarityRep(..))
-import Syntax.CST.Kinds ( Variance )
+import Syntax.CST.Kinds ( Variance, MonoKind(..), EvaluationOrder)
 
 --------------------------------------------------------------------------------
 -- # Type Automata
@@ -166,6 +166,7 @@ data NodeLabel =
     , nl_nominal :: Set (RnTypeName, [Variance])
     , nl_ref_data :: Map RnTypeName (Set XtorLabel)
     , nl_ref_codata :: Map RnTypeName (Set XtorLabel)
+    , nl_kind :: EvaluationOrder
     }
   |
   MkPrimitiveNodeLabel
@@ -173,22 +174,32 @@ data NodeLabel =
     , pl_prim :: PrimitiveType
     } deriving (Eq,Show,Ord)
 
-emptyNodeLabel :: Polarity -> NodeLabel
-emptyNodeLabel pol = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty
+emptyNodeLabel :: Polarity -> MonoKind -> NodeLabel
+emptyNodeLabel pol (CBox eo) = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty eo
+emptyNodeLabel pol I64Rep = MkPrimitiveNodeLabel pol I64
+emptyNodeLabel pol F64Rep = MkPrimitiveNodeLabel pol F64
+emptyNodeLabel pol StringRep = MkPrimitiveNodeLabel pol PString
+emptyNodeLabel pol CharRep = MkPrimitiveNodeLabel pol PChar
+emptyNodeLabel _ (KindVar _) = error "Tried to create empty node label with KindVar Kind"
 
--- emptyPrimNodeLabel :: Polarity -> NodeLabel
--- emptyPrimNodeLabel pol = MkPrimitiveNodeLabel pol S.empty
 
-singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> NodeLabel
+singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> EvaluationOrder -> NodeLabel
 singleNodeLabel pol Data Nothing xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty M.empty M.empty
 singleNodeLabel pol Codata Nothing xtors = MkNodeLabel pol Nothing (Just xtors) S.empty M.empty M.empty
 singleNodeLabel pol Data (Just tn) xtors   = MkNodeLabel pol Nothing Nothing S.empty (M.singleton tn xtors) M.empty
 singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing Nothing S.empty M.empty (M.singleton tn xtors)
 
 getPolarityNL :: NodeLabel -> Polarity
-getPolarityNL (MkNodeLabel pol _ _ _ _ _) = pol
+getPolarityNL (MkNodeLabel pol _ _ _ _ _ _) = pol
 getPolarityNL (MkPrimitiveNodeLabel pol _) = pol
 
+getKindNL :: NodeLabel -> MonoKind 
+getKindNL (MkNodeLabel _ _ _ _ _ _ mk) = CBox mk
+getKindNL (MkPrimitiveNodeLabel _ I64) = I64Rep
+getKindNL (MkPrimitiveNodeLabel _ F64) = F64Rep
+getKindNL (MkPrimitiveNodeLabel _ PChar) = CharRep
+getKindNL (MkPrimitiveNodeLabel _ PString) = StringRep
+      
 --------------------------------------------------------------------------------
 -- Edge labels for type automata
 --------------------------------------------------------------------------------

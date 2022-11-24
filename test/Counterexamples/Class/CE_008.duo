@@ -1,0 +1,9 @@
+module Class.CE_008;
+
+-- no matching instance definition for nominal type
+import Data.Bool;
+import Data.Peano;
+
+class Foo(+a : CBV){ Foo(a, return Bool) };
+instance foo : Foo Bool { Foo(x, k) => x >> k };
+def prd bar := mu k. Foo(Z, k);

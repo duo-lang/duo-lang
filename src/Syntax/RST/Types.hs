@@ -4,7 +4,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Kind ( Type )
 
-import Syntax.CST.Kinds ( Variance(..) )
+import Syntax.CST.Kinds ( Variance(..),MaybeKindedSkolem, MonoKind(..))
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
     ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
@@ -150,6 +150,8 @@ data Typ (pol     :: Polarity) where
   TyString        :: Loc -> PolarityRep pol -> Typ pol
   -- | TyFlipPol is only generated during focusing, and cannot be parsed!
   TyFlipPol       :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol
+  -- | Kind Annotated Type
+  TyKindAnnot     :: MonoKind -> Typ pol -> Typ pol
 
 deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
@@ -166,14 +168,14 @@ mkInter _   [t]    = t
 mkInter loc (t:ts) = TyInter loc t (mkInter loc ts)
 
 getPolarity :: Typ pol -> PolarityRep pol
-getPolarity (TySkolemVar _ rep  _)     = rep
-getPolarity (TyUniVar _ rep  _)        = rep
-getPolarity (TyRecVar _ rep  _)        = rep
+getPolarity (TySkolemVar _ rep  _)      = rep
+getPolarity (TyUniVar _ rep  _)         = rep
+getPolarity (TyRecVar _ rep  _)         = rep
 getPolarity (TyData _ rep _)            = rep
 getPolarity (TyCodata _ rep _)          = rep
 getPolarity (TyDataRefined _ rep _ _)   = rep
 getPolarity (TyCodataRefined _ rep _ _) = rep
-getPolarity (TyNominal _ rep  _ _)     = rep
+getPolarity (TyNominal _ rep  _ _)      = rep
 getPolarity (TySyn _ rep _ _)           = rep
 getPolarity TyTop {}                    = NegRep
 getPolarity TyBot {}                    = PosRep
@@ -182,9 +184,10 @@ getPolarity TyInter {}                  = NegRep
 getPolarity (TyRec _ rep _ _)           = rep
 getPolarity (TyI64 _ rep)               = rep
 getPolarity (TyF64 _ rep)               = rep
-getPolarity (TyChar _ rep)               = rep
-getPolarity (TyString _ rep)               = rep
+getPolarity (TyChar _ rep)              = rep
+getPolarity (TyString _ rep)            = rep
 getPolarity (TyFlipPol rep _)           = rep
+getPolarity (TyKindAnnot _ ty)          = getPolarity ty
 
 
 ------------------------------------------------------------------------------
@@ -223,6 +226,7 @@ instance ReplaceNominal (Typ pol) where
   replaceNominal _ _ _ ty@TyChar {}                      = ty
   replaceNominal _ _ _ ty@TyString {}                    = ty
   replaceNominal p n t (TyFlipPol rep ty)                = TyFlipPol rep (replaceNominal p n t ty)
+  replaceNominal p n t (TyKindAnnot mk ty)               = TyKindAnnot mk (replaceNominal p n t ty)
 
 instance ReplaceNominal (XtorSig pol) where
   replaceNominal :: forall pol. Typ Pos -> Typ Neg -> RnTypeName -> XtorSig pol -> XtorSig pol
@@ -244,7 +248,7 @@ instance ReplaceNominal (VariantType pol) where
 
 data TypeScheme (pol :: Polarity) = TypeScheme
   { ts_loc :: Loc
-  , ts_vars :: [SkolemTVar]
+  , ts_vars :: [MaybeKindedSkolem]
   , ts_monotype :: Typ pol
   }
 
@@ -287,6 +291,7 @@ instance FreeTVars (Typ pol) where
   freeTVars (TyChar _ _)                  = S.empty
   freeTVars (TyString _ _)                = S.empty
   freeTVars (TyFlipPol _ ty)              = freeTVars ty
+  freeTVars (TyKindAnnot _ ty)            = freeTVars ty
 
 instance FreeTVars (PrdCnsType pol) where
   freeTVars (PrdCnsType _ ty) = freeTVars ty
@@ -303,4 +308,14 @@ instance FreeTVars (XtorSig pol) where
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
-generalize ty = TypeScheme defaultLoc (S.toList (freeTVars ty)) ty
+generalize ty = TypeScheme defaultLoc (zip (S.toList $ freeTVars ty) (repeat Nothing)) ty
+
+
+
+
+
+
+
+
+
+

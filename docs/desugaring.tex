@@ -1,0 +1,34 @@
+We use the notation $\desugar{e} = t$ in order to express that the desugaring of the term $e$ is the term $t$. 
+In this chapter discuss all syntactic sugar of the surface language except pattern and copattern matching, which is discussed in \cref{chapter:patterncompilation}.
+
+The syntactic sugar in \cref{sec:desugaring:lambda} and \cref{sec:desugaring:funapp} requires the import of the function, resp. cofunction type which is defined in the
+modules \texttt{Codata.Function} resp. \texttt{Data.Cofunction}.
+
+\section{Lambda and CoLambda Abstractions}
+\label{sec:desugaring:lambda}
+
+\begin{align*}
+    \desugar{\lambda x \Rightarrow e} &= \comatch{ \text{Ap}(x,\alpha) \Rightarrow \desugar{e} \gg \alpha } \\
+    \desugar{\lambda x \Leftarrow e} &= \match{\ldots}
+\end{align*}
+
+\section{Function Application}
+\label{sec:desugaring:funapp}
+
+\begin{align*}
+    \desugar{f\ e} = \mu \alpha. \desugar{f} \gg \text{Ap}(\desugar{e},\alpha)
+\end{align*}
+
+\section{Destructor Application}
+\label{sec:desugaring:dtorapp}
+
+\begin{align*}
+    \desugar{e.\mathcal{D}\sigma} = \mu \alpha. \desugar{e} \gg \mathcal{D}(\sigma,\alpha)
+\end{align*}
+
+\section{The Semi Construct}
+\label{sec:desugaring:semi}
+
+\begin{align*}
+    \desugar{\mathcal{C}\sigma ;; e} = \ldots
+\end{align*}

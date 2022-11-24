@@ -25,11 +25,10 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind(CBox),PolyKind(..))
+import Syntax.CST.Kinds (MonoKind(CBox))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
-import Syntax.RST.Types qualified as RST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Syntax.Core.Program as Core
@@ -37,12 +36,12 @@ import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
-    ( runGenM )
+    ( runGenM, addKindAnnotConstr )
 import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
       genConstraintsTermRecursive )
-import TypeInference.SolveConstraints (solveConstraints)
+import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints)
 import Loc ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
@@ -52,19 +51,25 @@ import qualified Data.Set as S
 import Data.Maybe (catMaybes)
 import Pretty.Common (Header(..))
 import Pretty.Program ()
+import Syntax.RST.Types qualified as RST
 
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
-           -> Maybe (TST.TypeScheme pol) -- ^ Annotated type
+           -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
            -> Loc -- ^ Location for the error message
            -> DriverM (TST.TopAnnot pol)
 checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
-  let isSubsumed = subsume rep tyInferred tyAnnotated
+  env <- gets drvEnv
+  (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
+  solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs env
+  let bisubstAnnot = coalesce solverResAnnot
+  let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot annotChecked
+  let isSubsumed = subsume rep tyInferred typAnnotZonked
   case isSubsumed of
       (Left err) -> throwError (attachLoc loc <$> err)
-      (Right True) -> return (TST.Annotated tyAnnotated)
+      (Right True) -> return (TST.Annotated typAnnotZonked)
       (Right False) -> do
 
         let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
@@ -88,32 +93,38 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   let genFun = case pcdecl_isRec of
         CST.Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
         CST.NonRecursive -> genConstraints pcdecl_term
+  -- get annotated Kind out of annotation if available
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
+  let constraintSetModified =  case pcdecl_annot of 
+        Nothing -> constraintSet 
+        Just (RST.TypeScheme _ _ (RST.TyKindAnnot mk _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
+        _ -> constraintSet 
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName pcdecl_name))
     ppPrintIO ("" :: T.Text)
     ppPrintIO pcdecl_term
     ppPrintIO ("" :: T.Text)
-    ppPrintIO constraintSet
+    ppPrintIO constraintSetModified
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet env
+  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSetModified env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
-  -- 4. Read of the type and generate the resulting type
+  -- 4. Solve the type class constraints.
+  instances <- liftEitherErrLoc pcdecl_loc $ solveClassConstraints solverResult bisubst env
+  guardVerbose $ ppPrintIO instances
+  -- 5. Read of the type and generate the resulting type
   let typ = TST.zonk TST.UniRep bisubst (TST.getTypeTerm tmInferred)
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
-  -- 5. Simplify
+  -- 6. Simplify
   typSimplified <- if infOptsSimplify infopts then (do
                      printGraphs <- gets (infOptsPrintGraphs . drvOpts)
                      tys <- simplify (TST.generalize typ) printGraphs (T.unpack (unFreeVarName pcdecl_name))
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  --  annot <- liftEitherErrLoc pcdecl_loc (fst $ runGenM pcdecl_loc env (annotateMaybeTypeScheme pcdecl_annot) )
-  annot <- maybe (return Nothing) (Just . fst <$>) $ liftEitherErrLoc pcdecl_loc . fst . runGenM pcdecl_loc env . annotateKind <$> pcdecl_annot
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified annot pcdecl_loc
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified pcdecl_annot pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
@@ -156,6 +167,12 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
     ppPrintIO ("" :: T.Text)
     ppPrintIO constraints
     ppPrintIO solverResult
+  -- Coalesce the result
+  let bisubst = coalesce solverResult
+  guardVerbose $ ppPrintIO bisubst
+  -- Solve the type class constraints.
+  instances <- liftEitherErrLoc cmddecl_loc $ solveClassConstraints solverResult bisubst env
+  guardVerbose $ ppPrintIO instances
   -- Insert into environment
   let f env = env { cmdEnv = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
   modifyEnvironment mn f
@@ -168,22 +185,23 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
 inferInstanceDeclaration :: ModuleName
                         -> Core.InstanceDeclaration
                         -> DriverM TST.InstanceDeclaration
-inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_name, instancedecl_typ } = do
+inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_class, instancedecl_typ } = do
   env <- gets drvEnv
   -- Generate the constraints
   (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraints decl))
   -- Solve the constraints
   solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
   guardVerbose $ do
-    ppPrintIO (Header  $ unClassName instancedecl_name <> " " <> ppPrint (fst instancedecl_typ))
+    ppPrintIO (Header  $ unClassName instancedecl_class <> " " <> ppPrint (fst instancedecl_typ))
     ppPrintIO ("" :: T.Text)
     ppPrintIO (Core.InstanceDecl decl)
     ppPrintIO ("" :: T.Text)
     ppPrintIO constraints
     ppPrintIO solverResult
   -- Insert into environment
-  let instty' = TST.instancedecl_typ instanceInferred
-  let f env = env { instanceEnv = M.adjust (S.insert instty') instancedecl_name (instanceEnv env)}
+  let (typ, tyn) = TST.instancedecl_typ instanceInferred
+  let iname = TST.instancedecl_name instanceInferred
+  let f env = env { instanceEnv = M.adjust (S.insert (iname, typ, tyn)) instancedecl_class (instanceEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
 
@@ -222,26 +240,19 @@ inferDecl mn (Core.DataDecl decl) = do
   let loc = RST.data_loc decl
   env <- gets drvEnv
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
-  let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = insertKinds decl (kindEnv env)}
+  let f env = env { declEnv = (loc, decl') : declEnv env} 
   modifyEnvironment mn f
   pure (TST.DataDecl decl')
-  where 
-    insertKinds :: RST.DataDecl -> Map XtorName MonoKind -> Map XtorName MonoKind
-    insertKinds RST.NominalDecl{data_kind = knd, data_xtors = xtors} mp = do
-      let names = map RST.sig_name (fst xtors)
-      let mk = CBox (returnKind knd)
-      foldr (`M.insert`mk) mp names
-    insertKinds RST.RefinementDecl{data_kind = knd, data_xtors = xtors} mp = do
-      let names = map RST.sig_name (fst xtors)
-      let mk = CBox (returnKind knd)
-      foldr (`M.insert`mk) mp names
  
 --
 -- XtorDecl
 --
 inferDecl _mn (Core.XtorDecl decl) = do
-
-  let f env = env { kindEnv = M.insert (RST.strxtordecl_name decl) (CBox (RST.strxtordecl_evalOrder decl)) (kindEnv env)}
+  -- check constructor kinds
+  let retKnd = CBox $ RST.strxtordecl_evalOrder decl
+  let xtornm = RST.strxtordecl_name decl
+  let argKnds = map snd (RST.strxtordecl_arity decl)
+  let f env = env { kindEnv = M.insert xtornm (retKnd, argKnds) (kindEnv env)}
   modifyEnvironment _mn f
   pure (TST.XtorDecl decl)
 --

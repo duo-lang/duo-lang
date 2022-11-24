@@ -81,7 +81,10 @@ nominalTypeP = do
   (name, endPos) <- typeNameP
   (args, endPos') <- nominalTypeArgsP endPos
   sc
-  pure (TyNominal (Loc startPos endPos') name args, endPos')
+  let loc = Loc startPos endPos'
+  case args of 
+    [] -> pure (TyNominal loc name, endPos')
+    (fst:rst) -> pure (TyApp loc (TyNominal loc name) (fst:|rst), endPos')
 
 -- | Parse a data or codata type. E.g.:
 -- - "< ctor1 | ctor2 | ctor3 >"
@@ -181,9 +184,18 @@ tyStringP = primTypeP KwString TyString
 tyParensP :: Parser (Typ, SourcePos)
 tyParensP = do
   startPos <- getSourcePos
-  (typ, endPos) <- parensP (fst <$> typP)
   sc
-  pure (TyParens (Loc startPos endPos) typ, endPos)
+  symbolP SymParenLeft
+  sc
+  (typ, _) <- typP
+  sc
+  mmk <- optional (symbolP SymColon >> sc >> monoKindP)
+  symbolP SymParenRight
+  sc
+  endPos <- getSourcePos
+  case mmk of 
+    Nothing -> pure (TyParens (Loc startPos endPos) typ, endPos)
+    Just mk -> pure (TyKindAnnot mk typ, endPos)
 
 tyTopKwP :: Parser SourcePos
 tyTopKwP = kwASCII <|> kwUnicode
@@ -267,11 +279,11 @@ forallP = void (keywordP KwForall) <|> symbolP SymForallUnicode
 typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
-  tvars' <- option [] (forallP >> sc >> some (fst <$> (tvarP <* sc)) <* (symbolP SymDot >> sc))
+  tvars' <- option [] (forallP >> sc >> some (tvarAnnotP <* sc) <* (symbolP SymDot >> sc))
   let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
   tConstraints <- option [] (constraintP `sepBy` (symbolP SymComma >> sc) <* (symbolP SymDoubleRightArrow >> sc))
   (monotype, endPos) <- typP
-  pure (TypeScheme (Loc startPos endPos) tvars' tConstraints monotype)
+  pure (TypeScheme (Loc startPos endPos) (fst <$> tvars') tConstraints monotype)
 
 typeClassConstraintP :: Parser (Constraint, SourcePos)
 typeClassConstraintP = try $ do
