@@ -1,0 +1,288 @@
+module NestedPatternMatch;
+
+import Data.List;
+import Data.Peano;
+import Data.Bool;
+import Codata.Function;
+import Codata.Stream;
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+
+data Pair: (+a:CBV,+b:CBV) -> CBV {
+    Pair(a,b)
+};
+
+codata CoPair: (+a:CBV,+b:CBV) -> CBV { 
+    Fst(return a),
+    Snd(return b)
+};
+
+--codata Stream: (+a:CBV) -> CBV {
+--    Head(return a), 
+--    Tail(return Stream(a))
+--};
+
+codata BinaryFun: (+a:CBV,+b:CBV, +c:CBV) -> CBV {
+    BinaryAp(a,b, return c)
+};
+
+-- To Compile:
+
+----------------------------------------------------------
+-- hier ist x eine Cns Variable!
+-- Aber x bindet eigentlich alles...
+def prd isFun: a -> Bool := cocase {
+    Ap(x, k)         => cocase {
+        Ap(_, _)    => True  >> k,
+        _           => False >> k
+    } >> x
+};
+
+----------------------------------------------------------
+
+def prd push : BinaryFun(a, Stream(a), Stream(a)) := cocase {
+    BinaryAp(x, s, Head(*)) => x,
+    BinaryAp(x, s, Tail(*)) => s
+};
+-- alternatively with nested Fun instead of BinaryFun:
+-- a -> Stream(a) -> Stream(a) should be equal to
+-- Fun(a, Fun(Stream(a), Stream(a)))
+def prd push2 : a -> Stream(a) -> Stream(a) := cocase {
+    Ap(x, Ap(s, Head(*))) => x,
+    Ap(x, Ap(s, Tail(*))) => s
+};
+
+def prd addPairToStream : BinaryFun(Pair(a,a),Stream(a),Stream(a)) := cocase {
+    BinaryAp(Pair(x,y), s, Head(*))       => x,
+    BinaryAp(Pair(x,y), s, Tail(Head(*))) => y,
+    BinaryAp(Pair(x,y), s, Tail(Tail(*))) => s
+};
+
+def prd addCoPairToStream : BinaryFun(CoPair(a,a), Stream(a), Stream(a)) := cocase {
+    BinaryAp(c, s, Head(*)) => c.Fst,
+    BinaryAp(c, s, Tail(Head(*))) => c.Snd,
+    BinaryAp(c, s, Tail(Tail(*))) => s
+};
+-- alternatively with nested Fun instead of BinaryFun:
+-- CoPair(a,a) -> Stream(a) -> Stream(a) should be equal to
+-- Fun(CoPair(a,a), Fun(Stream(a), Stream(a)))
+def prd addCoPairToStream2 : CoPair(a,a) -> Stream(a) -> Stream(a) := cocase {
+    Ap(c, Ap(s, Head(*))) => c.Fst,
+    Ap(c, Ap(s, Tail(Head(*)))) => c.Snd,
+    Ap(c, Ap(s,Tail(Tail(*)))) => s
+};
+
+-- def prd pairToCyclicStream : Pair(a,a) -> Stream(a) should be equal to
+-- def prd pairToCyclicStream : Fun(Pair(a,a), Stream(a))
+def prd pairToCyclicStream : Fun(Pair(a,a), Stream(a)) := cocase {
+    Ap(Pair(x,y), Head(*)) => x,
+    Ap(Pair(x,y), Tail(*)) => push y (pairToStream y x) 
+};
+
+----------------------------
+
+def prd zipWithStream : (a -> b -> c) -> Stream(a) -> Stream(b) -> Stream(c) := cocase {
+    Ap(f, Ap(s1, Ap(s2, *))) => push 
+                                (f s1.Head s2.Head) 
+                                (zipWithStream s1.Tail s2.Tail)
+};
+
+def prd fib : Stream(Nat) := cocase {
+    Head(*) =>  1,
+    Tail(Head(*)) => 1,
+    Tail(Tail(*)) => zipWithStream add fib fib.Tail
+};
+
+----------------------------
+
+--> Compiled:
+
+def prd pushCompiled : BinaryFun(a, Stream(a), Stream(a)) := cocase {
+    BinaryAp(x, s, k1) => cocase {
+        Head(k2) => x >> k2,
+        Tail(k3) => s >> k3
+    } >> k1
+};
+
+def prd push2Compiled : a -> Stream(a) -> Stream(a) := cocase {
+    Ap(x, k1) => cocase {
+        Ap(s, k2) => cocase {
+            Head(k3) => x >> k3,
+            Tail(k4) => s >> k4
+        } >> k2
+    } >> k1
+};
+
+def prd addPairToStreamCompiled : BinaryFun(Pair(a,a),Stream(a),Stream(a)) := cocase {
+    BinaryAp(p, s, k1) => p >> case {
+        Pair(x,y) => cocase {
+            Head(k2) => x >> k2,
+            Tail(k3) => cocase {
+                Head(k4) => y >> k4,
+                Tail(k5) => s >> k5
+            } >> k3
+        } >> k1
+    }
+};
+
+def prd addCoPairToStreamCompiled : BinaryFun(CoPair(a,a), Stream(a), Stream(a)) := cocase {
+    BinaryAp(c, s, k1) => cocase {
+        Head(k2) => c.Fst,
+        Tail(k3) => cocase {
+            Head(k4) => c.Snd >> k4,
+            Tail(k5) => s >> k5
+        } >> k3
+    } >> k1
+};
+
+def prd addCoPairToStream2Compiled : CoPair(a,a) -> Stream(a) -> Stream(a) := cocase {
+    Ap(c, k1) => cocase {
+        Ap(s, k2) => cocase {
+            Head(k3) => c.Fst >> k3,
+            Tail(k4) => cocase {
+                Head(k5) => c.Snd >> k5,
+                Tail(k6) => s >> k6
+            } >> k4
+        }
+    } >> k1
+};
+
+def prd pairToCyclicStreamCompiled : Pair(a,a) -> Stream(a) := cocase {
+    Ap(x1,k1) => x1 >> case {
+        Pair(x2,x3) => cocase {
+            Head(k2) => x2 >> k2,
+            Tail(k3) => (push x3 (pairToStream x3 x2)) >> k3
+        } >> k1
+    }
+};
+
+def prd zipWithStreamCompiled : (a -> b -> c) -> Stream(a) -> Stream(b) -> Stream(c) := cocase {
+    Ap(f, k1) => cocase {
+        Ap(s1, k2) => cocase {
+            Ap(s2, k3) =>   push 
+                            (f s1.Head s2.Head) 
+                            (zipWithStream s1.Tail s2.Tail)
+                            >> k3
+        } >> k2
+    } >> k1
+};
+
+def prd fibCompiled : Stream(Nat) := cocase {
+    Head(k1) => 1 >> k1,
+    Tail(k2) => cocase { 
+        Head(k3) => 1 >> k3,
+        Tail(k4) => (zipWithStream add fibCompiled fibCompiled.Tail) >> k4
+    } >> k2
+};
+
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+
+codata TreeVisitor : (+a:CBV) -> CBV{
+    VisitLeaf(return Fun(Nat, a)), 
+    VisitBranch(return BinaryFun(a,a,a))
+};
+
+codata Tree : (+a: CBV) -> CBV{
+    Walk(Treevisitor(a), return a)
+};
+
+-- To Compile:
+
+def prd leaf : Fun(Nat, Tree(a)) := cocase {
+    Ap(i, Walk(v,*)) => (v.VisitLeaf) i
+};
+
+def prd branch : BinaryFun(Tree(a), Tree(a), Tree(a)) := cocase {
+    BinaryAp(t1, t2, Walk(v,*)) => (v.VisitBranch) t1 t2
+};
+
+--> Compiled:
+
+def prd leafCompiled : Fun(Nat, a) := cocase {
+    Ap(i,k1) => cocase {
+        Walk(v, k2) => (v.VisitLeaf) i >> k2
+    } >> k1
+};
+
+def prd branchComplied : BinaryFun(Tree(a), Tree(a), Tree(a)) := cocase {
+    BinaryAp(t1,t2,k1) => cocase {
+        Walk(v,k2) => (v.VisitBranch t1 t2) >> k2
+    } >> k1
+};
+
+-----------------------------------------------------------------------------------
+
+-- To Compile:
+
+def prd buildTreeFromList : List(Nat) -> Tree(a) := cocase {
+    Ap(Nil,*)                 => #ExitFailure,
+    Ap(Cons(x,Nil), *)        => leaf x,
+    Ap(Cons(x,Cons(y,ys)), *) => branch x (branch y (buildTreeFromList ys))
+};
+
+def prd buildTreeFromStream : Stream(Nat) -> Tree(a) := cocase { 
+    Ap(s, *) => branch (leaf s.Head) (buildTreeFromStreamTail s)
+};
+
+--> Compiled:
+
+-- important case! >> k needs to be replicated for each case.
+def prd buildTreeFromListCompiled : List(Nat) -> Tree(a) := cocase {
+    Ap(l, k) => l >> case {
+        Nil => #ExitFailure,
+        Cons(x, xs) => xs >> case {
+            Nil => leaf x >> k, -- >> k
+            Cons(y,ys) => branch x (branch y (buildTreeFromList ys)) >> k -- >> k
+        }
+    }
+};
+
+def prd buildTreeFromStreamCompiled : Stream(Nat) -> Tree(a) := cocase { 
+    Ap(s, k) => branch (leaf s.Head) (buildTreeFromStreamTail s) >> k
+};
+
+-----------------------------------------------------------------------------------
+-----------------------------------------------------------------------------------
+
+-- Example for Mixed Case Compilation
+
+data APair: (+a: CBV) -> CBV{
+    MkPair1(a,a),
+    MkPair2(a)
+};
+
+-- The patterns here should NOT overlap, meaning that return patterns and normal patterns
+-- are not checked separatedly but as one list. 
+-- It stands that order DOES NOT matter. 
+def prd aPairToStream : APair(a) -> Steam(a) := cocase {
+    Ap(MkPair1(x,y), Head(*)) => x,
+    Ap(MkPair1(x,y), Tail(Head(*))) => y,
+
+    Ap(MkPair2(x), Tail(Head(*))) => x,
+    Ap(MkPair2(x), Head(*)) => x,
+
+    Ap(p, Tail(Tail(*))) => aPairToStream p
+};
+
+--> Compiled: 
+-- Given how one column expands into one (co)case match,
+-- it must be transformed in a way that is both exhaustive and devoid of overlap!
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
