@@ -9,6 +9,7 @@ import Control.Monad.Except (throwError)
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NE
+import Data.Text qualified as T
 
 import Errors
 import Pretty.Pretty
@@ -83,7 +84,10 @@ resolveTyp rep (TyApp loc ty@(TyNominal _loc tyn) args) = do
       case args' of 
         [] -> pure ty'
         (fst:rst) -> pure $ RST.TyApp loc rep ty' (fst:|rst)
-resolveTyp _ (TyApp loc _ _) = throwOtherError loc ["Types can only be applied to nominal types"]
+resolveTyp rep (TyApp loc (TyKindAnnot mk ty) args) = do 
+  resolved <-  resolveTyp rep (TyApp loc ty args)
+  pure $ RST.TyKindAnnot mk resolved
+resolveTyp _ (TyApp loc ty _) = throwOtherError loc ["Types can only be applied to nominal types, was applied to ", ppPrint ty]
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v
         local (\r -> r { rr_recVars = S.insert vr $ rr_recVars r  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ

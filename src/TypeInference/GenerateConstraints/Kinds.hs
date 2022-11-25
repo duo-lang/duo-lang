@@ -597,7 +597,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     case kindArgs polyknd of 
       [] -> return $ TST.TyNominal loc pol polyknd tyn
       _ -> throwOtherError loc ["Nominal Type " <> ppPrint tyn <> " was not fully applied"]
-  annotateKind (RST.TyApp loc _ _ _ ) = throwOtherError loc ["Types can only be applied to nominal types"]
+  annotateKind (RST.TyApp loc _ ty _ ) = throwOtherError loc ["Types can only be applied to nominal types, was applied to ", ppPrint ty]
              
   annotateKind (RST.TySyn loc pol tn ty) = do 
     ty' <- annotateKind ty 
