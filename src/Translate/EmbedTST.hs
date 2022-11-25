@@ -137,7 +137,7 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST (TST.TyCodataRefined loc pol mk tn xtors) =
     RST.TyKindAnnot mk $ RST.TyCodataRefined loc pol tn (map embedTST xtors)
   embedTST (TST.TyNominal loc pol polyknd tn) = do
-    let nomty = RST.TyNominal loc pol tn polyknd
+    let nomty = RST.TyNominal loc pol polyknd tn
     RST.TyKindAnnot (CBox $ returnKind polyknd) nomty
   embedTST (TST.TyApp loc pol ty args) = do
     RST.TyApp loc pol (embedTST ty) (embedTST <$> args)
