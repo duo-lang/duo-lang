@@ -142,8 +142,8 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     let polyknd = case mk of CBox evl -> MkPolyKind [] evl; _ -> MkPolyKind [] CBV
     let varty' = embedTST <$> varty
     case varty' of 
-      [] -> RST.TyKindAnnot mk $ RST.TyNominal loc pol tn polyknd
-      (fst:rst) -> RST.TyKindAnnot mk $ RST.TyApp loc pol (RST.TyNominal loc pol tn polyknd) (fst:|rst)
+      [] -> RST.TyKindAnnot mk $ RST.TyNominal loc pol polyknd tn
+      (fst:rst) -> RST.TyKindAnnot mk $ RST.TyApp loc pol (RST.TyNominal loc pol polyknd tn) (fst:|rst)
   embedTST (TST.TySyn loc pol tn tp) = do 
     let knd = TST.getKind tp 
     RST.TyKindAnnot knd $ RST.TySyn loc pol tn (embedTST tp)

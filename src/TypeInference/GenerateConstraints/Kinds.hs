@@ -224,10 +224,10 @@ annotTy (RST.TyCodataRefined loc pol tyn xtors) = do
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> snd; RST.NegRep -> fst) $ TST.data_xtors decl
     return $ TST.TyCodataRefined loc pol (CBox $ returnKind (TST.data_kind decl)) tyn xtors'
-annotTy (RST.TyApp _loc' _pol' (RST.TyNominal loc pol tyn polyknd) vartys) = do  
+annotTy (RST.TyApp _loc' _pol' (RST.TyNominal loc pol polyknd tyn) vartys) = do  
   vartys' <- annotVarTys (NE.toList vartys)
   return $ TST.TyNominal loc pol (CBox $ returnKind polyknd) tyn vartys' 
-annotTy (RST.TyNominal loc pol tyn polyknd) = do 
+annotTy (RST.TyNominal loc pol polyknd tyn) = do 
   case kindArgs polyknd of 
     [] -> return $ TST.TyNominal loc pol (CBox $ returnKind polyknd) tyn [] 
     _ -> throwOtherError loc ["Nominal Type " <> ppPrint tyn <> " is not fully applied"]
@@ -580,7 +580,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
           throwOtherError loc ["Xtors do not have the correct kinds"]
 
 
-  annotateKind (RST.TyApp _loc' _pol' (RST.TyNominal loc pol tyn polyknd) vartys) = do 
+  annotateKind (RST.TyApp _loc' _pol' (RST.TyNominal loc pol polyknd tyn) vartys) = do 
     vartys' <- mapM annotateKind vartys
     let argKnds = map (\(_, _, mk) -> mk) (kindArgs polyknd)
     checkArgKnds loc (NE.toList vartys') argKnds
@@ -600,7 +600,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
               checkArgKnds loc rstVarty rstMk 
             else do 
               throwOtherError loc ["Kind of VariantType: " <> ppPrint fstVarty <> " does not match kind of declaration " <> ppPrint fstMk]
-  annotateKind (RST.TyNominal loc pol tyn polyknd) = do 
+  annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
     case kindArgs polyknd of 
       [] -> return $ TST.TyNominal loc pol (CBox $ returnKind polyknd) tyn []
       _ -> throwOtherError loc ["Nominal Type " <> ppPrint tyn <> " was not fully applied"]

@@ -71,7 +71,7 @@ resolveTyp rep (TyNominal loc name) = do
     NominalResult rtn _ CST.Refined _ -> 
       throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
     NominalResult name' _ CST.NotRefined polyknd -> 
-      pure $ RST.TyNominal loc rep name' polyknd
+      pure $ RST.TyNominal loc rep polyknd name'
 resolveTyp rep (TyApp loc ty@(TyNominal _loc tyn) args) = do 
   res <- lookupTypeConstructor loc tyn
   case res of 
