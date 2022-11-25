@@ -357,6 +357,14 @@ subConstraints (SubType _ (TyApp _ _ (TyNominal _ _ _ tn1) args1) (TyApp _ _ (Ty
         f _ _ = error "cannot occur"
         constraints = NE.toList $ NE.zipWith f args1 args2
     pure (DataNominal tn1 $ SubVar . void <$> constraints, constraints)
+subConstraints (SubType _ t1@(TyNominal _ _ _ tn1) t2@(TyNominal _ _ _ tn2)) = 
+  if tn1==tn2 then 
+    pure (Refl t1 t2, [])
+  else 
+    throwSolverError defaultLoc ["Cannot constraint type"
+                                 , "    " <> ppPrint t1
+                                 , "by type"
+                                 , "    " <> ppPrint t2]
 -- Constraints between primitive types:
 subConstraints (SubType _ p@(TyI64 _ _) n@(TyI64 _ _)) = pure (Refl p n, [])
 subConstraints (SubType _ p@(TyF64 _ _) n@(TyF64 _ _)) = pure (Refl p n, [])
