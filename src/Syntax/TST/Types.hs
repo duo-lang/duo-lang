@@ -322,9 +322,7 @@ instance Zonk (Typ pol) where
      TyCodataRefined loc rep mk tn (zonk vt bisubst <$> xtors)
   zonk UniRep bisubst (TyNominal loc rep knd tn) = 
     TyNominal loc rep (zonkKind bisubst knd) tn 
-  zonk SkolemRep bisubst (TyNominal loc rep kind tn) =
-     TyNominal loc rep kind tn 
-  zonk RecRep bisubst (TyNominal loc rep kind tn) =
+  zonk _ _ (TyNominal loc rep kind tn) =
      TyNominal loc rep kind tn 
   zonk vt bisubst (TyApp loc rep ty args) = 
     TyApp loc rep (zonk vt bisubst ty) (zonk vt bisubst <$> args)
