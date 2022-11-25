@@ -28,7 +28,7 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive.Query.DFS (dfs)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty((:|)))
 
 
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
@@ -231,7 +231,9 @@ nodeToTypeNoCache rep i  = do
                   f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
               args <- mapM f argNodes 
               polyknd <- getPolyKnd knd args 
-              pure $ TyNominal defaultLoc rep polyknd tn args
+              case args of 
+                [] -> pure $ TyNominal defaultLoc rep polyknd tn
+                (fst:rst) -> pure $ TyApp defaultLoc rep (TyNominal defaultLoc rep polyknd tn) (fst:|rst)
 
         let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
         return $ case rep of

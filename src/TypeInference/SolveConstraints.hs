@@ -351,11 +351,11 @@ subConstraints (SubType _ (TyCodataRefined _ PosRep _ tn1 dtors1) (TyCodataRefin
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
-subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2)) | tn1 == tn2 = do
+subConstraints (SubType _ (TyApp _ _ (TyNominal _ _ _ tn1) args1) (TyApp _ _ (TyNominal _ _ _ tn2) args2)) | tn1 == tn2 = do
     let f (CovariantType ty1) (CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
         f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
         f _ _ = error "cannot occur"
-        constraints = zipWith f args1 args2
+        constraints = NE.toList $ NE.zipWith f args1 args2
     pure (DataNominal tn1 $ SubVar . void <$> constraints, constraints)
 -- Constraints between primitive types:
 subConstraints (SubType _ p@(TyI64 _ _) n@(TyI64 _ _)) = pure (Refl p n, [])

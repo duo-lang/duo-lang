@@ -142,9 +142,12 @@ coalesceType (TyDataRefined loc rep mk tn xtors) = do
 coalesceType (TyCodataRefined loc rep mk tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyCodataRefined loc rep mk tn xtors')
-coalesceType (TyNominal loc rep mk tn args) = do
+coalesceType (TyNominal loc rep mk tn) = do
+    return $ TyNominal loc rep mk tn 
+coalesceType (TyApp loc rep ty args) = do 
     args' <- sequence $ coalesceVariantType <$> args
-    return $ TyNominal loc rep mk tn args'
+    ty' <- coalesceType ty
+    return $ TyApp loc rep ty' args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
 coalesceType (TyTop loc mk) = do 
     pure (TyTop loc mk)

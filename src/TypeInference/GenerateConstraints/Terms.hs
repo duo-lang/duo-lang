@@ -5,6 +5,7 @@ module TypeInference.GenerateConstraints.Terms
 
 import Control.Monad.Reader
 import Errors
+import Data.List.NonEmpty (NonEmpty((:|)))
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.TST.Terms qualified as TST
@@ -129,9 +130,11 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- Then we generate constraints between the inferred types of the substitution
     -- and the types we looked up, i.e. the types declared in the XtorSig.
     genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
+    let nomTy rep = TST.TyNominal defaultLoc rep (TST.data_kind decl) (TST.data_name decl)
+    let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep (nomTy rep) (fst:|rst)
     case rep of
-      PrdRep -> return (TST.Xtor loc annot rep (TST.TyNominal defaultLoc PosRep (TST.data_kind decl) (TST.data_name decl) args) CST.Nominal xt substInferred)
-      CnsRep -> return (TST.Xtor loc annot rep (TST.TyNominal defaultLoc NegRep (TST.data_kind decl) (TST.data_name decl) args) CST.Nominal xt substInferred)
+      PrdRep -> return (TST.Xtor loc annot rep (ty PosRep) CST.Nominal xt substInferred)
+      CnsRep -> return (TST.Xtor loc annot rep (ty NegRep)  CST.Nominal xt substInferred)
   --
   -- Refinement Xtors
   --
@@ -204,9 +207,11 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                     -- with the types from the signature.
                     cmdInferred <- withContext posTypes' (genConstraints cmdcase_cmd)
                     return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc' xt args) cmdInferred, TST.MkXtorSig xt negTypes'))
+    let nomTy rep = TST.TyNominal defaultLoc rep (TST.data_kind decl) (TST.data_name decl)
+    let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep (nomTy rep) (fst:|rst)
     case rep of
-      PrdRep -> return $ TST.XCase loc annot rep (TST.TyNominal defaultLoc PosRep (TST.data_kind decl) (TST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
-      CnsRep -> return $ TST.XCase loc annot rep (TST.TyNominal defaultLoc NegRep (TST.data_kind decl) (TST.data_name decl) args) CST.Nominal (fst <$> inferredCases)
+      PrdRep -> return $ TST.XCase loc annot rep (ty PosRep) CST.Nominal (fst <$> inferredCases)
+      CnsRep -> return $ TST.XCase loc annot rep (ty NegRep) CST.Nominal (fst <$> inferredCases)
   --
   -- Refinement pattern and copattern matches
   --
@@ -292,7 +297,7 @@ instance GenConstraints Core.Command TST.Command where
     peanoDecl <- lookupTypeName loc peanoNm
     let peanoKnd = TST.data_kind peanoDecl
     let cnsTy = TST.getTypeTerm cns'
-    addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm []) cnsTy)
+    addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm) cnsTy)
     addConstraint (KindEq KindConstraint (CBox $ returnKind peanoKnd) (TST.getKind cnsTy))
     return (TST.Read loc cns')
   genConstraints (Core.Apply loc annot t1 t2) = do

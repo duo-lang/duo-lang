@@ -12,8 +12,7 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
 import Data.Bifunctor (second)
-import Data.List.NonEmpty (NonEmpty((:|)))
-import Syntax.CST.Kinds (PolyKind(..), MonoKind(..), EvaluationOrder(..))
+import Syntax.CST.Kinds (PolyKind(..), MonoKind(..))
 ---------------------------------------------------------------------------------
 -- A typeclass for embedding TST.X into Core.X
 ---------------------------------------------------------------------------------
@@ -137,11 +136,11 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     RST.TyKindAnnot mk $ RST.TyDataRefined loc pol tn (map embedTST xtors)
   embedTST (TST.TyCodataRefined loc pol mk tn xtors) =
     RST.TyKindAnnot mk $ RST.TyCodataRefined loc pol tn (map embedTST xtors)
-  embedTST (TST.TyNominal loc pol polyknd tn varty) = do
-    let varty' = embedTST <$> varty
-    case varty' of 
-      [] -> RST.TyKindAnnot (CBox $ returnKind polyknd) $ RST.TyNominal loc pol tn polyknd
-      (fst:rst) -> RST.TyKindAnnot (CBox $ returnKind polyknd) $ RST.TyApp loc pol (RST.TyNominal loc pol tn polyknd) (fst:|rst)
+  embedTST (TST.TyNominal loc pol polyknd tn) = do
+    let nomty = RST.TyNominal loc pol tn polyknd
+    RST.TyKindAnnot (CBox $ returnKind polyknd) nomty
+  embedTST (TST.TyApp loc pol ty args) = do
+    RST.TyApp loc pol (embedTST ty) (embedTST <$> args)
   embedTST (TST.TySyn loc pol tn tp) = do 
     let knd = TST.getKind tp 
     RST.TyKindAnnot knd $ RST.TySyn loc pol tn (embedTST tp)

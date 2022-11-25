@@ -6,6 +6,7 @@ import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Text (Text)
 import Data.Map (Map)
+import Data.List.NonEmpty qualified as NE
 import Language.LSP.Types
 import Language.LSP.Server
     ( requestHandler, Handlers, getConfig )
@@ -352,7 +353,7 @@ instance ToHoverMap (TST.Typ pol) where
                       ]
     in
       M.unions (mkHoverMap loc msg : (toHoverMap <$> xtors))
-  toHoverMap (TST.TyNominal loc rep _knd tn args) =
+  toHoverMap (TST.TyNominal loc rep _knd tn) =
     let
       msg = T.unlines [ "#### Nominal type"
                       , "- Name: `" <> ppPrint tn <> "`"
@@ -361,7 +362,14 @@ instance ToHoverMap (TST.Typ pol) where
                       , "- Kind: " <> ppPrint _knd
                       ]
     in
-      M.unions (mkHoverMap loc msg : (toHoverMap <$> args))
+      mkHoverMap loc msg
+  toHoverMap (TST.TyApp loc _ ty args) = 
+    let 
+      hoverTy = toHoverMap ty 
+      betw = mkHoverMap loc (T.unlines ["applied to"])
+      hoverArgs = toHoverMap <$> args
+    in 
+      M.unions ([hoverTy,betw]++NE.toList hoverArgs)
   toHoverMap (TST.TySyn loc rep nm ty) =
     let
       msg = T.unlines [ "#### Type synonym"
