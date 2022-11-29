@@ -1,0 +1,27 @@
+\newcommand{\prd}{\text{prd}}
+\newcommand{\prdprim}{\prd_{prim}}
+\newcommand{\cns}{\text{cns}}
+\newcommand{\cmd}{\text{cmd}}
+\newcommand{\cmdprim}{\cmd_{prim}}
+\newcommand{\comatch}[1]{\mathbf{cocase}\ \{ #1 \} }
+\newcommand{\match}[1]{\mathbf{case}\ \{ #1 \} }
+
+\[
+  \begin{array}{lclr}
+    \prdprim & \Coloneqq & \ldots & \emph{Primitive Producer} \\
+    \cmdprim & \Coloneqq & \ldots & \emph{Primitive Command} \\[5mm]
+    \sigma & \Coloneqq & \cdot \sep \sigma, \prd \sep \sigma, \cns & \emph{Substitutions} \\
+    \Gamma & \Coloneqq & \cdot \sep \Gamma, x \sep \Gamma, \alpha & \emph{Contexts} \\[5mm]
+    \prd & \Coloneqq & x & \emph{Producer Variable} \\
+    & | & \mu \alpha. \cmd & \emph{$\mu$-Abstraction} \\
+    & | & \mathcal{C}\sigma & \emph{Constructor} \\
+    & | & \comatch{\overline{\mathcal{D}\Gamma \Rightarrow \cmd}} & \emph{Cocase} \\
+    & | & \prdprim & \emph{Primitive Producer} \\
+    \cns & \Coloneqq & \alpha & \emph{Consumer Variable} \\
+    & | & \tilde\mu x. \cmd & \emph{$\tilde\mu$-Abstraction} \\
+    & | & \mathcal{D}\sigma & \emph{Destructor} \\
+    & | & \match{\overline{\mathcal{C}\Gamma \Rightarrow \cmd}} & \emph{Case} \\
+    \cmd & \Coloneqq & \prd \gg \cns & \emph{Cut} \\
+    & | & \cmdprim & \emph{Primitive Command} \\
+  \end{array}
+\]

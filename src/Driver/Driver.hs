@@ -9,7 +9,6 @@ module Driver.Driver
   ) where
 
 
-
 import Control.Monad.State
 import Control.Monad.Except
 import Data.List.NonEmpty ( NonEmpty ((:|)) )
@@ -37,7 +36,7 @@ import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
-    ( runGenM )
+    ( runGenM, addKindAnnotConstr )
 import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
@@ -95,15 +94,20 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   let genFun = case pcdecl_isRec of
         CST.Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
         CST.NonRecursive -> genConstraints pcdecl_term
+  -- get annotated Kind out of annotation if available
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
+  let constraintSetModified =  case pcdecl_annot of 
+        Nothing -> constraintSet 
+        Just (RST.TypeScheme _ _ (RST.TyKindAnnot mk _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
+        _ -> constraintSet 
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName pcdecl_name))
     ppPrintIO ("" :: T.Text)
     ppPrintIO pcdecl_term
     ppPrintIO ("" :: T.Text)
-    ppPrintIO constraintSet
+    ppPrintIO constraintSetModified
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet env
+  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSetModified env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
