@@ -141,6 +141,14 @@ instance PrettyAnn ConstraintGenerationError where
          , "genConstraintsCtxts: Tried to constrain CnsType by PrdType"
          , "Constraint Info:" <+> prettyAnn info
          ]
+  prettyAnn (NoParamTypeClass loc) =
+    vsep [ prettyAnn loc
+         , "genConstraintsCtxts: Tried to generate constraints for a type class without parameters."
+         ]
+  prettyAnn (MultiParamTypeClass loc) =
+    vsep [ prettyAnn loc
+         , "genConstraintsCtxts: Tried to generate constraints for a type class with multiple parameters which is not supported yet."
+         ]
     
 
 instance PrettyAnn ConstraintSolverError where
@@ -240,6 +248,10 @@ instance ToReport ConstraintGenerationError where
   toReport e@(LinearContextsUnequalLength loc _ _ _) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(LinearContextIncompatibleTypeMode loc _ _) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(NoParamTypeClass loc) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(MultiParamTypeClass loc) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport ConstraintSolverError where
