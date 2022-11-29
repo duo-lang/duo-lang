@@ -2,6 +2,7 @@ module Class.Show;
 
 import Prim.Strings;
 import Data.Bool;
+import Data.Peano;
 
 -- | Definition for type class of showable types.
 class Show(+a : CBV){
@@ -16,4 +17,14 @@ instance showBool : Show Bool {
     } >> k
 };
 
-def prd show : String := mu k. Show(True, k);
+-- | Convert a natural number to its /String/ representation.
+instance showNat : Show Nat {
+    Show(x, k) => case x of {
+        Z => MkString("Z") >> k,
+        S(n) => Show(n, mu x. append MkString("S(") (append x MkString(")")) >> k)
+    }
+};
+
+def prd show : Bool -> String := \x => mu k. Show(not x, k);
+
+def cmd main := #Print(mu k. Show(S(S(S(Z))), k), #ExitSuccess);

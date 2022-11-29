@@ -51,6 +51,7 @@ import qualified Data.Set as S
 import Data.Maybe (catMaybes)
 import Pretty.Common (Header(..))
 import Pretty.Program ()
+import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
 
 
@@ -114,6 +115,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 4. Solve the type class constraints.
   instances <- liftEitherErrLoc pcdecl_loc $ solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
+  tmInferred <- liftEitherErrLoc pcdecl_loc (insertInstance instances tmInferred)
   -- 5. Read of the type and generate the resulting type
   let typ = TST.zonk TST.UniRep bisubst (TST.getTypeTerm tmInferred)
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
@@ -173,6 +175,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   -- Solve the type class constraints.
   instances <- liftEitherErrLoc cmddecl_loc $ solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
+  cmdInferred <- liftEitherErrLoc cmddecl_loc (insertInstance instances cmdInferred)
   -- Insert into environment
   let f env = env { cmdEnv = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
   modifyEnvironment mn f
@@ -185,7 +188,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
 inferInstanceDeclaration :: ModuleName
                         -> Core.InstanceDeclaration
                         -> DriverM TST.InstanceDeclaration
-inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_class, instancedecl_typ } = do
+inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_class, instancedecl_name, instancedecl_typ } = do
   env <- gets drvEnv
   -- Generate the constraints
   (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraints decl))
@@ -198,12 +201,24 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
     ppPrintIO ("" :: T.Text)
     ppPrintIO constraints
     ppPrintIO solverResult
-  -- Insert into environment
+  -- Insert instance into environment to allow recursive method definitions
   let (typ, tyn) = TST.instancedecl_typ instanceInferred
   let iname = TST.instancedecl_name instanceInferred
-  let f env = env { instanceEnv = M.adjust (S.insert (iname, typ, tyn)) instancedecl_class (instanceEnv env)}
+  let f env = env { instanceEnv = M.adjust (S.insert (iname, typ, tyn)) instancedecl_class (instanceEnv env) }
+  modifyEnvironment mn f
+  -- Coalesce the result
+  let bisubst = coalesce solverResult
+  guardVerbose $ ppPrintIO bisubst
+  -- Solve the type class constraints.
+  env <- gets drvEnv
+  instances <- liftEitherErrLoc instancedecl_loc $ solveClassConstraints solverResult bisubst env
+  guardVerbose $ ppPrintIO instances
+  instanceInferred <- liftEitherErrLoc instancedecl_loc (insertInstance instances instanceInferred)      
+  -- Insert inferred instance into environment   
+  let f env = env { instanceDeclEnv = M.insert instancedecl_name instanceInferred (instanceDeclEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
+  
 
 inferClassDeclaration :: ModuleName
                       -> RST.ClassDeclaration
@@ -240,10 +255,10 @@ inferDecl mn (Core.DataDecl decl) = do
   let loc = RST.data_loc decl
   env <- gets drvEnv
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
-  let f env = env { declEnv = (loc, decl') : declEnv env} 
+  let f env = env { declEnv = (loc, decl') : declEnv env}
   modifyEnvironment mn f
   pure (TST.DataDecl decl')
- 
+
 --
 -- XtorDecl
 --
@@ -304,7 +319,7 @@ inferProgram Core.MkModule { mod_name, mod_libpath, mod_decls } = do
                     }
 
 
-    
+
 
 ---------------------------------------------------------------------------------
 -- Infer programs

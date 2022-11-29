@@ -1,0 +1,11 @@
+module Class.CE_010;
+
+-- no instance for union
+import Data.Bool;
+import Data.Peano;
+
+class Foo(+a : CBV){ Foo(a, return Bool) };
+instance foo : Foo Bool { Foo(x, k) => x >> k };
+instance bar : Foo Nat { Foo(x, k) => True >> k };
+def prd trueOrZ : Bool \/ Nat := ifthenelse True True Z;
+def prd baz := mu k. Foo(trueOrZ, k);
