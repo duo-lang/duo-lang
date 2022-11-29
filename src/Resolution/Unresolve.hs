@@ -368,7 +368,7 @@ instance EmbedRST (RST.Term pc) CST.Term where
     pure $ CST.Var loc fv
   embedRST (RST.Xtor loc _ _ xt (RST.MkSubstitution subst)) = do
     subst' <- mapM (fmap CST.ToSTerm . embedRST) subst
-    pure $ CST.Xtor loc xt (CST.MkSubstitutionI subst')
+    pure $ CST.Xtor loc xt Nothing (CST.MkSubstitutionI subst')
   embedRST (RST.XCase loc PrdRep _ cases) = do
     cases' <- mapM embedRST cases
     pure $ CST.Cocase loc cases'
@@ -447,9 +447,9 @@ instance Open RST.Command where
     pure $ RST.Read loc cns'
   open (RST.Jump loc fv) =
     pure $ RST.Jump loc fv
-  open (RST.Method loc mn cn subst) = do
+  open (RST.Method loc mn cn ty subst) = do
     subst' <- open subst
-    pure $ RST.Method loc mn cn subst'
+    pure $ RST.Method loc mn cn ty subst'
   open (RST.ExitSuccess loc) =
     pure $ RST.ExitSuccess loc
   open (RST.ExitFailure loc) =
@@ -489,9 +489,10 @@ instance EmbedRST RST.Command CST.Term where
     pure $ CST.PrimTerm loc readName (CST.MkSubstitution [cns'])
   embedRST (RST.Jump loc fv) =
     pure $ CST.Var loc fv
-  embedRST (RST.Method loc mn _cn (RST.MkSubstitution subst)) = do
+  embedRST (RST.Method loc mn _cn ty (RST.MkSubstitution subst)) = do
     subst' <- mapM (fmap CST.ToSTerm . embedRST) subst
-    pure $ CST.Xtor loc (MkXtorName $ unMethodName mn) (CST.MkSubstitutionI subst')
+    ty' <- case ty of Nothing -> return Nothing; Just (typ, _tyn) -> Just <$> unresolve typ
+    pure $ CST.Xtor loc (MkXtorName $ unMethodName mn) ty' (CST.MkSubstitutionI subst')
   embedRST (RST.ExitSuccess loc) =
     pure $ CST.PrimTerm loc exitSuccessName (CST.MkSubstitution [])
   embedRST (RST.ExitFailure loc) =

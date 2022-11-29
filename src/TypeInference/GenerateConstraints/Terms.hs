@@ -272,7 +272,7 @@ instance GenConstraints Core.Command TST.Command where
     -- Ensure that the referenced command is in scope
     _ <- lookupCommand loc fv
     pure (TST.Jump loc fv)
-  genConstraints (Core.Method loc mn cn subst) = do
+  genConstraints (Core.Method loc mn cn Nothing subst) = do
     decl <- lookupClassDecl loc cn
     insertSkolemsClass decl
       -- fresh type var and subsitution for type class variable(s)
@@ -285,6 +285,7 @@ instance GenConstraints Core.Command TST.Command where
     let substTypes = TST.getTypArgs substInferred
     genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
     pure (TST.Method loc mn cn substInferred)
+  genConstraints (Core.Method loc mn cn (Just ty) subst) = throwGenError undefined
   genConstraints (Core.Print loc prd cmd) = do
     prd' <- genConstraints prd
     cmd' <- genConstraints cmd

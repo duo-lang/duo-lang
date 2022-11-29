@@ -83,7 +83,7 @@ instance EmbedTST TST.Command Core.Command where
   embedTST (TST.Jump loc fv) =
       Core.Jump loc fv
   embedTST (TST.Method loc mn cn subst) =
-      Core.Method loc mn cn (embedTST subst)
+      Core.Method loc mn cn Nothing (embedTST subst)
   embedTST (TST.ExitSuccess loc) =
       Core.ExitSuccess loc
   embedTST (TST.ExitFailure loc) =
