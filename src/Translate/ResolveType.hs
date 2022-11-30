@@ -2,43 +2,43 @@ module Translate.ResolveType where
 
 import qualified Syntax.TST.Types as TST
 import qualified Syntax.RST.Types as RST
-import Syntax.CST.Kinds (MonoKind(..), EvaluationOrder (..))
+import Syntax.CST.Kinds (MonoKind(..))
 
 
 class ResolveType a b | a -> b where
-    resolveType :: a -> b
+    resolveType :: MonoKind -> a -> b
 
 instance ResolveType (RST.XtorSig pol) (TST.XtorSig pol) where
-    resolveType :: RST.XtorSig pol -> TST.XtorSig pol
-    resolveType (RST.MkXtorSig xtor args) = TST.MkXtorSig xtor (resolveType <$> args)
+    resolveType :: MonoKind -> RST.XtorSig pol -> TST.XtorSig pol
+    resolveType k (RST.MkXtorSig xtor args) = TST.MkXtorSig xtor (resolveType k <$> args)
 
 instance ResolveType (RST.PrdCnsType pol) (TST.PrdCnsType pol) where
-    resolveType (RST.PrdCnsType pc ty) = TST.PrdCnsType pc (resolveType ty)
+    resolveType k (RST.PrdCnsType pc ty) = TST.PrdCnsType pc (resolveType k ty)
 
 instance ResolveType (RST.VariantType pol) (TST.VariantType pol) where
-    resolveType :: RST.VariantType pol -> TST.VariantType pol
-    resolveType (RST.CovariantType ty) = TST.CovariantType (resolveType ty)
-    resolveType (RST.ContravariantType ty) = TST.ContravariantType (resolveType ty)
+    resolveType :: MonoKind -> RST.VariantType pol -> TST.VariantType pol
+    resolveType k (RST.CovariantType ty) = TST.CovariantType (resolveType k ty)
+    resolveType k (RST.ContravariantType ty) = TST.ContravariantType (resolveType k ty)
 
 instance ResolveType (RST.Typ pol) (TST.Typ pol) where
-    resolveType :: RST.Typ pol -> TST.Typ pol
-    resolveType (RST.TySkolemVar loc pol var) = TST.TySkolemVar loc pol (CBox CBV) var
-    resolveType (RST.TyUniVar loc pol var) = TST.TyUniVar loc pol (CBox CBV) var
-    resolveType (RST.TyRecVar loc pol var) = TST.TyRecVar loc pol (CBox CBV) var
-    resolveType (RST.TyData loc pol xtors) = TST.TyData loc pol (CBox CBV) (resolveType <$> xtors)
-    resolveType (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol (CBox CBV) (resolveType <$> xtors)
-    resolveType (RST.TyDataRefined loc pol rn xtors) = TST.TyDataRefined loc pol (CBox CBV) rn (resolveType <$> xtors)
-    resolveType (RST.TyCodataRefined loc pol rn xtors) = TST.TyCodataRefined loc pol (CBox CBV) rn (resolveType <$> xtors)
-    resolveType (RST.TyNominal loc pol rn xtors) = TST.TyNominal loc pol (CBox CBV) rn (resolveType <$> xtors)
-    resolveType (RST.TySyn loc pol rn ty) = TST.TySyn loc pol rn (resolveType ty)
-    resolveType (RST.TyBot loc) = TST.TyBot loc (CBox CBV)
-    resolveType (RST.TyTop loc) = TST.TyTop loc (CBox CBV)
-    resolveType (RST.TyUnion loc ty1 ty2) = TST.TyUnion loc (CBox CBV) (resolveType ty1) (resolveType ty2)
-    resolveType (RST.TyInter loc ty1 ty2) = TST.TyInter loc (CBox CBV) (resolveType ty1) (resolveType ty2)
-    resolveType (RST.TyRec loc pol recTVar ty) = TST.TyRec loc pol recTVar (resolveType ty)
-    resolveType (RST.TyI64 loc pol) = TST.TyI64 loc pol
-    resolveType (RST.TyF64 loc pol) = TST.TyF64 loc pol
-    resolveType (RST.TyChar loc pol) = TST.TyChar loc pol
-    resolveType (RST.TyString loc pol) = TST.TyString loc pol
-    resolveType (RST.TyFlipPol pol ty) = TST.TyFlipPol pol (resolveType ty)
-    resolveType (RST.TyKindAnnot _k _ty) = error "no TST representation for kind annotations"
+    resolveType :: MonoKind -> RST.Typ pol -> TST.Typ pol
+    resolveType k (RST.TySkolemVar loc pol var) = TST.TySkolemVar loc pol k var
+    resolveType k (RST.TyUniVar loc pol var) = TST.TyUniVar loc pol k var
+    resolveType k (RST.TyRecVar loc pol var) = TST.TyRecVar loc pol k var
+    resolveType k (RST.TyData loc pol xtors) = TST.TyData loc pol k (resolveType k <$> xtors)
+    resolveType k (RST.TyCodata loc pol xtors) = TST.TyCodata loc pol k (resolveType k <$> xtors)
+    resolveType k (RST.TyDataRefined loc pol rn xtors) = TST.TyDataRefined loc pol k rn (resolveType k <$> xtors)
+    resolveType k (RST.TyCodataRefined loc pol rn xtors) = TST.TyCodataRefined loc pol k rn (resolveType k <$> xtors)
+    resolveType k (RST.TyNominal loc pol rn xtors) = TST.TyNominal loc pol k rn (resolveType k <$> xtors)
+    resolveType k (RST.TySyn loc pol rn ty) = TST.TySyn loc pol rn (resolveType k ty)
+    resolveType k (RST.TyBot loc) = TST.TyBot loc k
+    resolveType k (RST.TyTop loc) = TST.TyTop loc k
+    resolveType k (RST.TyUnion loc ty1 ty2) = TST.TyUnion loc k (resolveType k ty1) (resolveType k ty2)
+    resolveType k (RST.TyInter loc ty1 ty2) = TST.TyInter loc k (resolveType k ty1) (resolveType k ty2)
+    resolveType k (RST.TyRec loc pol recTVar ty) = TST.TyRec loc pol recTVar (resolveType k ty)
+    resolveType _k (RST.TyI64 loc pol) = TST.TyI64 loc pol
+    resolveType _k (RST.TyF64 loc pol) = TST.TyF64 loc pol
+    resolveType _k (RST.TyChar loc pol) = TST.TyChar loc pol
+    resolveType _k (RST.TyString loc pol) = TST.TyString loc pol
+    resolveType k (RST.TyFlipPol pol ty) = TST.TyFlipPol pol (resolveType k ty)
+    resolveType _k (RST.TyKindAnnot _k' _ty) = error "no TST representation for kind annotations"
