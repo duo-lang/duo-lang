@@ -187,6 +187,7 @@ cocaseToHoverMap loc ty ns = mkHoverMap loc msg
 
 methodToHoverMap :: Loc -> MethodName -> ClassName -> TST.InstanceResolved -> HoverMap
 methodToHoverMap _ _ _ (TST.InstanceUnresolved _) = mempty
+methodToHoverMap _ _ _ (TST.InstanceTypeUnresolved _) = mempty
 methodToHoverMap loc mn cn (TST.InstanceResolved inst) = mkHoverMap loc msg
   where
     msg :: Text

@@ -221,6 +221,7 @@ instance Zonk Command where
 data InstanceResolved where
   InstanceResolved :: FreeVarName -> InstanceResolved
   InstanceUnresolved :: UniTVar -> InstanceResolved
+  InstanceTypeUnresolved :: (Typ Pos, Typ Neg) -> InstanceResolved
 deriving instance Show InstanceResolved
 
 ---------------------------------------------------------------------------------

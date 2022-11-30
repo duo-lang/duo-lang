@@ -179,6 +179,7 @@ library
       Translate.Focusing
       Translate.EmbedTST
       Translate.InsertInstance
+      Translate.ResolveType
       Utils
   other-modules:
       Paths_duo_lang

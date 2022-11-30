@@ -17,6 +17,7 @@ import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Translate.EmbedTST (EmbedTST(..))
+import Translate.ResolveType (ResolveType(..))
 
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.GenerateConstraints.Kinds
@@ -288,7 +289,19 @@ instance GenConstraints Core.Command TST.Command where
       [] -> throwGenError (NoParamTypeClass loc)
       [uv] -> pure (TST.Method loc mn cn (TST.InstanceUnresolved uv) substInferred)
       _ -> throwGenError (MultiParamTypeClass loc)
-  genConstraints (Core.Method loc mn cn (Just ty) subst) = throwGenError undefined
+  genConstraints (Core.Method loc mn cn (Just (typ, tyn)) subst) = do
+    decl <- lookupClassDecl loc cn
+    insertSkolemsClass decl
+    let resolvedType = (resolveType typ, resolveType tyn)
+    let tyParamsMap = paramsMap (classdecl_kinds decl) [resolvedType]
+    negTypes <- lookupMethodType loc mn decl NegRep
+    ctxtNeg <- annotateKind negTypes
+    let negTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtNeg 
+    -- infer arg types
+    substInferred <- genConstraints subst
+    let substTypes = TST.getTypArgs substInferred
+    genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
+    pure (TST.Method loc mn cn (TST.InstanceTypeUnresolved resolvedType) substInferred)
   genConstraints (Core.Print loc prd cmd) = do
     prd' <- genConstraints prd
     cmd' <- genConstraints cmd
