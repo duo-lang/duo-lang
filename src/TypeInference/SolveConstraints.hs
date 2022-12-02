@@ -30,6 +30,7 @@ import Loc ( defaultLoc )
 import Syntax.CST.Names
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.CST.Kinds
+import Data.Either (isRight)
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad
@@ -432,40 +433,38 @@ getInferredType (TyUnion _ _ TySkolemVar{} typ) TySkolemVar{} = pure $ Left typ
 getInferredType _ _ = throwSolverError defaultLoc [ "UniVar constrained by type class does not have the expected Bisubstitution." ]
 
 -- | Try to solve subtyping constraint between two types.
-trySubtype :: UniTVar -> MonoKind -> Typ Pos -> Typ Neg -> Map ModuleName Environment -> Either (NE.NonEmpty Error) Bool
-trySubtype uv k typ tyn env = do
-  let css = [SubType ClassResolutionConstraint typ tyn]
-  let constraintSet = ConstraintSet css [(uv, TypeClassResolution, k)] []
-  catchError
-    (True <$ runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet))
-    (const $ return False)
+trySubtype :: UniTVar -> MonoKind -> Typ Pos -> Typ Neg -> Map ModuleName Environment -> Bool
+trySubtype uv k typ tyn env = let
+  css = [SubType ClassResolutionConstraint typ tyn]
+  constraintSet = ConstraintSet css [(uv, TypeClassResolution, k)] []
+  in isRight $ runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet)
 
--- | Try to resolve type class constraint for a UniVar and its lower/upper bounds with given instance environment.
-tryInstances :: UniTVar -> ClassName -> MonoKind -> (Typ 'Pos, Typ 'Neg) -> Map ModuleName Environment
-             -> Either (NE.NonEmpty Error) [(FreeVarName, Typ 'Pos, Typ 'Neg)]
-tryInstances uv cn k (typ, tyn) env = do
-  ty <- getInferredType typ tyn
-  let instances = M.unions $ instanceEnv <$> M.elems env
-  case M.lookup cn instances of
-          Nothing -> throwSolverError defaultLoc [ "No instance in environment defined for " <> ppPrint cn <> " " <> ppPrint uv ]
-          Just s -> go (S.toList s) ty env
-    where go :: [(FreeVarName, Typ 'Pos, Typ 'Neg)] -> Either (Typ Pos) (Typ Neg) -> Map ModuleName Environment
-             -> Either (NE.NonEmpty Error) [(FreeVarName, Typ 'Pos, Typ 'Neg)]
-          go [] _ _ = pure []
-          -- case of covariant type class
-          go (i@(_iname, _typ, tyn):instances) (Left sub) env = do
-            res <- trySubtype uv k sub tyn env
-            is <- go instances (Left sub) env
-            if res then pure (i:is) else pure is
-          -- case of contravariant type class
-          go (i@(_iname, typ, _tyn):instances) (Right sup) env = do
-            res <- trySubtype uv k typ sup env
-            is <- go instances (Right sup) env
-            if res then pure (i:is) else pure is
+-- | Resolve instances for univar constrained by covariant type class.
+resolveCoClass :: UniTVar -> MonoKind -> [(FreeVarName, Typ 'Pos, Typ 'Neg)] -> Typ Pos -> Map ModuleName Environment
+             -> [(FreeVarName, Typ 'Pos, Typ 'Neg)]
+resolveCoClass _ _ [] _ _ = []
+-- case of covariant type class
+resolveCoClass uv k (i@(_iname, _typ, tyn):instances) sub env = let
+  res = trySubtype uv k sub tyn env
+  is = resolveCoClass uv k instances sub env
+  in if res then i:is else is
 
+-- | Resolve instances for univar constrained by contravariant type class.
+resolveContraClass :: UniTVar -> MonoKind -> [(FreeVarName, Typ 'Pos, Typ 'Neg)] -> Typ Neg -> Map ModuleName Environment
+             -> [(FreeVarName, Typ 'Pos, Typ 'Neg)]
+resolveContraClass _ _ [] _ _ = []
+-- case of contravariant type class
+resolveContraClass uv k (i@(_iname, typ, _tyn):instances) sup env = let
+  res = trySubtype uv k typ sup env
+  is = resolveContraClass uv k instances sup env
+  in if res then i:is else is
+
+-- | Get defined instances for a type class from environment.
+getInstances :: ClassName -> Map ModuleName Environment -> Maybe (Set (FreeVarName, Typ 'Pos, Typ 'Neg))
+getInstances cn env = M.lookup cn (M.unions $ instanceEnv <$> M.elems env)
 
 ------------------------------------------------------------------------------
--- Exported Function
+-- Exported Functions
 ------------------------------------------------------------------------------
 
 zonkVariableState :: Map KVar MonoKind -> VariableState -> VariableState
@@ -484,21 +483,26 @@ solveConstraints constraintSet@(ConstraintSet css _ _) env = do
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution (sst_cache solverState)
 
--- | Resolves and returns the correct instance for each type-class-constrained uni var.
+-- | Resolves and returns the correct instance for each type-class-constrained unification variable.
 solveClassConstraints :: SolverResult -> Bisubstitution 'UniVT -> Map ModuleName Environment -> Either (NE.NonEmpty Error) InstanceResult
 solveClassConstraints sr bisubst env = do
-  let uvs = M.map (\VariableState { vst_typeclasses, vst_kind } -> (head vst_typeclasses, TypeClassResolution, vst_kind))
-          $ M.filter (\VariableState { vst_typeclasses } -> not (null vst_typeclasses))
-          $ tvarSolution sr
-  let tys = M.mapWithKey (\k x -> (x,  getUniVType bisubst k)) uvs
-  res <- forM (M.toList tys) $ \(uv, ((cn, _uvarprov, k) , mTy)) -> ((uv,cn),) <$> do
-    case mTy of
-      Nothing -> throwSolverError defaultLoc [ "UniVar not found in Bisubstitution: " <> ppPrint uv  ]
-      Just ty -> do
-        instances <- tryInstances uv cn k ty env
-        case instances of
-          [] -> throwSolverError defaultLoc [ "No instance in environment defined for " <> ppPrint cn <> " " <> ppPrint uv ]
-          [i] -> pure i
-          is -> throwSolverError defaultLoc $ ("Incoherent instances resolved for " <> ppPrint cn <> " " <> ppPrint uv)
-                                            : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> is)
-  return (MkInstanceResult (M.fromList res))
+  let uvs = fmap (\(uv, vst) -> (uv, vst_typeclasses vst, vst_kind vst)) $ M.toList $ tvarSolution sr
+  res <- forM uvs $ \(uv, cns, k) -> do
+    let mTy = getUniVType bisubst uv
+    forM cns $ \cn -> ((uv,cn),) <$>
+      case getInstances cn env of
+        Nothing -> throwSolverError defaultLoc [ "There are no instances defined for type class: " <> ppPrint cn ]
+        Just instances -> case mTy of
+          Nothing -> throwSolverError defaultLoc [ "UniVar not found in Bisubstitution: " <> ppPrint uv ]
+          Just (typ, tyn) -> do
+            ty <- getInferredType typ tyn
+            let checkResult :: PrettyAnn a => [(FreeVarName, Typ Pos, Typ Neg)] -> a -> Either (NE.NonEmpty Error) (FreeVarName, Typ Pos, Typ Neg)
+                checkResult [] ty = throwSolverError defaultLoc $ ("Could not resolve instance for " <> ppPrint cn <> " " <> ppPrint ty <> ". Instances checked:")
+                                                                : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> S.toList instances)
+                checkResult [i] _ty = pure i
+                checkResult is ty = throwSolverError defaultLoc $ ("Incoherent instances resolved for " <> ppPrint cn <> " " <> ppPrint ty)
+                                                                : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> is)
+            case ty of
+              Left sub -> checkResult (resolveCoClass uv k (S.toList instances) sub env) sub
+              Right sup -> checkResult (resolveContraClass uv k (S.toList instances) sup env) sup
+  return (MkInstanceResult (M.fromList (concat res)))
