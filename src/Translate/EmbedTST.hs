@@ -136,8 +136,12 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     RST.TyKindAnnot mk $ RST.TyDataRefined loc pol tn (map embedTST xtors)
   embedTST (TST.TyCodataRefined loc pol mk tn xtors) =
     RST.TyKindAnnot mk $ RST.TyCodataRefined loc pol tn (map embedTST xtors)
+  -- if arguments are applied to TyNominal, don't annotate the Kind, otherwise the parser will break after prettyprint
+  embedTST (TST.TyApp loc pol (TST.TyNominal loc' pol' polyknd tn) args) = 
+    RST.TyApp loc pol (RST.TyNominal loc' pol' polyknd tn) (embedTST <$> args)
+  -- if thre is no application, kind annotation is needed, otherwise x:(Nat:CBV) := x will break after prettyprint
   embedTST (TST.TyNominal loc pol polyknd tn) = do
-    RST.TyNominal loc pol polyknd tn  
+    RST.TyKindAnnot (CBox $ returnKind polyknd) $ RST.TyNominal loc pol polyknd tn  
   embedTST (TST.TyApp loc pol ty args) = do
     RST.TyApp loc pol (embedTST ty) (embedTST <$> args)
   embedTST (TST.TySyn loc pol tn tp) = do 
