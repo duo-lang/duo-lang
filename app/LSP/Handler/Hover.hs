@@ -255,7 +255,7 @@ instance ToHoverMap TST.Command where
   toHoverMap ExitSuccess {} = M.empty
   toHoverMap ExitFailure {} = M.empty
   toHoverMap PrimOp {} = M.empty
-  toHoverMap (Method loc mn cn inst subst) = M.union (methodToHoverMap loc mn cn inst) (toHoverMap subst)
+  toHoverMap (Method loc mn cn inst _ty subst) = M.union (methodToHoverMap loc mn cn inst) (toHoverMap subst)
   toHoverMap (CaseOfCmd _ _ t cmdcases) =
     M.unions $ toHoverMap t : map toHoverMap cmdcases
   toHoverMap (CaseOfI _ _ _ t tmcasesI) =

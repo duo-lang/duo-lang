@@ -103,7 +103,7 @@ dualCmd (Read loc _)  =
   throwDualizeError (DualRead loc "Cannot dualize Read command")
 dualCmd (Jump _ fv)  =
   pure $ Jump defaultLoc (dualFVName fv)
-dualCmd (Method loc _ _ _ _) =
+dualCmd (Method loc _ _ _ _ _) =
   throwDualizeError (DualMethod loc "Cannot dualize type class method")
 dualCmd (PrimOp loc op _) =
   throwDualizeError(DualPrimOp loc op "Cannot dualize primitive op")

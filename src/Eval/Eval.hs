@@ -68,12 +68,12 @@ evalTermOnce (Read _ cns) = do
 evalTermOnce (Jump _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
-evalTermOnce (Method loc mn _cn (InstanceResolved inst) subst) = do
+evalTermOnce (Method loc mn _cn (InstanceResolved inst) _ty subst) = do
   (cmd, pat) <- lookupMethodDefinition loc mn inst
   checkArgs cmd ((\(XtorPat _ _ args) -> args) pat) subst 
   return (Just  (LN.open subst cmd))
-evalTermOnce (Method _ _ _ (InstanceUnresolved _) _) = throwEvalError defaultLoc ["evalApplyOnce: No instance resolved."]
-evalTermOnce (Method _ _ _ (InstanceTypeUnresolved _) _) = throwEvalError defaultLoc ["evalApplyOnce: No instance resolved."]
+evalTermOnce (Method _ _ _ (InstanceUnresolved _) _ _) = throwEvalError defaultLoc ["evalApplyOnce: No instance resolved."]
+evalTermOnce (Method _ _ _ (InstanceTypeUnresolved _) _ _) = throwEvalError defaultLoc ["evalApplyOnce: No instance resolved."]
 evalTermOnce (Apply _ _ kind prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ op args) = evalPrimOp op args
 

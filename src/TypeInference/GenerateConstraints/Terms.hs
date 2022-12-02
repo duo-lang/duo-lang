@@ -286,7 +286,7 @@ instance GenConstraints Core.Command TST.Command where
     genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
     case uvs of
       [] -> throwGenError (NoParamTypeClass loc)
-      [uv] -> pure (TST.Method loc mn cn (TST.InstanceUnresolved uv) substInferred)
+      [uv] -> pure (TST.Method loc mn cn (TST.InstanceUnresolved uv) Nothing substInferred)
       _ -> throwGenError (MultiParamTypeClass loc)
   genConstraints (Core.Method loc mn cn (Just ty) subst) = do
     decl <- lookupClassDecl loc cn
@@ -305,7 +305,7 @@ instance GenConstraints Core.Command TST.Command where
         substInferred <- genConstraints subst
         let substTypes = TST.getTypArgs substInferred
         genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
-        pure (TST.Method loc mn cn (TST.InstanceTypeUnresolved resolvedType) substInferred)
+        pure (TST.Method loc mn cn (TST.InstanceTypeUnresolved resolvedType) (Just resolvedType) substInferred)
       _ -> throwGenError (MultiParamTypeClass loc)
   genConstraints (Core.Print loc prd cmd) = do
     prd' <- genConstraints prd
