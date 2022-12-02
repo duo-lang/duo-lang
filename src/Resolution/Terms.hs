@@ -388,7 +388,7 @@ resolveTerm CnsRep (CST.MuAbs loc fv cmd) = do
 ---------------------------------------------------------------------------------
 -- Xtor
 ---------------------------------------------------------------------------------
-resolveTerm PrdRep (CST.Xtor loc xtor ty subst) = do
+resolveTerm PrdRep (CST.Xtor loc xtor _ty subst) = do
   (_, res) <- lookupXtor loc xtor
   case res of
     (XtorNameResult dc ns ar) -> do
@@ -403,7 +403,7 @@ resolveTerm PrdRep (CST.Xtor loc xtor ty subst) = do
       pctms <- resolveTerms loc ar subst'
       pure $ RST.Xtor loc PrdRep ns xtor (RST.MkSubstitution pctms)
     (MethodNameResult _cn _ar) -> throwOtherError loc ["Xtor expected, but found Method"]
-resolveTerm CnsRep (CST.Xtor loc xtor ty subst) = do
+resolveTerm CnsRep (CST.Xtor loc xtor _ty subst) = do
   (_, res) <- lookupXtor loc xtor
   case res of
     (XtorNameResult dc ns ar) -> do
