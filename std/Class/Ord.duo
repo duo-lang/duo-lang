@@ -56,7 +56,7 @@ instance ordNat : Ord Nat {
         },
         S(n) => case y of {
             Z => GT >> k,
-            S(m) => Compare[Nat](n,m,k)
+            S(m) => Compare(n,m,k)
         }
     }
 };
