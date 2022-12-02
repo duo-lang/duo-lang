@@ -276,7 +276,7 @@ instance GenConstraints Core.Command TST.Command where
     decl <- lookupClassDecl loc cn
     insertSkolemsClass decl
       -- fresh type var and subsitution for type class variable(s)
-    tyParamsMap <- createMethodSubst loc decl
+    (tyParamsMap, uvs) <- createMethodSubst loc decl
     negTypes <- lookupMethodType loc mn decl NegRep
     ctxtNeg <- annotateKind negTypes
     let negTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtNeg 
@@ -284,7 +284,10 @@ instance GenConstraints Core.Command TST.Command where
     substInferred <- genConstraints subst
     let substTypes = TST.getTypArgs substInferred
     genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
-    pure (TST.Method loc mn cn substInferred)
+    case uvs of
+      [] -> throwGenError (NoParamTypeClass loc)
+      [uv] -> pure (TST.Method loc mn cn (TST.InstanceUnresolved uv) substInferred)
+      _ -> throwGenError (MultiParamTypeClass loc)
   genConstraints (Core.Print loc prd cmd) = do
     prd' <- genConstraints prd
     cmd' <- genConstraints cmd

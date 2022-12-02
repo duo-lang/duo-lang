@@ -4,6 +4,7 @@ module Syntax.RST.Terms
   , PrdCnsTerm(..)
   , Substitution(..)
   , SubstitutionI(..)
+  , GenericPattern
   , PatternNew(..)
   , StarPattern(..)
   , Pattern(..)
@@ -14,14 +15,16 @@ module Syntax.RST.Terms
   , InstanceCase(..)
   , Command(..)
   , PrimitiveOp(..)
+  , Overlap 
    -- Functions
-  ) where
+  ,overlap) where
 
-import Data.List (elemIndex)
+import Data.List (elemIndex, tails)
+import Data.Text (Text, pack)
 
 import Loc ( Loc, HasLoc(..) )
 import Syntax.CST.Names
-    ( ClassName, FreeVarName, Index, MethodName, XtorName )
+    ( ClassName, FreeVarName, Index, MethodName, XtorName, unFreeVarName, unXtorName )
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..) )
 import Syntax.LocallyNameless (LocallyNameless (..))
@@ -72,10 +75,106 @@ deriving instance Show (SubstitutionI pc)
 -- Pattern/copattern match cases
 ---------------------------------------------------------------------------------
 
+type GenericPattern = Either PatternNew StarPattern
+
 data PatternNew where
   PatXtor     :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> [PatternNew] -> PatternNew
   PatVar      :: Loc -> PrdCns -> FreeVarName -> PatternNew
   PatWildcard :: Loc -> PrdCns -> PatternNew
+
+--------------------------------------------
+
+type OverlapMsg = Text
+
+type Overlap = Maybe OverlapMsg
+
+-- | Generates the Overlap of Patterns between one another.
+-- For testing purposes, best display via printOverlap $ overlap test<X>...
+overlap :: [GenericPattern] -> Overlap
+overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (tails l))
+            in  concatOverlaps pairOverlaps
+  where
+    -- | Reduces multiple potential Overlap Messages into one potential Overlap Message.
+    concatOverlaps :: [Overlap] -> Overlap
+    concatOverlaps xs =
+      let concatRule = \x y -> x <> "\n\n" <> y
+      in  foldr (liftm2 concatRule) Nothing xs
+      where
+        liftm2 :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a
+        liftm2 _ x          Nothing   = x
+        liftm2 _ Nothing    y         = y
+        liftm2 f (Just x)   (Just y)  = Just $ (f x y)
+
+    -- | Generates an Overlap Message for patterns p1 p2.
+    overlapMsg :: GenericPattern -> GenericPattern -> OverlapMsg
+    overlapMsg p1 p2 =
+      let p1Str = patternToText p1
+          p2Str = patternToText p2
+      in  "Overlap found:\n" <> p1Str <> " overlaps with " <> p2Str <> "\n"
+
+    -- | Readable Conversion of Pattern to Text.
+    patternToText :: GenericPattern -> Text
+    patternToText (Left  (PatVar       loc prdcns varName))      = pack(show prdcns) <> pack(" Variable Pattern ") <> pack("'") <> (unFreeVarName varName) <> pack("'") <> pack(" in: " ++ (show loc))
+    patternToText (Left  (PatWildcard  loc prdcns))              = pack(show prdcns) <> pack(" Wildcard Pattern in: ") <> pack(show loc)
+    patternToText (Left  (PatXtor      loc prdcns _ xtorName _)) = pack(show prdcns) <> pack(" Xtor Pattern ") <> pack("'") <> (unXtorName xtorName) <> pack("'") <> pack(" in: " ++ (show loc))
+    patternToText (Right (PatXtorStar  loc prdcns _ xtorName _)) = pack(show prdcns) <> pack(" Xtor Pattern ") <> pack("'") <> (unXtorName xtorName) <> pack("'") <> pack(" in: " ++ (show loc))
+    patternToText (Right (PatStar      loc prdcns))              = pack(show prdcns) <> pack(" Star Pattern in: ") <> pack(show loc)
+
+    -- | Determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.
+    overlapA2 :: GenericPattern -> GenericPattern -> Overlap
+    -- Basic Idea:  Only if both ARE De/Constructors, overlap occurs when their names match and all subpatterns overlap pairwise.
+    --              If one or both of p1,p2 are NOT a De/Constructor we always already have overlap (last case as catchall).
+    -- Xtor Cases: In our current Pattern Syntax, a Xtor Pattern can be constructed as either a Base Pattern or Star Pattern,
+    --             meaning that 4 match cases are needed for covering all overlapA2 Xtor Pattern cases.
+      -- Case 1: 2x Base De/Constructors
+    overlapA2 p1@(Left (PatXtor _ _ _ xXtorName xBasePatterns)) 
+              p2@(Left (PatXtor _ _ _ yXtorName yBasePatterns)) =
+                if    (xXtorName /= yXtorName)
+                then  Nothing
+                else  let xPatterns = map Left xBasePatterns
+                          yPatterns = map Left yBasePatterns
+                      in  overlapSubpatterns (p1,xPatterns) (p2,yPatterns)
+      -- Case 2: Base De/Constructor and Star De/Constructor
+    overlapA2 p1@(Left  (PatXtor      _ _ _ xXtorName xBasePatterns))
+              p2@(Right (PatXtorStar  _ _ _ yXtorName (y1BasePatterns, star, y2BasePatterns))) =
+                if    (xXtorName /= yXtorName)
+                then  Nothing
+                else  let xPatterns = map Left xBasePatterns
+                          yPatterns = (map Left y1BasePatterns) ++ ((Right star):(map Left y2BasePatterns))
+                      in  overlapSubpatterns (p1,xPatterns) (p2,yPatterns)
+      -- Case 3: Star De/Constructor and Base De/Constructor -> Reduce to Case 2!
+    overlapA2 p1@(Right (PatXtorStar _ _ _ _ _)) p2@(Left (PatXtor _ _ _ _ _)) = overlapA2 p2 p1
+      -- Case 4: 2x Star De/Constructors
+    overlapA2 p1@(Right (PatXtorStar  _ _ _ xXtorName (x1BasePatterns, xstar, x2BasePatterns)))
+              p2@(Right (PatXtorStar  _ _ _ yXtorName (y1BasePatterns, ystar, y2BasePatterns))) = 
+                if    (xXtorName /= yXtorName)
+                then  Nothing
+                else  let xPatterns = (map Left x1BasePatterns) ++ ((Right xstar):(map Left x2BasePatterns))
+                          yPatterns = (map Left y1BasePatterns) ++ ((Right ystar):(map Left y2BasePatterns))
+                      in  overlapSubpatterns (p1,xPatterns) (p2,yPatterns)
+    -- All other cases: One of both Patterns is NOT a Xtor Pattern, therefore overlap occures!
+    overlapA2 p1 p2 = Just $ overlapMsg p1 p2
+
+    -- | For 2 Patterns with their Subpatterns, returns Overlap Message if all Pairs of Subatterns overlap,
+    -- | and returns Nothing if at least one Pair of Subpatterns does not overlap 
+    overlapSubpatterns ::  (GenericPattern, [GenericPattern]) -> (GenericPattern, [GenericPattern]) -> Overlap
+    overlapSubpatterns (p1,xPatterns) (p2,yPatterns) = 
+      let subPatternsOverlaps = zipWith overlapA2 xPatterns yPatterns
+          --Only if all Pairs of Subpatterns truly overlap is an Overlap found.
+          subPatternsOverlap =  if   (elem Nothing subPatternsOverlaps) 
+                                then Nothing 
+                                else concatOverlaps subPatternsOverlaps
+      in  case subPatternsOverlap of
+            Nothing                       -> Nothing
+            (Just subPatternsOverlapMsg)  ->
+              Just $
+                (overlapMsg p1 p2)
+                <> "due to the all Subpatterns overlapping as follows:\n"
+                <> "--------------------------------->\n"
+                <> subPatternsOverlapMsg
+                <> "---------------------------------<\n"
+
+--------------------------------------------
 
 deriving instance Eq PatternNew
 deriving instance Show PatternNew
