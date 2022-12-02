@@ -21,6 +21,7 @@ import Translate.EmbedTST (EmbedTST(..))
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.GenerateConstraints.Kinds
 import TypeInference.Constraints
+import TypeInference.SolveConstraints (resolveInstanceAnnot)
 import Loc
 import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
@@ -305,7 +306,12 @@ instance GenConstraints Core.Command TST.Command where
         substInferred <- genConstraints subst
         let substTypes = TST.getTypArgs substInferred
         genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
-        pure (TST.Method loc mn cn (TST.InstanceTypeUnresolved resolvedType) (Just resolvedType) substInferred)
+        env <- asks fst
+        case resolveInstanceAnnot PosRep (fst resolvedType) cn env of
+          Right (inst,_,_) -> pure (TST.Method loc mn cn (TST.InstanceResolved inst) (Just resolvedType) substInferred)
+          Left errPos -> case resolveInstanceAnnot NegRep (snd resolvedType) cn env of
+            Right (inst,_,_) -> pure (TST.Method loc mn cn (TST.InstanceResolved inst) (Just resolvedType) substInferred)
+            Left errNeg -> throwGenError (InstanceResolution loc (errPos <> errNeg))
       _ -> throwGenError (MultiParamTypeClass loc)
   genConstraints (Core.Print loc prd cmd) = do
     prd' <- genConstraints prd
