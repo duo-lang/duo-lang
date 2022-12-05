@@ -476,7 +476,7 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
   VariableState zonkedlbs zonkedubs tc zonkedKind
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Maybe MonoKind -> Map ModuleName Environment -> Either (NE.NonEmpty Error) SolverResult
+solveConstraints :: ConstraintSet -> Maybe (KVar, MonoKind) -> Map ModuleName Environment -> Either (NE.NonEmpty Error) SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) annotKind env = do
   (_, solverState) <- runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet)
   kvarSolution <- computeKVarSolution ErrorUnresolved (sst_kvars solverState)
