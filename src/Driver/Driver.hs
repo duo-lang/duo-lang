@@ -25,7 +25,7 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind(CBox,KindVar),PolyKind(..))
+import Syntax.CST.Kinds (MonoKind(CBox,KindVar))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
@@ -34,10 +34,9 @@ import Syntax.TST.Terms qualified as TST
 import Syntax.Core.Program as Core
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
-import TypeInference.Constraints (ConstraintSet)
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
-    ( runGenM, addKindAnnotConstr )
+    ( runGenM )
 import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
@@ -68,27 +67,23 @@ checkKindAnnot (Just tyAnnotated) loc = do
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
-           -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
+           -> Maybe (TST.TypeScheme pol) -- ^ Annotated type
            -> Loc -- ^ Location for the error message
            -> DriverM (TST.TopAnnot pol)
---checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
-checkAnnot rep tyInferred tyAnnotated loc = do
-  typAnnotZonked <- checkKindAnnot tyAnnotated loc
-  case typAnnotZonked of 
-    Nothing -> return (TST.Inferred tyInferred)
-    Just tys -> do
-      let isSubsumed = subsume rep tyInferred tys
-      case isSubsumed of
-        (Left err) -> throwError (attachLoc loc <$> err)
-        (Right True) -> return (TST.Annotated tys)
-        (Right False) -> do
+checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
+checkAnnot rep tyInferred (Just tyAnnotated) loc = do
+  let isSubsumed = subsume rep tyInferred tyAnnotated
+  case isSubsumed of
+    (Left err) -> throwError (attachLoc loc <$> err)
+    (Right True) -> return (TST.Annotated tyAnnotated)
+    (Right False) -> do
 
-          let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
-                                                            , " Annotated type: " <> ppPrint tys
-                                                            , " Inferred type:  " <> ppPrint tyInferred
-                                                            ]
-          guardVerbose $ ppPrintIO err
-          throwError (err NE.:| [])
+      let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
+                                                        , " Annotated type: " <> ppPrint tyAnnotated
+                                                        , " Inferred type:  " <> ppPrint tyInferred
+                                                        ]
+      guardVerbose $ ppPrintIO err
+      throwError (err NE.:| [])
 
 ---------------------------------------------------------------------------------
 -- Infer Declarations
@@ -133,7 +128,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified pcdecl_annot pcdecl_loc
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified tyAnnotChecked pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
