@@ -56,15 +56,6 @@ import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
 
 
-addConstrForAnnot :: Maybe (RST.TypeScheme pol) -> TST.Term prdcns -> ConstraintSet -> ConstraintSet
-addConstrForAnnot pcdecl_annot tmInferred constraintSet =
-  case pcdecl_annot of 
-    Nothing -> constraintSet 
-    Just (RST.TypeScheme _ _ (RST.TyKindAnnot mk _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
-    Just (RST.TypeScheme _ _ (RST.TyApp _ _ (RST.TyKindAnnot mk _) _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
-    Just (RST.TypeScheme _ _ (RST.TyApp _ _ (RST.TyNominal _ _ pk _) _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) (CBox $ returnKind pk) constraintSet
-    _ -> constraintSet 
-
 checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
 checkKindAnnot Nothing _ = return Nothing
 checkKindAnnot (Just tyAnnotated) loc = do
@@ -113,19 +104,17 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   let genFun = case pcdecl_isRec of
         CST.Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
         CST.NonRecursive -> genConstraints pcdecl_term
-  -- get annotated Kind out of annotation if available
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
-  let constraintSetModified = addConstrForAnnot pcdecl_annot tmInferred constraintSet
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName pcdecl_name))
     ppPrintIO ("" :: T.Text)
     ppPrintIO pcdecl_term
     ppPrintIO ("" :: T.Text)
-    ppPrintIO constraintSetModified
+    ppPrintIO constraintSet
   -- 2. Solve the constraints.
   tyAnnotChecked <- checkKindAnnot pcdecl_annot pcdecl_loc
   let annotKind = case ((TST.getKind $ TST.getTypeTerm tmInferred),tyAnnotChecked) of (KindVar kv,Just annot) -> Just (kv,TST.getKind $ TST.ts_monotype annot); _ -> Nothing
-  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSetModified annotKind env
+  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet annotKind env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
