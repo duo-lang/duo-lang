@@ -25,7 +25,7 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind(CBox),PolyKind(..))
+import Syntax.CST.Kinds (MonoKind(CBox,KindVar),PolyKind(..))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
@@ -65,35 +65,39 @@ addConstrForAnnot pcdecl_annot tmInferred constraintSet =
     Just (RST.TypeScheme _ _ (RST.TyApp _ _ (RST.TyNominal _ _ pk _) _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) (CBox $ returnKind pk) constraintSet
     _ -> constraintSet 
 
-checkKindAnnot :: RST.TypeScheme pol -> Loc -> DriverM (TST.TypeScheme pol)
-checkKindAnnot (tyAnnotated) loc= do
+checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
+checkKindAnnot Nothing _ = return Nothing
+checkKindAnnot (Just tyAnnotated) loc = do
   env <- gets drvEnv
   (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
   solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs Nothing env
   let bisubstAnnot = coalesce solverResAnnot
   let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot annotChecked
-  return typAnnotZonked
+  return $ Just typAnnotZonked
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
            -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
            -> Loc -- ^ Location for the error message
            -> DriverM (TST.TopAnnot pol)
-checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
-checkAnnot rep tyInferred (Just tyAnnotated) loc = do
+--checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
+checkAnnot rep tyInferred tyAnnotated loc = do
   typAnnotZonked <- checkKindAnnot tyAnnotated loc
-  let isSubsumed = subsume rep tyInferred typAnnotZonked
-  case isSubsumed of
-      (Left err) -> throwError (attachLoc loc <$> err)
-      (Right True) -> return (TST.Annotated typAnnotZonked)
-      (Right False) -> do
+  case typAnnotZonked of 
+    Nothing -> return (TST.Inferred tyInferred)
+    Just tys -> do
+      let isSubsumed = subsume rep tyInferred tys
+      case isSubsumed of
+        (Left err) -> throwError (attachLoc loc <$> err)
+        (Right True) -> return (TST.Annotated tys)
+        (Right False) -> do
 
-        let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
-                                                            , " Annotated type: " <> ppPrint tyAnnotated
+          let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
+                                                            , " Annotated type: " <> ppPrint tys
                                                             , " Inferred type:  " <> ppPrint tyInferred
                                                             ]
-        guardVerbose $ ppPrintIO err
-        throwError (err NE.:| [])
+          guardVerbose $ ppPrintIO err
+          throwError (err NE.:| [])
 
 ---------------------------------------------------------------------------------
 -- Infer Declarations
@@ -119,7 +123,9 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
     ppPrintIO ("" :: T.Text)
     ppPrintIO constraintSetModified
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSetModified Nothing env
+  tyAnnotChecked <- checkKindAnnot pcdecl_annot pcdecl_loc
+  let annotKind = case ((TST.getKind $ TST.getTypeTerm tmInferred),tyAnnotChecked) of (KindVar kv,Just annot) -> Just (kv,TST.getKind $ TST.ts_monotype annot); _ -> Nothing
+  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSetModified annotKind env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
