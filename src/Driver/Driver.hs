@@ -74,7 +74,7 @@ checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
   env <- gets drvEnv
   (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
-  solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs env
+  solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs Nothing env 
   let bisubstAnnot = coalesce solverResAnnot
   let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot annotChecked
   let isSubsumed = subsume rep tyInferred typAnnotZonked
@@ -114,7 +114,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
     ppPrintIO ("" :: T.Text)
     ppPrintIO constraintSetModified
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSetModified env
+  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSetModified Nothing env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
@@ -168,7 +168,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   -- Generate the constraints
   (cmdInferred,constraints) <- liftEitherErr (runGenM cmddecl_loc env (genConstraints cmddecl_cmd))
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env
+  solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints Nothing env
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName cmddecl_name))
     ppPrintIO ("" :: T.Text)
@@ -200,7 +200,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   -- Generate the constraints
   (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraints decl))
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
+  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints Nothing env
   guardVerbose $ do
     ppPrintIO (Header  $ unClassName instancedecl_class <> " " <> ppPrint (fst instancedecl_typ))
     ppPrintIO ("" :: T.Text)
