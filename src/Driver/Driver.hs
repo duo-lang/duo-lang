@@ -65,6 +65,15 @@ addConstrForAnnot pcdecl_annot tmInferred constraintSet =
     Just (RST.TypeScheme _ _ (RST.TyApp _ _ (RST.TyNominal _ _ pk _) _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) (CBox $ returnKind pk) constraintSet
     _ -> constraintSet 
 
+checkKindAnnot :: RST.TypeScheme pol -> Loc -> DriverM (TST.TypeScheme pol)
+checkKindAnnot (tyAnnotated) loc= do
+  env <- gets drvEnv
+  (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
+  solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs Nothing env
+  let bisubstAnnot = coalesce solverResAnnot
+  let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot annotChecked
+  return typAnnotZonked
+
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
            -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
@@ -72,11 +81,7 @@ checkAnnot :: PolarityRep pol
            -> DriverM (TST.TopAnnot pol)
 checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
-  env <- gets drvEnv
-  (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
-  solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs Nothing env 
-  let bisubstAnnot = coalesce solverResAnnot
-  let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot annotChecked
+  typAnnotZonked <- checkKindAnnot tyAnnotated loc
   let isSubsumed = subsume rep tyInferred typAnnotZonked
   case isSubsumed of
       (Left err) -> throwError (attachLoc loc <$> err)
