@@ -133,9 +133,17 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST (TST.TyCodata loc pol mk xtors) =
     RST.TyKindAnnot mk $ RST.TyCodata loc pol (map embedTST xtors)
   embedTST (TST.TyDataRefined loc pol mk tn xtors) =
-    RST.TyKindAnnot mk $ RST.TyDataRefined loc pol tn (map embedTST xtors)
-  embedTST (TST.TyCodataRefined loc pol mk tn xtors) =
-    RST.TyKindAnnot mk $ RST.TyCodataRefined loc pol tn (map embedTST xtors)
+    case mk of 
+      CBox evo -> do 
+        let pknd = MkPolyKind [] evo
+        RST.TyKindAnnot mk $ RST.TyDataRefined loc pol pknd tn (map embedTST xtors)
+      _ -> error ("Refinement Data needs return Kind CBV or CBN, not "<>show mk<> "(should never happen)")
+  embedTST (TST.TyCodataRefined loc pol mk tn xtors) = 
+    case mk of 
+      CBox evo -> do
+        let pknd =   MkPolyKind [] evo 
+        RST.TyKindAnnot mk $ RST.TyCodataRefined loc pol pknd tn (map embedTST xtors)
+      _ -> error ("Refinement Codata needs return Kind CBV or CBN, not "<>show mk<> "(should never happen)")
   -- if arguments are applied to TyNominal, don't annotate the Kind, otherwise the parser will break after prettyprint
   embedTST (TST.TyApp loc pol (TST.TyNominal loc' pol' polyknd tn) args) = 
     RST.TyApp loc pol (RST.TyNominal loc' pol' polyknd tn) (embedTST <$> args)
