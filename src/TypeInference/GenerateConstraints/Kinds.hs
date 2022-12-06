@@ -294,13 +294,12 @@ annotTy (RST.TyKindAnnot mk ty) = do
 -- 
 computeEmptyRefinementType :: CST.DataCodata
                            -> RnTypeName
+                           -> PolyKind
                            -> DataDeclM (RST.Typ Pos, RST.Typ Neg)
-computeEmptyRefinementType CST.Data   tn = do 
-  decl <- lookupTypeName defaultLoc tn
-  pure (RST.TyDataRefined   defaultLoc PosRep (TST.data_kind decl) tn [], RST.TyDataRefined   defaultLoc NegRep (TST.data_kind decl) tn [])
-computeEmptyRefinementType CST.Codata tn = do 
-  decl <- lookupTypeName defaultLoc tn
-  pure (RST.TyCodataRefined defaultLoc PosRep (TST.data_kind decl) tn [], RST.TyCodataRefined defaultLoc NegRep (TST.data_kind decl) tn [])
+computeEmptyRefinementType CST.Data tn polyknd = do 
+  pure (RST.TyDataRefined   defaultLoc PosRep polyknd tn [], RST.TyDataRefined   defaultLoc NegRep polyknd tn [])
+computeEmptyRefinementType CST.Codata tn polyknd = do 
+  pure (RST.TyCodataRefined defaultLoc PosRep polyknd tn [], RST.TyCodataRefined defaultLoc NegRep polyknd tn [])
 
 -- | Given the polarity (data/codata), the name and the constructors/destructors of a type, compute the
 -- full refinement of that type.
@@ -311,10 +310,10 @@ computeEmptyRefinementType CST.Codata tn = do
 computeFullRefinementType :: CST.DataCodata
                           -> RnTypeName
                           -> ([RST.XtorSig Pos], [RST.XtorSig Neg])
+                          -> PolyKind
                           -> DataDeclM (RST.Typ Pos, RST.Typ Neg)
-computeFullRefinementType dc tn (xtorsPos, xtorsNeg) = do
+computeFullRefinementType dc tn (xtorsPos, xtorsNeg) polyknd = do
   -- Define the variable that stands for the recursive occurrences in the translation.
-  decl <- lookupTypeName defaultLoc tn
   let recVar = MkRecTVar "α"
   let recVarPos = RST.TyRecVar defaultLoc PosRep recVar
   let recVarNeg = RST.TyRecVar defaultLoc NegRep recVar
@@ -323,11 +322,11 @@ computeFullRefinementType dc tn (xtorsPos, xtorsNeg) = do
   let xtorsReplacedNeg :: [RST.XtorSig Neg] = RST.replaceNominal recVarPos recVarNeg tn <$> xtorsNeg
   -- Assemble the 
   let fullRefinementTypePos :: RST.Typ Pos = case dc of
-                   CST.Data   -> RST.TyRec defaultLoc PosRep recVar (RST.TyDataRefined   defaultLoc PosRep (TST.data_kind decl) tn xtorsReplacedPos)
-                   CST.Codata -> RST.TyRec defaultLoc PosRep recVar (RST.TyCodataRefined defaultLoc PosRep (TST.data_kind decl) tn xtorsReplacedNeg)
+                   CST.Data   -> RST.TyRec defaultLoc PosRep recVar (RST.TyDataRefined   defaultLoc PosRep polyknd tn xtorsReplacedPos)
+                   CST.Codata -> RST.TyRec defaultLoc PosRep recVar (RST.TyCodataRefined defaultLoc PosRep polyknd tn xtorsReplacedNeg)
   let fullRefinementTypeNeg :: RST.Typ Neg = case dc of
-                   CST.Data   -> RST.TyRec defaultLoc NegRep recVar (RST.TyDataRefined defaultLoc NegRep (TST.data_kind decl) tn   xtorsReplacedNeg)
-                   CST.Codata -> RST.TyRec defaultLoc NegRep recVar (RST.TyCodataRefined defaultLoc NegRep (TST.data_kind decl) tn xtorsReplacedPos)
+                   CST.Data   -> RST.TyRec defaultLoc NegRep recVar (RST.TyDataRefined defaultLoc NegRep polyknd tn   xtorsReplacedNeg)
+                   CST.Codata -> RST.TyRec defaultLoc NegRep recVar (RST.TyCodataRefined defaultLoc NegRep polyknd tn xtorsReplacedPos)
   pure (fullRefinementTypePos, fullRefinementTypeNeg)
 
 annotateDataDecl :: RST.DataDecl -> DataDeclM TST.DataDecl 
@@ -358,10 +357,10 @@ annotateDataDecl RST.RefinementDecl {
   data_xtors = xtors
   } = do
     -- Compute the full and empty refinement types:
-    (emptyPos, emptyNeg) <- computeEmptyRefinementType pol tyn
+    (emptyPos, emptyNeg) <- computeEmptyRefinementType pol tyn polyknd
     emptPos' <- annotTy emptyPos
     emptNeg' <- annotTy emptyNeg
-    (fulPos, fulNeg) <- computeFullRefinementType pol tyn xtors
+    (fulPos, fulNeg) <- computeFullRefinementType pol tyn xtors polyknd
     fulPos' <- annotTy fulPos
     fulNeg' <- annotTy fulNeg
     -- Compute the annotated xtors (without refinement)
