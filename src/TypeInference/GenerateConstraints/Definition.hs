@@ -32,6 +32,7 @@ module TypeInference.GenerateConstraints.Definition
   , GenerateState(..)
   , initialState
   , initialReader
+  , addKindAnnotConstr
 ) where
 
 
@@ -80,6 +81,10 @@ initialConstraintSet =
                 , cs_uvars = []
                 , cs_kvars = []
                 }
+
+addKindAnnotConstr :: MonoKind -> MonoKind -> ConstraintSet -> ConstraintSet 
+addKindAnnotConstr mk mk' cs@ConstraintSet { cs_constraints } = 
+  cs { cs_constraints = (KindEq KindConstraint mk mk'):cs_constraints }
 
 initialState :: GenerateState
 initialState = GenerateState {   uVarCount = 0
