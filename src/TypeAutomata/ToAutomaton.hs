@@ -26,7 +26,7 @@ import TypeAutomata.Definition
 import Loc ( defaultLoc )
 import Utils ( enumerate )
 import Control.Monad
-import Data.Set (Set)
+import Data.Maybe (fromMaybe)
 
 --------------------------------------------------------------------------
 -- The TypeToAutomaton (TTA) Monad
@@ -54,20 +54,21 @@ runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupE
 
 
 -- | Every type variable is mapped to a pair of nodes.
-createNodes :: [KindedSkolem] -> Set ClassName -> [(SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
-createNodes tvars cns = createNode <$> createPairs tvars
+createNodes :: [KindedSkolem] -> Map SkolemTVar [ClassName] -> [(SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)]
+createNodes tvars cnstrs = createNode <$> createPairs tvars
   where
     createNode :: (KindedSkolem, Node, Node) -> (SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode ((tv, mk), posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos mk cns), (negNode, emptyNodeLabel Neg mk cns), (negNode, posNode))
+    createNode ((tv, mk), posNode, negNode) = let cns = fromMaybe [] (M.lookup tv cnstrs)
+                                               in (tv, (posNode, emptyNodeLabel Pos mk cns), (negNode, emptyNodeLabel Neg mk cns), (negNode, posNode))
 
     createPairs :: [KindedSkolem] -> [(KindedSkolem, Node,Node)]
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
 
 
-initialize :: [KindedSkolem] -> Set ClassName -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
-initialize tvars cns =
+initialize :: [KindedSkolem] -> Map SkolemTVar [ClassName] -> (TypeAutCore EdgeLabelEpsilon, LookupEnv)
+initialize tvars cnstrs =
   let
-    nodes = createNodes tvars cns
+    nodes = createNodes tvars cnstrs
     initAut = TypeAutCore
               { ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) []
               , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
@@ -80,10 +81,11 @@ initialize tvars cns =
 
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
 runTypeAutTvars :: [KindedSkolem]
+                -> Map SkolemTVar [ClassName]
                 -> TTA a
                 -> Either (NonEmpty Error) (a, TypeAutCore EdgeLabelEpsilon)
-runTypeAutTvars tvars m = do
-  let (aut, env) = initialize tvars S.empty
+runTypeAutTvars tvars cnstrs m = do
+  let (aut, env) = initialize tvars cnstrs
   runTypeAut aut env m
 
 --------------------------------------------------------------------------
@@ -177,10 +179,10 @@ lookupTRecVar NegRep tv = do
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 
-insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> EvaluationOrder -> [XtorSig pol] -> Set ClassName -> TTA Node
-insertXtors dc pol mtn mk xtors cns = do
+insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> EvaluationOrder -> [XtorSig pol] -> TTA Node
+insertXtors dc pol mtn mk xtors = do
   newNode <- newNodeM
-  insertNode newNode (singleNodeLabel pol dc mtn (S.fromList (sigToLabel <$> xtors)) cns mk)
+  insertNode newNode (singleNodeLabel pol dc mtn (S.fromList (sigToLabel <$> xtors)) mk)
   forM_ xtors $ \(MkXtorSig xt ctxt) -> do
     forM_ (enumerate ctxt) $ \(i, pcType) -> do
       node <- insertPCType pcType
@@ -188,92 +190,92 @@ insertXtors dc pol mtn mk xtors cns = do
   return newNode
 
 insertPCType :: PrdCnsType pol -> TTA Node
-insertPCType (PrdCnsType _ ty) = insertType ty S.empty
+insertPCType (PrdCnsType _ ty) = insertType ty
 
 insertVariantType :: VariantType pol -> TTA (Node, Variance)
 insertVariantType (CovariantType ty) = do
-  node <- insertType ty S.empty
+  node <- insertType ty
   pure (node, Covariant)
 insertVariantType (ContravariantType ty) = do
-  node <- insertType ty S.empty
+  node <- insertType ty
   pure (node, Contravariant)
 
-insertType :: Typ pol -> Set ClassName -> TTA Node
-insertType (TySkolemVar _ rep _ tv) _cns = lookupTVar rep tv
-insertType (TyUniVar loc _ _ tv) _cns = throwAutomatonError loc  [ "Could not insert type into automaton."
-                                                                 , "The unification variable:"
-                                                                 , "    " <> unUniTVar tv
-                                                                 , "should not appear at this point in the program."
-                                                                 ]
-insertType (TyRecVar _ rep _ tv) _cns = lookupTRecVar rep tv
-insertType (TyTop _ knd) cns = do
+insertType :: Typ pol -> TTA Node
+insertType (TySkolemVar _ rep _ tv) = lookupTVar rep tv
+insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc [ "Could not insert type into automaton."
+                                                                   , "The unification variable:"
+                                                                   , "    " <> unUniTVar tv
+                                                                   , "should not appear at this point in the program."
+                                                                   ]
+insertType (TyRecVar _ rep _ tv) = lookupTRecVar rep tv
+insertType (TyTop _ knd) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Neg knd cns)
+  insertNode newNode (emptyNodeLabel Neg knd [])
   pure newNode
-insertType (TyBot _ knd) cns = do
+insertType (TyBot _ knd) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Pos knd cns)
+  insertNode newNode (emptyNodeLabel Pos knd [])
   pure newNode
-insertType (TyUnion _ knd ty1 ty2) cns = do
+insertType (TyUnion _ knd ty1 ty2) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Pos knd cns)
-  ty1' <- insertType ty1 cns
-  ty2' <- insertType ty2 cns
+  insertNode newNode (emptyNodeLabel Pos knd [])
+  ty1' <- insertType ty1
+  ty2' <- insertType ty2
   insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
   pure newNode
-insertType (TyInter _ knd ty1 ty2) cns = do
+insertType (TyInter _ knd ty1 ty2) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Neg knd cns)
-  ty1' <- insertType ty1 cns
-  ty2' <- insertType ty2 cns
+  insertNode newNode (emptyNodeLabel Neg knd [])
+  ty1' <- insertType ty1
+  ty2' <- insertType ty2
   insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
   pure newNode
-insertType (TyRec _ rep rv ty) cns = do
+insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel pol (getKind ty) cns)
+  insertNode newNode (emptyNodeLabel pol (getKind ty) [])
   let extendEnv PosRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Just newNode, Nothing) tRecVars
       extendEnv NegRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Nothing, Just newNode) tRecVars
-  n <- local (extendEnv rep) (insertType ty cns)
+  n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData _  polrep (CBox mk) xtors) cns = insertXtors CST.Data (polarityRepToPol polrep) Nothing mk xtors cns
-insertType (TyData _ _ mk _) _cns = throwAutomatonError defaultLoc ["Tried to insert TyData into automaton with incorrect kind " <> ppPrint mk]
-insertType (TyCodata _ polrep (CBox mk)  xtors) cns = insertXtors CST.Codata (polarityRepToPol polrep) Nothing mk xtors cns
-insertType (TyCodata _ _ mk _) _cns = throwAutomatonError defaultLoc ["Tried to insert TyCodata into automaton with incorrect kind " <> ppPrint mk]
-insertType (TyDataRefined _ polrep (CBox mk) mtn xtors) cns = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) mk xtors cns
-insertType (TyDataRefined _ _ mk _ _) _cns = throwAutomatonError defaultLoc ["Tried to insert TyDataRefined into automaton with incorrect kind " <> ppPrint mk]
-insertType (TyCodataRefined _ polrep (CBox mk) mtn xtors) cns = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) mk xtors cns
-insertType (TyCodataRefined _ _ mk _ _) _cns = throwAutomatonError defaultLoc ["Tried to insert TyCodataRefined into automaton with incorrect kind " <> ppPrint mk]
-insertType (TySyn _ _ _ ty) cns = insertType ty cns
-insertType (TyNominal _ rep mk tn args) cns = do
+insertType (TyData _  polrep (CBox mk) xtors) = insertXtors CST.Data (polarityRepToPol polrep) Nothing mk xtors
+insertType (TyData _ _ mk _) = throwAutomatonError defaultLoc ["Tried to insert TyData into automaton with incorrect kind " <> ppPrint mk]
+insertType (TyCodata _ polrep (CBox mk)  xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing mk xtors
+insertType (TyCodata _ _ mk _) = throwAutomatonError defaultLoc ["Tried to insert TyCodata into automaton with incorrect kind " <> ppPrint mk]
+insertType (TyDataRefined _ polrep (CBox mk) mtn xtors) = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) mk xtors
+insertType (TyDataRefined _ _ mk _ _) = throwAutomatonError defaultLoc ["Tried to insert TyDataRefined into automaton with incorrect kind " <> ppPrint mk]
+insertType (TyCodataRefined _ polrep (CBox mk) mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) mk xtors
+insertType (TyCodataRefined _ _ mk _ _) = throwAutomatonError defaultLoc ["Tried to insert TyCodataRefined into automaton with incorrect kind " <> ppPrint mk]
+insertType (TySyn _ _ _ ty) = insertType ty
+insertType (TyNominal _ rep mk tn args) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol mk cns) { nl_nominal = S.singleton (tn, toVariance <$> args) })
+  insertNode newNode ((emptyNodeLabel pol mk []) { nl_nominal = S.singleton (tn, toVariance <$> args) })
   argNodes <- forM args insertVariantType
   insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate argNodes)
   return newNode
-insertType (TyI64 _ rep) _cns = do
+insertType (TyI64 _ rep) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (MkPrimitiveNodeLabel pol I64)
   return newNode
-insertType (TyF64 _ rep) _cns = do
+insertType (TyF64 _ rep) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (MkPrimitiveNodeLabel pol F64)
   return newNode
-insertType (TyChar _ rep) _cns = do
+insertType (TyChar _ rep) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (MkPrimitiveNodeLabel pol PChar)
   return newNode
-insertType (TyString _ rep) _cns = do
+insertType (TyString _ rep) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (MkPrimitiveNodeLabel pol PString)
   return newNode
-insertType (TyFlipPol _ _) _cns =
+insertType (TyFlipPol _ _) =
   throwAutomatonError defaultLoc ["Tried to insert TyFlipPol into type automaton"]
 
 --------------------------------------------------------------------------
@@ -284,8 +286,8 @@ insertType (TyFlipPol _ _) _cns =
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either (NonEmpty Error) (TypeAutEps pol)
 typeToAut TypeScheme { ts_vars, ts_monotype, ts_constraints } = do
-  let cns = S.fromList $ concatMap (\case {TypeClassConstraint cn var -> [cn]; _ -> []}) ts_constraints
-  (start, aut) <- runTypeAutTvars ts_vars (insertType ts_monotype cns)
+  let cns = foldr (\c m -> (case c of (TypeClassConstraint cn tVar) -> M.insertWith (++) tVar [cn]; _ -> id) m) M.empty ts_constraints
+  (start, aut) <- runTypeAutTvars ts_vars cns (insertType ts_monotype)
   return TypeAut { ta_pol = getPolarity ts_monotype
                  , ta_starts = [start]
                  , ta_core = aut

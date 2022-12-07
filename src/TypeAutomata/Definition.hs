@@ -175,20 +175,20 @@ data NodeLabel =
     , pl_prim :: PrimitiveType
     } deriving (Eq,Show,Ord)
 
-emptyNodeLabel :: Polarity -> MonoKind -> Set ClassName -> NodeLabel
-emptyNodeLabel pol (CBox eo) cns = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty cns eo
-emptyNodeLabel pol I64Rep _ = MkPrimitiveNodeLabel pol I64
-emptyNodeLabel pol F64Rep _ = MkPrimitiveNodeLabel pol F64
-emptyNodeLabel pol StringRep _ = MkPrimitiveNodeLabel pol PString
-emptyNodeLabel pol CharRep _ = MkPrimitiveNodeLabel pol PChar
-emptyNodeLabel _ (KindVar _) _ = error "Tried to create empty node label with KindVar Kind"
+emptyNodeLabel :: Polarity -> MonoKind -> [ClassName] -> NodeLabel
+emptyNodeLabel pol (CBox eo) cnstrs = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty (S.fromList cnstrs) eo
+emptyNodeLabel pol I64Rep _cnstrs = MkPrimitiveNodeLabel pol I64
+emptyNodeLabel pol F64Rep _cnstrs = MkPrimitiveNodeLabel pol F64
+emptyNodeLabel pol StringRep _cnstrs = MkPrimitiveNodeLabel pol PString
+emptyNodeLabel pol CharRep _cnstrs = MkPrimitiveNodeLabel pol PChar
+emptyNodeLabel _ (KindVar _) _cnstrs = error "Tried to create empty node label with KindVar Kind"
 
 
-singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> Set ClassName -> EvaluationOrder -> NodeLabel
-singleNodeLabel pol Data Nothing xtors cns     = MkNodeLabel pol (Just xtors) Nothing S.empty M.empty M.empty cns
-singleNodeLabel pol Codata Nothing xtors cns   = MkNodeLabel pol Nothing (Just xtors) S.empty M.empty M.empty cns
-singleNodeLabel pol Data (Just tn) xtors cns   = MkNodeLabel pol Nothing Nothing S.empty (M.singleton tn xtors) M.empty cns
-singleNodeLabel pol Codata (Just tn) xtors cns = MkNodeLabel pol Nothing Nothing S.empty M.empty (M.singleton tn xtors) cns
+singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> EvaluationOrder -> NodeLabel
+singleNodeLabel pol Data Nothing xtors     = MkNodeLabel pol (Just xtors) Nothing S.empty M.empty M.empty S.empty
+singleNodeLabel pol Codata Nothing xtors   = MkNodeLabel pol Nothing (Just xtors) S.empty M.empty M.empty S.empty
+singleNodeLabel pol Data (Just tn) xtors   = MkNodeLabel pol Nothing Nothing S.empty (M.singleton tn xtors) M.empty S.empty
+singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing Nothing S.empty M.empty (M.singleton tn xtors) S.empty
 
 getPolarityNL :: NodeLabel -> Polarity
 getPolarityNL (MkNodeLabel pol _ _ _ _ _ _ _) = pol
