@@ -99,7 +99,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
   let constraintSetModified =  case pcdecl_annot of 
         Nothing -> constraintSet 
-        Just (RST.TypeScheme _ _ (RST.TyKindAnnot mk _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
+        Just (RST.TypeScheme _ _ _ (RST.TyKindAnnot mk _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
         _ -> constraintSet 
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName pcdecl_name))
