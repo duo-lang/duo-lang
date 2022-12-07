@@ -113,8 +113,13 @@ instance EmbedTST (TST.VariantType pol) (RST.VariantType pol) where
 
 instance EmbedTST (TST.TypeScheme pol) (RST.TypeScheme pol) where
   embedTST :: TST.TypeScheme pol -> RST.TypeScheme pol
-  embedTST TST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = mt} =
-    RST.TypeScheme {ts_loc = loc, ts_vars = map (Data.Bifunctor.second Just) tyvars,  ts_monotype = embedTST mt}
+  embedTST TST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_constraints=cnstrs, ts_monotype = mt} =
+    RST.TypeScheme {ts_loc = loc, ts_vars = map (Data.Bifunctor.second Just) tyvars, ts_constraints = embedTST <$> cnstrs, ts_monotype = embedTST mt}
+
+instance EmbedTST TST.FreeConstraint RST.FreeConstraint where
+  embedTST :: TST.FreeConstraint -> RST.FreeConstraint
+  embedTST (TST.SubTypeConstraint typ tyn) = RST.SubTypeConstraint (embedTST typ) (embedTST tyn)
+  embedTST (TST.TypeClassConstraint cn tVar) = RST.TypeClassConstraint cn tVar
 
 instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
   embedTST :: TST.LinearContext pol-> RST.LinearContext pol
