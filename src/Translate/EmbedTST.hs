@@ -11,7 +11,7 @@ import qualified Data.Bifunctor as BF (bimap)
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
-import Data.Bifunctor (second)
+import Data.Bifunctor (bimap, second)
 
 ---------------------------------------------------------------------------------
 -- A typeclass for embedding TST.X into Core.X
@@ -82,8 +82,8 @@ instance EmbedTST TST.Command Core.Command where
       Core.Read loc (embedTST tm)
   embedTST (TST.Jump loc fv) =
       Core.Jump loc fv
-  embedTST (TST.Method loc mn cn _ subst) =
-      Core.Method loc mn cn (embedTST subst)
+  embedTST (TST.Method loc mn cn _inst ty subst) =
+      Core.Method loc mn cn (bimap embedTST embedTST <$> ty) (embedTST subst)
   embedTST (TST.ExitSuccess loc) =
       Core.ExitSuccess loc
   embedTST (TST.ExitFailure loc) =

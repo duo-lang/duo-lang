@@ -272,7 +272,7 @@ instance GenConstraints Core.Command TST.Command where
     -- Ensure that the referenced command is in scope
     _ <- lookupCommand loc fv
     pure (TST.Jump loc fv)
-  genConstraints (Core.Method loc mn cn subst) = do
+  genConstraints (Core.Method loc mn cn Nothing subst) = do
     decl <- lookupClassDecl loc cn
     insertSkolemsClass decl
       -- fresh type var and subsitution for type class variable(s)
@@ -286,7 +286,26 @@ instance GenConstraints Core.Command TST.Command where
     genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
     case uvs of
       [] -> throwGenError (NoParamTypeClass loc)
-      [uv] -> pure (TST.Method loc mn cn (TST.InstanceUnresolved uv) substInferred)
+      [uv] -> pure (TST.Method loc mn cn (TST.InstanceUnresolved uv) Nothing substInferred)
+      _ -> throwGenError (MultiParamTypeClass loc)
+  genConstraints (Core.Method loc mn cn (Just ty) subst) = do
+    decl <- lookupClassDecl loc cn
+    insertSkolemsClass decl
+    case classdecl_kinds decl of
+      [] -> throwGenError (NoParamTypeClass loc)
+      [_var] -> do
+        -- let resolvedType = (resolveType k typ, resolveType k tyn)
+        resolvedType <- annotateKind ty
+        -- generate kind constraints
+        let tyParamsMap = paramsMap (classdecl_kinds decl) [resolvedType]
+        negTypes <- lookupMethodType loc mn decl NegRep
+        ctxtNeg <- annotateKind negTypes
+        let negTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtNeg 
+        -- infer arg types
+        substInferred <- genConstraints subst
+        let substTypes = TST.getTypArgs substInferred
+        genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
+        pure (TST.Method loc mn cn (TST.InstanceTypeUnresolved resolvedType) (Just resolvedType) substInferred)
       _ -> throwGenError (MultiParamTypeClass loc)
   genConstraints (Core.Print loc prd cmd) = do
     prd' <- genConstraints prd

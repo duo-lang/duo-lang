@@ -27,4 +27,4 @@ instance showNat : Show Nat {
 
 def prd show : Bool -> String := \x => mu k. Show(not x, k);
 
-def cmd main := #Print(mu k. Show(S(S(S(Z))), k), #ExitSuccess);
+def cmd main := #Print(mu k. Show[Nat](7, k), #ExitSuccess);

@@ -2,6 +2,7 @@ module Syntax.CST.Terms where
 
 import Syntax.CST.Names ( FreeVarName, XtorName, PrimName )
 import Loc ( HasLoc(..), Loc )
+import Syntax.CST.Types (Typ)
 
 --------------------------------------------------------------------------------------------
 -- Substitutions 
@@ -74,7 +75,7 @@ data NominalStructural where
 data Term where
     PrimTerm :: Loc -> PrimName -> Substitution -> Term 
     Var :: Loc -> FreeVarName -> Term
-    Xtor :: Loc -> XtorName -> SubstitutionI -> Term
+    Xtor :: Loc -> XtorName  -> Maybe Typ -> SubstitutionI -> Term
     Semi :: Loc -> XtorName -> SubstitutionI -> Term -> Term
     Case :: Loc -> [TermCase] -> Term
     CaseOf :: Loc -> Term -> [TermCase] -> Term
@@ -97,7 +98,7 @@ deriving instance Eq Term
 
 instance HasLoc Term where
   getLoc (Var loc _) = loc
-  getLoc (Xtor loc _ _) = loc
+  getLoc (Xtor loc _ _ _) = loc
   getLoc (Semi loc _ _ _) = loc
   getLoc (MuAbs loc _ _) = loc
   getLoc (Dtor loc _ _ _) = loc

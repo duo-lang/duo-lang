@@ -18,6 +18,7 @@ import Parser.Lexer
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Names
 import Loc
+import Parser.Types (typP)
 
 --------------------------------------------------------------------------------------------
 -- Substitutions and implicit substitutions
@@ -68,6 +69,7 @@ xtorP :: Parser (CST.Term, SourcePos)
 xtorP = do
   startPos <- getSourcePos
   (xt, _pos) <- xtorNameP
+  typ <- (fst <$>) <$> optional (bracketsP (fst <$> typP))
   (subst, _) <- substitutionIP
   afterSemi <- optional $ fst <$> do
     try (sc >> symbolP SymDoubleSemi)
@@ -75,7 +77,7 @@ xtorP = do
     term2P
   endPos <- getSourcePos
   case afterSemi of
-    Nothing -> pure (CST.Xtor (Loc startPos endPos) xt subst, endPos)
+    Nothing -> pure (CST.Xtor (Loc startPos endPos) xt typ subst, endPos)
     Just tm -> pure (CST.Semi (Loc startPos endPos) xt subst tm, endPos)
 
 
