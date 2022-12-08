@@ -2,6 +2,7 @@
 module TypeInference.SolveConstraints
   ( solveConstraints,
     KindPolicy(..),
+    resolveInstanceAnnot,
     solveClassConstraints
   ) where
 
@@ -473,6 +474,33 @@ solveConstraints constraintSet@(ConstraintSet css _ _) env = do
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution (sst_cache solverState)
 
+-- | Check result of instance resolution. There should be exactly one instance resolved.
+checkResult :: PrettyAnn a => a -> ClassName -> [(FreeVarName, Typ Pos, Typ Neg)] -> [(FreeVarName, Typ Pos, Typ Neg)] -> Either (NE.NonEmpty Error) (FreeVarName, Typ Pos, Typ Neg)
+checkResult ty cn checked [] = throwSolverError defaultLoc $ ("Could not resolve instance for " <> ppPrint cn <> " " <> ppPrint ty <> ". Instances checked:")
+                                                           : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> checked)
+checkResult _ty _cn _ [i] = pure i
+checkResult ty cn _ is = throwSolverError defaultLoc $ ("Incoherent instances resolved for " <> ppPrint cn <> " " <> ppPrint ty)
+                                                     : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> is)
+
+-- | Resolves instance for an annotated type class method and returns all matching instances directly.
+resolveInstanceAnnot :: PolarityRep pol -> Typ pol -> ClassName -> Map ModuleName Environment -> Either (NE.NonEmpty Error) (FreeVarName, Typ 'Pos, Typ 'Neg)
+resolveInstanceAnnot pol ty cn env = case getInstances cn env of
+  Nothing -> throwSolverError defaultLoc undefined
+  Just inst -> checkResult ty cn (S.toList inst) $ go pol ty (S.toList inst)
+  where go :: PolarityRep pol -> Typ pol -> [(FreeVarName, Typ 'Pos, Typ 'Neg)] -> [(FreeVarName, Typ 'Pos, Typ 'Neg)]
+        go _ _ [] = []
+        go PosRep sub (i@(_iname, _typ, tyn):instances) =
+           let is = go PosRep sub instances
+               css = [SubType ClassResolutionConstraint sub tyn]
+           in if isRight $ runSolverM (solve css) env (createInitState (ConstraintSet css [] []))
+              then i:is else is
+        go NegRep sup (i@(_iname, typ, _tyn):instances) = 
+           let is = go NegRep sup instances
+               css = [SubType ClassResolutionConstraint typ sup]
+           in if isRight $ runSolverM (solve css) env (createInitState (ConstraintSet css [] []))
+              then i:is else is
+
+
 -- | Resolves and returns the correct instance for each type-class-constrained unification variable.
 solveClassConstraints :: SolverResult -> Bisubstitution 'UniVT -> Map ModuleName Environment -> Either (NE.NonEmpty Error) InstanceResult
 solveClassConstraints sr bisubst env = do
@@ -486,13 +514,7 @@ solveClassConstraints sr bisubst env = do
           Nothing -> throwSolverError defaultLoc [ "UniVar not found in Bisubstitution: " <> ppPrint uv ]
           Just (typ, tyn) -> do
             ty <- getInferredType typ tyn
-            let checkResult :: PrettyAnn a => [(FreeVarName, Typ Pos, Typ Neg)] -> a -> Either (NE.NonEmpty Error) (FreeVarName, Typ Pos, Typ Neg)
-                checkResult [] ty = throwSolverError defaultLoc $ ("Could not resolve instance for " <> ppPrint cn <> " " <> ppPrint ty <> ". Instances checked:")
-                                                                : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> S.toList instances)
-                checkResult [i] _ty = pure i
-                checkResult is ty = throwSolverError defaultLoc $ ("Incoherent instances resolved for " <> ppPrint cn <> " " <> ppPrint ty)
-                                                                : ((\(iname, typ, _tyn) -> ppPrint iname <> " : " <> ppPrint cn <> " " <> ppPrint typ) <$> is)
             case ty of
-              Left sub -> checkResult (resolveCoClass uv k (S.toList instances) sub env) sub
-              Right sup -> checkResult (resolveContraClass uv k (S.toList instances) sup env) sup
+              Left sub -> checkResult sub cn (S.toList instances) (resolveCoClass uv k (S.toList instances) sub env)
+              Right sup -> checkResult sup cn (S.toList instances) (resolveContraClass uv k (S.toList instances) sup env)
   return (MkInstanceResult (M.fromList (concat res)))

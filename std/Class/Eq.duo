@@ -14,7 +14,7 @@ class Eq(+a : CBV) {
 -- | Instance definition for Eq Bool.
 instance eqBool : Eq Bool {
   Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
-  Differ(x, y, k) => Equals[Bool](x, y, mu z. not z >> k )
+  Differ(x, y, k) => Equals(x, y, mu z. not z >> k )
 };
 
 -- | Instance definition for Eq Nat.
@@ -26,10 +26,10 @@ instance eqNat : Eq Nat {
     },
     S(n) => case y of {
       Z => False >> k,
-      S(m) => Equals[Nat](n,m,k)
+      S(m) => Equals(n,m,k)
     }
   },
-  Differ(x, y, k) => Equals[Nat](x, y, mu z. not z >> k )
+  Differ(x, y, k) => Equals(x, y, mu z. not z >> k )
 };
 
 def prd trueIsTrue : Bool := mu k. Equals[Bool](True, True, k);
