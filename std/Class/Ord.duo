@@ -1,6 +1,7 @@
 module Class.Ord;
 
 import Data.Bool;
+import Data.Peano;
 
 -- | Enum type for the order two elements can be related to each other.
 data Ordering : CBV {
@@ -47,5 +48,23 @@ instance ordBool : Ord Bool {
     } >> k
 };
 
+instance ordNat : Ord Nat {
+    Compare(x,y,k) => case x of {
+        Z => case y of {
+            Z => EQ >> k,
+            S(n) => LT >> k
+        },
+        S(n) => case y of {
+            Z => GT >> k,
+            S(m) => Compare(n,m,k)
+        }
+    }
+};
+
 def prd trueGtFalse : Bool :=
-    mu k. Compare(True, False, case { GT => True >> k, LT => False >> k, EQ => False >> k });
+    mu k. Compare[Bool](True, False, case { GT => True >> k, LT => False >> k, EQ => False >> k });
+
+def prd twoLTthree : Bool :=
+    mu k. Compare[Nat](S(S(Z)), S(S(S(Z))), case { GT => False >> k, LT => True >> k, EQ => False >> k });
+
+def cmd main := #Print(twoLTthree, #ExitSuccess);

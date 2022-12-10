@@ -2,6 +2,7 @@ module Resolution.Program (resolveModule, resolveDecl) where
 
 import Control.Monad.Reader
 import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
 
@@ -59,9 +60,10 @@ checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn xtorSigs
                       CST.Data   -> Covariant
                       CST.Codata -> Contravariant
   sequence_ $ checkVarianceXtor loc var' polyKind <$> xtorSigs
-checkVarianceTyp loc var polyKind (CST.TyNominal _loc' tyName tys) = do
+checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) tys) = do
+
   NominalResult _ _ _ polyKind' <- lookupTypeConstructor loc tyName
-  go ((\(v,_,_) -> v) <$> kindArgs polyKind') tys
+  go ((\(v,_,_) -> v) <$> kindArgs polyKind') (NE.toList tys)
   where
     go :: [Variance] -> [CST.Typ] -> ResolverM ()
     go [] []          = return ()
@@ -70,6 +72,14 @@ checkVarianceTyp loc var polyKind (CST.TyNominal _loc' tyName tys) = do
       go vs ts
     go [] (_:_)       = throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too many arguments"]
     go (_:_) []       = throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too few arguments"]
+checkVarianceTyp loc _ _ (CST.TyNominal _loc' tyName) = do
+  NominalResult _ _ _ polyKnd' <- lookupTypeConstructor loc tyName
+  case kindArgs polyKnd' of 
+    [] -> return () 
+    _ -> throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too few arguments"]
+checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyKindAnnot _ ty) args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty args)
+checkVarianceTyp loc _ _ CST.TyApp{} = 
+  throwOtherError loc ["Types can only be applied to nominal types"]
 checkVarianceTyp loc var polyKind (CST.TyRec _loc' _tVar ty) =
   checkVarianceTyp loc var polyKind ty
 checkVarianceTyp _loc _var _polyKind (CST.TyTop _loc') = return ()
@@ -91,6 +101,7 @@ checkVarianceTyp loc var polyKind (CST.TyBinOp _loc' ty _binOp ty') = do
   checkVarianceTyp loc var polyKind ty
   checkVarianceTyp loc var polyKind ty'
 checkVarianceTyp loc var polyKind (CST.TyParens _loc' ty) = checkVarianceTyp loc var polyKind ty
+checkVarianceTyp loc var polyKind (CST.TyKindAnnot _ ty) = checkVarianceTyp loc var polyKind ty
 
 checkVarianceXtor :: Loc -> Variance -> PolyKind -> CST.XtorSig -> ResolverM ()
 checkVarianceXtor loc var polyKind xtor = do

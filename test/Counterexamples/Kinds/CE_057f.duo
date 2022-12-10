@@ -1,0 +1,3 @@
+module Kinds.CE_057f;
+
+def prd x: (#F64:CBV) := 1.0#F64;

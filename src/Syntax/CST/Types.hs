@@ -35,7 +35,8 @@ data Typ where
   TySkolemVar :: Loc -> SkolemTVar -> Typ
   TyXData    :: Loc -> DataCodata             -> [XtorSig] -> Typ
   TyXRefined :: Loc -> DataCodata -> TypeName -> [XtorSig] -> Typ
-  TyNominal :: Loc -> TypeName -> [Typ] -> Typ
+  TyNominal :: Loc -> TypeName -> Typ
+  TyApp :: Loc -> Typ -> NonEmpty Typ -> Typ
   TyRec :: Loc -> SkolemTVar -> Typ -> Typ
   TyTop :: Loc -> Typ
   TyBot :: Loc -> Typ
@@ -51,14 +52,16 @@ data Typ where
   -- should never be directly constructed elsewhere.
   TyBinOp :: Loc -> Typ -> BinOp -> Typ -> Typ
   TyParens :: Loc -> Typ -> Typ
-  deriving Show
+  TyKindAnnot :: MonoKind -> Typ -> Typ
+  deriving (Show, Eq)
 
 instance HasLoc Typ where
   getLoc (TyUniVar loc _) = loc
   getLoc (TySkolemVar loc _) = loc
   getLoc (TyXData loc _ _) = loc
   getLoc (TyXRefined loc _ _ _) = loc
-  getLoc (TyNominal loc _ _) = loc
+  getLoc (TyNominal loc _ ) = loc
+  getLoc (TyApp loc _ _) = loc
   getLoc (TyRec loc _ _) = loc
   getLoc (TyTop loc) = loc
   getLoc (TyBot loc) = loc
@@ -70,18 +73,19 @@ instance HasLoc Typ where
   getLoc (TyBinOpChain ty _) = getLoc ty
   getLoc (TyBinOp loc _ _ _) = loc
   getLoc (TyParens loc _) = loc
+  getLoc (TyKindAnnot _ ty) = getLoc ty
 
 
 data XtorSig = MkXtorSig
   { sig_name :: XtorName
   , sig_args :: LinearContext
   }
-  deriving Show
+  deriving (Show, Eq)
 
 data PrdCnsTyp where
   PrdType :: Typ -> PrdCnsTyp
   CnsType :: Typ -> PrdCnsTyp
-  deriving Show
+  deriving (Show, Eq)
 
 type LinearContext = [PrdCnsTyp]
 

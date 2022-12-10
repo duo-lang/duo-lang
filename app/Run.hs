@@ -22,7 +22,7 @@ driverAction mn = do
   queryTypecheckedModule mn
 
 desugarEnv :: Environment -> EvalEnv
-desugarEnv MkEnvironment { prdEnv, cnsEnv, cmdEnv } = (prd,cns,cmd)
+desugarEnv MkEnvironment { prdEnv, cnsEnv, cmdEnv, instanceDeclEnv } = (prd,cns,cmd,instanceDeclEnv)
   where
     prd = (\(tm,_,_) -> tm) <$> prdEnv
     cns = (\(tm,_,_) -> tm) <$> cnsEnv

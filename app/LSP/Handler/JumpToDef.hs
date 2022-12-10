@@ -4,6 +4,7 @@ import Control.Monad.IO.Class ( MonadIO(liftIO) )
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
+import Data.List.NonEmpty qualified as NE
 import Language.LSP.Types
     ( Uri(Uri),
       Range,
@@ -97,7 +98,7 @@ instance ToJumpMap RST.Command where
     M.union (toJumpMap prd) (toJumpMap cmd)
   toJumpMap (RST.Read _ cns) = toJumpMap cns
   toJumpMap RST.Jump {} = M.empty
-  toJumpMap (RST.Method _ _ _ subst) = toJumpMap subst
+  toJumpMap (RST.Method _ _ _ _ subst) = toJumpMap subst
   toJumpMap RST.ExitSuccess {} = M.empty
   toJumpMap RST.ExitFailure {} = M.empty
   toJumpMap (RST.PrimOp _ _ subst) = toJumpMap subst
@@ -156,8 +157,10 @@ instance ToJumpMap (RST.Typ pol) where
     M.unions (M.fromList [(locToRange loc, toLocation tn)] : (toJumpMap <$> xtors))
   toJumpMap (RST.TyCodata _ _ xtors) =
     M.unions (toJumpMap <$> xtors)
-  toJumpMap (RST.TyNominal loc _ rn args) =
-    M.unions (M.fromList [(locToRange loc, toLocation rn)] : (toJumpMap <$> args))
+  toJumpMap (RST.TyNominal loc _ _ rn) = 
+    M.fromList [(locToRange loc, toLocation rn)]
+  toJumpMap (RST.TyApp _ _ ty args) = 
+    M.unions (toJumpMap ty : (NE.toList $ toJumpMap <$> args))
   toJumpMap (RST.TySyn loc _ rn _) =
     M.fromList [(locToRange loc, toLocation rn)]
   toJumpMap RST.TyBot {} = M.empty
@@ -173,6 +176,7 @@ instance ToJumpMap (RST.Typ pol) where
   toJumpMap RST.TyChar {} = M.empty
   toJumpMap RST.TyString {} = M.empty
   toJumpMap (RST.TyFlipPol _ ty) = toJumpMap ty
+  toJumpMap (RST.TyKindAnnot _ ty) = toJumpMap ty
 
 instance ToJumpMap (RST.XtorSig pol) where
   toJumpMap (RST.MkXtorSig _ ctx) =

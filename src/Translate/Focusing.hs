@@ -288,7 +288,7 @@ instance Focus Command where
   focus (ExitSuccess loc) = ExitSuccess loc
   focus (ExitFailure loc) = ExitFailure loc
   focus (Jump loc fv) = Jump loc fv
-  focus (Method loc mn cn subst) = Method loc mn cn (focus <¢> subst)
+  focus (Method loc mn cn inst ty subst) = Method loc mn cn inst ty (focus <¢> subst)
   -- Print
   focus (Print loc (isValueTerm PrdRep -> Just prd) cmd) =
     Print loc prd (focus cmd)
@@ -313,7 +313,7 @@ instance Focus Command where
   isFocused (ExitSuccess loc)              = Just (ExitSuccess loc)
   isFocused (ExitFailure loc)              = Just (ExitFailure loc)
   isFocused (Jump loc fv)                  = Just (Jump loc fv)
-  isFocused (Method loc mn cn subst)       = Method loc mn cn <$> isFocused subst
+  isFocused (Method loc mn cn inst ty subst) = Method loc mn cn inst ty <$> isFocused subst
   isFocused (Print loc prd cmd)            = Print loc <$> isValueTerm PrdRep prd <*> isFocused cmd
   isFocused (Read loc cns)                 = Read loc <$> isValueTerm CnsRep cns
   isFocused (PrimOp loc op subst)          = PrimOp loc op <$> isValueSubst subst
@@ -404,15 +404,17 @@ instance Focus Module where
 
 instance Focus EvalEnv where
   focus :: EvalEnv -> EvalEnv
-  focus (prd, cns, cmd) = (prd', cns', cmd')
+  focus (prd, cns, cmd, inst) = (prd', cns', cmd', inst')
     where
         prd' = focus <$> prd
         cns' = focus <$> cns
         cmd' = focus <$> cmd
+        inst' = focus <$> inst
 
   isFocused :: EvalEnv -> Maybe EvalEnv
-  isFocused (prd,cns,cmd) = do
+  isFocused (prd,cns,cmd,inst) = do
     prd' <- mapM isFocused prd
     cns' <- mapM isFocused cns
     cmd' <- mapM isFocused cmd
-    pure (prd',cns',cmd')
+    inst' <- mapM isFocused inst
+    pure (prd',cns',cmd',inst')

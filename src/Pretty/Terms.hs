@@ -4,6 +4,7 @@ import Prettyprinter
 
 import Pretty.Common ()
 import Pretty.Pretty
+import Pretty.Types () -- only import instance
 import Sugar.Desugar (Desugar(embedCore))
 import Syntax.TST.Terms qualified as TST
 import Syntax.RST.Terms qualified as RST
@@ -127,10 +128,13 @@ collectCoLambdaVarsAndBody (CST.CoLambda _ var tm) = (var:fvs,t)
 collectCoLambdaVarsAndBody t = ([],t) 
 
 instance PrettyAnn CST.Term where
+  prettyAnn :: CST.Term -> Doc Annotation
   prettyAnn (CST.Var _ v) =
     prettyAnn v
-  prettyAnn (CST.Xtor _ xt args) =
+  prettyAnn (CST.Xtor _ xt Nothing args) =
     prettyAnn xt <> prettyAnn args
+  prettyAnn (CST.Xtor _ xt (Just ty) args) =
+    prettyAnn xt <> brackets (prettyAnn ty) <> prettyAnn args
   prettyAnn (CST.Semi _ xt args c) =
     prettyAnn xt <>
     prettyAnn args <>

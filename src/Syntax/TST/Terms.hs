@@ -6,6 +6,7 @@ module Syntax.TST.Terms
   , CmdCase(..)
   , InstanceCase(..)
   , Command(..)
+  , InstanceResolved(..)
   -- Functions
   , ShiftDirection(..)
   , getTypeTerm
@@ -21,7 +22,7 @@ import Data.Text qualified as T
 import Loc
 import Errors
 import Syntax.CST.Names
-    ( ClassName, FreeVarName, Index, MethodName, XtorName )
+    ( ClassName, FreeVarName, Index, MethodName, XtorName, UniTVar )
 import Syntax.Core.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
 import Syntax.Core.Terms qualified as Core
@@ -192,7 +193,7 @@ data Command where
   Print  :: Loc -> Term Prd -> Command -> Command
   Read   :: Loc -> Term Cns -> Command
   Jump   :: Loc -> FreeVarName -> Command
-  Method :: Loc -> MethodName -> ClassName -> Substitution -> Command
+  Method :: Loc -> MethodName -> ClassName -> InstanceResolved -> Maybe (Typ Pos, Typ Neg) -> Substitution -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
   PrimOp :: Loc -> RST.PrimitiveOp -> Substitution -> Command
@@ -208,14 +209,19 @@ instance Zonk Command where
     Read ext (zonk vt bisubst cns)
   zonk _vt _ (Jump ext fv) =
     Jump ext fv
-  zonk vt bisubst (Method ext mn cn subst) =
-    Method ext mn cn (zonk vt bisubst <¢> subst)
+  zonk vt bisubst (Method ext mn cn inst ty subst) =
+    Method ext mn cn inst ty (zonk vt bisubst <¢> subst)
   zonk _vt _ (ExitSuccess ext) =
     ExitSuccess ext
   zonk _vt _ (ExitFailure ext) =
     ExitFailure ext
   zonk vt bisubst (PrimOp ext op subst) =
     PrimOp ext op (zonk vt bisubst <¢> subst)
+
+data InstanceResolved where
+  InstanceResolved :: FreeVarName -> InstanceResolved
+  InstanceUnresolved :: UniTVar -> InstanceResolved
+deriving instance Show InstanceResolved
 
 ---------------------------------------------------------------------------------
 -- Variable Opening
@@ -257,8 +263,8 @@ commandOpeningRec k args (Read loc cns) =
   Read loc (termOpeningRec k args cns)
 commandOpeningRec _ _ (Jump loc fv) =
   Jump loc fv
-commandOpeningRec k args (Method loc mn cn subst) =
-  Method loc mn cn (pctermOpeningRec k args <¢> subst)
+commandOpeningRec k args (Method loc mn cn inst ty subst) =
+  Method loc mn cn inst ty (pctermOpeningRec k args <¢> subst)
 commandOpeningRec k args (Apply loc annot kind t1 t2) =
   Apply loc annot kind (termOpeningRec k args t1) (termOpeningRec k args t2)
 commandOpeningRec k args (PrimOp loc op subst) =
@@ -303,8 +309,8 @@ commandClosingRec k args (Print ext t cmd) =
   Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
 commandClosingRec k args (Read ext cns) =
   Read ext (termClosingRec k args cns)
-commandClosingRec k args (Method ext mn cn subst) =
-  Method ext mn cn (pctermClosingRec k args <¢> subst)
+commandClosingRec k args (Method ext mn cn inst ty subst) =
+  Method ext mn cn inst ty (pctermClosingRec k args <¢> subst)
 commandClosingRec k args (Apply ext annot kind t1 t2) =
   Apply ext annot kind (termClosingRec k args t1) (termClosingRec k args t2)
 commandClosingRec k args (PrimOp ext op subst) =
@@ -376,7 +382,7 @@ commandLocallyClosedRec _ (Jump _ _) = Right ()
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
-commandLocallyClosedRec env (Method _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> unSubstitution subst
+commandLocallyClosedRec env (Method _ _ _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> unSubstitution subst
 commandLocallyClosedRec env (PrimOp _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> unSubstitution subst
 
 termLocallyClosed :: Term pc -> Either Error ()
@@ -439,7 +445,7 @@ instance Shiftable Command where
     Read ext (shiftRec dir n cns)
   shiftRec _ _ (Jump ext fv) =
     Jump ext fv
-  shiftRec dir n (Method ext mn cn subst) =
-    Method ext mn cn (shiftRec dir n <¢> subst)
+  shiftRec dir n (Method ext mn cn inst ty subst) =
+    Method ext mn cn inst ty (shiftRec dir n <¢> subst)
   shiftRec dir n (PrimOp ext op subst) =
     PrimOp ext op (shiftRec dir n <¢> subst)

@@ -178,6 +178,7 @@ library
       TypeInference.Constraints
       Translate.Focusing
       Translate.EmbedTST
+      Translate.InsertInstance
       Utils
   other-modules:
       Paths_duo_lang
@@ -227,6 +228,7 @@ test-suite duo-lang-test
       Spec.Focusing
     , Spec.TypeInferenceExamples
     , Spec.LocallyClosed
+    , Spec.OverlapCheck
     , Spec.Prettyprinter
     , Paths_duo_lang
   hs-source-dirs:

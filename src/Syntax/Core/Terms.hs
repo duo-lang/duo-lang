@@ -20,6 +20,7 @@ import Errors
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
+import Syntax.RST.Types
 import Syntax.CST.Names
     ( ClassName, FreeVarName, Index, MethodName, XtorName )
 import Syntax.LocallyNameless (LocallyNameless (..), Shiftable (..), ShiftDirection(..))
@@ -139,7 +140,7 @@ data Command where
   Print  :: Loc -> Term Prd -> Command -> Command
   Read   :: Loc -> Term Cns -> Command
   Jump   :: Loc -> FreeVarName -> Command
-  Method :: Loc -> MethodName -> ClassName -> Substitution -> Command
+  Method :: Loc -> MethodName -> ClassName -> Maybe (Typ Pos, Typ Neg) -> Substitution -> Command
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
   PrimOp :: Loc -> RST.PrimitiveOp -> Substitution -> Command
@@ -186,8 +187,8 @@ commandOpeningRec k args (Read loc cns) =
   Read loc (termOpeningRec k args cns)
 commandOpeningRec _ _ (Jump loc fv) =
   Jump loc fv
-commandOpeningRec k args (Method loc mn cn subst) =
-  Method loc mn cn (pctermOpeningRec k args <¢> subst)
+commandOpeningRec k args (Method loc mn cn ty subst) =
+  Method loc mn cn ty (pctermOpeningRec k args <¢> subst)
 commandOpeningRec k args (Apply loc annot t1 t2) =
   Apply loc annot (termOpeningRec k args t1) (termOpeningRec k args t2)
 commandOpeningRec k args (PrimOp loc op subst) =
@@ -225,8 +226,8 @@ commandClosingRec _ _ (ExitFailure ext) =
   ExitFailure ext
 commandClosingRec _ _ (Jump ext fv) =
   Jump ext fv
-commandClosingRec k args (Method loc mn cn subst) =
-  Method loc mn cn (pctermClosingRec k args <¢> subst)
+commandClosingRec k args (Method loc mn cn ty subst) =
+  Method loc mn cn ty (pctermClosingRec k args <¢> subst)
 commandClosingRec k args (Print ext t cmd) =
   Print ext (termClosingRec k args t) (commandClosingRec k args cmd)
 commandClosingRec k args (Read ext cns) =
@@ -288,7 +289,7 @@ commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either Error ()
 commandLocallyClosedRec _ (ExitSuccess _) = Right ()
 commandLocallyClosedRec _ (ExitFailure _) = Right ()
 commandLocallyClosedRec _ (Jump _ _) = Right ()
-commandLocallyClosedRec env (Method _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> unSubstitution subst
+commandLocallyClosedRec env (Method _ _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> unSubstitution subst
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
@@ -339,5 +340,5 @@ instance Shiftable Command where
   shiftRec dir n (Print ext prd cmd) = Print ext (shiftRec dir n prd) (shiftRec dir n cmd)
   shiftRec dir n (Read ext cns) = Read ext (shiftRec dir n cns)
   shiftRec _ _ (Jump ext fv) = Jump ext fv
-  shiftRec dir n (Method ext mn cn subst) = Method ext mn cn (shiftRec dir n <¢> subst)
+  shiftRec dir n (Method ext mn cn ty subst) = Method ext mn cn ty (shiftRec dir n <¢> subst)
   shiftRec dir n (PrimOp ext op subst) = PrimOp ext op (shiftRec dir n <¢> subst)

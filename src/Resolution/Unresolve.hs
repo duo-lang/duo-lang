@@ -4,6 +4,7 @@ import Control.Monad.State
 import Data.Bifunctor
 import Data.Text qualified as T
 import Data.Maybe (fromJust)
+import Data.List.NonEmpty (NonEmpty((:|)))
 
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
@@ -367,7 +368,7 @@ instance EmbedRST (RST.Term pc) CST.Term where
     pure $ CST.Var loc fv
   embedRST (RST.Xtor loc _ _ xt (RST.MkSubstitution subst)) = do
     subst' <- mapM (fmap CST.ToSTerm . embedRST) subst
-    pure $ CST.Xtor loc xt (CST.MkSubstitutionI subst')
+    pure $ CST.Xtor loc xt Nothing (CST.MkSubstitutionI subst')
   embedRST (RST.XCase loc PrdRep _ cases) = do
     cases' <- mapM embedRST cases
     pure $ CST.Cocase loc cases'
@@ -446,9 +447,9 @@ instance Open RST.Command where
     pure $ RST.Read loc cns'
   open (RST.Jump loc fv) =
     pure $ RST.Jump loc fv
-  open (RST.Method loc mn cn subst) = do
+  open (RST.Method loc mn cn ty subst) = do
     subst' <- open subst
-    pure $ RST.Method loc mn cn subst'
+    pure $ RST.Method loc mn cn ty subst'
   open (RST.ExitSuccess loc) =
     pure $ RST.ExitSuccess loc
   open (RST.ExitFailure loc) =
@@ -488,9 +489,10 @@ instance EmbedRST RST.Command CST.Term where
     pure $ CST.PrimTerm loc readName (CST.MkSubstitution [cns'])
   embedRST (RST.Jump loc fv) =
     pure $ CST.Var loc fv
-  embedRST (RST.Method loc mn _cn (RST.MkSubstitution subst)) = do
+  embedRST (RST.Method loc mn _cn ty (RST.MkSubstitution subst)) = do
     subst' <- mapM (fmap CST.ToSTerm . embedRST) subst
-    pure $ CST.Xtor loc (MkXtorName $ unMethodName mn) (CST.MkSubstitutionI subst')
+    ty' <- case ty of Nothing -> return Nothing; Just (typ, _tyn) -> Just <$> unresolve typ
+    pure $ CST.Xtor loc (MkXtorName $ unMethodName mn) ty' (CST.MkSubstitutionI subst')
   embedRST (RST.ExitSuccess loc) =
     pure $ CST.PrimTerm loc exitSuccessName (CST.MkSubstitution [])
   embedRST (RST.ExitFailure loc) =
@@ -547,15 +549,15 @@ instance Unresolve (RST.VariantType pol) CST.Typ where
   unresolve (RST.ContravariantType ty) = unresolve ty
 
 resugarType :: RST.Typ pol -> UnresolveM (Maybe CST.Typ)
-resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Fun" } [RST.ContravariantType tl, RST.CovariantType tr]) = do
+resugarType (RST.TyApp _loc' _ (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "Fun" }) (RST.ContravariantType tl:|[RST.CovariantType tr])) = do
   tl' <- unresolve tl
   tr' <- unresolve tr
   pure $ Just (CST.TyBinOp loc tl' (CustomOp (MkTyOpName "->")) tr')
-resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "CoFun" } [RST.CovariantType tl, RST.ContravariantType tr]) = do
+resugarType (RST.TyApp _loc' _ (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "CoFun" }) (RST.CovariantType tl:| [RST.ContravariantType tr])) = do
   tl' <- unresolve tl
   tr' <- unresolve tr
   pure $ Just (CST.TyBinOp loc tl' (CustomOp (MkTyOpName "-<")) tr')
-resugarType (RST.TyNominal loc _ MkRnTypeName { rnTnName = MkTypeName "Par" } [RST.CovariantType tl, RST.CovariantType tr]) = do
+resugarType (RST.TyApp _loc' _ (RST.TyNominal loc _ _ MkRnTypeName { rnTnName = MkTypeName "Par" } ) (RST.CovariantType tl:| [RST.CovariantType tr])) = do
   tl' <- unresolve tl
   tr' <- unresolve tr
   pure $ Just (CST.TyBinOp loc tl' (CustomOp (MkTyOpName "⅋")) tr')
@@ -585,11 +587,13 @@ instance Unresolve (RST.Typ pol) CST.Typ where
   unresolve (RST.TyCodataRefined loc _ tn xtors) = do
     xtors' <- mapM unresolve xtors
     pure $ CST.TyXRefined loc CST.Codata (rnTnName tn) xtors'
-  unresolve (RST.TyNominal loc _ nm args) = do
+  unresolve (RST.TyApp loc _ ty args) = do 
+    ty' <- unresolve ty
     args' <- mapM unresolve args
-    pure $ CST.TyNominal loc (rnTnName nm) args'
+    pure $ CST.TyApp loc ty' args'
+  unresolve (RST.TyNominal loc _ _ nm) = pure $ CST.TyNominal loc (rnTnName nm)
   unresolve (RST.TySyn loc _ nm _) =
-    pure $ CST.TyNominal loc (rnTnName nm) []
+    pure $ CST.TyNominal loc (rnTnName nm)
   unresolve (RST.TyTop loc) =
     pure $ CST.TyTop loc
   unresolve (RST.TyBot loc) =
@@ -615,6 +619,9 @@ instance Unresolve (RST.Typ pol) CST.Typ where
     pure $ CST.TyString loc
   unresolve (RST.TyFlipPol _ ty) =
     unresolve ty
+  unresolve (RST.TyKindAnnot mk ty) = do 
+    ty' <- unresolve ty
+    pure $ CST.TyKindAnnot mk ty'
 
 instance Unresolve (RST.TypeScheme pol) CST.TypeScheme where
   unresolve :: RST.TypeScheme pol -> UnresolveM CST.TypeScheme
