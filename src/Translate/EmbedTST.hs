@@ -12,6 +12,8 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
 import Data.Bifunctor (bimap, second)
+import Data.List.NonEmpty (NonEmpty((:|)))
+import Syntax.CST.Kinds (PolyKind(..), MonoKind(..), EvaluationOrder(..))
 
 ---------------------------------------------------------------------------------
 -- A typeclass for embedding TST.X into Core.X
@@ -136,8 +138,13 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     RST.TyKindAnnot mk $ RST.TyDataRefined loc pol tn (map embedTST xtors)
   embedTST (TST.TyCodataRefined loc pol mk tn xtors) =
     RST.TyKindAnnot mk $ RST.TyCodataRefined loc pol tn (map embedTST xtors)
-  embedTST (TST.TyNominal loc pol mk tn varty) =
-    RST.TyKindAnnot mk $ RST.TyNominal loc pol tn (map embedTST varty)
+  embedTST (TST.TyNominal loc pol mk tn varty) = do
+    -- this will be replaced with the correct polykind once tst has polykind
+    let polyknd = case mk of CBox evl -> MkPolyKind [] evl; _ -> MkPolyKind [] CBV
+    let varty' = embedTST <$> varty
+    case varty' of 
+      [] -> RST.TyKindAnnot mk $ RST.TyNominal loc pol polyknd tn
+      (fst:rst) -> RST.TyKindAnnot mk $ RST.TyApp loc pol (RST.TyNominal loc pol polyknd tn) (fst:|rst)
   embedTST (TST.TySyn loc pol tn tp) = do 
     let knd = TST.getKind tp 
     RST.TyKindAnnot knd $ RST.TySyn loc pol tn (embedTST tp)
