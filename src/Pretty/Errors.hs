@@ -149,6 +149,10 @@ instance PrettyAnn ConstraintGenerationError where
     vsep [ prettyAnn loc
          , "genConstraintsCtxts: Tried to generate constraints for a type class with multiple parameters which is not supported yet."
          ]
+  prettyAnn (InstanceResolution loc errs) =
+    vsep [ prettyAnn loc
+         , "genConstraintsCtxts: No instance could be resolved for annotated type class method:"
+         ] <> prettyAnn errs
     
 
 instance PrettyAnn ConstraintSolverError where
@@ -252,6 +256,8 @@ instance ToReport ConstraintGenerationError where
   toReport e@(NoParamTypeClass loc) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(MultiParamTypeClass loc) =
+    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport e@(InstanceResolution loc _errs) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
 
 instance ToReport ConstraintSolverError where
