@@ -62,9 +62,9 @@ instance ordNat : Ord Nat {
 };
 
 def prd trueGtFalse : Bool :=
-    mu k. Compare(True, False, case { GT => True >> k, LT => False >> k, EQ => False >> k });
+    mu k. Compare[Bool](True, False, case { GT => True >> k, LT => False >> k, EQ => False >> k });
 
 def prd twoLTthree : Bool :=
-    mu k. Compare(S(S(Z)), S(S(S(Z))), case { GT => False >> k, LT => True >> k, EQ => False >> k });
+    mu k. Compare[Nat](S(S(Z)), S(S(S(Z))), case { GT => False >> k, LT => True >> k, EQ => False >> k });
 
 def cmd main := #Print(twoLTthree, #ExitSuccess);
