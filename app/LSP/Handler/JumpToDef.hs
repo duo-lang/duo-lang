@@ -98,7 +98,7 @@ instance ToJumpMap RST.Command where
     M.union (toJumpMap prd) (toJumpMap cmd)
   toJumpMap (RST.Read _ cns) = toJumpMap cns
   toJumpMap RST.Jump {} = M.empty
-  toJumpMap (RST.Method _ _ _ subst) = toJumpMap subst
+  toJumpMap (RST.Method _ _ _ _ subst) = toJumpMap subst
   toJumpMap RST.ExitSuccess {} = M.empty
   toJumpMap RST.ExitFailure {} = M.empty
   toJumpMap (RST.PrimOp _ _ subst) = toJumpMap subst

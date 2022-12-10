@@ -17,4 +17,4 @@ instance readBool : Read Bool {
     } >> k
 };
 
-def cmd readToExit := Read(MkString("True"), case { True => #ExitSuccess, False => #ExitFailure});
+def cmd readToExit := Read[Bool](MkString("True"), case { True => #ExitSuccess, False => #ExitFailure});

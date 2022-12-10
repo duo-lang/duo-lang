@@ -100,6 +100,8 @@ data ConstraintGenerationError where
   -- | No param or multi-param type classes.
   NoParamTypeClass :: Loc -> ConstraintGenerationError
   MultiParamTypeClass :: Loc -> ConstraintGenerationError
+  -- | Resolving an instance for annotated type class method failed.
+  InstanceResolution :: Loc -> NE.NonEmpty Error -> ConstraintGenerationError
 
 
 
@@ -118,6 +120,7 @@ instance HasLoc ConstraintGenerationError where
   getLoc (LinearContextIncompatibleTypeMode loc _ _) = loc
   getLoc (NoParamTypeClass loc) = loc
   getLoc (MultiParamTypeClass loc) = loc
+  getLoc (InstanceResolution loc _) = loc
 
 instance AttachLoc ConstraintGenerationError where
   attachLoc loc (BoundVariableOutOfBounds _ pc idx) = BoundVariableOutOfBounds loc pc idx
@@ -132,6 +135,7 @@ instance AttachLoc ConstraintGenerationError where
   attachLoc loc (LinearContextIncompatibleTypeMode _ pc ci) = LinearContextIncompatibleTypeMode loc pc ci
   attachLoc loc (NoParamTypeClass _ ) = NoParamTypeClass loc
   attachLoc loc (MultiParamTypeClass _ ) = MultiParamTypeClass loc
+  attachLoc loc (InstanceResolution _ errs) = InstanceResolution loc errs
 
 
 ----------------------------------------------------------------------------------

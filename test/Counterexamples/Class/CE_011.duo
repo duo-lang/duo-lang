@@ -1,0 +1,10 @@
+module Class.CE_011;
+
+-- wrong annotation
+import Data.Bool;
+import Data.Peano;
+
+class Foo(+a : CBV){ Foo(a, return Bool) };
+instance foo : Foo Bool { Foo(x, k) => x >> k };
+instance bar : Foo Nat { Foo(x, k) => True >> k };
+def prd baz := mu k. Foo[Nat](False, k);
