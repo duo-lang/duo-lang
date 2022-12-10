@@ -32,4 +32,4 @@ instance eqNat : Eq Nat {
   Differ(x, y, k) => Equals(x, y, mu z. not z >> k )
 };
 
-def prd trueIsTrue : Bool := mu k. Equals(True, True, k);
+def prd trueIsTrue : Bool := mu k. Equals[Bool](True, True, k);
