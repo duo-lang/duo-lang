@@ -587,11 +587,11 @@ instance Unresolve (RST.Typ pol) CST.Typ where
   unresolve (RST.TyCodataRefined loc _ tn xtors) = do
     xtors' <- mapM unresolve xtors
     pure $ CST.TyXRefined loc CST.Codata (rnTnName tn) xtors'
-  unresolve (RST.TyApp loc' _ (RST.TyNominal loc _ _ nm) args) = do
+  unresolve (RST.TyApp loc _ ty args) = do 
+    ty' <- unresolve ty
     args' <- mapM unresolve args
-    pure $ CST.TyApp loc' (CST.TyNominal loc (rnTnName nm)) args'
+    pure $ CST.TyApp loc ty' args'
   unresolve (RST.TyNominal loc _ _ nm) = pure $ CST.TyNominal loc (rnTnName nm)
-  unresolve RST.TyApp{} = error "Types can only be applied to nominal types"
   unresolve (RST.TySyn loc _ nm _) =
     pure $ CST.TyNominal loc (rnTnName nm)
   unresolve (RST.TyTop loc) =

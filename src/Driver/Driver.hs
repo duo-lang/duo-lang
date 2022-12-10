@@ -25,7 +25,7 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind(CBox))
+import Syntax.CST.Kinds (MonoKind(CBox),PolyKind(..))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
@@ -34,6 +34,7 @@ import Syntax.TST.Terms qualified as TST
 import Syntax.Core.Program as Core
 import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
+import TypeInference.Constraints (ConstraintSet)
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
     ( runGenM, addKindAnnotConstr )
@@ -54,6 +55,15 @@ import Pretty.Program ()
 import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
 
+
+addConstrForAnnot :: Maybe (RST.TypeScheme pol) -> TST.Term prdcns -> ConstraintSet -> ConstraintSet
+addConstrForAnnot pcdecl_annot tmInferred constraintSet =
+  case pcdecl_annot of 
+    Nothing -> constraintSet 
+    Just (RST.TypeScheme _ _ (RST.TyKindAnnot mk _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
+    Just (RST.TypeScheme _ _ (RST.TyApp _ _ (RST.TyKindAnnot mk _) _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
+    Just (RST.TypeScheme _ _ (RST.TyApp _ _ (RST.TyNominal _ _ pk _) _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) (CBox $ returnKind pk) constraintSet
+    _ -> constraintSet 
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
@@ -96,10 +106,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
         CST.NonRecursive -> genConstraints pcdecl_term
   -- get annotated Kind out of annotation if available
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
-  let constraintSetModified =  case pcdecl_annot of 
-        Nothing -> constraintSet 
-        Just (RST.TypeScheme _ _ (RST.TyKindAnnot mk _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
-        _ -> constraintSet 
+  let constraintSetModified = addConstrForAnnot pcdecl_annot tmInferred constraintSet
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName pcdecl_name))
     ppPrintIO ("" :: T.Text)

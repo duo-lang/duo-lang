@@ -353,12 +353,22 @@ subConstraints (SubType _ (TyCodataRefined _ PosRep _ tn1 dtors1) (TyCodataRefin
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
-subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2)) | tn1 == tn2 = do
-    let f (CovariantType ty1) (CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
-        f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
-        f _ _ = error "cannot occur"
-        constraints = zipWith f args1 args2
-    pure (DataNominal tn1 $ SubVar . void <$> constraints, constraints)
+subConstraints (SubType info (TyApp _ _ ty1@(TyNominal _ _ _ tn1) args1) (TyApp _ _ ty2@TyNominal{} args2)) = do
+  let 
+    f (CovariantType ty1) (CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
+    f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
+    f _ _ = error "cannot occur"
+    nomConstr = SubType info ty1 ty2
+    constraints = nomConstr : (NE.toList $ NE.zipWith f args1 args2)
+  pure (DataNominal tn1 $ SubVar . void <$> constraints, constraints)
+subConstraints (SubType _ t1@(TyNominal _ _ _ tn1) t2@(TyNominal _ _ _ tn2)) = 
+  if tn1==tn2 then 
+    pure (Refl t1 t2, [])
+  else 
+    throwSolverError defaultLoc ["Cannot constraint type"
+                                 , "    " <> ppPrint t1
+                                 , "by type"
+                                 , "    " <> ppPrint t2]
 -- Constraints between primitive types:
 subConstraints (SubType _ p@(TyI64 _ _) n@(TyI64 _ _)) = pure (Refl p n, [])
 subConstraints (SubType _ p@(TyF64 _ _) n@(TyF64 _ _)) = pure (Refl p n, [])
