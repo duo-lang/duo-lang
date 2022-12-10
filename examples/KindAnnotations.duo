@@ -1,9 +1,13 @@
 module KindAnnotations;
 
 import Codata.Function;
+import Data.Peano;
 
 -- here a is annotated as CBV
 def prd idAnnotRight : forall (a : CBV). a -> a :=
   \x => x;
 
 def prd floatAnnot : (#F64:F64Rep) := 1.0#F64;
+
+def rec prd annotWithKind : (Nat:CBV) := annotWithKind;
+def rec prd annotNoKind : Nat := annotNoKind;
