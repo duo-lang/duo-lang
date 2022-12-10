@@ -53,7 +53,7 @@ data Typ where
   TyBinOp :: Loc -> Typ -> BinOp -> Typ -> Typ
   TyParens :: Loc -> Typ -> Typ
   TyKindAnnot :: MonoKind -> Typ -> Typ
-  deriving Show
+  deriving (Show, Eq)
 
 instance HasLoc Typ where
   getLoc (TyUniVar loc _) = loc
@@ -80,12 +80,12 @@ data XtorSig = MkXtorSig
   { sig_name :: XtorName
   , sig_args :: LinearContext
   }
-  deriving Show
+  deriving (Show, Eq)
 
 data PrdCnsTyp where
   PrdType :: Typ -> PrdCnsTyp
   CnsType :: Typ -> PrdCnsTyp
-  deriving Show
+  deriving (Show, Eq)
 
 type LinearContext = [PrdCnsTyp]
 

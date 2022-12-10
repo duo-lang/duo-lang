@@ -21,6 +21,8 @@ import Syntax.CST.Names
 import Loc
 import qualified Syntax.LocallyNameless as LN
 import Data.Either (fromLeft, isLeft)
+import Resolution.Types (resolveTyp)
+import Syntax.RST.Types (PolarityRep(..))
 
 ---------------------------------------------------------------------------------
 -- Check Arity of Xtor
@@ -250,7 +252,7 @@ resolveCommand (CST.CocaseOf loc tm cases) = do
     ImplicitCnsCases implicitCases -> do
       termCasesI <- mapM (resolveTermCaseI CnsRep) implicitCases
       pure $ RST.CocaseOfI loc CnsRep ns tm' termCasesI
-resolveCommand (CST.Xtor loc xtor arity) = do
+resolveCommand (CST.Xtor loc xtor ty arity) = do
   (_, res) <- lookupXtor loc xtor
   case res of
     (XtorNameResult _dc _ns _ar) -> throwError $ ErrResolution (CmdExpected loc "Method (Command) expected, but found Xtor") :| []
@@ -261,7 +263,11 @@ resolveCommand (CST.Xtor loc xtor arity) = do
           ExplicitSubst es -> return (map snd es)
           ImplicitSubst {} ->  throwOtherError loc ["The substitution in a method call cannot contain implicit arguments"]
       pctms <- resolveTerms loc ar subst'
-      pure $! RST.Method loc mn cn (RST.MkSubstitution pctms)
+      ty' <- case ty of Nothing -> pure Nothing; Just ty -> Just <$> do
+                            typ <- resolveTyp PosRep ty
+                            tyn <- resolveTyp NegRep ty
+                            pure (typ, tyn)
+      pure $! RST.Method loc mn cn ty' (RST.MkSubstitution pctms)
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------
@@ -382,7 +388,7 @@ resolveTerm CnsRep (CST.MuAbs loc fv cmd) = do
 ---------------------------------------------------------------------------------
 -- Xtor
 ---------------------------------------------------------------------------------
-resolveTerm PrdRep (CST.Xtor loc xtor subst) = do
+resolveTerm PrdRep (CST.Xtor loc xtor _ty subst) = do
   (_, res) <- lookupXtor loc xtor
   case res of
     (XtorNameResult dc ns ar) -> do
@@ -397,7 +403,7 @@ resolveTerm PrdRep (CST.Xtor loc xtor subst) = do
       pctms <- resolveTerms loc ar subst'
       pure $ RST.Xtor loc PrdRep ns xtor (RST.MkSubstitution pctms)
     (MethodNameResult _cn _ar) -> throwOtherError loc ["Xtor expected, but found Method"]
-resolveTerm CnsRep (CST.Xtor loc xtor subst) = do
+resolveTerm CnsRep (CST.Xtor loc xtor _ty subst) = do
   (_, res) <- lookupXtor loc xtor
   case res of
     (XtorNameResult dc ns ar) -> do
