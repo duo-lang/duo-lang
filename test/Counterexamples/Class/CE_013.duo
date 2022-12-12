@@ -1,0 +1,22 @@
+module Class.CE_013;
+
+import Data.BoolRefinement;
+
+data Unit : CBV { MkUnit };
+
+class ToUnit (+a : CBV){
+    ToUnit(a, return <Bool | True,False>)
+};
+
+instance toUnitTrue : ToUnit <Bool | True> {
+    ToUnit(x, k) => True >> k
+};
+
+instance toUnitFalse : ToUnit <Bool | False> {
+    ToUnit(x, k) => False >> k
+};
+
+-- incoherent instance (conflicts with both above)
+instance toUnitBool : ToUnit <Bool | True, False> {
+    ToUnit(x, k) => not x >> k
+};
