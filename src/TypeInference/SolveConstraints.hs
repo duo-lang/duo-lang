@@ -198,16 +198,30 @@ unifyKinds StringRep StringRep = return ()
 unifyKinds knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1<> " and " <> ppPrint knd2]
 
 computeKVarSolution :: KindPolicy
+                    -> Maybe (KVar, MonoKind)
                     -> [([KVar], Maybe MonoKind)]
                     -> Either (NE.NonEmpty Error) (Map KVar MonoKind)
-computeKVarSolution DefaultCBV sets = return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBV); Just mk -> (xs,mk)) <$> sets)
-computeKVarSolution DefaultCBN sets = return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBN); Just mk -> (xs,mk)) <$> sets)
-computeKVarSolution ErrorUnresolved sets | all (\(_,mk) -> isJust mk) sets = do
+computeKVarSolution DefaultCBV Nothing sets =  
+  return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBV); Just mk -> (xs,mk)) <$> sets)
+computeKVarSolution DefaultCBN Nothing sets = 
+  return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBN); Just mk -> (xs,mk)) <$> sets)
+computeKVarSolution ErrorUnresolved Nothing sets | all (\(_,mk) -> isJust mk) sets = do
   pure $ computeKVarSolution' (map (Data.Bifunctor.second fromJust) sets)
                                          | otherwise = do
   let kvars :: [KVar] = join $ fst <$> filter (\(_,mk) -> isNothing mk) sets
   let msg = "The following kind variables could not be resolved: " <> mconcat (intersperse ", " (ppPrint <$> kvars))
   Left $  (NE.:| []) $  ErrConstraintSolver $ SomeConstraintSolverError defaultLoc msg
+computeKVarSolution policy (Just (kv,annotKind)) sets = do 
+  let annotAdded = removeNothing kv annotKind sets
+  computeKVarSolution policy Nothing annotAdded
+  where 
+    removeNothing::KVar->MonoKind->[([KVar], Maybe MonoKind)]->[([KVar], Maybe MonoKind)] 
+    removeNothing _ _ [] = []
+    removeNothing kv mk ((kvs, Just mk'):rst) = (kvs,Just mk'):(removeNothing kv mk rst)
+    removeNothing kv mk ((kvs,Nothing):rst) = 
+      case filter (/= kv) kvs of 
+        [] -> ([kv], Just mk) : (removeNothing kv mk rst)
+        rst' -> ([kv],Just mk) : ((rst',Nothing) : (removeNothing kv mk rst))
 
 computeKVarSolution' :: [([KVar],MonoKind)] -> Map KVar MonoKind
 computeKVarSolution' sets = M.fromList (concatMap f sets)
@@ -354,12 +368,22 @@ subConstraints (SubType _ (TyCodataRefined _ PosRep _ tn1 dtors1) (TyCodataRefin
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
-subConstraints (SubType _ (TyNominal _ _ _ tn1 args1) (TyNominal _ _ _ tn2 args2)) | tn1 == tn2 = do
-    let f (CovariantType ty1) (CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
-        f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
-        f _ _ = error "cannot occur"
-        constraints = zipWith f args1 args2
-    pure (DataNominal tn1 $ SubVar . void <$> constraints, constraints)
+subConstraints (SubType info (TyApp _ _ ty1@(TyNominal _ _ _ tn1) args1) (TyApp _ _ ty2@TyNominal{} args2)) = do
+  let 
+    f (CovariantType ty1) (CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
+    f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
+    f _ _ = error "cannot occur"
+    nomConstr = SubType info ty1 ty2
+    constraints = nomConstr : (NE.toList $ NE.zipWith f args1 args2)
+  pure (DataNominal tn1 $ SubVar . void <$> constraints, constraints)
+subConstraints (SubType _ t1@(TyNominal _ _ _ tn1) t2@(TyNominal _ _ _ tn2)) = 
+  if tn1==tn2 then 
+    pure (Refl t1 t2, [])
+  else 
+    throwSolverError defaultLoc ["Cannot constraint type"
+                                 , "    " <> ppPrint t1
+                                 , "by type"
+                                 , "    " <> ppPrint t2]
 -- Constraints between primitive types:
 subConstraints (SubType _ p@(TyI64 _ _) n@(TyI64 _ _)) = pure (Refl p n, [])
 subConstraints (SubType _ p@(TyF64 _ _) n@(TyF64 _ _)) = pure (Refl p n, [])
@@ -468,10 +492,10 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
   VariableState zonkedlbs zonkedubs tc zonkedKind
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Map ModuleName Environment ->  Either (NE.NonEmpty Error) SolverResult
-solveConstraints constraintSet@(ConstraintSet css _ _) env = do
+solveConstraints :: ConstraintSet -> Maybe (KVar, MonoKind) -> Map ModuleName Environment -> Either (NE.NonEmpty Error) SolverResult
+solveConstraints constraintSet@(ConstraintSet css _ _) annotKind env = do
   (_, solverState) <- runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet)
-  kvarSolution <- computeKVarSolution ErrorUnresolved (sst_kvars solverState)
+  kvarSolution <- computeKVarSolution ErrorUnresolved annotKind (sst_kvars solverState) 
   let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolution (sst_cache solverState)
 
