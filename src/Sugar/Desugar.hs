@@ -223,8 +223,8 @@ instance Desugar RST.Command Core.Command where
     Core.Read loc (desugar cns)
   desugar (RST.Jump loc fv) =
     Core.Jump loc fv
-  desugar (RST.Method loc mn cn subst) =
-    Core.Method loc mn cn (desugar subst)
+  desugar (RST.Method loc mn cn ty subst) =
+    Core.Method loc mn cn ty (desugar subst)
   desugar (RST.ExitSuccess loc) =
     Core.ExitSuccess loc
   desugar (RST.ExitFailure loc) =
@@ -255,8 +255,8 @@ instance Desugar RST.Command Core.Command where
     RST.CocaseOfCmd loc ns (embedCore t) (embedCore <$> cases)
   embedCore (Core.CaseOfCmd loc ns t cases) =
     RST.CaseOfCmd loc ns (embedCore t) (embedCore <$> cases)
-  embedCore (Core.Method loc mn cn subst) =
-    RST.Method loc mn cn (embedCore subst)
+  embedCore (Core.Method loc mn cn ty subst) =
+    RST.Method loc mn cn ty (embedCore subst)
   embedCore (Core.Print loc tm cmd) =
     RST.Print loc (embedCore tm) (embedCore cmd)
   embedCore (Core.Read loc tm) =
