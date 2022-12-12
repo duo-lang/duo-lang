@@ -454,12 +454,16 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyRecVar loc pol rv) = do
     rvMap <- gets usedRecVars
     case M.lookup rv rvMap of 
-      Nothing -> do
-        kv <- newKVar 
-        let newM = M.insert rv (MkPolyKind [] CBV) rvMap
-        modify (\gs@GenerateState{} -> gs { usedRecVars = newM })
-        -- fix this
-        return (TST.TyRecVar loc pol (MkPolyKind [] CBV) rv)
+      Nothing -> do 
+        -- recursive variable needs to be contained in a refinement type
+        -- this contains the last seen refinement type polykind
+        lastPk <- gets lastRefPk
+        case lastPk of 
+          Nothing -> return $ TST.TyRecVar loc pol (MkPolyKind [] CBN) rv
+          Just pk -> do
+            let newM = M.insert rv pk rvMap
+            modify (\gs@GenerateState{} -> gs { usedRecVars = newM })
+            return (TST.TyRecVar loc pol pk rv)
       Just pk -> return (TST.TyRecVar loc pol pk rv)
 
   annotateKind (RST.TyData loc pol xtors) = do 
@@ -517,6 +521,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyDataRefined loc pol pknd tyn xtors) = do 
     xtors' <- mapM annotateKind xtors
     decl <- lookupTypeName loc tyn
+    -- insert polykind to use for inner recvars
+    modify (\gs@GenerateState{} -> gs { lastRefPk = Just $ TST.data_kind decl })
     checkXtors loc xtors' decl
     return (TST.TyDataRefined loc pol pknd tyn xtors')
     where 
@@ -533,6 +539,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyCodataRefined loc pol pknd tyn xtors) = do
     xtors' <- mapM annotateKind xtors
     decl <- lookupTypeName loc tyn
+    -- insert polykind to use for inner recvars
+    modify (\gs@GenerateState{} -> gs { lastRefPk = Just $ TST.data_kind decl })
     checkXtors loc xtors' decl
     return (TST.TyCodataRefined loc pol pknd tyn xtors')
     where 

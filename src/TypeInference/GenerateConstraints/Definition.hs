@@ -72,6 +72,8 @@ data GenerateState = GenerateState
   , usedRecVars :: M.Map RecTVar PolyKind
   , usedSkolemVars :: M.Map SkolemTVar MonoKind
   , usedUniVars :: M.Map UniTVar MonoKind
+  -- The polykind from refinement data (used for recursive vars)
+  , lastRefPk :: Maybe PolyKind
   }
 
 initialConstraintSet :: ConstraintSet
@@ -88,6 +90,7 @@ initialState = GenerateState {   uVarCount = 0
                                , usedRecVars = M.empty
                                , usedSkolemVars = M.empty
                                , usedUniVars = M.empty
+                               , lastRefPk = Nothing
                         }
 
 ---------------------------------------------------------------------------------------------
