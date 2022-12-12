@@ -457,7 +457,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       Nothing -> do 
         -- recursive variable needs to be contained in a refinement type
         -- this contains the last seen refinement type polykind
-        lastPk <- gets lastRefPk
+        lastPk <- gets lastPk
         case lastPk of 
           Nothing -> return $ TST.TyRecVar loc pol (MkPolyKind [] CBN) rv
           Just pk -> do
@@ -522,7 +522,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     xtors' <- mapM annotateKind xtors
     decl <- lookupTypeName loc tyn
     -- insert polykind to use for inner recvars
-    modify (\gs@GenerateState{} -> gs { lastRefPk = Just $ TST.data_kind decl })
+    modify (\gs@GenerateState{} -> gs { lastPk = Just $ TST.data_kind decl })
     checkXtors loc xtors' decl
     return (TST.TyDataRefined loc pol pknd tyn xtors')
     where 
@@ -540,7 +540,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     xtors' <- mapM annotateKind xtors
     decl <- lookupTypeName loc tyn
     -- insert polykind to use for inner recvars
-    modify (\gs@GenerateState{} -> gs { lastRefPk = Just $ TST.data_kind decl })
+    modify (\gs@GenerateState{} -> gs { lastPk = Just $ TST.data_kind decl })
     checkXtors loc xtors' decl
     return (TST.TyCodataRefined loc pol pknd tyn xtors')
     where 
@@ -555,6 +555,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
           throwOtherError loc ["Xtors do not have the correct kinds"]
 
   annotateKind (RST.TyApp _loc' _pol' (RST.TyNominal loc pol polyknd tyn) vartys) = do 
+    -- insert polykind to use for inner recvars
+    modify (\gs@GenerateState{} -> gs { lastPk = Just polyknd })
     vartys' <- mapM annotateKind vartys
     let argKnds = map (\(_, _, mk) -> mk) (kindArgs polyknd)
     checkArgKnds loc (NE.toList vartys') argKnds
@@ -576,7 +578,10 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
               throwOtherError loc ["Kind of VariantType: " <> ppPrint fstVarty <> " does not match kind of declaration " <> ppPrint fstMk]
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
     case kindArgs polyknd of 
-      [] -> return $ TST.TyNominal loc pol polyknd tyn
+      [] -> do 
+        -- insert polykind to use for inner recvars
+        modify (\gs@GenerateState{} -> gs { lastPk = Just polyknd })
+        return $ TST.TyNominal loc pol polyknd tyn
       _ -> throwOtherError loc ["Nominal Type " <> ppPrint tyn <> " was not fully applied"]
   annotateKind (RST.TyApp loc _ ty _ ) = throwOtherError loc ["Types can only be applied to nominal types, was applied to ", ppPrint ty]
              
