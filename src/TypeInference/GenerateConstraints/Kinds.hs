@@ -45,18 +45,18 @@ genArgConstrs loc xtornm (fst:rst) (fst':rst') = do
   addConstraint (KindEq KindConstraint (getKind fst') fst)
   genArgConstrs loc xtornm rst rst'
 
-getXtorKinds :: Loc -> [TST.XtorSig pol] -> GenM MonoKind
+getXtorKinds :: Loc -> [RST.XtorSig pol] -> GenM MonoKind
 getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
 getXtorKinds loc [xtor] = do
-  let nm = TST.sig_name xtor
+  let nm = RST.sig_name xtor
   (mk, args) <- lookupXtorKind nm 
-  genArgConstrs loc nm args (TST.sig_args xtor)
+  --genArgConstrs loc nm args (RST.sig_args xtor)
   return mk
 getXtorKinds loc (xtor:xtors) = do 
-  let nm = TST.sig_name xtor 
+  let nm = RST.sig_name xtor 
   (mk, args) <- lookupXtorKind nm
   mk' <- getXtorKinds loc xtors
-  genArgConstrs loc nm args (TST.sig_args xtor)
+  --genArgConstrs loc nm args (RST.sig_args xtor)
   -- all constructors of a structural type need to have the same return kind
   addConstraint (KindEq KindConstraint mk mk')
   return mk
@@ -467,11 +467,13 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       Just pk -> return (TST.TyRecVar loc pol pk rv)
 
   annotateKind (RST.TyData loc pol xtors) = do 
-    xtors' <- mapM annotateKind xtors
-    let xtorNames = map TST.sig_name xtors'
+    let xtorNames = map RST.sig_name xtors
     xtorKnds <- mapM lookupXtorKind xtorNames
+    knd <- getXtorKinds loc xtors
+    let eo = case knd of CBox CBV -> CBV; CBox CBN -> CBN; _ -> error "TyData needs to have kind CBN or CBV"
+    modify (\gs@GenerateState{} -> gs { lastPk = Just (MkPolyKind [] eo) })
+    xtors' <- mapM annotateKind xtors
     compXtorKinds loc xtors' xtorKnds
-    knd <- getXtorKinds loc xtors'
     return (TST.TyData loc pol knd xtors')
     where 
       compXtorKinds :: Loc -> [TST.XtorSig pol] -> [(MonoKind,[MonoKind])] -> GenM ()
@@ -493,11 +495,13 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
 
 
   annotateKind (RST.TyCodata loc pol xtors) = do 
-    xtors' <- mapM annotateKind xtors
-    let xtorNames = map TST.sig_name xtors'
+    let xtorNames = map RST.sig_name xtors
     xtorKnds <- mapM lookupXtorKind xtorNames
+    knd <- getXtorKinds loc xtors
+    let eo = case knd of CBox CBV -> CBV; CBox CBN -> CBN; _ -> error "TyData needs to have kind CBN or CBV"
+    modify (\gs@GenerateState{} -> gs { lastPk = Just (MkPolyKind [] eo) })
+    xtors' <- mapM annotateKind xtors
     compXtorKinds loc xtors' xtorKnds
-    knd <- getXtorKinds loc xtors'
     return (TST.TyCodata loc pol knd xtors')
     where 
       compXtorKinds :: Loc -> [TST.XtorSig (RST.FlipPol pol)] -> [(MonoKind,[MonoKind])] -> GenM ()
