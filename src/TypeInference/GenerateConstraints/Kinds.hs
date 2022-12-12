@@ -36,27 +36,17 @@ import Syntax.RST.Types (Polarity(..), PolarityRep (..))
 --------------------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------------------
--- generates the constraints between kinds of xtor arguments and used arguments
-genArgConstrs :: TST.GetKind a =>  Loc -> XtorName -> [MonoKind] -> [a] -> GenM () 
-genArgConstrs _ _ [] [] = return () 
-genArgConstrs loc xtornm (_:_) [] = throwOtherError loc ["Too few arguments for constructor " <> ppPrint xtornm]
-genArgConstrs loc xtornm [] (_:_) = throwOtherError loc ["Too many arguments for constructor " <> ppPrint xtornm]
-genArgConstrs loc xtornm (fst:rst) (fst':rst') = do 
-  addConstraint (KindEq KindConstraint (getKind fst') fst)
-  genArgConstrs loc xtornm rst rst'
 
 getXtorKinds :: Loc -> [RST.XtorSig pol] -> GenM MonoKind
 getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
-getXtorKinds loc [xtor] = do
+getXtorKinds _ [xtor] = do
   let nm = RST.sig_name xtor
-  (mk, args) <- lookupXtorKind nm 
-  --genArgConstrs loc nm args (RST.sig_args xtor)
+  (mk, _) <- lookupXtorKind nm 
   return mk
 getXtorKinds loc (xtor:xtors) = do 
   let nm = RST.sig_name xtor 
-  (mk, args) <- lookupXtorKind nm
+  (mk, _) <- lookupXtorKind nm
   mk' <- getXtorKinds loc xtors
-  --genArgConstrs loc nm args (RST.sig_args xtor)
   -- all constructors of a structural type need to have the same return kind
   addConstraint (KindEq KindConstraint mk mk')
   return mk
