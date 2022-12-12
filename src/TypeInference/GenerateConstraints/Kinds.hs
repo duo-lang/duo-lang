@@ -445,11 +445,11 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     rvMap <- gets usedRecVars
     case M.lookup rv rvMap of 
       Nothing -> do 
-        -- recursive variable needs to be contained in a refinement type
+        -- recursive variable needs to be contained in a structural (refinement) or nominal  type
         -- this contains the last seen refinement type polykind
         lastPk <- gets lastPk
         case lastPk of 
-          Nothing -> return $ TST.TyRecVar loc pol (MkPolyKind [] CBN) rv
+          Nothing -> error "Recvar has to be contained in a nominal or structural (refinement) type"
           Just pk -> do
             let newM = M.insert rv pk rvMap
             modify (\gs@GenerateState{} -> gs { usedRecVars = newM })
