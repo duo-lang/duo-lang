@@ -1,0 +1,26 @@
+module ConsumerTest;
+
+import Data.Cofunction;
+import Codata.Function;
+
+data Bool : CBV {
+    True,
+    False
+};
+
+data Nat : CBV {
+    Z,
+    Succ(Nat)
+};
+
+codata CoNat : CBV { CoZ , CoSucc( return Nat ) };
+
+codata CoBool : CBV { CoTrue , CoFalse };
+
+
+def cns couseless : CoFun( CoBool , CoNat ) := \cob =< cocase cob of {
+   CoTrue() => CoZ,
+   CoFalse() => CoZ
+};
+
+

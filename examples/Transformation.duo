@@ -1,0 +1,64 @@
+module Transformation;
+
+import Codata.Function;
+import Data.Cofunction;
+
+
+data Nat {
+    Zero,
+    Succ(Nat)
+};
+--*******************
+-- Data
+--*******************
+
+-- Bool defined as data
+data Bool {
+    True,
+    False
+};
+
+-- quickfix dualize erzeugt cns, könnte bei Verständnis helfen
+-- Pattern Matching auf Daten
+def prd ifThenElse : Bool -> Nat -> Nat -> Nat :=
+    \b e1 e2 => case b of {
+        True => e1,
+        False => e2
+};
+
+def prd id : Bool -> Bool := 
+    \b => case b of {
+        True => b,
+        False => b
+};
+
+
+
+
+def cmd useData := #Print(ifThenElse (id True) Succ(Zero) Zero, #ExitSuccess); -- use "classic" ifThenElse function on data
+---------------------
+
+--*******************
+-- Codata
+--*******************
+-- Bool defined as codata, named CoBool to avoid name problems
+codata CoBool {
+    IfThenElse(Nat, Nat, return Nat)
+};
+
+-- Copattern Matching auf Codaten
+def prd true : CoBool := cocase {
+    IfThenElse(e1,e2,*) => e1
+};
+def prd false : CoBool := cocase {
+    IfThenElse(e1,e2,*) => e2
+};
+
+def cmd useCodata := #Print(true.IfThenElse(Succ(Zero), Zero, *), #ExitSuccess);
+ -- use copattern matching on codata, mind the application of the destructor on true
+---------------------
+
+--main
+def cmd main := useCodata;
+
+
