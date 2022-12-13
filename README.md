@@ -1,3 +1,5 @@
+Just a fork for my bachelor thesis in order not to break the original repo :D
+
 # Duo Lang
 
 [![CI](https://github.com/duo-lang/duo-lang/actions/workflows/ci.yml/badge.svg)](https://github.com/duo-lang/duo-lang/actions/workflows/ci.yml)
