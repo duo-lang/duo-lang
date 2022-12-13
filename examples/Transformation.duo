@@ -36,6 +36,7 @@ def prd id : Bool -> Bool :=
 
 
 def cmd useData := #Print(ifThenElse (id True) Succ(Zero) Zero, #ExitSuccess); -- use "classic" ifThenElse function on data
+def cmd useDataPartial := #Print(ifThenElse, #ExitSuccess);
 ---------------------
 
 --*******************
@@ -59,6 +60,6 @@ def cmd useCodata := #Print(true.IfThenElse(Succ(Zero), Zero, *), #ExitSuccess);
 ---------------------
 
 --main
-def cmd main := useCodata;
+def cmd main := useData;
 
 

@@ -1,10 +1,11 @@
 module Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration, dualCmdDeclaration) where
 
-import Data.Text qualified as T
+import Data.Text qualified as T -- implementation of unicode text, qualified as T to avoid name clashes with prelude
 import Data.Text (Text)
 import Data.Bifunctor ( Bifunctor(bimap) )
 import Data.Functor ( (<&>) )
 
+-- import the needed parts of the syntax trees
 import Syntax.CST.Kinds
 import Syntax.CST.Names
 import Syntax.CST.Types qualified as CST
@@ -17,12 +18,13 @@ import Syntax.TST.Types qualified as TST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms
 import Syntax.Core.Annot
-import Loc
+import Loc -- source code locations, see src/Loc.hs
 
 ------------------------------------------------------------------------------
 -- Dualization
 ------------------------------------------------------------------------------
 
+-- usage of guards
 data DualizeError
  = DualPrim Loc Text
  | DualPrint Loc Text
