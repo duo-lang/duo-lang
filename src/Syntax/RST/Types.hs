@@ -318,5 +318,5 @@ generalize ty = TypeScheme defaultLoc (zip (S.toList $ freeTVars ty) (repeat Not
 
 data FreeConstraint
   = SubTypeConstraint (Typ Pos) (Typ Neg)
-  | TypeClassConstraint ClassName SkolemTVar
+  | TypeClassConstraint ClassName (Maybe (Typ Pos), Maybe (Typ Neg)) -- this should be seen as an inclusive or: we cannot have /Nothing/ twice
  deriving (Show, Eq, Ord)

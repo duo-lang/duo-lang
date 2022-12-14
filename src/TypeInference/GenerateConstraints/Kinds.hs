@@ -447,7 +447,10 @@ instance AnnotateKind RST.FreeConstraint TST.FreeConstraint where
     annoTyp <- annotateKind typ
     annoTyn <- annotateKind tyn
     pure (TST.SubTypeConstraint annoTyp annoTyn)
-  annotateKind (RST.TypeClassConstraint cn tvar) = pure (TST.TypeClassConstraint cn tvar)
+  annotateKind (RST.TypeClassConstraint cn (typ, tyn)) = do
+    annoTyp <- mapM annotateKind typ
+    annoTyn <- mapM annotateKind tyn
+    pure (TST.TypeClassConstraint cn (annoTyp, annoTyn))
 
 instance AnnotateKind (RST.VariantType pol) (TST.VariantType pol) where
   annotateKind ::  RST.VariantType pol -> GenM (TST.VariantType pol)

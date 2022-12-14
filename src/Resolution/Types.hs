@@ -22,6 +22,7 @@ import Syntax.CST.Kinds
 import Syntax.CST.Names
 import Loc (Loc(..), defaultLoc)
 import Control.Monad.Reader (asks, MonadReader (local))
+import Control.Monad.Except (catchError)
 
 ---------------------------------------------------------------------------------
 -- Lowering & Polarization (CST -> RST)
@@ -40,9 +41,10 @@ resolveConstraint (SubTypeConstraint typ tyn) = do
     typResolved <- resolveTyp PosRep typ
     tynResolved <- resolveTyp NegRep tyn
     pure (RST.SubTypeConstraint typResolved tynResolved)
-resolveConstraint (TypeClassConstraint cn tvar) = pure (RST.TypeClassConstraint cn tvar)
-
-
+resolveConstraint (TypeClassConstraint cn ty) = do
+    typ <- catchError (Just <$> resolveTyp PosRep ty) (const $ pure Nothing)
+    tyn <- catchError (Just <$> resolveTyp NegRep ty) (const $ pure Nothing)
+    pure (RST.TypeClassConstraint cn (typ, tyn))
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyUniVar loc v) =
     pure $ RST.TyUniVar loc rep v

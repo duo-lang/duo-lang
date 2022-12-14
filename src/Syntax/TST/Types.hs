@@ -450,5 +450,5 @@ unfoldRecType ty = ty
 
 data FreeConstraint
   = SubTypeConstraint (Typ Pos) (Typ Neg)
-  | TypeClassConstraint ClassName SkolemTVar
+  | TypeClassConstraint ClassName (Maybe (Typ Pos), Maybe (Typ Neg)) -- this should be seen as an inclusive or: we cannot have /Nothing/ twice
  deriving (Eq, Ord, Show)

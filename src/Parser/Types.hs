@@ -289,9 +289,9 @@ typeClassConstraintP :: Parser (FreeConstraint, SourcePos)
 typeClassConstraintP = try $ do
   (cname,_) <- classNameP
   sc
-  (tvar, pos) <- tvarP
+  (ty, pos) <- typP
   sc
-  return (TypeClassConstraint cname tvar, pos)
+  return (TypeClassConstraint cname ty, pos)
 
 subTypeConstraintP :: Parser (FreeConstraint, SourcePos)
 subTypeConstraintP = try $ do

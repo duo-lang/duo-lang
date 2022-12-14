@@ -113,6 +113,6 @@ instance HasLoc TypeScheme where
 
 data FreeConstraint
   = SubTypeConstraint Typ Typ
-  | TypeClassConstraint ClassName SkolemTVar
+  | TypeClassConstraint ClassName Typ
  deriving Show
 

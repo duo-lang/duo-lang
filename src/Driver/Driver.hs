@@ -53,7 +53,8 @@ import Pretty.Common (Header(..))
 import Pretty.Program ()
 import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
-import TypeInference.Constraints (InstanceResult(constraintResult))
+import TypeInference.Constraints (InstanceResult(constraintResult), SolverResult (tvarSolution), VariableState (vst_typeclasses))
+import Syntax.TST.Types (Bisubstitution(bisubst_map))
 
 
 checkAnnot :: PolarityRep pol
@@ -97,10 +98,10 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
         CST.NonRecursive -> genConstraints pcdecl_term
   -- get annotated Kind out of annotation if available
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
-  let constraintSetModified =  case pcdecl_annot of 
-        Nothing -> constraintSet 
+  let constraintSetModified =  case pcdecl_annot of
+        Nothing -> constraintSet
         Just (RST.TypeScheme _ _ _ (RST.TyKindAnnot mk _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
-        _ -> constraintSet 
+        _ -> constraintSet
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName pcdecl_name))
     ppPrintIO ("" :: T.Text)
@@ -115,7 +116,8 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   guardVerbose $ ppPrintIO bisubst
   -- 4. Solve the type class constraints.
   instances <- liftEitherErrLoc pcdecl_loc $ solveClassConstraints solverResult bisubst env
-  let constraints = concatMap (\(tvar, cns) -> flip TST.TypeClassConstraint tvar <$> S.toList cns) (M.toList (constraintResult instances))
+  -- TODO maybe do this in coalsce
+  let constraints = concat $ zipWith (\(_u, (typ, tyn)) (_u', cns) -> flip TST.TypeClassConstraint (Just typ, Just tyn) <$> cns) (M.toAscList (fst $ bisubst_map bisubst)) (M.toAscList (vst_typeclasses <$> tvarSolution solverResult))
   guardVerbose $ ppPrintIO instances
   tmInferred <- liftEitherErrLoc pcdecl_loc (insertInstance instances tmInferred)
   -- 5. Read of the type and generate the resulting type

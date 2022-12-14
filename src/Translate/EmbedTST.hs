@@ -119,7 +119,7 @@ instance EmbedTST (TST.TypeScheme pol) (RST.TypeScheme pol) where
 instance EmbedTST TST.FreeConstraint RST.FreeConstraint where
   embedTST :: TST.FreeConstraint -> RST.FreeConstraint
   embedTST (TST.SubTypeConstraint typ tyn) = RST.SubTypeConstraint (embedTST typ) (embedTST tyn)
-  embedTST (TST.TypeClassConstraint cn tVar) = RST.TypeClassConstraint cn tVar
+  embedTST (TST.TypeClassConstraint cn (typ, tyn)) = RST.TypeClassConstraint cn (embedTST <$> typ, embedTST <$> tyn)
 
 instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
   embedTST :: TST.LinearContext pol-> RST.LinearContext pol
