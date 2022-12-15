@@ -20,17 +20,17 @@ jobs:
       matrix:
         stack: ["2.7.5"]
         ghc: ["9.0.2"]
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
     - uses: actions/checkout@v2
-    - uses: haskell/actions/setup@v1
+    - uses: haskell/actions/setup@latest
       name: Setup Haskell Stack
       with:
         ghc-version: ${{ matrix.ghc }}
         stack-version: ${{ matrix.stack }}
 
-    - uses: freckle/stack-cache-action@v2.0.5
+    - uses: freckle/stack-cache-action@latest
       with:
         prefix: ${{ runner.os }}-${{ matrix.ghc }}
 
