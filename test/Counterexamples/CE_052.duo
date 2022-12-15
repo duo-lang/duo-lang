@@ -1,0 +1,26 @@
+-- mutual recursion is not supported
+module CE_052;
+
+import Data.PeanoStructural;
+import Codata.Function;
+
+constructor N;
+constructor C(CBV,CBV);
+constructor L(CBV);
+constructor T(CBV);
+
+-- sum numbers in a rose tree
+def rec prd rsum : (rec rt. < L(rec rn. < Z, S(rn) >), T(rec rl. < N, C(rt, rl)>)>) -> rec r. < Z, S(r) > :=
+    \t => case t of {
+        L(n) => n,
+        T(ts) => lsum ts
+    };
+
+-- sum numbers in a list of rose trees
+def rec prd lsum : (rec rl. < N, C(rec rt. < L(rec rn. <Z, S(rn)>), T(rl)>, rl) >) -> rec r. < Z, S(r) > :=
+    \ts => case ts of {
+        N => Z,
+        C(t,ts1) => add (rsum t) (lsum ts1)
+    };
+
+

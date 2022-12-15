@@ -41,7 +41,7 @@ import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
       genConstraintsTermRecursive )
-import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints)
+import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints, isSubtype)
 import Loc ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
@@ -205,6 +205,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
     ppPrintIO solverResult
   -- Insert instance into environment to allow recursive method definitions
   let (typ, tyn) = TST.instancedecl_typ instanceInferred
+  checkOverlappingInstances instancedecl_loc instancedecl_class (typ, tyn)
   let iname = TST.instancedecl_name instanceInferred
   let f env = env { instanceEnv = M.adjust (S.insert (iname, typ, tyn)) instancedecl_class (instanceEnv env) }
   modifyEnvironment mn f
@@ -220,7 +221,22 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   let f env = env { instanceDeclEnv = M.insert instancedecl_name instanceInferred (instanceDeclEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
-  
+
+-- | For each instance of the same class in the environment, check whether it is a sub- or supertype of the declared instance type.
+checkOverlappingInstances :: Loc -> ClassName -> (TST.Typ RST.Pos, TST.Typ RST.Neg) -> DriverM ()
+checkOverlappingInstances loc cn (typ, tyn) = do
+  env <- gets drvEnv
+  let instances = M.unions . fmap instanceEnv . M.elems $ env
+  case M.lookup cn instances of
+    Nothing -> pure () -- No overlapping instances
+    Just insts -> mapM_ (checkSubtype loc env (typ, tyn)) (S.toList insts)
+  where checkSubtype :: Loc -> Map ModuleName Environment -> (TST.Typ RST.Pos, TST.Typ RST.Neg) -> (FreeVarName, TST.Typ RST.Pos, TST.Typ RST.Neg) -> DriverM ()
+        checkSubtype loc env (typ, tyn) (inst, typ', tyn') = do
+          let isRelated = isSubtype env typ tyn' || isSubtype env typ' tyn
+          let err = ErrOther $ SomeOtherError loc $ T.unlines [ "The instance declared violates type class coherence."
+                                                              , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ
+                                                              ]
+          when isRelated $ throwError (err NE.:| [])
 
 inferClassDeclaration :: ModuleName
                       -> RST.ClassDeclaration

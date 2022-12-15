@@ -1,0 +1,10 @@
+-- orphan instance
+module Class.CE_012;
+
+import Data.Peano;
+import Class.Read;
+
+-- orphan instance (FIXME if Read Nat is implemented in Class.Read)
+instance readNat : Read Nat {
+    Read(x,k) => #ExitSuccess
+};

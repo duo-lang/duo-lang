@@ -297,7 +297,7 @@ instance GenConstraints Core.Command TST.Command where
     insertSkolemsClass decl
     case classdecl_kinds decl of
       [] -> throwGenError (NoParamTypeClass loc)
-      [_var] -> do
+      [(var, _, _)] -> do
         -- let resolvedType = (resolveType k typ, resolveType k tyn)
         resolvedType <- annotateKind ty
         -- generate kind constraints
@@ -310,11 +310,13 @@ instance GenConstraints Core.Command TST.Command where
         let substTypes = TST.getTypArgs substInferred
         genConstraintsCtxts substTypes negTypes' (TypeClassConstraint loc)
         env <- asks fst
-        case resolveInstanceAnnot PosRep (fst resolvedType) cn env of
-          Right (inst,_,_) -> pure (TST.Method loc mn cn (TST.InstanceResolved inst) (Just resolvedType) substInferred)
-          Left errPos -> case resolveInstanceAnnot NegRep (snd resolvedType) cn env of
+        case var of
+          Covariant -> case resolveInstanceAnnot PosRep (fst resolvedType) cn env of
             Right (inst,_,_) -> pure (TST.Method loc mn cn (TST.InstanceResolved inst) (Just resolvedType) substInferred)
-            Left errNeg -> throwGenError (InstanceResolution loc (errPos <> errNeg))
+            Left err -> throwGenError (InstanceResolution loc err)
+          Contravariant -> case resolveInstanceAnnot NegRep (snd resolvedType) cn env of
+            Right (inst,_,_) -> pure (TST.Method loc mn cn (TST.InstanceResolved inst) (Just resolvedType) substInferred)
+            Left err -> throwGenError (InstanceResolution loc err)
       _ -> throwGenError (MultiParamTypeClass loc)
   genConstraints (Core.Print loc prd cmd) = do
     prd' <- genConstraints prd

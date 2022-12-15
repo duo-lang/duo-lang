@@ -3,7 +3,8 @@ module TypeInference.SolveConstraints
   ( solveConstraints,
     KindPolicy(..),
     resolveInstanceAnnot,
-    solveClassConstraints
+    solveClassConstraints,
+    isSubtype
   ) where
 
 import Control.Monad.Except
@@ -542,3 +543,7 @@ solveClassConstraints sr bisubst env = do
               Left sub -> checkResult sub cn (S.toList instances) (resolveCoClass uv k (S.toList instances) sub env)
               Right sup -> checkResult sup cn (S.toList instances) (resolveContraClass uv k (S.toList instances) sup env)
   return (MkInstanceResult (M.fromList (concat res)))
+
+isSubtype :: Map ModuleName Environment -> Typ Pos -> Typ Neg -> Bool
+isSubtype env typ tyn = let css = [SubType ClassResolutionConstraint typ tyn]
+                         in isRight $ runSolverM (solve css) env (createInitState (ConstraintSet css [] []))
