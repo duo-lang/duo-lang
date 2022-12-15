@@ -1,3 +1,4 @@
+-- orphan instance
 module Class.CE_012;
 
 import Data.Peano;

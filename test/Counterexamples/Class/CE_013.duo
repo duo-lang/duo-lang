@@ -1,3 +1,4 @@
+-- overlapping instances (full Bool vs <True | Bool>)
 module Class.CE_013;
 
 import Data.BoolRefinement;
