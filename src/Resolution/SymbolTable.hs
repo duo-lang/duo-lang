@@ -206,15 +206,16 @@ createSymbolTable' _ _ (ClassDecl MkClassDeclaration {classdecl_loc, classdecl_n
   pure $ st { xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult classdecl_name . linearContextToArity . sig_args <$> classdecl_methods)) (xtorNameMap st)
             , classDecls = S.insert classdecl_name (classDecls st) }
 createSymbolTable' _ _ (InstanceDecl (MkInstanceDeclaration { instancedecl_loc, instancedecl_name, instancedecl_class, instancedecl_typ })) st =
-  if checkOrphanInstance instancedecl_class instancedecl_typ st
+  if isPermittedInstance instancedecl_class instancedecl_typ st
     then pure st
     else throwOtherError instancedecl_loc [ "Found orphan instance: " <> ppPrint instancedecl_name <> " : " <> ppPrint instancedecl_class <> " " <> ppPrint instancedecl_typ
                                           , "Define this instance in the same module as the class or type declaration." ]
 createSymbolTable' _ _ ParseErrorDecl st = pure st
 
-  -- Check whether the instance declaration would be an orphan instance (neccessary to ensure type class coherence)
-checkOrphanInstance :: ClassName -> Typ -> SymbolTable -> Bool
-checkOrphanInstance cn ty st = S.member cn (classDecls st) || maybe False (`M.member` typeNameMap st) (getTypeName ty)
+  -- | Check whether the instance declaration would be an orphan instance (neccessary to ensure type class coherence)
+  -- Only nominal types and refinement types are allowed.
+isPermittedInstance :: ClassName -> Typ -> SymbolTable -> Bool
+isPermittedInstance cn ty st = S.member cn (classDecls st) || maybe False (`M.member` typeNameMap st) (getTypeName ty)
   where getTypeName :: Typ -> Maybe TypeName
         getTypeName (TyNominal _ typeName) = Just typeName
         getTypeName (TyXRefined _ _ typeName _) = Just typeName
