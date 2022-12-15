@@ -9,7 +9,6 @@ import Control.Monad.Except (throwError)
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NE
-import Data.Text qualified as T
 
 import Errors
 import Pretty.Pretty
