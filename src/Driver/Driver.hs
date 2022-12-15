@@ -25,7 +25,7 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind(CBox))
+import Syntax.CST.Kinds (MonoKind(CBox,KindVar))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
@@ -36,7 +36,7 @@ import TypeAutomata.Simplify
 import TypeAutomata.Subsume (subsume)
 import TypeInference.Coalescing ( coalesce )
 import TypeInference.GenerateConstraints.Definition
-    ( runGenM, addKindAnnotConstr )
+    ( runGenM )
 import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
@@ -57,30 +57,35 @@ import TypeInference.Constraints (SolverResult (tvarSolution), VariableState (vs
 import Syntax.TST.Types (Bisubstitution(bisubst_map))
 
 
+checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
+checkKindAnnot Nothing _ = return Nothing
+checkKindAnnot (Just tyAnnotated) loc = do
+  env <- gets drvEnv
+  (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
+  solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs Nothing env
+  let bisubstAnnot = coalesce solverResAnnot
+  let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot annotChecked
+  return $ Just typAnnotZonked
+
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
-           -> Maybe (RST.TypeScheme pol) -- ^ Annotated type
+           -> Maybe (TST.TypeScheme pol) -- ^ Annotated type
            -> Loc -- ^ Location for the error message
            -> DriverM (TST.TopAnnot pol)
 checkAnnot _ tyInferred Nothing _ = return (TST.Inferred tyInferred)
 checkAnnot rep tyInferred (Just tyAnnotated) loc = do
-  env <- gets drvEnv
-  (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
-  solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs env
-  let bisubstAnnot = coalesce solverResAnnot
-  let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot annotChecked
-  let isSubsumed = subsume rep tyInferred typAnnotZonked
+  let isSubsumed = subsume rep tyInferred tyAnnotated
   case isSubsumed of
-      (Left err) -> throwError (attachLoc loc <$> err)
-      (Right True) -> return (TST.Annotated typAnnotZonked)
-      (Right False) -> do
+    (Left err) -> throwError (attachLoc loc <$> err)
+    (Right True) -> return (TST.Annotated tyAnnotated)
+    (Right False) -> do
 
-        let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
-                                                            , " Annotated type: " <> ppPrint tyAnnotated
-                                                            , " Inferred type:  " <> ppPrint tyInferred
-                                                            ]
-        guardVerbose $ ppPrintIO err
-        throwError (err NE.:| [])
+      let err = ErrOther $ SomeOtherError loc $ T.unlines [ "Annotated type is not subsumed by inferred type"
+                                                        , " Annotated type: " <> ppPrint tyAnnotated
+                                                        , " Inferred type:  " <> ppPrint tyInferred
+                                                        ]
+      guardVerbose $ ppPrintIO err
+      throwError (err NE.:| [])
 
 ---------------------------------------------------------------------------------
 -- Infer Declarations
@@ -96,20 +101,17 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   let genFun = case pcdecl_isRec of
         CST.Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
         CST.NonRecursive -> genConstraints pcdecl_term
-  -- get annotated Kind out of annotation if available
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
-  let constraintSetModified =  case pcdecl_annot of
-        Nothing -> constraintSet
-        Just (RST.TypeScheme _ _ _ (RST.TyKindAnnot mk _)) -> addKindAnnotConstr (TST.getKind $ TST.getTypeTerm tmInferred) mk constraintSet
-        _ -> constraintSet
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName pcdecl_name))
     ppPrintIO ("" :: T.Text)
     ppPrintIO pcdecl_term
     ppPrintIO ("" :: T.Text)
-    ppPrintIO constraintSetModified
+    ppPrintIO constraintSet
   -- 2. Solve the constraints.
-  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSetModified env
+  tyAnnotChecked <- checkKindAnnot pcdecl_annot pcdecl_loc
+  let annotKind = case ((TST.getKind $ TST.getTypeTerm tmInferred),tyAnnotChecked) of (KindVar kv,Just annot) -> Just (kv,TST.getKind $ TST.ts_monotype annot); _ -> Nothing
+  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet annotKind env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
@@ -130,7 +132,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ constraints)
   -- 6. Check type annotation.
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified pcdecl_annot pcdecl_loc
+  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified tyAnnotChecked pcdecl_loc
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
@@ -165,7 +167,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   -- Generate the constraints
   (cmdInferred,constraints) <- liftEitherErr (runGenM cmddecl_loc env (genConstraints cmddecl_cmd))
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints env
+  solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints Nothing env
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName cmddecl_name))
     ppPrintIO ("" :: T.Text)
@@ -197,7 +199,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   -- Generate the constraints
   (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraints decl))
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints env
+  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints Nothing env
   guardVerbose $ do
     ppPrintIO (Header  $ unClassName instancedecl_class <> " " <> ppPrint (fst instancedecl_typ))
     ppPrintIO ("" :: T.Text)

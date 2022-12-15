@@ -12,6 +12,7 @@ import Data.List.NonEmpty (NonEmpty (..))
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
+import Data.List.NonEmpty qualified as NE
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
@@ -268,14 +269,24 @@ insertType (TyDataRefined _ _ mk _ _) = throwAutomatonError defaultLoc ["Tried t
 insertType (TyCodataRefined _ polrep (CBox mk) mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) mk xtors
 insertType (TyCodataRefined _ _ mk _ _) = throwAutomatonError defaultLoc ["Tried to insert TyCodataRefined into automaton with incorrect kind " <> ppPrint mk]
 insertType (TySyn _ _ _ ty) = insertType ty
-insertType ty@(TyNominal _ rep mk tn args) = do
+insertType ty@(TyApp _ _ (TyNominal _ rep polyknd tn) args) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   cns <- lookupClass rep ty
-  insertNode newNode ((emptyNodeLabel pol mk cns) { nl_nominal = S.singleton (tn, toVariance <$> args) })
+  insertNode newNode ((emptyNodeLabel pol (CBox $ returnKind polyknd) cns) { nl_nominal = S.singleton (tn, NE.toList $ toVariance <$> args) })
   argNodes <- forM args insertVariantType
-  insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate argNodes)
+  insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate (NE.toList argNodes))
   return newNode
+insertType ty@(TyNominal _ rep polyknd tn) = do
+  case kindArgs polyknd of 
+    [] -> do
+      let pol = polarityRepToPol rep
+      cns <- lookupClass rep ty
+      newNode <- newNodeM
+      insertNode newNode ((emptyNodeLabel pol (CBox $ returnKind polyknd) cns) {nl_nominal = S.singleton (tn,[]) })
+      return newNode
+    _ -> throwAutomatonError defaultLoc ["Nominal type "<> ppPrint tn <> "was not fully applied"]
+insertType TyApp{} = throwAutomatonError defaultLoc ["Types can only be applied to nominal types"]
 insertType (TyI64 _ rep) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM

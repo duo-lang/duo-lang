@@ -1,0 +1,97 @@
+module Data.ListStructural;
+
+-- import Data.PeanoStructural;
+import Data.Peano;
+import Codata.Function;
+
+-- | The type of lists.
+constructor N;
+constructor C(CBV, CBV);
+
+-- -- | Computes the length of a list.
+-- def rec prd length : forall a. (rec r. < N, C(a,r) >) -> rec r. < Z, S(r) > :=
+    -- \xs => case xs of {
+        -- N => Z,
+        -- C(_, xs) => S(length xs)
+    -- };
+
+-- -- | Append two lists together.
+-- def rec prd append : forall a. (rec rl. <N, C(a,rl)>) -> (rec rl. <N, C(a,rl)>) -> (rec rl. <N, C(a,rl)>) :=
+    -- \xs ys => case xs of {
+        -- N => ys,
+        -- C(z, zs) => C(z, append zs ys)
+    -- };
+
+-- -- | Reverse order of a list.
+-- def rec prd reverse : forall a. (rec rl. <N, C(a,rl)>) -> (rec rl. <N, C(a,rl)>) :=
+    -- \xs => case xs of {
+        -- N => N,
+        -- C(y, ys) => append (reverse ys) C(y, N)
+    -- };
+
+-- -- | Maps a function over all elements of a list.
+-- def rec prd map : forall a b. (a -> b) -> (rec rl. <N, C(a,rl)>) -> (rec rl. <N, C(b,rl)>) :=
+    -- \f xs => case xs of {
+        -- N => N,
+        -- C(y, ys) => C(f y, map f ys)
+    -- };
+
+-- -- | Filters all predicates satisfying a given predicate.
+-- def rec prd filter : forall a. (a -> Bool) -> (rec rl. <N, C(a,rl)>) -> (rec rl. <N, C(a,rl)>) :=
+    -- \f xs => case xs of {
+        -- N => N,
+        -- C(y, ys) => case (f y) of {
+            -- True => C(y, filter f ys),
+            -- False => filter f ys
+        -- }
+    -- };
+
+-- -- | Right fold over a list.
+-- def rec prd foldr : forall a b. (a -> b -> b) -> b -> (rec rl. <N, C(a,rl)>) -> b :=
+    -- \f init xs => case xs of {
+        -- N => init,
+        -- C(y, ys) => f y (foldr f init ys)
+    -- };
+
+-- | Left fold over a list.
+def rec prd foldl : forall a b. (b -> a -> b) -> b -> (rec rl. <N, C(a,rl)>) -> b :=
+    \f acc xs => case xs of {
+        N => acc,
+        C(y, ys) => foldl f (f acc y) ys
+    };
+
+-- Special folds
+
+-- -- | Concat all elements of a list of lists.
+-- def rec prd concat : forall a. (rec rl. <N, C(rec rli. <N, C(a,rli)>, rl)>) -> (rec rl. <N, C(a,rl)>) :=
+    -- foldr append N;
+
+-- -- | Map a function over all the elements of a container and concatenate the resulting lists.
+-- def rec prd concatMap : forall a b. (a -> (rec rl. <N, C(b,rl)>)) -> (rec rl. <N, C(a,rl)>) -> (rec rl. <N, C(b,rl)>) :=
+    -- \f xs => concat (map f xs);
+
+-- -- | Verify predicate for all elements of a list.
+-- def rec prd all : forall a. (a -> Bool) -> (rec rl. <N, C(a,rl)>) -> Bool :=
+    -- \p xs => (foldl and True) (map p xs);
+
+-- -- | Verify predicate for at least one element of a list.
+-- def rec prd any : forall a. (a -> Bool) -> (rec rl. <N, C(a,rl)>) -> Bool :=
+    -- \p xs => (foldl or False) (map p xs);
+
+-- -- | Sum up list of natural numbers.
+-- def rec prd sum : (rec rl. < N, C(Nat, rl)>) -> Nat :=
+    -- foldl add Z;
+
+-- -- | Sum up list of natural numbers.
+-- def rec prd sumExplicit : (rec rl. < N, C(rec rn. < Z, S(rn) >, rl)>) -> rec r. < Z, S(r) > :=
+    -- \xs => case xs of {
+        -- N => Z,
+        -- C(x,xs) => add x (sumExplicit xs)
+    -- };
+
+-- -- | Left scan over a list.
+-- def rec prd scanl : forall a b. (b -> a -> b) -> b -> (rec rl. <N, C(a,rl)>) -> (rec rl. <N, C(b,rl)>) :=
+    -- \f acc xs => C(acc, case xs of {
+        -- N => N,
+        -- C(y,ys) => scanl f (f acc y) ys
+    -- });
