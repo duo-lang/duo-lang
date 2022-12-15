@@ -15,7 +15,7 @@ module Parser.Common
 
 import Text.Megaparsec
 
-import Parser.Definition
+import Parser.Definition ( Parser )
 import Parser.Lexer
 import Syntax.CST.Names
 
