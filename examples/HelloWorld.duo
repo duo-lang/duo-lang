@@ -1,0 +1,3 @@
+module HelloWorld;
+
+def cmd main := #Print("Hello World", #ExitSuccess);
