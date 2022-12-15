@@ -24,7 +24,7 @@ import Loc -- source code locations, see src/Loc.hs
 -- Dualization
 ------------------------------------------------------------------------------
 
--- usage of guards
+-- Datatype DualizeError
 data DualizeError
  = DualPrim Loc Text
  | DualPrint Loc Text
@@ -34,10 +34,14 @@ data DualizeError
  | DualNotAnnotated Loc
  deriving Show
 
+-- PrdCns is the Datatype that includes Prd and Cns
+-- pattern matching is used
 flipPC :: PrdCns -> PrdCns
 flipPC Prd = Cns
 flipPC Cns = Prd
 
+-- uses the DataCodata Datatype from CST
+-- pattern matching is used
 flipDC :: CST.DataCodata -> CST.DataCodata
 flipDC CST.Data = CST.Codata 
 flipDC CST.Codata = CST.Data 
