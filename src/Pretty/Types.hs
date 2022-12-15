@@ -59,6 +59,9 @@ commaSym = prettyAnn ("," :: String)
 arrowSym :: Doc Annotation
 arrowSym = annKeyword "->"
 
+doubleArrowSym :: Doc Annotation
+doubleArrowSym = annKeyword "=>"
+
 parSym :: Doc Annotation
 parSym = annKeyword "⅋"
 
@@ -186,5 +189,4 @@ instance PrettyAnn CST.TypeScheme where
   prettyAnn CST.TypeScheme { ts_vars, ts_monotype } =
     forallSymUnicode <+>
     sep (prettyAnn <$> ts_vars ) <>
-    "." <+>
     prettyAnn ts_monotype

@@ -53,7 +53,7 @@ import Pretty.Common (Header(..))
 import Pretty.Program ()
 import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
-import TypeInference.Constraints (InstanceResult(constraintResult), SolverResult (tvarSolution), VariableState (vst_typeclasses))
+import TypeInference.Constraints (SolverResult (tvarSolution), VariableState (vst_typeclasses))
 import Syntax.TST.Types (Bisubstitution(bisubst_map))
 
 
