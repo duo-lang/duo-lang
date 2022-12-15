@@ -13,7 +13,7 @@ data BinTree : (+a : CBV) -> CBV{
 def rec prd depth : forall a. BinTree(a) -> Nat :=
     \t => case t of {
         Leaf => Z,
-        Branch(left,val,right) => S(natmax (depth left) (depth right))
+        Branch(left,_,right) => S(natmax (depth left) (depth right))
 };
 
 def rec prd insertTree: forall a. BinTree(a) -> a -> BinTree(a) := 

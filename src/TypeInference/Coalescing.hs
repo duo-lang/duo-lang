@@ -83,7 +83,7 @@ getOrElseUpdateRecVar ptv = do
 
 
 coalesce :: SolverResult -> Bisubstitution UniVT
-coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList xs,M.empty)
+coalesce result@MkSolverResult { tvarSolution, kvarSolution } = MkBisubstitution (M.fromList xs,kvarSolution)
     where
         res = M.keys tvarSolution
         kinds = map (\x -> vst_kind (fromMaybe  (error "UniVar not found in SolverResult (should never happen)") (M.lookup x tvarSolution))) res
@@ -94,14 +94,16 @@ coalesce result@MkSolverResult { tvarSolution } = MkBisubstitution (M.fromList x
         xs = zip res $ runCoalesceM result $ mapM f (zip res kinds)
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
-coalesceType (TySkolemVar loc rep mono tv) =  return (TySkolemVar loc rep mono tv)
-coalesceType (TyRecVar loc rep mono tv) = return (TyRecVar loc rep mono tv)
-coalesceType (TyUniVar _ PosRep knd tv) = do
+coalesceType (TySkolemVar loc rep mk tv) =  do
+  return (TySkolemVar loc rep mk tv)
+coalesceType (TyRecVar loc rep mk tv) = do 
+  return (TyRecVar loc rep mk tv)
+coalesceType (TyUniVar _ PosRep mk tv) = do
     isInProcess <- inProcess (tv, Pos)
     if isInProcess
         then do
             recVar <- getOrElseUpdateRecVar (tv, Pos)
-            return (TyRecVar defaultLoc PosRep knd recVar)
+            return (TyRecVar defaultLoc PosRep mk recVar)
         else do
             VariableState { vst_lowerbounds } <- getVariableState tv
             let f r = r { r_inProcess =  S.insert (tv, Pos) (r_inProcess r) }
@@ -110,14 +112,14 @@ coalesceType (TyUniVar _ PosRep knd tv) = do
             case M.lookup (tv, Pos) recVarMap of
                 Nothing     -> do
                     newName <- getSkolemVar tv
-                    return $                                            mkUnion defaultLoc knd (TySkolemVar defaultLoc PosRep knd newName : lbs')
-                Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc knd (TyRecVar defaultLoc PosRep knd recVar  : lbs'))
-coalesceType (TyUniVar _ NegRep knd tv) = do
+                    return $                                            mkUnion defaultLoc mk (TySkolemVar defaultLoc PosRep mk newName : lbs')
+                Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc mk (TyRecVar defaultLoc PosRep mk recVar  : lbs'))
+coalesceType (TyUniVar _ NegRep mk tv) = do
     isInProcess <- inProcess (tv, Neg)
     if isInProcess
         then do
             recVar <- getOrElseUpdateRecVar (tv, Neg)
-            return (TyRecVar defaultLoc NegRep knd recVar)
+            return (TyRecVar defaultLoc NegRep mk recVar)
         else do
             VariableState { vst_upperbounds } <- getVariableState tv
             let f r = r { r_inProcess =  S.insert (tv, Neg) (r_inProcess r) }
@@ -126,8 +128,8 @@ coalesceType (TyUniVar _ NegRep knd tv) = do
             case M.lookup (tv, Neg) recVarMap of
                 Nothing     -> do
                     newName <- getSkolemVar tv
-                    return $                                            mkInter defaultLoc knd (TySkolemVar defaultLoc NegRep knd newName : ubs')
-                Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc knd (TyRecVar defaultLoc NegRep knd recVar  : ubs'))
+                    return $                                            mkInter defaultLoc mk (TySkolemVar defaultLoc NegRep mk newName : ubs')
+                Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc mk (TyRecVar defaultLoc NegRep mk recVar  : ubs'))
 coalesceType (TyData loc rep mk xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyData loc rep mk xtors')
@@ -140,22 +142,25 @@ coalesceType (TyDataRefined loc rep mk tn xtors) = do
 coalesceType (TyCodataRefined loc rep mk tn xtors) = do
     xtors' <- sequence $ coalesceXtor <$> xtors
     return (TyCodataRefined loc rep mk tn xtors')
-coalesceType (TyNominal loc rep kind tn args) = do
+coalesceType (TyNominal loc rep mk tn) = do
+    return $ TyNominal loc rep mk tn 
+coalesceType (TyApp loc rep ty args) = do 
     args' <- sequence $ coalesceVariantType <$> args
-    return $ TyNominal loc rep kind tn args'
+    ty' <- coalesceType ty
+    return $ TyApp loc rep ty' args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
-coalesceType (TyTop loc mk) =
+coalesceType (TyTop loc mk) = do 
     pure (TyTop loc mk)
-coalesceType (TyBot loc mk) =
+coalesceType (TyBot loc mk) = do
     pure (TyBot loc mk)
-coalesceType (TyUnion loc knd ty1 ty2) = do
-    ty1' <- coalesceType ty1
-    ty2' <- coalesceType ty2
-    pure (TyUnion loc knd ty1' ty2')
-coalesceType (TyInter loc knd ty1 ty2) = do
-    ty1' <- coalesceType ty1
-    ty2' <- coalesceType ty2
-    pure (TyInter loc knd ty1' ty2')
+coalesceType (TyUnion loc mk ty1 ty2) = do
+  ty1' <- coalesceType ty1
+  ty2' <- coalesceType ty2
+  pure (TyUnion loc mk ty1' ty2')
+coalesceType (TyInter loc mk ty1 ty2) = do
+  ty1' <- coalesceType ty1
+  ty2' <- coalesceType ty2
+  pure (TyInter loc mk ty1' ty2')
 coalesceType (TyRec loc PosRep tv ty) = do
     return $ TyRec loc PosRep tv ty
 coalesceType (TyRec loc NegRep tv ty) = do

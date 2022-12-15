@@ -33,7 +33,7 @@ def rec prd splitHalvesHelper : forall a. List(a) -> List(a) -> Notp(Tensor(List
             Cons(x1, xs) => case xs of {
                 Nil => mu j. MkTensor(Nil, ys) >> k,
                 Cons(x2, xs) => case ys of {
-                    Nil => impossiblePrd,
+                    Nil => impossiblePrdV,
                     Cons(y, ys) => splitHalvesHelper xs ys (MkNotp(
                         mu tensor. case tensor of {
                             MkTensor(left, right) =>
@@ -46,7 +46,7 @@ def rec prd splitHalvesHelper : forall a. List(a) -> List(a) -> Notp(Tensor(List
     };
 
 def prd splitHalves : forall a. List(a) -> Tensor(List(a), List(a)) :=
-    \xs => mu k. splitHalvesHelper xs xs MkNotp(k) >> impossibleCns;
+    \xs => mu k. splitHalvesHelper xs xs MkNotp(k) >> impossibleCnsV;
 
 def rec prd merge : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List(a) :=
     \f left right => case left of {
@@ -61,16 +61,17 @@ def rec prd merge : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List
         }
     };
 
-def rec prd sort : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
-    \f xs => case xs of {
-        Nil => Nil,
-        Cons(y, ys) => case ys of {
-            Nil => Cons(y, Nil),
-            Cons(y2, ys2) => case splitHalves xs of {
-                MkTensor(left, right) => merge f (sort f left) (sort f right)
-            }
-        }
-    };
+-- spilt Halves doesn't work, so sort can't either
+--def rec prd sort : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
+--    \f xs => case xs of {
+--        Nil => Nil,
+--        Cons(y, ys) => case ys of {
+--            Nil => Cons(y, Nil),
+--            Cons(y2, ys2) => case splitHalves xs of {
+--                MkTensor(left, right) => merge f (sort f left) (sort f right)
+--            }
+--        }
+--    };
 
 def rec prd compare : Nat -> Nat -> Ordering :=
     \x y => case x of {
@@ -88,4 +89,5 @@ def rec prd compare : Nat -> Nat -> Ordering :=
 
 def prd testlist := Cons(5, Cons(2, Cons(8, Cons(1, Cons(4, Cons(7, Cons(3, Cons(6, Cons(10, Cons(9, Nil))))))))));
 
-def cmd main := #Print(sort compare testlist, #ExitSuccess);
+-- sort doensn't work
+--def cmd main := #Print(sort compare testlist, #ExitSuccess);

@@ -6,6 +6,7 @@ import Eval.Definition (EvalEnv)
 import Syntax.TST.Program
 import Syntax.TST.Terms
 import Syntax.TST.Types
+import Syntax.Core.Terms (Pattern(..))
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.RST.Terms qualified as RST
 import Loc
@@ -250,7 +251,7 @@ instance Focus Command where
   focus _  (ExitSuccess loc) = ExitSuccess loc
   focus _  (ExitFailure loc) = ExitFailure loc
   focus _  (Jump loc fv) = Jump loc fv
-  focus eo (Method loc mn cn subst) = Method loc mn cn (focus eo <¢> subst)
+  focus eo (Method loc mn cn inst ty subst) = Method loc mn cn inst ty (focus eo <¢> subst)
   focus eo (Print loc (isValueTerm eo PrdRep -> Just prd) cmd) = Print loc prd (focus eo cmd)
   focus eo (Print loc prd cmd) = Apply loc ApplyAnnotOrig (CBox eo) (focus eo prd)
                                                               (MuAbs loc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing (Print loc (BoundVar loc PrdRep (getTypeTerm prd) (0,0)) (focus eo cmd)))
@@ -261,13 +262,13 @@ instance Focus Command where
 
   isFocused :: EvaluationOrder -> Command -> Maybe Command
   isFocused eo (Apply loc _annot _kind prd cns) = Apply loc ApplyAnnotOrig (CBox eo) <$> isFocused eo prd <*> isFocused eo cns
-  isFocused _  (ExitSuccess loc)          = Just (ExitSuccess loc)
-  isFocused _  (ExitFailure loc)          = Just (ExitFailure loc)
-  isFocused _  (Jump loc fv)              = Just (Jump loc fv)
-  isFocused eo (Method loc mn cn subst)   = Method loc mn cn <$> isFocused eo subst
-  isFocused eo (Print loc prd cmd)        = Print loc <$> isValueTerm eo PrdRep prd <*> isFocused eo cmd
-  isFocused eo (Read loc cns)             = Read loc <$> isValueTerm eo CnsRep cns
-  isFocused eo (PrimOp loc op subst)      = PrimOp loc op <$> isValueSubst eo subst
+  isFocused _  (ExitSuccess loc)                = Just (ExitSuccess loc)
+  isFocused _  (ExitFailure loc)                = Just (ExitFailure loc)
+  isFocused _  (Jump loc fv)                    = Just (Jump loc fv)
+  isFocused eo (Method loc mn cn inst ty subst) = Method loc mn cn inst ty <$> isFocused eo subst
+  isFocused eo (Print loc prd cmd)              = Print loc <$> isValueTerm eo PrdRep prd <*> isFocused eo cmd
+  isFocused eo (Read loc cns)                   = Read loc <$> isValueTerm eo CnsRep cns
+  isFocused eo (PrimOp loc op subst)            = PrimOp loc op <$> isValueSubst eo subst
 
 ---------------------------------------------------------------------------------
 -- Lift Focusing to programs
@@ -304,17 +305,18 @@ instance Focus CommandDeclaration where
 
 instance Focus InstanceDeclaration where
   focus :: EvaluationOrder -> InstanceDeclaration -> InstanceDeclaration
-  focus eo MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+  focus eo MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } =
     MkInstanceDeclaration { instancedecl_loc
                           , instancedecl_doc
                           , instancedecl_name
+                          , instancedecl_class
                           , instancedecl_typ
                           , instancedecl_cases = focus eo <$> instancedecl_cases
                           }
   
   isFocused :: EvaluationOrder -> InstanceDeclaration -> Maybe InstanceDeclaration
-  isFocused eo (MkInstanceDeclaration loc doc name typ cases) =
-    MkInstanceDeclaration loc doc name typ <$> mapM (isFocused eo) cases
+  isFocused eo (MkInstanceDeclaration loc doc name iclass typ cases) =
+    MkInstanceDeclaration loc doc name iclass typ <$> mapM (isFocused eo) cases
 
 instance Focus Declaration where
   focus :: EvaluationOrder -> Declaration -> Declaration
@@ -354,15 +356,17 @@ instance Focus Module where
 
 instance Focus EvalEnv where
   focus :: EvaluationOrder -> EvalEnv -> EvalEnv
-  focus eo (prd, cns, cmd) = (prd', cns', cmd')
+  focus eo (prd, cns, cmd, inst) = (prd', cns', cmd', inst')
     where
         prd' = focus eo <$> prd
         cns' = focus eo <$> cns
         cmd' = focus eo <$> cmd
+        inst' = focus eo <$> inst
 
   isFocused :: EvaluationOrder -> EvalEnv -> Maybe EvalEnv
-  isFocused eo (prd,cns,cmd) = do
+  isFocused eo (prd,cns,cmd,inst) = do
     prd' <- mapM (isFocused eo) prd
     cns' <- mapM (isFocused eo) cns
     cmd' <- mapM (isFocused eo) cmd
-    pure (prd',cns',cmd')
+    inst' <- mapM (isFocused eo) inst
+    pure (prd',cns',cmd',inst')

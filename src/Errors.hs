@@ -97,6 +97,12 @@ data ConstraintGenerationError where
   -- | Linear contexts have unequal length.
   LinearContextsUnequalLength :: Loc -> ConstraintInfo -> TST.LinearContext Pos -> TST.LinearContext Neg -> ConstraintGenerationError
   LinearContextIncompatibleTypeMode :: Loc -> PrdCns -> ConstraintInfo -> ConstraintGenerationError
+  -- | No param or multi-param type classes.
+  NoParamTypeClass :: Loc -> ConstraintGenerationError
+  MultiParamTypeClass :: Loc -> ConstraintGenerationError
+  -- | Resolving an instance for annotated type class method failed.
+  InstanceResolution :: Loc -> NE.NonEmpty Error -> ConstraintGenerationError
+
 
 
 deriving instance Show ConstraintGenerationError
@@ -112,6 +118,9 @@ instance HasLoc ConstraintGenerationError where
   getLoc (EmptyRefinementMatch loc) = loc
   getLoc (LinearContextsUnequalLength loc _ _ _) = loc
   getLoc (LinearContextIncompatibleTypeMode loc _ _) = loc
+  getLoc (NoParamTypeClass loc) = loc
+  getLoc (MultiParamTypeClass loc) = loc
+  getLoc (InstanceResolution loc _) = loc
 
 instance AttachLoc ConstraintGenerationError where
   attachLoc loc (BoundVariableOutOfBounds _ pc idx) = BoundVariableOutOfBounds loc pc idx
@@ -124,6 +133,9 @@ instance AttachLoc ConstraintGenerationError where
   attachLoc loc (EmptyRefinementMatch _) = EmptyRefinementMatch loc
   attachLoc loc (LinearContextsUnequalLength _ ci ctx1 ctx2) = LinearContextsUnequalLength loc ci ctx1 ctx2
   attachLoc loc (LinearContextIncompatibleTypeMode _ pc ci) = LinearContextIncompatibleTypeMode loc pc ci
+  attachLoc loc (NoParamTypeClass _ ) = NoParamTypeClass loc
+  attachLoc loc (MultiParamTypeClass _ ) = MultiParamTypeClass loc
+  attachLoc loc (InstanceResolution _ errs) = InstanceResolution loc errs
 
 
 ----------------------------------------------------------------------------------

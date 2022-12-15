@@ -1,0 +1,15 @@
+module Class.CE_001;
+
+-- Not all class methods are being implemented.
+
+import Data.Bool;
+import Data.List;
+
+class Eq(+a : CBV) {
+  Equals(a, a, return Bool),
+  Differ(a, a, return Bool)
+};
+
+instance eqBool : Eq Bool {
+  Equals(x, y, k) => or (and x y) (not (or x y)) >> k
+};

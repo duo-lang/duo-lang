@@ -1,0 +1,30 @@
+module Class.Show;
+
+import Prim.Strings;
+import Data.Bool;
+import Data.Peano;
+
+-- | Definition for type class of showable types.
+class Show(+a : CBV){
+    Show(a, return String)
+};
+
+-- | Convert a Boolean constructor to its /String/ representation.
+instance showBool : Show Bool {
+    Show(b, k) => case b of {
+        True => MkString("True"),
+        False => MkString("False")
+    } >> k
+};
+
+-- | Convert a natural number to its /String/ representation.
+instance showNat : Show Nat {
+    Show(x, k) => case x of {
+        Z => MkString("Z") >> k,
+        S(n) => Show(n, mu x. append MkString("S(") (append x MkString(")")) >> k)
+    }
+};
+
+def prd show : Bool -> String := \x => mu k. Show[Bool](not x, k);
+
+def cmd main := #Print(mu k. Show[Nat](7, k), #ExitSuccess);

@@ -18,13 +18,13 @@ def prd maybe : forall a b. b -> (a -> b) -> Maybe(a) -> b :=
 def prd isJust : Maybe(Top) -> Bool :=
   \m => case m of {
     Nothing => False,
-    Just(y) => True
+    Just(_) => True
  };
 
  def prd isNothing : Maybe(Top) -> Bool :=
   \m => case m of {
     Nothing => True,
-    Just(y) => False
+    Just(_) => False
   };
 
 def prd fromMaybe : forall a. a -> Maybe(a) -> a :=

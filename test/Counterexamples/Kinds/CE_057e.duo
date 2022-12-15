@@ -1,0 +1,2 @@
+module Kinds.CE_057e;
+def cns i3 : #I64 := mu i. ExitSuccess;

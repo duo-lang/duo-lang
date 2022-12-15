@@ -11,6 +11,9 @@ import qualified Data.Bifunctor as BF (bimap)
 import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
+import Data.Bifunctor (bimap, second)
+import Syntax.CST.Kinds (PolyKind(..), MonoKind(..))
+
 ---------------------------------------------------------------------------------
 -- A typeclass for embedding TST.X into Core.X
 ---------------------------------------------------------------------------------
@@ -80,8 +83,8 @@ instance EmbedTST TST.Command Core.Command where
       Core.Read loc (embedTST tm)
   embedTST (TST.Jump loc fv) =
       Core.Jump loc fv
-  embedTST (TST.Method loc mn cn subst) =
-      Core.Method loc mn cn (embedTST subst)
+  embedTST (TST.Method loc mn cn _inst ty subst) =
+      Core.Method loc mn cn (bimap embedTST embedTST <$> ty) (embedTST subst)
   embedTST (TST.ExitSuccess loc) =
       Core.ExitSuccess loc
   embedTST (TST.ExitFailure loc) =
@@ -112,7 +115,7 @@ instance EmbedTST (TST.VariantType pol) (RST.VariantType pol) where
 instance EmbedTST (TST.TypeScheme pol) (RST.TypeScheme pol) where
   embedTST :: TST.TypeScheme pol -> RST.TypeScheme pol
   embedTST TST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = mt} =
-    RST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = embedTST mt}
+    RST.TypeScheme {ts_loc = loc, ts_vars = map (Data.Bifunctor.second Just) tyvars,  ts_monotype = embedTST mt}
 
 instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
   embedTST :: TST.LinearContext pol-> RST.LinearContext pol
@@ -120,34 +123,42 @@ instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
 
 instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST :: TST.Typ pol -> RST.Typ pol
-  embedTST (TST.TySkolemVar loc pol _ tv) =
-    RST.TySkolemVar loc pol tv
-  embedTST (TST.TyUniVar loc pol _ tv) =
-    RST.TyUniVar loc pol tv
-  embedTST (TST.TyRecVar loc pol _ tv) =
-    RST.TyRecVar loc pol tv
-  embedTST (TST.TyData loc pol _ xtors) =
-    RST.TyData loc pol (map embedTST xtors)
-  embedTST (TST.TyCodata loc pol _ xtors) =
-    RST.TyCodata loc pol (map embedTST xtors)
-  embedTST (TST.TyDataRefined loc pol _ tn xtors) =
-    RST.TyDataRefined loc pol tn (map embedTST xtors)
-  embedTST (TST.TyCodataRefined loc pol _ tn xtors) =
-    RST.TyCodataRefined loc pol tn (map embedTST xtors)
-  embedTST (TST.TyNominal loc pol _ tn varty) =
-    RST.TyNominal loc pol tn (map embedTST varty)
-  embedTST (TST.TySyn loc pol tn tp) =
-    RST.TySyn loc pol tn (embedTST  tp)
-  embedTST (TST.TyBot loc _ ) =
-    RST.TyBot loc
-  embedTST (TST.TyTop loc _ ) =
-    RST.TyTop loc
-  embedTST (TST.TyUnion loc _ tp1 tp2) =
-    RST.TyUnion loc (embedTST tp1) (embedTST tp2)
-  embedTST (TST.TyInter loc _ tn1 tn2) =
-    RST.TyInter loc (embedTST tn1) (embedTST tn2)
-  embedTST (TST.TyRec loc pol rv tp) =
-    RST.TyRec loc pol rv (embedTST  tp)
+  embedTST (TST.TySkolemVar loc pol mk tv) =
+    RST.TyKindAnnot mk $ RST.TySkolemVar loc pol tv
+  embedTST (TST.TyUniVar loc pol mk tv) =
+    RST.TyKindAnnot mk $ RST.TyUniVar loc pol tv
+  embedTST (TST.TyRecVar loc pol mk tv) =
+    RST.TyKindAnnot mk $ RST.TyRecVar loc pol tv
+  embedTST (TST.TyData loc pol mk xtors) =
+    RST.TyKindAnnot mk $ RST.TyData loc pol (map embedTST xtors)
+  embedTST (TST.TyCodata loc pol mk xtors) =
+    RST.TyKindAnnot mk $ RST.TyCodata loc pol (map embedTST xtors)
+  embedTST (TST.TyDataRefined loc pol mk tn xtors) =
+    RST.TyKindAnnot mk $ RST.TyDataRefined loc pol tn (map embedTST xtors)
+  embedTST (TST.TyCodataRefined loc pol mk tn xtors) =
+    RST.TyKindAnnot mk $ RST.TyCodataRefined loc pol tn (map embedTST xtors)
+  -- if arguments are applied to TyNominal, don't annotate the Kind, otherwise the parser will break after prettyprint
+  embedTST (TST.TyApp loc pol (TST.TyNominal loc' pol' polyknd tn) args) = 
+    RST.TyApp loc pol (RST.TyNominal loc' pol' polyknd tn) (embedTST <$> args)
+  -- if thre is no application, kind annotation is needed, otherwise x:(Nat:CBV) := x will break after prettyprint
+  embedTST (TST.TyNominal loc pol polyknd tn) = do
+    RST.TyKindAnnot (CBox $ returnKind polyknd) $ RST.TyNominal loc pol polyknd tn  
+  embedTST (TST.TyApp loc pol ty args) = do
+    RST.TyApp loc pol (embedTST ty) (embedTST <$> args)
+  embedTST (TST.TySyn loc pol tn tp) = do 
+    let knd = TST.getKind tp 
+    RST.TyKindAnnot knd $ RST.TySyn loc pol tn (embedTST tp)
+  embedTST (TST.TyBot loc mk ) =
+    RST.TyKindAnnot mk $ RST.TyBot loc
+  embedTST (TST.TyTop loc mk ) =
+    RST.TyKindAnnot mk $ RST.TyTop loc
+  embedTST (TST.TyUnion loc mk tp1 tp2) =
+    RST.TyKindAnnot mk $ RST.TyUnion loc (embedTST tp1) (embedTST tp2)
+  embedTST (TST.TyInter loc mk tn1 tn2) =
+    RST.TyKindAnnot mk $ RST.TyInter loc (embedTST tn1) (embedTST tn2)
+  embedTST (TST.TyRec loc pol rv tp) = do
+    let knd = TST.getKind tp
+    RST.TyKindAnnot knd $ RST.TyRec loc pol rv (embedTST  tp)
   embedTST (TST.TyI64 loc pol) =
     RST.TyI64 loc pol
   embedTST (TST.TyF64 loc pol) =
@@ -195,10 +206,11 @@ instance EmbedTST TST.CommandDeclaration Core.CommandDeclaration where
 
 instance EmbedTST TST.InstanceDeclaration Core.InstanceDeclaration where
   embedTST  :: TST.InstanceDeclaration -> Core.InstanceDeclaration
-  embedTST  TST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_typ, instancedecl_cases } =
+  embedTST  TST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } =
       Core.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
                                  , instancedecl_doc = instancedecl_doc
                                  , instancedecl_name = instancedecl_name
+                                 , instancedecl_class = instancedecl_class
                                  , instancedecl_typ = BF.bimap embedTST embedTST instancedecl_typ
                                  , instancedecl_cases = embedTST <$> instancedecl_cases
                                  }

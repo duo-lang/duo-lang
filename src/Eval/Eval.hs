@@ -14,6 +14,7 @@ import Pretty.Pretty
 import Syntax.CST.Kinds
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.Core.Annot
+import Syntax.Core.Terms (Pattern(..))
 import Syntax.TST.Terms
 import Eval.Definition
 import Eval.Primitives
@@ -67,8 +68,11 @@ evalTermOnce (Read _ cns) = do
 evalTermOnce (Jump _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
-evalTermOnce Method {} = return Nothing
-  -- throwEvalError defaultLoc ["Eval for type class methods not implemented yet."]
+evalTermOnce (Method loc mn _cn (InstanceResolved inst) _ty subst) = do
+  (cmd, pat) <- lookupMethodDefinition loc mn inst
+  checkArgs cmd ((\(XtorPat _ _ args) -> args) pat) subst 
+  return (Just  (LN.open subst cmd))
+evalTermOnce (Method _ _ _ (InstanceUnresolved _) _ _) = throwEvalError defaultLoc ["evalApplyOnce: No instance resolved."]
 evalTermOnce (Apply _ _ kind prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ op args) = evalPrimOp op args
 

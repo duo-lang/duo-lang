@@ -92,10 +92,7 @@ lookupCommand loc fv = do
   snd <$> findFirstM f err
 
 ---------------------------------------------------------------------------------
--- Lookup information about type declarations
----------------------------------------------------------------------------------
-
--- | Find the type declaration belonging to a given Xtor Name.
+-- Lookup information about type declarations ------------------------------------------------------------------------------- | Find the type declaration belonging to a given Xtor Name.
 lookupDataDecl :: EnvReader a m
                => Loc -> XtorName -> m TST.DataDecl
 lookupDataDecl loc xt = do
@@ -105,7 +102,7 @@ lookupDataDecl loc xt = do
       typeContainsXtor TST.NominalDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
                                                       | otherwise = False
       typeContainsXtor TST.RefinementDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
-                                                         | otherwise = False                                                      
+                                                         | otherwise = False
   let err = ErrOther $ SomeOtherError loc ("Constructor/Destructor " <> ppPrint xt <> " is not contained in program.")
   let f env = find typeContainsXtor (fmap snd (declEnv env))
   snd <$> findFirstM f err
@@ -147,7 +144,7 @@ lookupXtorSigUpper loc xt = do
         Nothing -> throwOtherError loc ["lookupXtorSigUpper: Constructor/Destructor " <> ppPrint xt <> " not found"]
         Just sig -> pure sig
 
-  
+
 
 lookupXtorSigLower :: EnvReader a m
                    => Loc -> XtorName -> m (TST.XtorSig Pos)
@@ -161,7 +158,7 @@ lookupXtorSigLower loc xt = do
         Nothing ->  throwOtherError loc ["lookupXtorSigLower: Constructor/Destructor " <> ppPrint xt <> " not found"]
         Just sig -> pure sig
 
-  
+
 
 -- | Find the class declaration for a classname.
 lookupClassDecl :: EnvReader a m
@@ -171,7 +168,7 @@ lookupClassDecl loc cn = do
   let f env = M.lookup cn (classEnv env)
   snd <$> findFirstM f err
 
--- | Find the class declaration for a classname.
+-- | Find the type of a method in a given class declaration.
 lookupMethodType :: EnvReader a m
                => Loc -> MethodName -> RST.ClassDeclaration -> PolarityRep pol -> m (RST.LinearContext pol)
 lookupMethodType loc mn RST.MkClassDeclaration { classdecl_name, classdecl_methods } PosRep =
@@ -184,9 +181,9 @@ lookupMethodType loc mn RST.MkClassDeclaration { classdecl_name, classdecl_metho
     Just msig -> pure $ RST.msig_args msig
 
 lookupXtorKind :: EnvReader a m
-             => XtorName -> m MonoKind
+             => XtorName -> m (MonoKind,[MonoKind])
 lookupXtorKind xtorn = do
-  let err = ErrOther $ SomeOtherError defaultLoc ("No Kind for XTor " <> ppPrint xtorn)
+  let err = ErrOther $ SomeOtherError defaultLoc ("No Kinds for XTor " <> ppPrint xtorn)
   let f env = M.lookup xtorn (kindEnv env)
   snd <$> findFirstM f err
 

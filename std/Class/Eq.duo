@@ -1,0 +1,35 @@
+module Class.Eq;
+
+
+import Data.Bool;
+import Data.Peano;
+
+-- | Definition for equality type class.
+class Eq(+a : CBV) {
+  Equals(a, a, return Bool),
+  Differ(a, a, return Bool)
+};
+
+
+-- | Instance definition for Eq Bool.
+instance eqBool : Eq Bool {
+  Equals(x, y, k) => or (and x y) (not (or x y)) >> k,
+  Differ(x, y, k) => Equals(x, y, mu z. not z >> k )
+};
+
+-- | Instance definition for Eq Nat.
+instance eqNat : Eq Nat {
+  Equals(x, y, k) => case x of {
+    Z => case y of {
+      Z => True >> k,
+      S(m) => False >> k
+    },
+    S(n) => case y of {
+      Z => False >> k,
+      S(m) => Equals(n,m,k)
+    }
+  },
+  Differ(x, y, k) => Equals(x, y, mu z. not z >> k )
+};
+
+def prd trueIsTrue : Bool := mu k. Equals[Bool](True, True, k);

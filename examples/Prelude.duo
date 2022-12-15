@@ -1,10 +1,14 @@
 module Prelude;
 
 -- Standard Prelude
-
 def cmd impossibleCmd := #ExitSuccess;
-def prd impossiblePrd := mu k. impossibleCmd;
-def cns impossibleCns := mu x. impossibleCmd;
 
--- | Generic print consumer
-def cns print := mu x.#Print(x, #ExitSuccess);
+def prd impossiblePrdV : forall a. (a : CBV) := mu k. impossibleCmd;
+def cns impossibleCnsV : forall a. (a : CBV) := mu x. impossibleCmd;
+def prd impossiblePrdN : forall a. (a : CBN) := mu k. impossibleCmd;
+def cns impossibleCnsN : forall a. (a : CBN) := mu x. impossibleCmd;
+
+--  Generic print consumer 
+def cns print : forall a. (a : CBV) := mu x.#Print(x, #ExitSuccess);
+
+

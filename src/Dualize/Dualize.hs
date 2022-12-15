@@ -12,6 +12,7 @@ import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Terms (PrimitiveOp)
 import Syntax.RST.Types (FlipPol, FlipPrdCns, PolarityRep(..), flipPolarityRep, flipPrdCns)
 import Syntax.RST.Program (PrdCnsToPol)
+import Syntax.Core.Terms (Pattern(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms
@@ -102,7 +103,7 @@ dualCmd (Read loc _)  =
   throwDualizeError (DualRead loc "Cannot dualize Read command")
 dualCmd (Jump _ fv)  =
   pure $ Jump defaultLoc (dualFVName fv)
-dualCmd (Method loc _ _ _) =
+dualCmd (Method loc _ _ _ _ _) =
   throwDualizeError (DualMethod loc "Cannot dualize type class method")
 dualCmd (PrimOp loc op _) =
   throwDualizeError(DualPrimOp loc op "Cannot dualize primitive op")
@@ -191,8 +192,10 @@ dualType pol (TST.TySkolemVar _loc _ kind x) =
   TST.TySkolemVar defaultLoc (flipPolarityRep pol) (dualMonoKind kind) x
 dualType pol (TST.TyRecVar _loc _ kind x) =
   TST.TyRecVar defaultLoc (flipPolarityRep pol) (dualMonoKind kind) x
-dualType pol (TST.TyNominal _ _ kind tn vtys) =
-  TST.TyNominal defaultLoc  (flipPolarityRep pol) (dualMonoKind kind) (dualRnTypeName tn) (dualVariantType pol <$> vtys)
+dualType pol (TST.TyNominal _ _ kind tn) =
+  TST.TyNominal defaultLoc  (flipPolarityRep pol) (dualPolyKind kind) (dualRnTypeName tn)
+dualType pol (TST.TyApp _ _ ty args) = 
+  TST.TyApp defaultLoc (flipPolarityRep pol) (dualType pol ty) (dualVariantType pol <$> args)
 dualType pol (TST.TyI64 loc _ ) =
   TST.TyI64 loc (flipPolarityRep pol)
 dualType pol (TST.TyF64 loc _ ) =

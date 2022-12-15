@@ -3,8 +3,9 @@ module Syntax.RST.Types where
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Kind ( Type )
+import Data.List.NonEmpty (NonEmpty)
 
-import Syntax.CST.Kinds ( Variance(..) )
+import Syntax.CST.Kinds ( Variance(..),MaybeKindedSkolem, MonoKind(..), PolyKind(..))
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
     ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
@@ -133,7 +134,8 @@ data Typ (pol     :: Polarity) where
   TyDataRefined   :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig pol]           -> Typ pol
   TyCodataRefined :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
-  TyNominal       :: Loc -> PolarityRep pol -> RnTypeName -> [VariantType pol] -> Typ pol
+  TyNominal       :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName  -> Typ pol
+  TyApp           :: Loc -> PolarityRep pol -> Typ pol -> NonEmpty (VariantType pol) -> Typ pol
   -- | Type synonym
   TySyn           :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | Lattice types
@@ -150,6 +152,8 @@ data Typ (pol     :: Polarity) where
   TyString        :: Loc -> PolarityRep pol -> Typ pol
   -- | TyFlipPol is only generated during focusing, and cannot be parsed!
   TyFlipPol       :: PolarityRep pol -> Typ (FlipPol pol) -> Typ pol
+  -- | Kind Annotated Type
+  TyKindAnnot     :: MonoKind -> Typ pol -> Typ pol
 
 deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
@@ -166,14 +170,15 @@ mkInter _   [t]    = t
 mkInter loc (t:ts) = TyInter loc t (mkInter loc ts)
 
 getPolarity :: Typ pol -> PolarityRep pol
-getPolarity (TySkolemVar _ rep  _)     = rep
-getPolarity (TyUniVar _ rep  _)        = rep
-getPolarity (TyRecVar _ rep  _)        = rep
+getPolarity (TySkolemVar _ rep  _)      = rep
+getPolarity (TyUniVar _ rep  _)         = rep
+getPolarity (TyRecVar _ rep  _)         = rep
 getPolarity (TyData _ rep _)            = rep
 getPolarity (TyCodata _ rep _)          = rep
 getPolarity (TyDataRefined _ rep _ _)   = rep
 getPolarity (TyCodataRefined _ rep _ _) = rep
-getPolarity (TyNominal _ rep  _ _)     = rep
+getPolarity (TyNominal _ rep  _ _)      = rep
+getPolarity (TyApp _ rep _ _)           = rep
 getPolarity (TySyn _ rep _ _)           = rep
 getPolarity TyTop {}                    = NegRep
 getPolarity TyBot {}                    = PosRep
@@ -182,9 +187,10 @@ getPolarity TyInter {}                  = NegRep
 getPolarity (TyRec _ rep _ _)           = rep
 getPolarity (TyI64 _ rep)               = rep
 getPolarity (TyF64 _ rep)               = rep
-getPolarity (TyChar _ rep)               = rep
-getPolarity (TyString _ rep)               = rep
+getPolarity (TyChar _ rep)              = rep
+getPolarity (TyString _ rep)            = rep
 getPolarity (TyFlipPol rep _)           = rep
+getPolarity (TyKindAnnot _ ty)          = getPolarity ty
 
 
 ------------------------------------------------------------------------------
@@ -209,9 +215,10 @@ instance ReplaceNominal (Typ pol) where
   replaceNominal p n t (TyCodata loc rep args)           = TyCodata loc rep (replaceNominal p n t <$> args)
   replaceNominal p n t (TyDataRefined loc rep tn args)   = TyDataRefined loc rep tn (replaceNominal p n t <$> args)
   replaceNominal p n t (TyCodataRefined loc rep tn args) = TyCodataRefined loc rep tn (replaceNominal p n t <$> args)
-  replaceNominal p n t (TyNominal loc rep t' args)       = if t == t'
+  replaceNominal p n t (TyNominal loc rep pk t')         = if t == t'
                                                            then case rep of { PosRep -> p; NegRep -> n }
-                                                           else TyNominal loc rep t' (replaceNominal p n t <$> args)
+                                                           else TyNominal loc rep pk t' 
+  replaceNominal p n t (TyApp loc rep ty args)           = TyApp loc rep (replaceNominal p n t ty) (replaceNominal p n t <$> args)
   replaceNominal p n t (TySyn loc rep tn ty)             = TySyn loc rep tn (replaceNominal p n t ty)
   replaceNominal _ _ _ ty@TyTop {}                       = ty
   replaceNominal _ _ _ ty@TyBot {}                       = ty
@@ -223,6 +230,7 @@ instance ReplaceNominal (Typ pol) where
   replaceNominal _ _ _ ty@TyChar {}                      = ty
   replaceNominal _ _ _ ty@TyString {}                    = ty
   replaceNominal p n t (TyFlipPol rep ty)                = TyFlipPol rep (replaceNominal p n t ty)
+  replaceNominal p n t (TyKindAnnot mk ty)               = TyKindAnnot mk (replaceNominal p n t ty)
 
 instance ReplaceNominal (XtorSig pol) where
   replaceNominal :: forall pol. Typ Pos -> Typ Neg -> RnTypeName -> XtorSig pol -> XtorSig pol
@@ -244,7 +252,7 @@ instance ReplaceNominal (VariantType pol) where
 
 data TypeScheme (pol :: Polarity) = TypeScheme
   { ts_loc :: Loc
-  , ts_vars :: [SkolemTVar]
+  , ts_vars :: [MaybeKindedSkolem]
   , ts_monotype :: Typ pol
   }
 
@@ -274,9 +282,10 @@ instance FreeTVars (Typ pol) where
   freeTVars TyTop {}                      = S.empty
   freeTVars TyBot {}                      = S.empty
   freeTVars (TyUnion _ ty ty')            = S.union (freeTVars ty) (freeTVars ty')
-  freeTVars (TyInter _ ty ty')          = S.union (freeTVars ty) (freeTVars ty')
+  freeTVars (TyInter _ ty ty')            = S.union (freeTVars ty) (freeTVars ty')
   freeTVars (TyRec _ _ _ t)               = freeTVars t
-  freeTVars (TyNominal _ _ _ args)        = S.unions (freeTVars <$> args)
+  freeTVars TyNominal{}                   = S.empty 
+  freeTVars (TyApp _ _ ty args)     = S.union (freeTVars ty) (foldr S.union S.empty  (freeTVars <$> args))
   freeTVars (TySyn _ _ _ ty)              = freeTVars ty
   freeTVars (TyData _ _ xtors)            = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ xtors)          = S.unions (freeTVars <$> xtors)
@@ -287,6 +296,8 @@ instance FreeTVars (Typ pol) where
   freeTVars (TyChar _ _)                  = S.empty
   freeTVars (TyString _ _)                = S.empty
   freeTVars (TyFlipPol _ ty)              = freeTVars ty
+  freeTVars (TyKindAnnot _ ty)            = freeTVars ty
+
 
 instance FreeTVars (PrdCnsType pol) where
   freeTVars (PrdCnsType _ ty) = freeTVars ty
@@ -303,4 +314,14 @@ instance FreeTVars (XtorSig pol) where
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
-generalize ty = TypeScheme defaultLoc (S.toList (freeTVars ty)) ty
+generalize ty = TypeScheme defaultLoc (zip (S.toList $ freeTVars ty) (repeat Nothing)) ty
+
+
+
+
+
+
+
+
+
+

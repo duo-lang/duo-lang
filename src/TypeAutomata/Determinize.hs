@@ -78,21 +78,26 @@ combineNodeLabels [] = error "No Labels to combine"
 combineNodeLabels [fstLabel@MkNodeLabel{}] = fstLabel
 combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
   case rs_merged of
-    (MkPrimitiveNodeLabel _ _) -> error "Tried to combine primitive type and algebraic type"
+    pr@MkPrimitiveNodeLabel{} -> error ("Tried to combine primitive type" <> show pr <> " and algebraic type " <> show fstLabel)
     combLabel@MkNodeLabel{} ->
-      if nl_pol combLabel == pol then
-        MkNodeLabel {
-          nl_pol = pol,
-          nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ <- [fstLabel,combLabel]],
-          nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ <- [fstLabel,combLabel]],
-          nl_nominal = S.unions [tn | MkNodeLabel _ _ _ tn _ _ <- [fstLabel, combLabel]],
-          nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ <- [fstLabel, combLabel]],
-          nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs <- [fstLabel, combLabel]]
-        }
-      else
-        error "Tried to combine node labels of different polarity!"
+      if nl_kind combLabel == knd then 
+        if nl_pol combLabel == pol then
+          MkNodeLabel {
+            nl_pol = pol,
+            nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ _ <- [fstLabel,combLabel]],
+            nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ _ <- [fstLabel,combLabel]],
+            nl_nominal = S.unions [tn | MkNodeLabel _ _ _ tn _ _ _ <- [fstLabel, combLabel]],
+            nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ _ <- [fstLabel, combLabel]],
+            nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ <- [fstLabel, combLabel]],
+            nl_kind = knd
+          }
+        else
+          error "Tried to combine node labels of different polarity!"
+    else 
+      error "Tried to combine node labels of different kind"
   where
     pol = nl_pol fstLabel
+    knd = nl_kind fstLabel
     mrgDat [] = Nothing
     mrgDat (xtor:xtors) = Just $ case pol of {Pos -> S.unions (xtor:xtors) ; Neg -> intersections (xtor :| xtors) }
     mrgCodat [] = Nothing
@@ -107,7 +112,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
 combineNodeLabels [fstLabel@MkPrimitiveNodeLabel{}] = fstLabel
 combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) =
   case rs_merged of
-    MkNodeLabel{} -> error "Tried to combine primitive type and algebraic type"
+    nl@MkNodeLabel{} -> error ("Tried to combine primitive type" <> show fstLabel <> " and algebraic type" <> show nl)
     combLabel@MkPrimitiveNodeLabel{} ->
       if pl_pol combLabel == pol then
         if pl_prim combLabel == primT then

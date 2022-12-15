@@ -1,18 +1,17 @@
-module LSP.Handler.Hover
-  ( hoverHandler
-  , updateHoverCache
-  ) where
+module LSP.Handler.Hover ( hoverHandler ) where
 
 import Control.Monad.IO.Class ( MonadIO(liftIO) )
-import Data.IORef (readIORef, modifyIORef)
+import Data.IORef (readIORef)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.Text (Text)
+import Data.Map (Map)
+import Data.List.NonEmpty qualified as NE
 import Language.LSP.Types
 import Language.LSP.Server
     ( requestHandler, Handlers, getConfig )
-import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), HoverMap, sendInfo )
-import LSP.MegaparsecToLSP
+import LSP.Definition ( LSPMonad, LSPConfig (MkLSPConfig), sendInfo )
+import LSP.MegaparsecToLSP ( locToRange, lookupInRangeMap )
 import System.Log.Logger ( debugM )
 
 import Pretty.Pretty ( ppPrint )
@@ -20,9 +19,18 @@ import Pretty.Common ()
 import Pretty.Types ()
 import Pretty.Terms ()
 import Syntax.CST.Names
-import Syntax.CST.Kinds
+    ( MethodName, ClassName, RnTypeName(rnTnDoc) )
+import Syntax.CST.Kinds ( MonoKind )
 import Syntax.CST.Types ( PrdCnsRep(..), DataCodata(..), PrdCns(..))
-import Syntax.TST.Terms hiding (Command)
+import Syntax.TST.Terms
+    ( Command(Method, Print, Read, Jump, ExitSuccess, ExitFailure,
+              PrimOp),
+      Term(PrimLitString, BoundVar, FreeVar, PrimLitI64, PrimLitF64,
+           PrimLitChar),
+      InstanceCase(MkInstanceCase, instancecase_cmd),
+      CmdCase(MkCmdCase, cmdcase_cmd),
+      Substitution(unSubstitution),
+      PrdCnsTerm(..) )
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Terms qualified as CST
@@ -38,6 +46,8 @@ import Syntax.RST.Program (StructuralXtorDeclaration(strxtordecl_evalOrder))
 -- Handle Type on Hover
 ---------------------------------------------------------------------------------
 
+type HoverMap   = Map Range Hover
+
 hoverHandler :: Handlers LSPMonad
 hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
   let (RequestMessage _ _ _ (HoverParams (TextDocumentIdentifier uri) pos _)) = req
@@ -46,15 +56,9 @@ hoverHandler = requestHandler STextDocumentHover $ \req responder ->  do
   cache <- liftIO $ readIORef ref
   case M.lookup uri cache of
     Nothing -> do
-      sendInfo ("Hover Cache not initialized for: " <> T.pack (show uri))
+      sendInfo ("Cache not initialized for: " <> T.pack (show uri))
       responder (Right Nothing)
-    Just cache -> responder (Right (lookupInRangeMap pos cache))
-
-
-updateHoverCache :: Uri -> TST.Module -> LSPMonad ()
-updateHoverCache uri prog = do
-  MkLSPConfig ref <- getConfig
-  liftIO $ modifyIORef ref (M.insert uri (toHoverMap prog))
+    Just mod -> responder (Right (lookupInRangeMap pos (toHoverMap mod)))
 
 ---------------------------------------------------------------------------------
 -- Generating HoverMaps
@@ -182,12 +186,14 @@ cocaseToHoverMap loc ty ns = mkHoverMap loc msg
                     ]
 
 
-methodToHoverMap :: Loc -> MethodName -> ClassName -> HoverMap
-methodToHoverMap loc mn cn = mkHoverMap loc msg
+methodToHoverMap :: Loc -> MethodName -> ClassName -> TST.InstanceResolved -> HoverMap
+methodToHoverMap _ _ _ (TST.InstanceUnresolved _) = mempty
+methodToHoverMap loc mn cn (TST.InstanceResolved inst) = mkHoverMap loc msg
   where
     msg :: Text
     msg = T.unlines [ "#### Type class method " <> ppPrint mn
-                    , "*Defined in class: " <> ppPrint cn <> "*"
+                    , "- Defined in class: `" <> ppPrint cn <> "`"
+                    , "- Resolved instance: `" <> ppPrint inst <> "`"
                     ]
 
 instance ToHoverMap (Term pc) where
@@ -249,7 +255,7 @@ instance ToHoverMap TST.Command where
   toHoverMap ExitSuccess {} = M.empty
   toHoverMap ExitFailure {} = M.empty
   toHoverMap PrimOp {} = M.empty
-  toHoverMap (Method loc mn cn subst) = M.union (methodToHoverMap loc mn cn) (toHoverMap subst)
+  toHoverMap (Method loc mn cn inst _ty subst) = M.union (methodToHoverMap loc mn cn inst) (toHoverMap subst)
   toHoverMap (CaseOfCmd _ _ t cmdcases) =
     M.unions $ toHoverMap t : map toHoverMap cmdcases
   toHoverMap (CaseOfI _ _ _ t tmcasesI) =
@@ -349,7 +355,7 @@ instance ToHoverMap (TST.Typ pol) where
                       ]
     in
       M.unions (mkHoverMap loc msg : (toHoverMap <$> xtors))
-  toHoverMap (TST.TyNominal loc rep _knd tn args) =
+  toHoverMap (TST.TyNominal loc rep _knd tn) =
     let
       msg = T.unlines [ "#### Nominal type"
                       , "- Name: `" <> ppPrint tn <> "`"
@@ -358,7 +364,14 @@ instance ToHoverMap (TST.Typ pol) where
                       , "- Kind: " <> ppPrint _knd
                       ]
     in
-      M.unions (mkHoverMap loc msg : (toHoverMap <$> args))
+      mkHoverMap loc msg
+  toHoverMap (TST.TyApp loc _ ty args) = 
+    let 
+      hoverTy = toHoverMap ty 
+      betw = mkHoverMap loc (T.unlines ["applied to"])
+      hoverArgs = toHoverMap <$> args
+    in 
+      M.unions ([hoverTy,betw]++NE.toList hoverArgs)
   toHoverMap (TST.TySyn loc rep nm ty) =
     let
       msg = T.unlines [ "#### Type synonym"

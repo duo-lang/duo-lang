@@ -49,6 +49,10 @@ data MonoKind
   | StringRep
   deriving (Show, Eq, Ord)
 
+type MaybeKindedSkolem = (SkolemTVar, Maybe MonoKind)
+type KindedSkolem = (SkolemTVar,MonoKind)
+
+
 ------------------------------------------------------------------------------
 -- Kinds
 ------------------------------------------------------------------------------

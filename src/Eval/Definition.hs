@@ -14,6 +14,7 @@ import Pretty.Terms ()
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.Core.Annot
+import Syntax.Core.Terms (Pattern(..))
 import Syntax.TST.Terms
 import Loc
 import Syntax.TST.Types qualified as TST
@@ -22,12 +23,13 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Control.Monad.Writer (MonadWriter)
 import Control.Monad.State (MonadState)
+import Syntax.TST.Program (InstanceDeclaration(..))
 
 ---------------------------------------------------------------------------------
 -- The Eval Monad
 ---------------------------------------------------------------------------------
 
-type EvalEnv = (Map FreeVarName (Term Prd), Map FreeVarName (Term Cns), Map FreeVarName Command)
+type EvalEnv = (Map FreeVarName (Term Prd), Map FreeVarName (Term Cns), Map FreeVarName Command, Map FreeVarName InstanceDeclaration)
 
 newtype EvalM m a = EvalM { unEvalM :: ReaderT EvalEnv (ExceptT (NonEmpty Error) m) a }
   deriving newtype (Functor, Applicative, Monad, MonadWriter w, MonadState s, MonadError (NonEmpty Error), MonadReader EvalEnv, MonadIO)
@@ -59,7 +61,7 @@ checkArgs cmd args (MkSubstitution subst) = checkArgs' args subst
                                                   ]
 
 natType :: TST.Typ 'Pos
-natType = TST.TyNominal defaultLoc PosRep (CBox CBV) peanoNm []
+natType = TST.TyNominal defaultLoc PosRep (MkPolyKind [] CBV) peanoNm
 
 convertInt :: Int -> Term Prd
 convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "Z") $ MkSubstitution []
@@ -77,19 +79,35 @@ readInt = do
 
 lookupCommand :: Monad m => FreeVarName -> EvalM m Command
 lookupCommand fv = do
-  (_,_,env) <- ask
+  (_,_,env,_) <- ask
   case M.lookup fv env of
     Nothing -> throwEvalError defaultLoc ["Consumer " <> ppPrint fv <> " not in environment."]
     Just cmd -> pure cmd
 
 lookupTerm :: Monad m => PrdCnsRep pc -> FreeVarName -> EvalM m (Term pc)
 lookupTerm PrdRep fv = do
-  (env,_,_) <- ask
+  (env,_,_,_) <- ask
   case M.lookup fv env of
     Nothing -> throwEvalError defaultLoc ["Producer " <> ppPrint fv <> " not in environment."]
     Just prd -> pure prd
 lookupTerm CnsRep fv = do
-  (_,env,_) <- ask
+  (_,env,_,_) <- ask
   case M.lookup fv env of
     Nothing -> throwEvalError defaultLoc ["Consumer " <> ppPrint fv <> " not in environment."]
     Just prd -> pure prd
+
+-- | Find the instance declaration for an instance name.
+lookupInstanceDecl :: Monad m => Loc -> FreeVarName -> EvalM m InstanceDeclaration
+lookupInstanceDecl loc iname = do
+  (_, _, _, env) <- ask
+  case M.lookup iname env of
+    Nothing -> throwOtherError loc ["Instance declaration " <> ppPrint iname <> " is not contained in environment."]
+    Just decl -> pure decl
+
+-- | Find the class declaration for a classname.
+lookupMethodDefinition :: Monad m => Loc -> MethodName -> FreeVarName -> EvalM m (Command, Pattern)
+lookupMethodDefinition loc (MkMethodName name) iname = do
+  methods <- instancedecl_cases <$> lookupInstanceDecl loc iname
+  case find ((\(XtorPat _ (MkXtorName name') _) -> name == name') . instancecase_pat) methods of
+    Nothing -> throwOtherError loc ["Type class method " <> ppPrint (MkMethodName name) <> " is not contained in environment."]
+    Just icase -> pure (instancecase_cmd icase, instancecase_pat icase)

@@ -3,11 +3,13 @@ module Data.PeanoStructural;
 -- Peano Natural Numbers (Structural)
 
 import Codata.Function;
-import Data.Bool;
+import Data.BoolStructural;
 
 -- | The type of Peano natural numbers.
 constructor Z;
 constructor S(CBV);
+
+type SNat := rec r. < Z, S(r) >;
 
 def rec prd add :=
   \n m => case n of { Z => m
@@ -18,5 +20,5 @@ def rec prd mul :=
                     , S(n) => add m (mul n m)};
 
 def rec prd nateq :=
-  \n m => case n of { Z    => case m of { Z => True,  S(m) => False}
+  \n m => case n of { Z    => case m of { Z => True,  S(_) => False}
                     , S(n) => case m of { Z => False, S(m) => nateq n m}};

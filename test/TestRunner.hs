@@ -15,6 +15,7 @@ import Errors
 import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified
+import Spec.OverlapCheck qualified
 import Spec.Prettyprinter qualified
 import Spec.Focusing qualified
 import Syntax.CST.Program qualified as CST
@@ -22,6 +23,8 @@ import Syntax.CST.Names
 import Syntax.TST.Program qualified as TST
 import Options.Applicative
 import Utils (listRecursiveDuoFiles, filePathToModuleName, moduleNameToFullPath)
+import GHC.IO.Encoding (setLocaleEncoding)
+import System.IO (utf8)
 
 data Options where
   OptEmpty  :: Options
@@ -43,7 +46,7 @@ getAvailableCounterExamples = do
   pure  $ zip (repeat counterExFp) $ sort examples
 
 excluded :: [ModuleName]
-excluded = []
+excluded = [MkModuleName [] "NestedPatternMatch"]
 
 getAvailableExamples :: IO [(FilePath, ModuleName)]
 getAvailableExamples = do
@@ -80,6 +83,7 @@ getSymbolTable fp mn = do
 
 main :: IO ()
 main = do
+    setLocaleEncoding utf8
     o <- execParser getOpts
     examples <- case o of
       -- Collect the filepaths of all the available examples
@@ -101,3 +105,6 @@ main = do
       describe "ExampleSpec" (Spec.TypeInferenceExamples.spec parsedCounterExamples checkedCounterExamples)
       describe "Prettyprinted work again" (Spec.Prettyprinter.spec parsedExamples checkedExamplesFiltered)
       describe "Focusing works" (Spec.Focusing.spec checkedExamplesFiltered)
+      describe "OverlapCheck works" Spec.OverlapCheck.spec
+
+

@@ -64,6 +64,7 @@ typeAutEqual (TypeAut _ (Identity start1) (TypeAutCore gr1 flowEdges1))
         S.fromList flowEdges2 ==
           S.fromList [(i',j') | (i,j) <- flowEdges1, let i' = fromJust (M.lookup i mp), let j' = fromJust (M.lookup j mp)]
 
+
 sucWith :: (DynGraph gr, Eq b) => gr a b -> Node -> b -> Maybe Node
 sucWith gr i el = lookup el (map swap (lsuc gr i))
 
@@ -72,13 +73,14 @@ typeAutEqualM (gr1, n) (gr2, m) = do
   mp <- get
   case M.lookup n mp of
     Nothing -> do
-      guard (lab gr1 n == lab gr2 m)
+      guard (lab gr1 n== lab gr2 m)
       modify (M.insert n m)
       forM_ (lsuc gr1 n) $ \(i,el) -> do
         j <- lift $ sucWith gr2 m el
         typeAutEqualM (gr1, i) (gr2, j)
     Just m' -> do
       guard (m == m')
+
 
 subsume :: PolarityRep pol -> TypeScheme pol -> TypeScheme pol -> Either (NonEmpty Error) Bool
 subsume polrep ty1 ty2 = do

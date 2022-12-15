@@ -8,6 +8,7 @@ module Resolution.Types
 import Control.Monad.Except (throwError)
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List.NonEmpty qualified as NE
 
 import Errors
 import Pretty.Pretty
@@ -29,7 +30,7 @@ import Control.Monad.Reader (asks, MonadReader (local))
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
 resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
-    if RST.freeTVars monotype `S.isSubsetOf` S.fromList ts_vars
+    if RST.freeTVars monotype `S.isSubsetOf` S.fromList (map fst ts_vars)
     then pure (RST.TypeScheme ts_loc ts_vars monotype)
         else throwError (ErrResolution (MissingVarsInTypeScheme ts_loc) :| [])
 
@@ -61,19 +62,31 @@ resolveTyp rep (TyXRefined loc Codata tn sigs) = do
     NominalResult tn' _ _ _ <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
     pure $ RST.TyCodataRefined loc rep tn' sigs
-resolveTyp rep (TyNominal loc name args) = do
-    res <- lookupTypeConstructor loc name
-    case res of
-        SynonymResult name' typ -> case args of
-            [] -> do
-                typ' <- resolveTyp rep typ
-                pure $ RST.TySyn loc rep name' typ'
-            _ -> throwOtherError loc ["Type synonyms cannot be applied to arguments (yet)."]
-        NominalResult rtn _ CST.Refined _ -> do
-            throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
-        NominalResult name' _ CST.NotRefined polykind -> do
-            args' <- resolveTypeArgs loc rep name polykind args
-            pure $ RST.TyNominal loc rep name' args'
+resolveTyp rep (TyNominal loc name) = do
+  res <- lookupTypeConstructor loc name
+  case res of 
+    SynonymResult name' typ -> do 
+      typ' <- resolveTyp rep typ
+      pure $ RST.TySyn loc rep name' typ'
+    NominalResult rtn _ CST.Refined _ -> 
+      throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
+    NominalResult name' _ CST.NotRefined polyknd -> 
+      pure $ RST.TyNominal loc rep polyknd name'
+resolveTyp rep (TyApp loc ty@(TyNominal _loc tyn) args) = do 
+  res <- lookupTypeConstructor loc tyn
+  case res of 
+    SynonymResult _ _ -> throwOtherError loc ["Type synonmys cannot be applied to arguments (yet)"]
+    NominalResult rtn _ CST.Refined _ -> throwOtherError loc ["Refined type "<>ppPrint rtn <> " cannot be used as a nominal type constructor"]
+    NominalResult _tyn' _ CST.NotRefined polyknd -> do 
+      ty' <- resolveTyp rep ty
+      args' <- resolveTypeArgs loc rep tyn polyknd (NE.toList args)
+      case args' of 
+        [] -> pure ty'
+        (fst:rst) -> pure $ RST.TyApp loc rep ty' (fst:|rst)
+resolveTyp rep (TyApp loc (TyKindAnnot mk ty) args) = do 
+  resolved <-  resolveTyp rep (TyApp loc ty args)
+  pure $ RST.TyKindAnnot mk resolved
+resolveTyp _ (TyApp loc ty _) = throwOtherError loc ["Types can only be applied to nominal types, was applied to ", ppPrint ty]
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v
         local (\r -> r { rr_recVars = S.insert vr $ rr_recVars r  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
@@ -93,6 +106,9 @@ resolveTyp rep (TyBinOp loc fst op snd) =
     resolveBinOp loc rep fst op snd
 resolveTyp rep (TyParens _loc typ) =
     resolveTyp rep typ
+resolveTyp rep (TyKindAnnot mk ty) = do
+    ty' <- resolveTyp rep ty
+    pure $ RST.TyKindAnnot mk ty'
 resolveTyp rep (TyI64 loc) =
     pure $ RST.TyI64 loc rep
 resolveTyp rep (TyF64 loc) =
@@ -156,7 +172,7 @@ desugaring loc NegRep InterDesugaring tl tr = do
 desugaring loc PosRep InterDesugaring _ _ =
     throwError (ErrResolution (IntersectionInPosPolarity loc) :| [])
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
-    resolveTyp rep (TyNominal loc tyname [tl, tr])
+    resolveTyp rep (TyApp loc (TyNominal loc tyname) (tl:|[tr]))
 
 -- | Operator precedence parsing
 -- Transforms "TyBinOpChain" into "TyBinOp"'s while nesting nodes

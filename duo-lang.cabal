@@ -178,6 +178,7 @@ library
       TypeInference.Constraints
       Translate.Focusing
       Translate.EmbedTST
+      Translate.InsertInstance
       Utils
   other-modules:
       Paths_duo_lang
@@ -201,6 +202,7 @@ executable duo
       LSP.Handler.Completion
       LSP.Handler.Hover
       LSP.Handler.JumpToDef
+      LSP.Handler.Various
       LSP.LSP
       LSP.MegaparsecToLSP
       Options
@@ -226,6 +228,7 @@ test-suite duo-lang-test
       Spec.Focusing
     , Spec.TypeInferenceExamples
     , Spec.LocallyClosed
+    , Spec.OverlapCheck
     , Spec.Prettyprinter
     , Paths_duo_lang
   hs-source-dirs:
