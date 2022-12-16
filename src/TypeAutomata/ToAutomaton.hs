@@ -208,22 +208,22 @@ insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert 
 insertType (TyRecVar _ rep _ tv) = lookupTRecVar rep tv
 insertType (TyTop _ knd) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Neg knd)
+  insertNode newNode (emptyNodeLabelPk Neg knd)
   pure newNode
 insertType (TyBot _ knd) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Pos knd)
+  insertNode newNode (emptyNodeLabelPk Pos knd)
   pure newNode
 insertType (TyUnion _ knd ty1 ty2) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Pos knd)
+  insertNode newNode (emptyNodeLabelPk Pos knd)
   ty1' <- insertType ty1
   ty2' <- insertType ty2
   insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
   pure newNode
 insertType (TyInter _ knd ty1 ty2) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel Neg knd)
+  insertNode newNode (emptyNodeLabelPk Neg knd)
   ty1' <- insertType ty1
   ty2' <- insertType ty2
   insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]

@@ -170,7 +170,7 @@ prettySkolBisubst (v, (typ,tyn)) = nest 3 $ line <> vsep [ prettyAnn v <+> "+ â¤
                                                          , prettyAnn v <+> "- â¤‡" <+> prettyAnn tyn
                                                          ]
 
-prettyKindSubst :: (KVar, MonoKind) -> Doc Annotation
+prettyKindSubst :: (KVar, PolyKind) -> Doc Annotation
 prettyKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
 
 instance PrettyAnn (TST.Bisubstitution TST.UniVT) where

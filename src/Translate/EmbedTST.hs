@@ -125,8 +125,8 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST :: TST.Typ pol -> RST.Typ pol
   embedTST (TST.TySkolemVar loc pol mk tv) =
     RST.TyKindAnnot mk $ RST.TySkolemVar loc pol tv
-  embedTST (TST.TyUniVar loc pol mk tv) =
-    RST.TyKindAnnot mk $ RST.TyUniVar loc pol tv
+  embedTST (TST.TyUniVar loc pol pk tv) =
+    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyUniVar loc pol tv
   embedTST (TST.TyRecVar loc pol pk tv) =
     RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyRecVar loc pol tv
   embedTST (TST.TyData loc pol mk xtors) =

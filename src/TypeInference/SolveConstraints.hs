@@ -41,7 +41,7 @@ import Data.Either (isRight)
 data SolverState = SolverState
   { sst_bounds :: Map UniTVar VariableState
   , sst_cache :: Map (Constraint ()) SubtypeWitness -- The constraints in the cache need to have their annotations removed!
-  , sst_kvars :: [([KVar], Maybe MonoKind)]
+  , sst_kvars :: [([KVar], Maybe PolyKind)]
   }
 
 createInitState :: ConstraintSet -> SolverState
@@ -51,7 +51,7 @@ createInitState (ConstraintSet _ uvs kuvs) =
               , sst_kvars = [([kv],Nothing) | kv <- kuvs]
               }
   where
-    getsst_bounds :: [(UniTVar, UVarProvenance, MonoKind)] -> [(UniTVar, VariableState)]
+    getsst_bounds :: [(UniTVar, UVarProvenance, PolyKind)] -> [(UniTVar, VariableState)]
     getsst_bounds [] = []
     getsst_bounds ((uv,_,mk):rst) = (uv,emptyVarState mk):getsst_bounds rst
 
@@ -88,10 +88,10 @@ getBounds uv = do
                                            ]
     Just vs -> return vs
 
-getKVars :: SolverM [([KVar],Maybe MonoKind)]
+getKVars :: SolverM [([KVar],Maybe PolyKind)]
 getKVars = gets sst_kvars
 
-putKVars :: [([KVar],Maybe MonoKind)] -> SolverM ()
+putKVars :: [([KVar],Maybe PolyKind)] -> SolverM ()
 putKVars x = modify (\s -> s { sst_kvars = x })
 
 addUpperBound :: UniTVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
@@ -164,12 +164,32 @@ partitionM sets kv = do
     ([fst],rest) -> pure (fst, rest)
     (_:_:_,_) -> throwSolverError defaultLoc ["Kind variable occurs in more than one equivalence class: " <> ppPrint kv]
 
-unifyKinds :: MonoKind -> MonoKind -> SolverM ()
-unifyKinds (CBox cc1) (CBox cc2) =
+unifyMonoKinds :: MonoKind -> MonoKind -> SolverM ()
+unifyMonoKinds (CBox cc1) (CBox cc2) =
   if cc1 == cc2
     then pure ()
     else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
-unifyKinds (KindVar kv1) (KindVar kv2) = do
+unifyMonoKinds I64Rep I64Rep = return ()
+unifyMonoKinds F64Rep F64Rep = return ()
+unifyMonoKinds CharRep CharRep = return ()
+unifyMonoKinds StringRep StringRep = return ()
+unifyMonoKinds knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1<> " and " <> ppPrint knd2]
+
+unifyPolyKinds :: PolyKind -> PolyKind -> SolverM ()
+unifyPolyKinds (MkPolyKind args1 eo1) (MkPolyKind args2 eo2) = do
+  if eo1 == eo2
+    then compArgs args1 args2
+    else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint eo1 <> " and " <> ppPrint eo2]
+  where 
+    compArgs ::[(Variance, SkolemTVar, MonoKind)] ->[(Variance, SkolemTVar, MonoKind)] -> SolverM ()
+    compArgs [] [] = return () 
+    compArgs _ [] = throwSolverError defaultLoc ["Numbers of type arguments don't match"]
+    compArgs [] _ = throwSolverError defaultLoc ["Numbers of type arguments don't match"]
+    compArgs ((var1,sk1,mk1):rst1) ((var2,sk2,mk2):rst2) = 
+      if var1 == var2 && mk1 == mk2 
+        then compArgs rst1 rst2 
+        else throwSolverError defaultLoc ["Arguments " <> ppPrint var1 <> " " <> ppPrint sk1 <> ":"<> ppPrint mk1 <> " and " <> ppPrint var2 <> " " <> ppPrint sk2 <> ":" <> ppPrint mk2 <> " don't match"]
+unifyPolyKinds (KindVar kv1) (KindVar kv2) = do
   sets <- getKVars
   ((kvset1,mk1),rest1) <- partitionM sets kv1
   if kv2 `elem` kvset1 then
@@ -182,7 +202,7 @@ unifyKinds (KindVar kv1) (KindVar kv2) = do
       (Nothing, mk2) -> putKVars $ (newSet,mk2):rest2
       (Just mk1, Just mk2) | mk1 == mk2 -> putKVars $ (newSet, Just mk1) :rest2
                            | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint mk1 <> " and " <> ppPrint mk2]
-unifyKinds (KindVar kv) kind = do
+unifyPolyKinds (KindVar kv) kind = do
   sets <- getKVars
   ((kvset,mk),rest) <- partitionM sets kv
   case mk of
@@ -190,12 +210,7 @@ unifyKinds (KindVar kv) kind = do
     Just mk -> if kind == mk
                then return ()
                else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint kind <> " and " <> ppPrint mk]
-unifyKinds kind (KindVar kv) = unifyKinds (KindVar kv) kind
-unifyKinds I64Rep I64Rep = return ()
-unifyKinds F64Rep F64Rep = return ()
-unifyKinds CharRep CharRep = return ()
-unifyKinds StringRep StringRep = return ()
-unifyKinds knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1<> " and " <> ppPrint knd2]
+unifyPolyKinds kind (KindVar kv) = unifyPolyKinds (KindVar kv) kind
 
 computeKVarSolution :: KindPolicy
                     -> Maybe (KVar, PolyKind)

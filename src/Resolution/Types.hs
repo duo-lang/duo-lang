@@ -128,6 +128,7 @@ resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do
             f ((Covariant,_,_),ty) = RST.CovariantType <$> resolveTyp rep ty
             f ((Contravariant,_,_),ty) = RST.ContravariantType <$> resolveTyp (flipPolarityRep rep) ty
         sequence (f <$> zip kindArgs args)
+resolveTypeArgs loc _ _ (KindVar _) _ = throwOtherError loc ["Kind Variables should not be in the program at this point"]
 
 
 resolveXTorSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.XtorSig pol]

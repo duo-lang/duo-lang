@@ -187,7 +187,7 @@ dualType' CnsRep t = dualType NegRep t
 
 dualType :: PolarityRep pol -> TST.Typ pol -> TST.Typ (FlipPol pol)
 dualType pol (TST.TyUniVar _loc _ kind x) =
-  TST.TyUniVar defaultLoc (flipPolarityRep pol) (dualMonoKind kind) x
+  TST.TyUniVar defaultLoc (flipPolarityRep pol) (dualPolyKind kind) x
 dualType pol (TST.TySkolemVar _loc _ kind x) =
   TST.TySkolemVar defaultLoc (flipPolarityRep pol) (dualMonoKind kind) x
 dualType pol (TST.TyRecVar _loc _ pk x) =
@@ -204,13 +204,14 @@ dualType pol (TST.TyChar loc _ ) =
   TST.TyChar loc (flipPolarityRep pol)
 dualType pol (TST.TyString loc _ ) =
   TST.TyString loc (flipPolarityRep pol)
-dualType _ (TST.TyBot loc mk) =
-  TST.TyTop loc mk
-dualType _ (TST.TyTop loc mk) = TST.TyBot loc mk
-dualType pol (TST.TyUnion loc mk t1 t2) =
-  TST.TyInter loc mk (dualType pol t1) (dualType pol t2)
-dualType pol (TST.TyInter loc mk t1 t2) =
-  TST.TyUnion loc mk (dualType pol t1) (dualType pol t2)
+dualType _ (TST.TyBot loc pk) =
+  TST.TyTop loc pk
+dualType _ (TST.TyTop loc pk) = 
+  TST.TyBot loc pk
+dualType pol (TST.TyUnion loc pk t1 t2) =
+  TST.TyInter loc pk (dualType pol t1) (dualType pol t2)
+dualType pol (TST.TyInter loc pk t1 t2) =
+  TST.TyUnion loc pk (dualType pol t1) (dualType pol t2)
 dualType pol (TST.TyRec loc p x t) =
   TST.TyRec loc (flipPolarityRep p) x (dualType pol t)
 dualType pol (TST.TySyn loc _ rn ty) =

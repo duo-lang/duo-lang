@@ -103,8 +103,8 @@ getNodeKind i = do
         PChar -> return CharRep
         PString -> return StringRep
 
-getNodeKindRec :: Node -> AutToTypeM PolyKind
-getNodeKindRec i = do 
+getNodeKindPk :: Node -> AutToTypeM PolyKind
+getNodeKindPk i = do 
   gr <- asks graph 
   case lab gr i of 
     Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
@@ -144,22 +144,22 @@ argNodesToArgTypes argNodes rep = do
     case ns of
       (Prd, ns) -> do
          typs <- forM ns (nodeToType rep)
-         knd <- checkTypKinds typs
+         knds <- mapM getNodeKindPk ns
+         knd <- checkTypKinds knds
          pure $ PrdCnsType PrdRep $ case rep of
                                        PosRep -> mkUnion defaultLoc knd typs
                                        NegRep -> mkInter defaultLoc knd typs
       (Cns, ns) -> do
          typs <- forM ns (nodeToType (flipPolarityRep rep))
-         knd <- checkTypKinds typs
+         knds <- mapM getNodeKindPk ns
+         knd <- checkTypKinds knds
          pure $ PrdCnsType CnsRep $ case rep of
                                        PosRep -> mkInter defaultLoc knd typs
                                        NegRep -> mkUnion defaultLoc knd typs
 
-checkTypKinds :: [Typ pol] -> AutToTypeM MonoKind
+checkTypKinds :: [PolyKind] -> AutToTypeM PolyKind
 checkTypKinds [] = throwAutomatonError  defaultLoc [T.pack "Can't get Kind of empty list of types"]
-checkTypKinds (fst:rst) =
-  let knd = getKind fst
-  in if all ((knd ==) . getKind) rst then return knd else throwAutomatonError defaultLoc [T.pack "Kinds of intersection types don't match"]
+checkTypKinds (fst:rst) = if all (fst ==) rst then return fst else throwAutomatonError defaultLoc [T.pack "Kinds of intersection types don't match"]
 
 nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToType rep i = do
@@ -168,7 +168,7 @@ nodeToType rep i = do
   inCache <- checkCache i
   if inCache
     then do 
-      knd <- getNodeKindRec i
+      knd <- getNodeKindPk i
       pure (TyRecVar defaultLoc rep knd (MkRecTVar ("r" <> T.pack (show i))))
     else nodeToTypeNoCache rep i
 
