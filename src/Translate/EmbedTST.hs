@@ -12,8 +12,7 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
 import Data.Bifunctor (bimap, second)
-import Data.List.NonEmpty (NonEmpty((:|)))
-import Syntax.CST.Kinds (PolyKind(..), MonoKind(..), EvaluationOrder(..))
+import Syntax.CST.Kinds (PolyKind(..), MonoKind(..))
 
 ---------------------------------------------------------------------------------
 -- A typeclass for embedding TST.X into Core.X
