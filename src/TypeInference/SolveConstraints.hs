@@ -198,13 +198,13 @@ unifyKinds StringRep StringRep = return ()
 unifyKinds knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1<> " and " <> ppPrint knd2]
 
 computeKVarSolution :: KindPolicy
-                    -> Maybe (KVar, MonoKind)
-                    -> [([KVar], Maybe MonoKind)]
-                    -> Either (NE.NonEmpty Error) (Map KVar MonoKind)
+                    -> Maybe (KVar, PolyKind)
+                    -> [([KVar], Maybe PolyKind)]
+                    -> Either (NE.NonEmpty Error) (Map KVar PolyKind)
 computeKVarSolution DefaultCBV Nothing sets =  
-  return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBV); Just mk -> (xs,mk)) <$> sets)
+  return $ computeKVarSolution' ((\(xs,pk) -> case pk of Nothing -> (xs,MkPolyKind [] CBV); Just pk -> (xs,pk)) <$> sets)
 computeKVarSolution DefaultCBN Nothing sets = 
-  return $ computeKVarSolution' ((\(xs,mk) -> case mk of Nothing -> (xs,CBox CBN); Just mk -> (xs,mk)) <$> sets)
+  return $ computeKVarSolution' ((\(xs,pk) -> case pk of Nothing -> (xs,MkPolyKind [] CBN); Just pk -> (xs,pk)) <$> sets)
 computeKVarSolution ErrorUnresolved Nothing sets | all (\(_,mk) -> isJust mk) sets = do
   pure $ computeKVarSolution' (map (Data.Bifunctor.second fromJust) sets)
                                          | otherwise = do
@@ -215,18 +215,18 @@ computeKVarSolution policy (Just (kv,annotKind)) sets = do
   let annotAdded = removeNothing kv annotKind sets
   computeKVarSolution policy Nothing annotAdded
   where 
-    removeNothing::KVar->MonoKind->[([KVar], Maybe MonoKind)]->[([KVar], Maybe MonoKind)] 
+    removeNothing::KVar->PolyKind->[([KVar], Maybe PolyKind)]->[([KVar], Maybe PolyKind)] 
     removeNothing _ _ [] = []
-    removeNothing kv mk ((kvs, Just mk'):rst) = (kvs,Just mk'):(removeNothing kv mk rst)
+    removeNothing kv mk ((kvs, Just mk'):rst) = (kvs,Just mk'):removeNothing kv mk rst
     removeNothing kv mk ((kvs,Nothing):rst) = 
       case filter (/= kv) kvs of 
-        [] -> ([kv], Just mk) : (removeNothing kv mk rst)
-        rst' -> ([kv],Just mk) : ((rst',Nothing) : (removeNothing kv mk rst))
+        [] -> ([kv], Just mk) : removeNothing kv mk rst
+        rst' -> ([kv],Just mk) : ((rst',Nothing) : removeNothing kv mk rst)
 
-computeKVarSolution' :: [([KVar],MonoKind)] -> Map KVar MonoKind
+computeKVarSolution' :: [([KVar],PolyKind)] -> Map KVar PolyKind
 computeKVarSolution' sets = M.fromList (concatMap f sets)
   where
-    f :: ([a],MonoKind) -> [(a,MonoKind)]
+    f :: ([a],PolyKind) -> [(a,PolyKind)]
     f (xs, mk) = zip xs (repeat mk)
 
 
@@ -483,7 +483,7 @@ getInstances cn env = M.lookup cn (M.unions $ instanceEnv <$> M.elems env)
 -- Exported Functions
 ------------------------------------------------------------------------------
 
-zonkVariableState :: Map KVar MonoKind -> VariableState -> VariableState
+zonkVariableState :: Map KVar PolyKind -> VariableState -> VariableState
 zonkVariableState m (VariableState lbs ubs tc k) = do
   let bisubst = (MkBisubstitution (M.empty, m) :: Bisubstitution UniVT)
   let zonkedlbs = zonk UniRep bisubst <$> lbs
@@ -492,7 +492,7 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
   VariableState zonkedlbs zonkedubs tc zonkedKind
 
 -- | Creates the variable states that results from solving constraints.
-solveConstraints :: ConstraintSet -> Maybe (KVar, MonoKind) -> Map ModuleName Environment -> Either (NE.NonEmpty Error) SolverResult
+solveConstraints :: ConstraintSet -> Maybe (KVar, PolyKind) -> Map ModuleName Environment -> Either (NE.NonEmpty Error) SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) annotKind env = do
   (_, solverState) <- runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet)
   kvarSolution <- computeKVarSolution ErrorUnresolved annotKind (sst_kvars solverState) 

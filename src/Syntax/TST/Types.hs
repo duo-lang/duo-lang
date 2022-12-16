@@ -86,7 +86,7 @@ deriving instance Show (MethodSig pol)
 
 data Typ (pol :: Polarity) where
   TySkolemVar     :: Loc -> PolarityRep pol -> MonoKind -> SkolemTVar -> Typ pol
-  TyUniVar        :: Loc -> PolarityRep pol -> MonoKind -> UniTVar -> Typ pol
+  TyUniVar        :: Loc -> PolarityRep pol -> PolyKind -> UniTVar -> Typ pol
   TyRecVar        :: Loc -> PolarityRep pol -> PolyKind -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
@@ -155,7 +155,7 @@ class GetKind (a :: Type) where
 
 instance GetKind (Typ pol) where 
   getKind (TySkolemVar _ _ mk _)        = mk
-  getKind (TyUniVar _ _ mk _)           = mk
+  getKind (TyUniVar _ _ pk _)           = CBox $ returnKind pk
   getKind (TyRecVar _ _ pk _)           = CBox $ returnKind pk
   getKind (TyData _ _ mk _ )            = mk
   getKind (TyCodata _ _ mk _ )          = mk
@@ -262,7 +262,7 @@ data VarType
   | RecVT
 
 type family BisubstMap (vt :: VarType) :: Type where
-  BisubstMap UniVT    = (Map UniTVar (Typ Pos, Typ Neg), Map KVar MonoKind)
+  BisubstMap UniVT    = (Map UniTVar (Typ Pos, Typ Neg), Map KVar PolyKind)
   BisubstMap SkolemVT = Map SkolemTVar (Typ Pos, Typ Neg)
   BisubstMap RecVT    = Map RecTVar (Typ Pos, Typ Neg)
 
@@ -381,17 +381,18 @@ instance ZonkKind MonoKind where
   zonkKind _ I64Rep = I64Rep
   zonkKind _ CharRep = CharRep
   zonkKind _ StringRep = StringRep
-  zonkKind bisubst kindV@(KindVar kv) = Data.Maybe.fromMaybe kindV (M.lookup kv (snd (bisubst_map bisubst)))
 
 instance ZonkKind PolyKind where 
   zonkKind bisubst (MkPolyKind args eval) = 
     MkPolyKind (map (\(x,y,z) -> (x,y, zonkKind bisubst z)) args) eval 
+  zonkKind bisubst kindV@(KindVar kv) = Data.Maybe.fromMaybe kindV (M.lookup kv (snd (bisubst_map bisubst)))
+
 
 instance ZonkKind (Typ pol) where 
   zonkKind bisubst (TySkolemVar loc rep mk tv) = 
     TySkolemVar loc rep (zonkKind bisubst mk) tv
-  zonkKind bisubst (TyUniVar loc rep mk tv) = 
-    TyUniVar loc rep (zonkKind bisubst mk) tv
+  zonkKind bisubst (TyUniVar loc rep pk tv) = 
+    TyUniVar loc rep (zonkKind bisubst pk) tv
   zonkKind bisubst (TyRecVar loc rep pk tv) =
     TyRecVar loc rep (zonkKind bisubst pk) tv
   zonkKind bisubst (TyData loc pol mk xtors) =

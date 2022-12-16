@@ -42,7 +42,6 @@ newtype KVar = MkKVar { unKVar :: Text }
 -- | A MonoKind is a kind which classifies inhabitated types.
 data MonoKind
   = CBox EvaluationOrder  -- ^ Boxed CBV/CBN
-  | KindVar KVar 
   | I64Rep
   | F64Rep
   | CharRep
@@ -61,18 +60,16 @@ data PolyKind =
   MkPolyKind { kindArgs :: [(Variance, SkolemTVar, MonoKind)]
              , returnKind :: EvaluationOrder
              }
+  | KindVar KVar 
 
 deriving instance (Show PolyKind)
 deriving instance (Eq PolyKind)
 deriving instance (Ord PolyKind)
 
-freeKindVars :: MonoKind -> Maybe KVar
-freeKindVars (KindVar v) = Just v
-freeKindVars _ = Nothing
-
 allTypeVars :: PolyKind -> Set SkolemTVar
 allTypeVars MkPolyKind{ kindArgs } =
   S.fromList ((\(_,var,_) -> var) <$> kindArgs)
+allTypeVars (KindVar _) = S.empty
 
 lookupPolyKind :: SkolemTVar -> PolyKind -> Maybe (Variance, SkolemTVar, MonoKind)
 lookupPolyKind tv MkPolyKind{ kindArgs } = go kindArgs
@@ -82,6 +79,7 @@ lookupPolyKind tv MkPolyKind{ kindArgs } = go kindArgs
     go (k@(_,tv',_) : ks) = if tv == tv'
                            then Just k
                            else go ks
+lookupPolyKind _ (KindVar _) = Nothing
 
 lookupPolyKindVariance :: SkolemTVar -> PolyKind -> Maybe Variance
 lookupPolyKindVariance tv pk = (\(v,_,_) -> v) <$> lookupPolyKind tv pk

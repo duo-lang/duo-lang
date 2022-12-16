@@ -131,7 +131,6 @@ instance PrettyAnn MonoKind where
   prettyAnn I64Rep = "I64Rep"
   prettyAnn CharRep = "CharRep"
   prettyAnn StringRep = "StringRep"
-  prettyAnn (KindVar kv) = prettyAnn kv
 
 instance PrettyAnn KVar where
   prettyAnn (MkKVar kv) = prettyAnn kv
@@ -147,6 +146,8 @@ instance PrettyAnn PolyKind where
     parens' comma (prettyTParam <$> kindArgs) <+>
     annSymbol "->" <+>
     prettyAnn returnKind
+  prettyAnn (KindVar kv) = prettyAnn kv
+
 
 prettyTParam :: (Variance, SkolemTVar, MonoKind) -> Doc Annotation
 prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> annSymbol ":" <+> prettyAnn k

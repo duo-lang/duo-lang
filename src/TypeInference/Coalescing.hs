@@ -88,9 +88,9 @@ coalesce result@MkSolverResult { tvarSolution, kvarSolution } = MkBisubstitution
     where
         res = M.keys tvarSolution
         kinds = map (\x -> vst_kind (fromMaybe  (error "UniVar not found in SolverResult (should never happen)") (M.lookup x tvarSolution))) res
-        f (tvar,mk) = do 
-          x <- coalesceType $ TyUniVar defaultLoc PosRep mk tvar
-          y <- coalesceType $ TyUniVar defaultLoc NegRep mk tvar
+        f (tvar,pk) = do 
+          x <- coalesceType $ TyUniVar defaultLoc PosRep pk tvar
+          y <- coalesceType $ TyUniVar defaultLoc NegRep pk tvar
           return (x, y)
         xs = zip res $ runCoalesceM result $ mapM f (zip res kinds)
 
@@ -99,14 +99,11 @@ coalesceType (TySkolemVar loc rep mk tv) =  do
   return (TySkolemVar loc rep mk tv)
 coalesceType (TyRecVar loc rep pk tv) = do 
   return (TyRecVar loc rep pk tv)
-coalesceType (TyUniVar _ PosRep mk tv) = do
+coalesceType (TyUniVar _ PosRep pk tv) = do
   isInProcess <- inProcess (tv, Pos)
-  if isInProcess then
-    case mk of 
-      CBox eo -> do
-        recVar <- getOrElseUpdateRecVar (tv, Pos)
-        return (TyRecVar defaultLoc PosRep (MkPolyKind [] eo) recVar)
-      mk -> error ("Recurvive variable can only have kind CBV or CBN not " <> show mk)
+  if isInProcess then do
+    recVar <- getOrElseUpdateRecVar (tv, Pos)
+    return (TyRecVar defaultLoc PosRep pk recVar)
   else do
     VariableState { vst_lowerbounds } <- getVariableState tv
     let f r = r { r_inProcess =  S.insert (tv, Pos) (r_inProcess r) }
@@ -115,7 +112,7 @@ coalesceType (TyUniVar _ PosRep mk tv) = do
     case M.lookup (tv, Pos) recVarMap of
       Nothing     -> do
         newName <- getSkolemVar tv
-        return $ mkUnion defaultLoc mk (TySkolemVar defaultLoc PosRep mk newName : lbs')
+        return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk newName : lbs')
       Just recVar -> do
         case mk of 
           CBox eo -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc mk (TyRecVar defaultLoc PosRep (MkPolyKind [] eo) recVar  : lbs'))

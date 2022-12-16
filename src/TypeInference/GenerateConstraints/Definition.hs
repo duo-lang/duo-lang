@@ -127,7 +127,7 @@ class GenConstraints a b | a -> b where
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
 
-freshTVar :: UVarProvenance -> Maybe MonoKind -> GenM (TST.Typ Pos, TST.Typ Neg)
+freshTVar :: UVarProvenance -> Maybe PolyKind -> GenM (TST.Typ Pos, TST.Typ Neg)
 freshTVar uvp Nothing = do
   uVarC <- gets uVarCount
   kVarC <- gets kVarCount

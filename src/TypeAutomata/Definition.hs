@@ -180,7 +180,6 @@ emptyNodeLabel pol I64Rep = MkPrimitiveNodeLabel pol I64
 emptyNodeLabel pol F64Rep = MkPrimitiveNodeLabel pol F64
 emptyNodeLabel pol StringRep = MkPrimitiveNodeLabel pol PString
 emptyNodeLabel pol CharRep = MkPrimitiveNodeLabel pol PChar
-emptyNodeLabel _ (KindVar _) = error "Tried to create empty node label with KindVar Kind"
 
 emptyNodeLabelPk :: Polarity -> PolyKind -> NodeLabel
 emptyNodeLabelPk pol = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty
