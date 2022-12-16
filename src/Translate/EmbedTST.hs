@@ -148,14 +148,14 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST (TST.TySyn loc pol tn tp) = do 
     let knd = TST.getKind tp 
     RST.TyKindAnnot knd $ RST.TySyn loc pol tn (embedTST tp)
-  embedTST (TST.TyBot loc mk ) =
-    RST.TyKindAnnot mk $ RST.TyBot loc
-  embedTST (TST.TyTop loc mk ) =
-    RST.TyKindAnnot mk $ RST.TyTop loc
-  embedTST (TST.TyUnion loc mk tp1 tp2) =
-    RST.TyKindAnnot mk $ RST.TyUnion loc (embedTST tp1) (embedTST tp2)
-  embedTST (TST.TyInter loc mk tn1 tn2) =
-    RST.TyKindAnnot mk $ RST.TyInter loc (embedTST tn1) (embedTST tn2)
+  embedTST (TST.TyBot loc pk ) =
+    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyBot loc
+  embedTST (TST.TyTop loc pk ) =
+    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyTop loc
+  embedTST (TST.TyUnion loc pk tp1 tp2) =
+    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyUnion loc (embedTST tp1) (embedTST tp2)
+  embedTST (TST.TyInter loc pk tn1 tn2) =
+    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyInter loc (embedTST tn1) (embedTST tn2)
   embedTST (TST.TyRec loc pol rv tp) = do
     let knd = TST.getKind tp
     RST.TyKindAnnot knd $ RST.TyRec loc pol rv (embedTST  tp)

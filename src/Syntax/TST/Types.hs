@@ -100,10 +100,10 @@ data Typ (pol :: Polarity) where
   -- | Type synonym
   TySyn           :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | Lattice types
-  TyBot           :: Loc -> MonoKind -> Typ Pos
-  TyTop           :: Loc -> MonoKind -> Typ Neg
-  TyUnion         :: Loc -> MonoKind -> Typ Pos -> Typ Pos -> Typ Pos
-  TyInter         :: Loc -> MonoKind -> Typ Neg -> Typ Neg -> Typ Neg
+  TyBot           :: Loc -> PolyKind -> Typ Pos
+  TyTop           :: Loc -> PolyKind -> Typ Neg
+  TyUnion         :: Loc -> PolyKind -> Typ Pos -> Typ Pos -> Typ Pos
+  TyInter         :: Loc -> PolyKind -> Typ Neg -> Typ Neg -> Typ Neg
   -- | Equirecursive Types
   TyRec           :: Loc -> PolarityRep pol -> RecTVar -> Typ pol -> Typ pol
   -- | Builtin Types
@@ -118,13 +118,13 @@ deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
 deriving instance Show (Typ pol)
 
-mkUnion :: Loc -> MonoKind -> [Typ Pos] -> Typ Pos
-mkUnion loc mk   []     = TyBot loc mk
+mkUnion :: Loc -> PolyKind -> [Typ Pos] -> Typ Pos
+mkUnion loc knd   []     = TyBot loc knd
 mkUnion _   _   [t]    = t
 mkUnion loc knd (t:ts) = TyUnion loc knd t (mkUnion loc knd ts)
 
-mkInter :: Loc -> MonoKind -> [Typ Neg] -> Typ Neg
-mkInter loc mk   []     = TyTop loc mk
+mkInter :: Loc -> PolyKind -> [Typ Neg] -> Typ Neg
+mkInter loc knd   []     = TyTop loc knd
 mkInter _   _   [t]    = t
 mkInter loc knd (t:ts) = TyInter loc knd t (mkInter loc knd ts)
 
@@ -164,10 +164,10 @@ instance GetKind (Typ pol) where
   getKind (TyNominal _ _ pk _ )         = CBox $ returnKind pk
   getKind (TyApp _ _ ty _)              = getKind ty
   getKind (TySyn _ _ _ ty)              = getKind ty
-  getKind (TyTop _ mk)                  = mk
-  getKind (TyBot _ mk)                  = mk
-  getKind (TyUnion _ mk _ _)            = mk
-  getKind (TyInter _ mk _ _)            = mk
+  getKind (TyTop _ pk)                  = CBox $ returnKind pk
+  getKind (TyBot _ pk)                  = CBox $ returnKind pk
+  getKind (TyUnion _ pk _ _)            = CBox $ returnKind pk
+  getKind (TyInter _ pk _ _)            = CBox $ returnKind pk
   getKind (TyRec _ _ _ ty)              = getKind ty
   getKind TyI64{}                       = I64Rep
   getKind TyF64{}                       = F64Rep
@@ -328,20 +328,20 @@ instance Zonk (Typ pol) where
     TyApp loc rep (zonk vt bisubst ty) (zonk vt bisubst <$> args)
   zonk vt bisubst (TySyn loc rep nm ty) =
      TySyn loc rep nm (zonk vt bisubst ty)
-  zonk UniRep bisubst (TyTop loc mk) = TyTop loc (zonkKind bisubst mk)
+  zonk UniRep bisubst (TyTop loc pk) = TyTop loc (zonkKind bisubst pk)
   zonk _vt _ (TyTop loc mk) =
     TyTop loc mk
-  zonk UniRep bisubst (TyBot loc mk) = TyBot loc (zonkKind bisubst mk)
-  zonk _vt _ (TyBot loc mk) =
-    TyBot loc mk
-  zonk UniRep bisubst (TyUnion loc knd ty1 ty2) = 
-    TyUnion loc (zonkKind bisubst knd) (zonk UniRep bisubst ty1) (zonk UniRep bisubst ty2)
-  zonk vt bisubst (TyUnion loc knd ty ty') =
-    TyUnion loc knd (zonk vt bisubst ty) (zonk vt bisubst ty')
-  zonk UniRep bisubst (TyInter loc knd ty1 ty2) = 
-    TyInter loc (zonkKind bisubst knd) (zonk UniRep bisubst ty1) (zonk UniRep bisubst ty2)
-  zonk vt bisubst (TyInter loc knd ty ty') =
-    TyInter loc knd (zonk vt bisubst ty) (zonk vt bisubst ty')
+  zonk UniRep bisubst (TyBot loc pk) = TyBot loc (zonkKind bisubst pk)
+  zonk _vt _ (TyBot loc pk) =
+    TyBot loc pk
+  zonk UniRep bisubst (TyUnion loc pknd ty1 ty2) = 
+    TyUnion loc (zonkKind bisubst pknd) (zonk UniRep bisubst ty1) (zonk UniRep bisubst ty2)
+  zonk vt bisubst (TyUnion loc pknd ty ty') =
+    TyUnion loc pknd (zonk vt bisubst ty) (zonk vt bisubst ty')
+  zonk UniRep bisubst (TyInter loc pknd ty1 ty2) = 
+    TyInter loc (zonkKind bisubst pknd) (zonk UniRep bisubst ty1) (zonk UniRep bisubst ty2)
+  zonk vt bisubst (TyInter loc pknd ty ty') =
+    TyInter loc pknd (zonk vt bisubst ty) (zonk vt bisubst ty')
   zonk RecRep bisubst (TyRec loc rep tv ty) =
     let bisubst' = MkBisubstitution $ M.delete tv (bisubst_map bisubst)
     in TyRec loc rep tv $ zonk RecRep bisubst' ty
@@ -409,14 +409,14 @@ instance ZonkKind (Typ pol) where
     TyApp loc pol (zonkKind bisubst ty) (zonkKind bisubst <$> args)
   zonkKind bisubst (TySyn loc pol tyn ty) =
     TySyn loc pol tyn (zonkKind bisubst ty)
-  zonkKind bisubst (TyTop loc mk) = 
-    TyTop loc (zonkKind bisubst mk)
-  zonkKind bisubst (TyBot loc mk) = 
-    TyBot loc (zonkKind bisubst mk)
-  zonkKind bisubst (TyUnion loc mk ty1 ty2) =
-    TyUnion loc (zonkKind bisubst mk) (zonkKind bisubst ty1) (zonkKind bisubst ty2)
-  zonkKind bisubst (TyInter loc mk ty1 ty2) =
-    TyInter loc (zonkKind bisubst mk) (zonkKind bisubst ty1) (zonkKind bisubst ty2)
+  zonkKind bisubst (TyTop loc pk) = 
+    TyTop loc (zonkKind bisubst pk)
+  zonkKind bisubst (TyBot loc pk) = 
+    TyBot loc (zonkKind bisubst pk)
+  zonkKind bisubst (TyUnion loc pk ty1 ty2) =
+    TyUnion loc (zonkKind bisubst pk) (zonkKind bisubst ty1) (zonkKind bisubst ty2)
+  zonkKind bisubst (TyInter loc pk ty1 ty2) =
+    TyInter loc (zonkKind bisubst pk) (zonkKind bisubst ty1) (zonkKind bisubst ty2)
   zonkKind bisubst (TyRec loc pol rv ty) = 
     TyRec loc pol rv (zonkKind bisubst ty)
   zonkKind _ ty@TyI64{} = ty

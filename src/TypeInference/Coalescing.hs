@@ -115,7 +115,7 @@ coalesceType (TyUniVar _ PosRep pk tv) = do
         return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk newName : lbs')
       Just recVar -> do
         case mk of 
-          CBox eo -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc mk (TyRecVar defaultLoc PosRep (MkPolyKind [] eo) recVar  : lbs'))
+          CBox eo -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc (MkPolyKind [] eo) (TyRecVar defaultLoc PosRep (MkPolyKind [] eo) recVar  : lbs'))
           mk -> error ("Recursive variable can only have kind CBV or CBN, not "<>show mk)
 coalesceType (TyUniVar _ NegRep mk tv) = do
   isInProcess <- inProcess (tv, Neg)
@@ -133,9 +133,11 @@ coalesceType (TyUniVar _ NegRep mk tv) = do
       case M.lookup (tv, Neg) recVarMap of
         Nothing -> do
           newName <- getSkolemVar tv
-          return $ mkInter defaultLoc mk (TySkolemVar defaultLoc NegRep mk newName : ubs')
+          case mk of 
+            CBox eo -> return $ mkInter defaultLoc (MkPolyKind [] eo) (TySkolemVar defaultLoc NegRep mk newName : ubs')
+            _ -> error ("Recursive variable can only have kind CBV or CBN, not "<>show mk)
         Just recVar -> case mk of 
-          CBox eo -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc mk (TyRecVar defaultLoc NegRep (MkPolyKind [] eo) recVar  : ubs'))
+          CBox eo -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc (MkPolyKind [] eo) (TyRecVar defaultLoc NegRep (MkPolyKind [] eo) recVar  : ubs'))
           mk -> error ("Recursive variable can only have kind CBV or CBN, not "<>show mk)
 
 coalesceType (TyData loc rep mk xtors) = do
@@ -157,18 +159,18 @@ coalesceType (TyApp loc rep ty args) = do
     ty' <- coalesceType ty
     return $ TyApp loc rep ty' args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
-coalesceType (TyTop loc mk) = do 
-    pure (TyTop loc mk)
-coalesceType (TyBot loc mk) = do
-    pure (TyBot loc mk)
-coalesceType (TyUnion loc mk ty1 ty2) = do
+coalesceType (TyTop loc pk) = do 
+    pure (TyTop loc pk)
+coalesceType (TyBot loc pk) = do
+    pure (TyBot loc pk)
+coalesceType (TyUnion loc pk ty1 ty2) = do
   ty1' <- coalesceType ty1
   ty2' <- coalesceType ty2
-  pure (TyUnion loc mk ty1' ty2')
-coalesceType (TyInter loc mk ty1 ty2) = do
+  pure (TyUnion loc pk ty1' ty2')
+coalesceType (TyInter loc pk ty1 ty2) = do
   ty1' <- coalesceType ty1
   ty2' <- coalesceType ty2
-  pure (TyInter loc mk ty1' ty2')
+  pure (TyInter loc pk ty1' ty2')
 coalesceType (TyRec loc PosRep tv ty) = do
     return $ TyRec loc PosRep tv ty
 coalesceType (TyRec loc NegRep tv ty) = do
