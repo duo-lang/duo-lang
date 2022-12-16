@@ -444,24 +444,13 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyRecVar loc pol rv) = do
     rvMap <- gets usedRecVars
     case M.lookup rv rvMap of 
-      Nothing -> do 
-        -- recursive variable needs to be contained in a structural (refinement) or nominal  type
-        -- this contains the last seen refinement type polykind
-        lastPk <- gets lastPk
-        case lastPk of 
-          Nothing -> error "Recvar has to be contained in a nominal or structural (refinement) type"
-          Just pk -> do
-            let newM = M.insert rv pk rvMap
-            modify (\gs@GenerateState{} -> gs { usedRecVars = newM })
-            return (TST.TyRecVar loc pol pk rv)
+      Nothing -> error "Recvar has to be contained in a nominal or structural (refinement) type"
       Just pk -> return (TST.TyRecVar loc pol pk rv)
 
   annotateKind (RST.TyData loc pol xtors) = do 
     let xtorNames = map RST.sig_name xtors
     xtorKnds <- mapM lookupXtorKind xtorNames
     knd <- getXtorKinds loc xtors
-    let eo = case knd of CBox CBV -> CBV; CBox CBN -> CBN; _ -> error "TyData needs to have kind CBN or CBV"
-    modify (\gs@GenerateState{} -> gs { lastPk = Just (MkPolyKind [] eo) })
     xtors' <- mapM annotateKind xtors
     compXtorKinds loc xtors' xtorKnds
     return (TST.TyData loc pol knd xtors')
@@ -488,8 +477,6 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     let xtorNames = map RST.sig_name xtors
     xtorKnds <- mapM lookupXtorKind xtorNames
     knd <- getXtorKinds loc xtors
-    let eo = case knd of CBox CBV -> CBV; CBox CBN -> CBN; _ -> error "TyData needs to have kind CBN or CBV"
-    modify (\gs@GenerateState{} -> gs { lastPk = Just (MkPolyKind [] eo) })
     xtors' <- mapM annotateKind xtors
     compXtorKinds loc xtors' xtorKnds
     return (TST.TyCodata loc pol knd xtors')
@@ -515,8 +502,6 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyDataRefined loc pol pknd tyn xtors) = do 
     xtors' <- mapM annotateKind xtors
     decl <- lookupTypeName loc tyn
-    -- insert polykind to use for inner recvars
-    modify (\gs@GenerateState{} -> gs { lastPk = Just $ TST.data_kind decl })
     checkXtors loc xtors' decl
     return (TST.TyDataRefined loc pol pknd tyn xtors')
     where 
@@ -533,8 +518,6 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyCodataRefined loc pol pknd tyn xtors) = do
     xtors' <- mapM annotateKind xtors
     decl <- lookupTypeName loc tyn
-    -- insert polykind to use for inner recvars
-    modify (\gs@GenerateState{} -> gs { lastPk = Just $ TST.data_kind decl })
     checkXtors loc xtors' decl
     return (TST.TyCodataRefined loc pol pknd tyn xtors')
     where 
@@ -550,7 +533,6 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
 
   annotateKind (RST.TyApp _loc' _pol' (RST.TyNominal loc pol polyknd tyn) vartys) = do 
     -- insert polykind to use for inner recvars
-    modify (\gs@GenerateState{} -> gs { lastPk = Just polyknd })
     vartys' <- mapM annotateKind vartys
     let argKnds = map (\(_, _, mk) -> mk) (kindArgs polyknd)
     checkArgKnds loc (NE.toList vartys') argKnds
@@ -573,8 +555,6 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
     case kindArgs polyknd of 
       [] -> do 
-        -- insert polykind to use for inner recvars
-        modify (\gs@GenerateState{} -> gs { lastPk = Just polyknd })
         return $ TST.TyNominal loc pol polyknd tyn
       _ -> throwOtherError loc ["Nominal Type " <> ppPrint tyn <> " was not fully applied"]
   annotateKind (RST.TyApp loc _ ty _ ) = throwOtherError loc ["Types can only be applied to nominal types, was applied to ", ppPrint ty]
@@ -605,9 +585,34 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     addConstraint (KindEq KindConstraint (KindVar kv) (getKind ty1'))
     return (TST.TyInter loc (KindVar kv) ty1' ty2')
     
-  annotateKind (RST.TyRec loc pol rv ty) = do 
+  annotateKind (RST.TyRec loc pol rv ty) = do
+    pknd <- getPk ty
+    insertPk rv pknd
     ty' <- annotateKind ty
     return (TST.TyRec loc pol rv ty')
+      where 
+        getPk :: RST.Typ pol -> GenM PolyKind
+        getPk (RST.TyData loc _ xtors) = do
+          retK <- getXtorKinds loc xtors
+          case retK of 
+            CBox eo -> return (MkPolyKind [] eo)
+            _ -> throwOtherError defaultLoc ["Structural Type can only have CBV or CBN as kind"]
+        getPk (RST.TyCodata loc _ xtors) = do
+          retK <- getXtorKinds loc xtors
+          case retK of 
+            CBox eo -> return (MkPolyKind [] eo)
+            _ -> throwOtherError defaultLoc ["Structural Type can only have CBV or CBN as kind"]
+        getPk (RST.TyNominal _ _ pk _) = return pk
+        getPk (RST.TyDataRefined _ _ pknd _ _) = return pknd
+        getPk (RST.TyCodataRefined _ _ pknd _ _) = return pknd
+        getPk (RST.TyKindAnnot _ ty) = getPk ty
+        getPk _ = throwOtherError defaultLoc ["could not find polykind (not fully implemented)"]
+
+        insertPk :: RecTVar -> PolyKind -> GenM ()
+        insertPk rv knd = do  
+          rvMap <- gets usedRecVars
+          let newM = M.insert rv knd rvMap
+          modify (\gs@GenerateState{} -> gs { usedRecVars = newM })
 
   annotateKind (RST.TyI64 loc pol) = return (TST.TyI64 loc pol)
   annotateKind (RST.TyF64 loc pol) = return (TST.TyF64 loc pol)
