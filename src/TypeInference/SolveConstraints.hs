@@ -128,7 +128,7 @@ solve (cs:css) = do
   if cacheHit then solve css else
     case cs of
       (KindEq _ k1 k2) -> do
-        unifyKinds k1 k2
+        unifyPolyKinds k1 k2
         solve css
       (SubType _ ty@(TyUniVar _ PosRep _ uvl) tvu@(TyUniVar _ NegRep _ uvu)) ->
         if uvl == uvu
@@ -157,7 +157,7 @@ solve (cs:css) = do
 -- Kind Inference
 ------------------------------------------------------------------------------
 
-partitionM :: [([KVar], Maybe MonoKind)] -> KVar -> SolverM (([KVar], Maybe MonoKind),[([KVar], Maybe MonoKind)])
+partitionM :: [([KVar], Maybe PolyKind)] -> KVar -> SolverM (([KVar], Maybe PolyKind),[([KVar], Maybe PolyKind)])
 partitionM sets kv = do
   case partition (\x -> kv `elem` fst x) sets of
     ([], _) -> throwSolverError defaultLoc ["Kind variable cannot be found: " <> ppPrint kv]
@@ -186,8 +186,9 @@ unifyPolyKinds (MkPolyKind args1 eo1) (MkPolyKind args2 eo2) = do
     compArgs _ [] = throwSolverError defaultLoc ["Numbers of type arguments don't match"]
     compArgs [] _ = throwSolverError defaultLoc ["Numbers of type arguments don't match"]
     compArgs ((var1,sk1,mk1):rst1) ((var2,sk2,mk2):rst2) = 
-      if var1 == var2 && mk1 == mk2 
-        then compArgs rst1 rst2 
+      if var1 == var2 then do
+        unifyMonoKinds mk1 mk2 
+        compArgs rst1 rst2 
         else throwSolverError defaultLoc ["Arguments " <> ppPrint var1 <> " " <> ppPrint sk1 <> ":"<> ppPrint mk1 <> " and " <> ppPrint var2 <> " " <> ppPrint sk2 <> ":" <> ppPrint mk2 <> " don't match"]
 unifyPolyKinds (KindVar kv1) (KindVar kv2) = do
   sets <- getKVars
@@ -464,14 +465,14 @@ getInferredType (TyUnion _ _ TySkolemVar{} typ) TySkolemVar{} = pure $ Left typ
 getInferredType _ _ = throwSolverError defaultLoc [ "UniVar constrained by type class does not have the expected Bisubstitution." ]
 
 -- | Try to solve subtyping constraint between two types.
-trySubtype :: UniTVar -> MonoKind -> Typ Pos -> Typ Neg -> Map ModuleName Environment -> Bool
+trySubtype :: UniTVar -> PolyKind -> Typ Pos -> Typ Neg -> Map ModuleName Environment -> Bool
 trySubtype uv k typ tyn env = let
   css = [SubType ClassResolutionConstraint typ tyn]
   constraintSet = ConstraintSet css [(uv, TypeClassResolution, k)] []
   in isRight $ runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet)
 
 -- | Resolve instances for univar constrained by covariant type class.
-resolveCoClass :: UniTVar -> MonoKind -> [(FreeVarName, Typ 'Pos, Typ 'Neg)] -> Typ Pos -> Map ModuleName Environment
+resolveCoClass :: UniTVar -> PolyKind -> [(FreeVarName, Typ 'Pos, Typ 'Neg)] -> Typ Pos -> Map ModuleName Environment
              -> [(FreeVarName, Typ 'Pos, Typ 'Neg)]
 resolveCoClass _ _ [] _ _ = []
 -- case of covariant type class
@@ -481,7 +482,7 @@ resolveCoClass uv k (i@(_iname, _typ, tyn):instances) sub env = let
   in if res then i:is else is
 
 -- | Resolve instances for univar constrained by contravariant type class.
-resolveContraClass :: UniTVar -> MonoKind -> [(FreeVarName, Typ 'Pos, Typ 'Neg)] -> Typ Neg -> Map ModuleName Environment
+resolveContraClass :: UniTVar -> PolyKind -> [(FreeVarName, Typ 'Pos, Typ 'Neg)] -> Typ Neg -> Map ModuleName Environment
              -> [(FreeVarName, Typ 'Pos, Typ 'Neg)]
 resolveContraClass _ _ [] _ _ = []
 -- case of contravariant type class

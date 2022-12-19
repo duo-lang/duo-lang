@@ -58,7 +58,7 @@ instance (PrettyAnn a) => PrettyAnn (Constraint a) where
   prettyAnn (TypeClass ann cn typ) =
     prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
 
-printUVar :: (UniTVar, UVarProvenance, MonoKind) -> Doc Annotation
+printUVar :: (UniTVar, UVarProvenance, PolyKind) -> Doc Annotation
 printUVar (tv,prov,kv) = prettyAnn tv <> ":" <> prettyAnn kv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
