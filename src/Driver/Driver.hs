@@ -25,7 +25,7 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind(CBox,KindVar))
+import Syntax.CST.Kinds (MonoKind(CBox),PolyKind(KindVar))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
@@ -108,6 +108,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
     ppPrintIO constraintSet
   -- 2. Solve the constraints.
   tyAnnotChecked <- checkKindAnnot pcdecl_annot pcdecl_loc
+  let tyInf = TST.getTypeTerm tmInferred
   let annotKind = case ((TST.getKind $ TST.getTypeTerm tmInferred),tyAnnotChecked) of (KindVar kv,Just annot) -> Just (kv,TST.getKind $ TST.ts_monotype annot); _ -> Nothing
   solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet annotKind env
   guardVerbose $ ppPrintIO solverResult

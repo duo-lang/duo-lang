@@ -244,8 +244,8 @@ nodeToTypeNoCache rep i  = do
 
         let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
         return $ case rep of
-          PosRep -> mkUnion defaultLoc (CBox $ returnKind pk) typs
-          NegRep -> mkInter defaultLoc (CBox $ returnKind pk) typs
+          PosRep -> mkUnion defaultLoc pk typs
+          NegRep -> mkInter defaultLoc pk typs
 
       -- If the graph is cyclic, make a recursive type
       if i `elem` dfs (suc gr i) gr

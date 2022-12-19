@@ -127,6 +127,9 @@ solve (cs:css) = do
   cacheHit <- inCache cs
   if cacheHit then solve css else
     case cs of
+      (MonoKindEq _ k1 k2) -> do
+        unifyMonoKinds k1 k2
+        solve css
       (KindEq _ k1 k2) -> do
         unifyPolyKinds k1 k2
         solve css
@@ -415,6 +418,7 @@ subConstraints (SubType _ t1 t2) = do
 -- type class constraints should only be resolved after subtype constraints
 subConstraints TypeClass{} = throwSolverError defaultLoc ["subContraints should not be called on type class Constraints"]
 subConstraints KindEq{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
+subConstraints MonoKindEq{} = throwSolverError defaultLoc ["subConstraints should not be called on Kind Equality Constraints"]
 
 -- | Substitute cached witnesses for generated subtyping witness variables.
 substitute :: ReaderT (Set (Constraint ())) SolverM ()

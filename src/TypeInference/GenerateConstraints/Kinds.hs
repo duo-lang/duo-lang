@@ -48,7 +48,7 @@ getXtorKinds loc (xtor:xtors) = do
   (mk, _) <- lookupXtorKind nm
   mk' <- getXtorKinds loc xtors
   -- all constructors of a structural type need to have the same return kind
-  addConstraint (KindEq KindConstraint mk mk')
+  addConstraint (MonoKindEq KindConstraint mk mk')
   return mk
   
 getKindDecl ::  TST.DataDecl -> GenM (MonoKind,[MonoKind])
@@ -217,8 +217,9 @@ annotTy (RST.TyUnion loc ty1 ty2) = do
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
   let knd = TST.getKind ty1' 
+  let pknd = case knd of CBox eo -> MkPolyKind [] eo; _ -> error "not implemented"
   if knd == TST.getKind ty2' then 
-    return $ TST.TyUnion loc knd ty1' ty2'
+    return $ TST.TyUnion loc pknd ty1' ty2'
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in union do not match"]
 
@@ -226,8 +227,9 @@ annotTy (RST.TyInter loc ty1 ty2) = do
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
   let knd = TST.getKind ty1' 
+  let pknd = case knd of CBox eo -> MkPolyKind [] eo; _ -> error "not implemented"
   if knd == TST.getKind ty2' then 
-    return $ TST.TyInter loc knd ty1' ty2'
+    return $ TST.TyInter loc pknd ty1' ty2'
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
 annotTy (RST.TyRec loc pol rv ty) = case ty of 
@@ -395,7 +397,7 @@ instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
             case mmk of 
               Nothing -> return (sk,mk)
               Just mk' -> do
-                addConstraint $ KindEq KindConstraint mk mk' 
+                addConstraint $ MonoKindEq KindConstraint mk mk' 
                 return (sk, mk')
                 
 instance AnnotateKind (RST.VariantType pol) (TST.VariantType pol) where
@@ -425,10 +427,11 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     skMap <- gets usedSkolemVars
     case M.lookup tv skMap of 
       Nothing -> do
-        kv <- newKVar
-        let newM = M.insert tv (KindVar kv) skMap
-        modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
-        return (TST.TySkolemVar loc pol (KindVar kv) tv)
+        --kv <- newKVar
+        --let newM = M.insert tv (KindVar kv) skMap
+        --modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
+        --return (TST.TySkolemVar loc pol (KindVar kv) tv)
+        return $ TST.TySkolemVar loc pol (CBox CBV) tv
       Just mk -> return (TST.TySkolemVar loc pol mk tv)
 
   annotateKind (RST.TyUniVar loc pol tv) = do 
@@ -467,9 +470,9 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         else 
           throwOtherError loc ["Kind of Xtor " <> ppPrint argKnds <> " does not match declaration kind " <> ppPrint mk]
       compMonoKind:: MonoKind -> MonoKind -> GenM Bool
-      compMonoKind mk (KindVar kv) = do 
-        addConstraint $ KindEq KindConstraint mk (KindVar kv) 
-        return True
+      --compMonoKind mk (KindVar kv) = do 
+      --  addConstraint $ KindEq KindConstraint mk (KindVar kv) 
+      --  return True
       compMonoKind mk mk' = return (mk == mk')
 
 
@@ -493,9 +496,9 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         else 
           throwOtherError loc ["Kind of Xtor " <> ppPrint argKnds <> " does not match declaration kind " <> ppPrint mk]
       compMonoKind:: MonoKind -> MonoKind -> GenM Bool
-      compMonoKind mk (KindVar kv) = do 
-        addConstraint $ KindEq KindConstraint mk (KindVar kv) 
-        return True
+      --compMonoKind mk (KindVar kv) = do 
+      --  addConstraint $ KindEq KindConstraint mk (KindVar kv) 
+      --  return True
       compMonoKind mk mk' = return (mk == mk')
 
 
@@ -544,9 +547,9 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkArgKnds loc [] (_:_) = throwOtherError loc ["Too few type Arguments"]
       checkArgKnds loc (fstVarty:rstVarty) (fstMk:rstMk) = 
         case TST.getKind fstVarty of 
-          (KindVar kv) -> do 
-            addConstraint (KindEq KindConstraint (KindVar kv) fstMk)
-            checkArgKnds loc rstVarty rstMk 
+          --(KindVar kv) -> do 
+          --  addConstraint (KindEq KindConstraint (KindVar kv) fstMk)
+          --  checkArgKnds loc rstVarty rstMk 
           mk -> 
             if mk == fstMk then do
               checkArgKnds loc rstVarty rstMk 
@@ -573,16 +576,16 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     ty1' <- annotateKind ty1
     ty2' <- annotateKind ty2
     kv <- newKVar 
-    addConstraint (KindEq KindConstraint (getKind ty1') (getKind ty2'))
-    addConstraint (KindEq KindConstraint (KindVar kv) (getKind ty1'))
+    addConstraint (MonoKindEq KindConstraint (getKind ty1') (getKind ty2'))
+    --addConstraint (KindEq KindConstraint (KindVar kv) (getKind ty1'))
     return (TST.TyUnion loc (KindVar kv) ty1' ty2')
     
   annotateKind (RST.TyInter loc ty1 ty2) = do
     ty1' <- annotateKind ty1
     ty2' <- annotateKind ty2
     kv <- newKVar 
-    addConstraint (KindEq KindConstraint (getKind ty1') (getKind ty2'))
-    addConstraint (KindEq KindConstraint (KindVar kv) (getKind ty1'))
+    addConstraint (MonoKindEq KindConstraint (getKind ty1') (getKind ty2'))
+    --addConstraint (KindEq KindConstraint (KindVar kv) (getKind ty1'))
     return (TST.TyInter loc (KindVar kv) ty1' ty2')
     
   annotateKind (RST.TyRec loc pol rv ty) = do
@@ -625,7 +628,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   
   annotateKind (RST.TyKindAnnot mk ty) = do 
     ty' <- annotateKind ty 
-    addConstraint $ KindEq KindConstraint (TST.getKind ty') mk 
+    addConstraint $ MonoKindEq KindConstraint (TST.getKind ty') mk 
     return ty'
 
 

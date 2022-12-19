@@ -42,6 +42,7 @@ data ConstraintInfo
 data Constraint a where
   SubType :: a -> Typ Pos -> Typ Neg -> Constraint a
   KindEq :: a -> PolyKind -> PolyKind -> Constraint a
+  MonoKindEq :: a -> MonoKind -> MonoKind -> Constraint a
   TypeClass :: a -> ClassName -> UniTVar -> Constraint a
     deriving (Eq, Ord, Functor)
 

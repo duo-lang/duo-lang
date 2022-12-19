@@ -52,12 +52,12 @@ genConstraintsCtxts [] [] _ = return ()
 genConstraintsCtxts ((TST.PrdCnsType PrdRep ty1) : rest1) (TST.PrdCnsType PrdRep ty2 : rest2) info = do
   addConstraint $ SubType info ty1 ty2
   -- subtypes need the same kind
-  addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2) 
+  addConstraint $ MonoKindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2) 
   genConstraintsCtxts rest1 rest2 info
 genConstraintsCtxts ((TST.PrdCnsType CnsRep ty1) : rest1) (TST.PrdCnsType CnsRep ty2 : rest2) info = do
   addConstraint $ SubType info ty2 ty1
   -- subtypes need the same kind
-  addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2) 
+  addConstraint $ MonoKindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2) 
   genConstraintsCtxts rest1 rest2 info
 genConstraintsCtxts (TST.PrdCnsType PrdRep _:_) (TST.PrdCnsType CnsRep _:_) info = do
   loc <- asks (location . snd)
@@ -326,7 +326,7 @@ instance GenConstraints Core.Command TST.Command where
     let peanoKnd = TST.data_kind peanoDecl
     let cnsTy = TST.getTypeTerm cns'
     addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm) cnsTy)
-    addConstraint (KindEq KindConstraint (CBox $ returnKind peanoKnd) (TST.getKind cnsTy))
+    addConstraint (MonoKindEq KindConstraint (CBox $ returnKind peanoKnd) (TST.getKind cnsTy))
     return (TST.Read loc cns')
   genConstraints (Core.Apply loc annot t1 t2) = do
     t1' <- genConstraints t1
@@ -334,7 +334,7 @@ instance GenConstraints Core.Command TST.Command where
     let ty1 = TST.getTypeTerm t1'
     let ty2 = TST.getTypeTerm t2'
     addConstraint (SubType (CommandConstraint loc) ty1 ty2)
-    addConstraint (KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2))
+    addConstraint (MonoKindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2))
     pure (TST.Apply loc annot (TST.getKind ty1) t1' t2')
   genConstraints (Core.PrimOp loc op subst) = do
     substInferred <- genConstraints subst
@@ -397,13 +397,13 @@ genConstraintsTermRecursive mn loc fv PrdRep tm = do
   tm <- withTerm mn PrdRep fv (TST.FreeVar loc PrdRep x fv) loc (TST.TypeScheme loc [] x) (genConstraints tm)
   let xTy = TST.getTypeTerm tm
   addConstraint (SubType RecursionConstraint xTy y)
-  addConstraint (KindEq KindConstraint (TST.getKind xTy) (TST.getKind y))
+  addConstraint (MonoKindEq KindConstraint (TST.getKind xTy) (TST.getKind y))
   return tm
 genConstraintsTermRecursive mn loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv) Nothing
   tm <- withTerm mn CnsRep fv (TST.FreeVar loc CnsRep y fv) loc (TST.TypeScheme loc [] y) (genConstraints tm)
   let yTy = TST.getTypeTerm tm
   addConstraint (SubType RecursionConstraint x yTy)
-  addConstraint (KindEq KindConstraint (TST.getKind x) (TST.getKind yTy))
+  addConstraint (MonoKindEq KindConstraint (TST.getKind x) (TST.getKind yTy))
 
   return tm
