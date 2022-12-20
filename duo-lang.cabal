@@ -162,6 +162,7 @@ library
       TypeAutomata.Definition
       TypeAutomata.Determinize
       TypeAutomata.FromAutomaton
+      TypeAutomata.Intersection
       TypeAutomata.Lint
       TypeAutomata.Minimize
       TypeAutomata.RemoveEpsilon
