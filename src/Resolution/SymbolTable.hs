@@ -10,7 +10,9 @@ module Resolution.SymbolTable
 import Control.Monad.Except
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
+import Data.Set (Set)
 import Data.Map qualified as M
+import Data.Set qualified as S
 
 import Errors
 import Pretty.Pretty
@@ -65,6 +67,7 @@ data SymbolTable = MkSymbolTable
   , typeNameMap  :: Map TypeName TypeNameResolve
   , freeVarMap   :: Map FreeVarName FreeVarNameResolve
   , tyOps        :: Map TyOpName BinOpDescr
+  , classDecls   :: Set ClassName
   , imports      :: [(ModuleName, Loc)]
   }
 
@@ -73,6 +76,7 @@ emptySymbolTable = MkSymbolTable { xtorNameMap  = M.empty
                                  , typeNameMap  = M.empty
                                  , freeVarMap   = M.empty
                                  , tyOps        = M.empty
+                                 , classDecls   = S.empty
                                  , imports      = []
                                  }
 
@@ -199,6 +203,20 @@ createSymbolTable' _ _ (SetDecl _) st = pure st
 createSymbolTable' _ _ (ClassDecl MkClassDeclaration {classdecl_loc, classdecl_name, classdecl_methods})  st = do
   let xtor_names = sig_name <$> classdecl_methods
   mapM_ (flip (checkFreshXtorName classdecl_loc) st) xtor_names
-  pure $ st { xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult classdecl_name . linearContextToArity . sig_args <$> classdecl_methods)) (xtorNameMap st) }
-createSymbolTable' _ _ InstanceDecl {} st = pure st
+  pure $ st { xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult classdecl_name . linearContextToArity . sig_args <$> classdecl_methods)) (xtorNameMap st)
+            , classDecls = S.insert classdecl_name (classDecls st) }
+createSymbolTable' _ _ (InstanceDecl (MkInstanceDeclaration { instancedecl_loc, instancedecl_name, instancedecl_class, instancedecl_typ })) st =
+  if isPermittedInstance instancedecl_class instancedecl_typ st
+    then pure st
+    else throwOtherError instancedecl_loc [ "Found orphan instance: " <> ppPrint instancedecl_name <> " : " <> ppPrint instancedecl_class <> " " <> ppPrint instancedecl_typ
+                                          , "Define this instance in the same module as the class or type declaration." ]
 createSymbolTable' _ _ ParseErrorDecl st = pure st
+
+  -- | Check whether the instance declaration would be an orphan instance (neccessary to ensure type class coherence)
+  -- Only nominal types and refinement types are allowed.
+isPermittedInstance :: ClassName -> Typ -> SymbolTable -> Bool
+isPermittedInstance cn ty st = S.member cn (classDecls st) || maybe False (`M.member` typeNameMap st) (getTypeName ty)
+  where getTypeName :: Typ -> Maybe TypeName
+        getTypeName (TyNominal _ typeName) = Just typeName
+        getTypeName (TyXRefined _ _ typeName _) = Just typeName
+        getTypeName _ = Nothing

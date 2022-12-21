@@ -263,11 +263,8 @@ resolveCommand (CST.Xtor loc xtor ty arity) = do
           ExplicitSubst es -> return (map snd es)
           ImplicitSubst {} ->  throwOtherError loc ["The substitution in a method call cannot contain implicit arguments"]
       pctms <- resolveTerms loc ar subst'
-      ty' <- case ty of Nothing -> pure Nothing; Just ty -> Just <$> do
-                            typ <- resolveTyp PosRep ty
-                            tyn <- resolveTyp NegRep ty
-                            pure (typ, tyn)
-      pure $! RST.Method loc mn cn ty' (RST.MkSubstitution pctms)
+      ty' <- mapM (\ty' -> resolveTyp PosRep ty' >>= \typ -> resolveTyp NegRep ty' >>= \tyn -> pure (typ, tyn)) ty
+      pure $ RST.Method loc mn cn ty' (RST.MkSubstitution pctms)
 ---------------------------------------------------------------------------------
 -- CST constructs which can only be resolved to commands
 ---------------------------------------------------------------------------------
