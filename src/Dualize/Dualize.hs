@@ -25,6 +25,8 @@ import Loc -- source code locations, see src/Loc.hs
 ------------------------------------------------------------------------------
 
 -- Datatype DualizeError
+-- returned if dualization is not possible
+
 data DualizeError
  = DualPrim Loc Text
  | DualPrint Loc Text
@@ -55,18 +57,22 @@ throwDualizeError = Left
 -- Names
 ------------------------------------------------------------------------------
 
+-- prepend "Co" to Xtor names
 dualXtorName :: XtorName -> XtorName
 dualXtorName (MkXtorName (T.stripPrefix "Co" -> Just n)) | T.length n > 0 = MkXtorName n
 dualXtorName (MkXtorName x) = MkXtorName (T.pack "Co" `T.append` x)
 
+-- prepend "Co" to free variable names
 dualFVName :: FreeVarName -> FreeVarName
 dualFVName (MkFreeVarName (T.stripPrefix "co" -> Just n)) | T.length n > 0 = MkFreeVarName n
 dualFVName (MkFreeVarName x) = MkFreeVarName (T.pack "co" `T.append` x)
 
+-- prepend "Co" to type names
 dualTypeName :: TypeName -> TypeName
 dualTypeName (MkTypeName (T.stripPrefix "Co" -> Just n)) | T.length n > 0 = MkTypeName n
 dualTypeName (MkTypeName tn) = MkTypeName $ T.pack "Co" `T.append` tn
 
+-- 
 dualRnTypeName :: RnTypeName -> RnTypeName
 dualRnTypeName (MkRnTypeName _loc _doc _fp mn tn) =
   MkRnTypeName defaultLoc Nothing Nothing mn (dualTypeName tn)
