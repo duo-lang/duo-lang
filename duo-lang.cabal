@@ -139,6 +139,7 @@ library
       Resolution.Types
       Resolution.Unresolve
       Dualize.Dualize
+      Dualize.DualizeClone
       Sugar.Desugar
       Sugar.Core
       Sugar.TST

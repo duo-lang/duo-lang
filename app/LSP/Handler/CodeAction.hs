@@ -40,6 +40,7 @@ import Driver.Definition
       queryTypecheckedModule )
 import Driver.Driver ( runCompilationModule )
 import Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration, dualCmdDeclaration)
+import Dualize.DualizeClone (dualCloneDataDecl, dualClonePrdCnsDeclaration, dualCloneCmdDeclaration)
 import LSP.Definition ( LSPMonad, LSPConfig (..), sendInfo, getCachedModule )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Pretty.Pretty ( ppPrint )
@@ -134,6 +135,8 @@ instance GetCodeActions TST.Declaration where
   getCodeActions id rng (TST.DataDecl decl)      = getCodeActions id rng decl
   getCodeActions _ _ _                           = List []
 
+
+--Code actions for producer and consumer definitions
 instance GetCodeActions (TST.PrdCnsDeclaration pc) where
   getCodeActions :: TextDocumentIdentifier -> Range -> TST.PrdCnsDeclaration pc -> List (Command |? CodeAction)
   -- If we are not in the correct range, then don't generate code actions.
@@ -149,9 +152,11 @@ instance GetCodeActions (TST.PrdCnsDeclaration pc) where
       cbvfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBV decl) ("Focus CBV " <> unFreeVarName (TST.pcdecl_name decl)) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBV pcdecl_term)]
       cbnfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBN decl) ("Focus CBN " <> unFreeVarName (TST.pcdecl_name decl)) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
       dualize  = [ workspaceEditToCodeAction (generateDualizeEdit id decl) ("Dualize term " <> ppPrint (TST.pcdecl_name decl)) ]
+      dualizeClone  = [ workspaceEditToCodeAction (generateDualizeCloneEdit id decl) ("DualizeClone term " <> ppPrint (TST.pcdecl_name decl)) ]
     in
-      List (desugar <> cbvfocus <> cbnfocus <> dualize)
+      List (desugar <> cbvfocus <> cbnfocus <> dualize <> dualizeClone)
 
+-- code actions for command declerations
 instance GetCodeActions TST.CommandDeclaration where
   getCodeActions :: TextDocumentIdentifier -> Range -> TST.CommandDeclaration -> List (Command |? CodeAction)
   -- If we are not in the correct range, then don't generate code actions.
@@ -164,16 +169,22 @@ instance GetCodeActions TST.CommandDeclaration where
       cbnfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBN decl) ("Focus CBN " <> unFreeVarName (TST.cmddecl_name decl)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
       eval     = [ generateCmdEvalCodeAction id decl ]
       dualize  = [ workspaceEditToCodeAction (generateDualizeCommandEdit id decl) ("Dualize command " <> ppPrint (TST.cmddecl_name decl)) ]
+      dualizeClone = [workspaceEditToCodeAction(generateDualizeCloneCommandEdit id decl) ("DualizeClone command" <> ppPrint (TST.cmddecl_name decl)) ]
     in
-      List (desugar <> cbvfocus <> cbnfocus <> dualize <> eval)
+      List (desugar <> cbvfocus <> cbnfocus <> dualize <> eval <> dualizeClone)
 
+-- code actions for data declarations 
 instance GetCodeActions TST.DataDecl where
   getCodeActions :: TextDocumentIdentifier -> Range -> TST.DataDecl -> List (Command |? CodeAction)
   -- If we are not in the correct range, then don't generate code actions.
   getCodeActions _ Range {_start = start} decl | not (lookupPos start (TST.data_loc decl)) =
     List []
-  getCodeActions id _ decl = 
-    List [ workspaceEditToCodeAction (generateDualizeDeclEdit id (TST.data_loc decl) decl) ("Dualize declaration " <> ppPrint (TST.data_name decl)) ]
+  getCodeActions id _ decl =
+    let
+      dualize = [ workspaceEditToCodeAction (generateDualizeDeclEdit id (TST.data_loc decl) decl) ("Dualize declaration " <> ppPrint (TST.data_name decl)) ]
+      dualizeClone = [ workspaceEditToCodeAction (generateDualizeDeclEdit id (TST.data_loc decl) decl) ("DualizeClone declaration " <> ppPrint (TST.data_name decl)) ]
+    in
+      List (dualize <> dualizeClone)
 
 ---------------------------------------------------------------------------------
 -- Provide TypeAnnot Action
@@ -265,6 +276,50 @@ generateCmdFocusEdit (TextDocumentIdentifier uri) eo decl =
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing
                   }
+
+---------------------------------------------------------------------------------
+-- Provide DualizeClone Action
+---------------------------------------------------------------------------------
+
+generateDualizeCloneCommandEdit :: TextDocumentIdentifier -> TST.CommandDeclaration -> WorkspaceEdit
+generateDualizeCloneCommandEdit (TextDocumentIdentifier uri) decl@(TST.MkCommandDeclaration loc _ _ _) =
+  let
+    replacement = case dualCmdDeclaration decl of
+      (Left error) -> ppPrint $ T.pack (show error)
+      (Right decl') -> ppPrint (TST.CmdDecl decl')
+    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
+  in
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing }
+
+
+generateDualizeCloneEdit :: forall pc. TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
+generateDualizeCloneEdit (TextDocumentIdentifier uri) decl@(TST.MkPrdCnsDeclaration loc _ rep _ _ _ _) =
+  let
+    replacement = case dualPrdCnsDeclaration decl of
+      (Left error) -> ppPrint $ T.pack (show error)
+      (Right decl') -> case rep of
+        PrdRep -> ppPrint (TST.PrdCnsDecl CnsRep decl')
+        CnsRep -> ppPrint (TST.PrdCnsDecl PrdRep decl')
+    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
+  in
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing }
+
+
+generateDualizeCloneDeclEdit :: TextDocumentIdentifier -> Loc -> TST.DataDecl -> WorkspaceEdit
+generateDualizeCloneDeclEdit (TextDocumentIdentifier uri) loc decl =
+  let
+    decl' = dualDataDecl decl
+    replacement = ppPrint (TST.DataDecl  decl')
+    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
+  in
+    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing }
+
 
 ---------------------------------------------------------------------------------
 -- Provide Defunctionalize Actions

@@ -1,0 +1,4 @@
+app/LSP/Handler/CodeAction.hs -- code actions are definde here
+src/Dualize/Dualize.hs -- the dualize quickfix is defined here
+duo-lang.cabal -- new modules must be noted here
+examples/Transformation.duo -- example how to transform from data to codata and vice versa 
