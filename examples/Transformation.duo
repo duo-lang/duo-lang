@@ -1,76 +1,87 @@
 module Transformation;
 
-import Codata.Function;
-import Data.Cofunction;
+import Data.Peano; -- Num is defined here, syntactic sugar for Peano number is given with Z=0, S(Z)=1, S(S(Z))=2, ...
+import Data.Maybe; -- encapsulate optional types with Maybe
+import Data.Bool; -- Bool is defined here
 
-
-data Nat {
-    Zero,
-    Succ(Nat)
-};
---*******************
--- Data
---*******************
-
--- Bool defined as data
-data Bool : CBV {
-    True,
-    False
+--------------------------------------------------------
+-- Lists 
+--------------------------------------------------------
+-- define a list and its functions as described in Rendel et al. (2015) with data
+data List : CBV {
+    Nil,
+    Cons(Nat,List)
 };
 
+def rec prd index : List -> Nat -> Maybe(Nat) :=
+    \l n => case l of {
+        Nil => Nothing,
+        Cons(head,tail) => case n of {
+            Z => Just(head),
+            S(num) => index tail num
+        }
+};
 
--- quickfix dualize erzeugt cns, könnte bei Verständnis helfen
--- Pattern Matching auf Daten
+-- define a list and its functions as described in Rendel et al. (2015) with codata
+codata CoList : CBV {
+    Index(Nat, return Maybe(Nat))
+};
+
+def prd nil : CoList := cocase {
+    Index(n,*) => Nothing
+};
+
+def rec prd cons : Nat -> CoList -> CoList := \head tail => cocase {
+    Index(n,*) => case n of {
+        Z => Just(head),
+        S(num) => tail.Index(num,*)
+    }
+};
+
+--examples
+def prd listWithData := Cons(1,Cons(2,Cons(3,Nil)));
+def prd listWithCodata := cons 1 (cons 2 (cons 3 nil));
+
+
+--------------------------------------------------------
+-- Bool and CoBool
+--------------------------------------------------------
+
+-- on data
 def prd ifThenElse : Bool -> Nat -> Nat -> Nat :=
     \b e1 e2 => case b of {
         True => e1,
         False => e2
-};
+    };
 
 def prd id : Bool -> Bool := 
     \b => case b of {
         True => b,
         False => b
-};
+    };
 
-
-
-
-def cmd useData := #Print(ifThenElse (id True) Succ(Zero) Zero, #ExitSuccess); -- use "classic" ifThenElse function on data
-def cmd useDataPartial := #Print(ifThenElse, #ExitSuccess);
-
----------------------
-
---*******************
--- Codata
---*******************
--- Bool defined as codata, named CoBool to avoid name problems
 codata CoBool : CBV {
     IfThenElse(Nat, Nat, return Nat),
     Id(return Bool)
-};
+    };
 
-
--- Copattern Matching auf Codaten
 def prd true : CoBool := cocase {
     IfThenElse(e1,e2,*) => e1,
     Id(*) => True
-};
+    };
 
 def prd false : CoBool := cocase {
     IfThenElse(e1,e2,*) => e2,
     Id(*) => False
-};
+    };
 
+-- examples
+def prd ifThenElseWithData := ifThenElse True 1 0;
+def prd ifThenElseWithCodata := true.IfThenElse(1,0,*);
 
+--------------------------------------------------------
+-- main
+def cmd main := #Print(index listWithData 2, #ExitSuccess);
 
-def cmd useCodata := #Print(true.IfThenElse(Succ(Zero), Zero, *), #ExitSuccess);
-def cmd idCodata := #Print(true.Id(*), #ExitSuccess);
-
- -- use copattern matching on codata, mind the application of the destructor on true
----------------------
-
---main
-def cmd main := idCodata;
 
 
