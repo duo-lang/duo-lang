@@ -1,63 +1,88 @@
-module TypeAutomata.Intersection (emptyIntersection, intersection) where
+module TypeAutomata.Intersection (emptyIntersection) where
 
 
-import TypeAutomata.Definition (TypeAutDet, TypeAut' (TypeAut), TypeAutCore (TypeAutCore), NodeLabel (..))
+import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), NodeLabel (..), EdgeLabelNormal)
 import Control.Monad.Identity (Identity(..))
-import Control.Monad.State
-import Data.Graph.Inductive.Graph (Node, Edge, LNode, LEdge, toEdge, Graph (..), mkUGraph)
-import Data.Graph.Inductive.Query.DFS (dfs)
-import Data.Set (Set)
+import Data.Graph.Inductive.Graph (Node, Graph (..), lsuc, lab)
 import qualified Data.Map as M
 import qualified Data.Set as S
-import Data.Map (Map)
 import Data.Maybe (fromMaybe)
+import Control.Monad.State
+import qualified Data.Bifunctor as BF
+import Data.List (nub, (\\))
+
+import Syntax.TST.Types (TypeScheme(..))
+import Data.List.NonEmpty (NonEmpty)
+import Errors
+import TypeAutomata.Minimize (minimize)
+import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
+import TypeAutomata.Determinize (determinize)
+import TypeAutomata.RemoveEpsilon (removeEpsilonEdges)
+import TypeAutomata.ToAutomaton (typeToAut)
 
 
-emptyIntersection :: TypeAutDet pol -> TypeAutDet pol -> Bool
-emptyIntersection (TypeAut _ (Identity s1) (TypeAutCore gr1 _flowEdges1))
-                  (TypeAut _ (Identity s2) (TypeAutCore gr2 _flowEdges2))
-  = let m = evalState (combineNodes (unLabelNode <$> labNodes gr1) (unLabelNode <$> labNodes gr2)) 0
-        start = fromMaybe (error "start not found in intersection automaton") (M.lookup (s1,s2) m)
-    in emptyIntersection' start (getLabeledNodes (labNodes gr1) (labNodes gr2)) m
-                          (unsafeCombineEdges m (unLabelEdge <$>labEdges gr1) (unLabelEdge <$>labEdges gr2))
+-- | Check for two type schemes whether their intersection type automaton is empty.
+emptyIntersection :: TypeScheme pol -> TypeScheme pol -> Either (NonEmpty Error) Bool
+emptyIntersection ty1 ty2 = do
+  aut1 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty1
+  aut2 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty2
+  checkEmptyIntersection aut1 aut2
 
-emptyIntersection' :: Node -> Set (Node, Node) -> Map (Node, Node) Node -> [Edge] -> Bool
-emptyIntersection' start labeled m edges = let gr = mkUGraph (M.elems m) edges
-                                               -- ^ missing implementation for unlabeled graph
-                                               reachable = dfs [start] gr
-                                           in not $ any (\x -> maybe False (`elem` reachable) (M.lookup x m)) labeled
 
-unLabelNode :: LNode a -> Node
-unLabelNode = fst
+checkEmptyIntersection :: TypeAutDet pol -> TypeAutDet pol -> Either (NonEmpty Error) Bool
+checkEmptyIntersection (TypeAut _ (Identity starts1) (TypeAutCore gr1 _flowEdges1))
+                       (TypeAut _ (Identity starts2) (TypeAutCore gr2 _flowEdges2))
+  = evalStateT (explore gr1 gr2) (ExploreState { known = [], todos = [(starts1, starts2)] })
 
-unLabelEdge :: LEdge a -> Edge
-unLabelEdge = toEdge
 
-nextNode :: State Node Node
-nextNode = get >>= \n -> put (n+1) >> pure n
+data ExploreState = ExploreState { known :: [(Node, Node)], todos :: [(Node, Node)] }
+type ExploreM = StateT ExploreState (Either (NonEmpty Error))
 
-getLabeledNodes :: [LNode NodeLabel] -> [LNode NodeLabel] -> Set (Node, Node)
-getLabeledNodes ns ms =
-    let emptyLabel (MkNodeLabel {nl_data = Nothing, nl_codata = Nothing, nl_nominal, nl_ref_data, nl_ref_codata})
-                     = S.null nl_nominal && M.null nl_ref_data && M.null nl_ref_codata
-        emptyLabel _ = False
-    in S.fromList [ (n,m) | (n, l) <- ns, not (emptyLabel l), (m, l') <- ms, not (emptyLabel l') ]
+-- | Exhaustively explore the intersection of two graphs and return true if it is empty.
+explore :: Graph gr => gr NodeLabel EdgeLabelNormal
+                    -> gr NodeLabel EdgeLabelNormal
+                    -> ExploreM Bool
+explore gr1 gr2 = do
+  todos <- gets todos
+  case todos of
+    [] -> pure True
+    (n,m):rest -> do
+      -- get reachable nodes
+      let nexts = lsuc gr1 n
+      let nexts' = lsuc gr2 m
+      -- check if edge labels match and get nodelabels
+      let unsafeLab gr n = fromMaybe (error "successor node is not in graph") $ lab gr n
+      let newNodes = [ (n, m) | (n, l) <- nexts, (m, l') <- nexts', l == l' ]
+      -- check if node labels can be safely merged
+      let merged = uncurry intersectLabels <$> (BF.bimap (unsafeLab gr1) (unsafeLab gr2) <$> newNodes)
+      -- if label is non-empty, fail (non-empty intersection)
+      if all isEmptyLabel (fromMaybe (error "intersectLabels returned Nothing") <$> merged)
+        then do
+          modify (\(ExploreState { known }) -> ExploreState { known = (n,m):known, todos = nub $ (newNodes \\ known) ++ rest })
+          explore gr1 gr2
+        else pure False
 
-combineNodes :: [Node] -> [Node] -> State Node (Map (Node, Node) Node)
-combineNodes ns ms = M.fromList . concat <$>
-  forM ns (\n -> do
-    forM ms $ \m -> do
-      n' <- nextNode
-      pure ((n,m), n'))
+isEmptyLabel :: NodeLabel -> Bool
+isEmptyLabel (MkNodeLabel {nl_data, nl_codata, nl_nominal, nl_ref_data, nl_ref_codata})
+             = nothingOrEmpty nl_data && nothingOrEmpty nl_codata && S.null nl_nominal && M.null nl_ref_data && M.null nl_ref_codata
+  where nothingOrEmpty Nothing = True
+        nothingOrEmpty (Just s) = S.null s
+isEmptyLabel _ = False
 
-unsafeCombineEdges :: Map (Node, Node) Node -> [Edge] -> [Edge] -> [Edge]
-unsafeCombineEdges m edges = concatMap (\(from, to) ->
-  map (\(from', to') ->
-    let err     = error "unexpected assumption failure in combineEdges"
-        newFrom = fromMaybe err (M.lookup (from, from') m)
-        newTo   = fromMaybe err (M.lookup (to, to') m)
-     in (newFrom, newTo)) edges)
-
-intersection :: [Node] -> [Edge] -> [Node] -> [Edge] -> ([Node], [Edge])
-intersection nodes edges nodes' edges' = let m = evalState (combineNodes nodes nodes') 0
-                                   in (M.elems m, unsafeCombineEdges m edges edges')
+-- | Intersection of labels, returns Nothing if labels cannot be safely combined.
+intersectLabels :: NodeLabel -> NodeLabel -> Maybe NodeLabel
+intersectLabels (MkNodeLabel pol  data'  codata  nominal  ref_data  ref_codata  kind )
+                (MkNodeLabel pol' data'' codata' nominal' ref_data' ref_codata' kind')
+ | pol /= pol' = Nothing
+ | kind /= kind' = Nothing
+ | otherwise = Just $ MkNodeLabel pol (S.intersection <$> data' <*> data'')
+                                      (S.intersection <$> codata <*> codata')
+                                      (S.intersection nominal nominal')
+                                      (M.intersection ref_data ref_data')
+                                      (M.intersection ref_codata ref_codata') kind
+intersectLabels (MkPrimitiveNodeLabel pol prim)
+                (MkPrimitiveNodeLabel pol' prim')
+ | pol /= pol' = Nothing
+ | prim /= prim' = Nothing
+ | otherwise = Just $ MkPrimitiveNodeLabel pol prim
+intersectLabels _ _ = Nothing

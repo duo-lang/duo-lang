@@ -53,6 +53,7 @@ import Pretty.Common (Header(..))
 import Pretty.Program ()
 import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
+import TypeAutomata.Intersection (emptyIntersection)
 
 
 checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
@@ -229,14 +230,20 @@ checkOverlappingInstances loc cn (typ, tyn) = do
   let instances = M.unions . fmap instanceEnv . M.elems $ env
   case M.lookup cn instances of
     Nothing -> pure () -- No overlapping instances
-    Just insts -> mapM_ (checkSubtype loc env (typ, tyn)) (S.toList insts)
-  where checkSubtype :: Loc -> Map ModuleName Environment -> (TST.Typ RST.Pos, TST.Typ RST.Neg) -> (FreeVarName, TST.Typ RST.Pos, TST.Typ RST.Neg) -> DriverM ()
-        checkSubtype loc env (typ, tyn) (inst, typ', tyn') = do
-          let isRelated = isSubtype env typ tyn' || isSubtype env typ' tyn
-          let err = ErrOther $ SomeOtherError loc $ T.unlines [ "The instance declared violates type class coherence."
-                                                              , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ
-                                                              ]
-          when isRelated $ throwError (err NE.:| [])
+    Just insts -> mapM_ (checkOverlap loc (typ, tyn)) (S.toList insts)
+  where checkOverlap :: Loc -> (TST.Typ RST.Pos, TST.Typ RST.Neg) -> (FreeVarName, TST.Typ RST.Pos, TST.Typ RST.Neg) -> DriverM ()
+        checkOverlap loc (typ, tyn) (inst, typ', tyn') = do
+          let otherErr = ErrOther $ SomeOtherError loc $ T.unlines [ "The instance declared is overlapping and violates type class coherence."
+                                                                   , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ
+                                                                   ]
+          case emptyIntersection (TST.generalize typ) (TST.generalize typ') of 
+            Left errors -> throwError errors
+            Right False -> throwError (otherErr NE.:| [])
+            Right True -> do
+              case emptyIntersection (TST.generalize tyn) (TST.generalize tyn') of
+                Left errors -> throwError errors
+                Right False -> throwError (otherErr NE.:| [])
+                Right True -> pure ()
 
 inferClassDeclaration :: ModuleName
                       -> RST.ClassDeclaration
