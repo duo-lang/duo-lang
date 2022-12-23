@@ -78,8 +78,8 @@ intersectLabels (MkNodeLabel pol  data'  codata  nominal  ref_data  ref_codata  
  | otherwise = Just $ MkNodeLabel pol (S.intersection <$> data' <*> data'')
                                       (S.intersection <$> codata <*> codata')
                                       (S.intersection nominal nominal')
-                                      (M.intersection ref_data ref_data')
-                                      (M.intersection ref_codata ref_codata') kind
+                                      (M.intersectionWith S.intersection ref_data ref_data')
+                                      (M.intersectionWith S.intersection ref_codata ref_codata') kind
 intersectLabels (MkPrimitiveNodeLabel pol prim)
                 (MkPrimitiveNodeLabel pol' prim')
  | pol /= pol' = Nothing
