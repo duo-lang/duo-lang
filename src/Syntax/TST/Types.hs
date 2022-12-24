@@ -410,7 +410,10 @@ class ZonkKind (a::Type) where
   zonkKind :: Bisubstitution UniVT -> a -> a
 
 instance ZonkKind MonoKind where 
-  zonkKind _ (MKindVar kv) = MKindVar kv
+  zonkKind bisubst kindV@(MKindVar kv) = case M.lookup kv (snd $ bisubst_map bisubst) of 
+    Nothing -> kindV
+    Just (KindVar kv') -> MKindVar kv'
+    Just (MkPolyKind _ eo) -> CBox eo
   zonkKind _ (CBox cc) = CBox cc
   zonkKind _ F64Rep = F64Rep 
   zonkKind _ I64Rep = I64Rep

@@ -430,11 +430,10 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     skMap <- gets usedSkolemVars
     case M.lookup tv skMap of 
       Nothing -> do
-        --kv <- newKVar
-        --let newM = M.insert tv (KindVar kv) skMap
-        --modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
-        --return (TST.TySkolemVar loc pol (KindVar kv) tv)
-        return $ TST.TySkolemVar loc pol (CBox CBV) tv
+        kv <- newKVar
+        let newM = M.insert tv (MKindVar kv) skMap
+        modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
+        return (TST.TySkolemVar loc pol (MKindVar kv) tv)
       Just mk -> return (TST.TySkolemVar loc pol mk tv)
 
   annotateKind (RST.TyUniVar loc pol tv) = do 
@@ -545,15 +544,15 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     checkArgKnds loc (NE.toList vartys') argKnds
     return (TST.TyApp loc pol (TST.TyNominal loc pol polyknd tyn) vartys')
     where
-      checkArgKnds :: Loc -> [TST.VariantType pol] -> [MonoKind] -> GenM () 
-      checkArgKnds _ [] [] = return () 
+      checkArgKnds :: Loc -> [TST.VariantType pol] -> [MonoKind] -> GenM ()
+      checkArgKnds _ [] [] = return ()
       checkArgKnds loc (_:_) [] = throwOtherError loc ["Too many type Arguments"]
       checkArgKnds loc [] (_:_) = throwOtherError loc ["Too few type Arguments"]
       checkArgKnds loc (fstVarty:rstVarty) (fstMk:rstMk) = 
         case TST.getMonoKind fstVarty of 
-          -- (KindVar kv) -> do 
-          --  addConstraint (KindEq KindConstraint (KindVar kv) fstMk)
-          --  checkArgKnds loc rstVarty rstMk 
+          (MKindVar kv) -> do  
+            addConstraint (MonoKindEq KindConstraint (MKindVar kv) fstMk)
+            checkArgKnds loc rstVarty rstMk 
           mk -> 
             if mk == fstMk then do
               checkArgKnds loc rstVarty rstMk 

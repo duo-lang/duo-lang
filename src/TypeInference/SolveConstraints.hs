@@ -168,14 +168,38 @@ partitionM sets kv = do
     (_:_:_,_) -> throwSolverError defaultLoc ["Kind variable occurs in more than one equivalence class: " <> ppPrint kv]
 
 unifyMonoKinds :: MonoKind -> MonoKind -> SolverM ()
+unifyMonoKinds (MKindVar kv1) (MKindVar kv2) = do
+  sets <- getKVars
+  ((kvset1,pk1),rest1) <- partitionM sets kv1
+  if kv2 `elem` kvset1 then
+    pure ()
+  else do
+    ((kvset2,pk2), rest2) <- partitionM rest1 kv2
+    let newSet = kvset1 ++ kvset2
+    case (pk1,pk2) of
+      (pk1, Nothing) -> putKVars $ (newSet,pk1):rest2
+      (Nothing, pk2) -> putKVars $ (newSet,pk2):rest2
+      (Just pk1, Just pk2) | pk1 == pk2 -> putKVars $ (newSet, Just pk1) :rest2
+                           | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint pk1 <> " and " <> ppPrint pk2]
+
 unifyMonoKinds (CBox cc1) (CBox cc2) =
   if cc1 == cc2
     then pure ()
     else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint cc1 <> " and " <> ppPrint cc2]
+unifyMonoKinds (MKindVar kv) (CBox eo) = do
+  sets <- getKVars
+  ((kvset,pk),rest) <- partitionM sets kv
+  case pk of
+    Nothing -> putKVars $ (kvset, Just (MkPolyKind [] eo)):rest
+    Just pk -> if eo == returnKind pk
+               then return ()
+               else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint (CBox eo) <> " and " <> ppPrint pk]
+unifyMonoKinds (MKindVar _) _ = throwSolverError defaultLoc ["Kind Variables cannot take primitive kinds"]
 unifyMonoKinds I64Rep I64Rep = return ()
 unifyMonoKinds F64Rep F64Rep = return ()
 unifyMonoKinds CharRep CharRep = return ()
 unifyMonoKinds StringRep StringRep = return ()
+unifyMonoKinds mk (MKindVar kv) = unifyMonoKinds (MKindVar kv) mk
 unifyMonoKinds knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1<> " and " <> ppPrint knd2]
 
 unifyPolyKinds :: PolyKind -> PolyKind -> SolverM ()
@@ -195,17 +219,17 @@ unifyPolyKinds (MkPolyKind args1 eo1) (MkPolyKind args2 eo2) = do
         else throwSolverError defaultLoc ["Arguments " <> ppPrint var1 <> " " <> ppPrint sk1 <> ":"<> ppPrint mk1 <> " and " <> ppPrint var2 <> " " <> ppPrint sk2 <> ":" <> ppPrint mk2 <> " don't match"]
 unifyPolyKinds (KindVar kv1) (KindVar kv2) = do
   sets <- getKVars
-  ((kvset1,mk1),rest1) <- partitionM sets kv1
+  ((kvset1,pk1),rest1) <- partitionM sets kv1
   if kv2 `elem` kvset1 then
     pure ()
   else do
-    ((kvset2,mk2), rest2) <- partitionM rest1 kv2
+    ((kvset2,pk2), rest2) <- partitionM rest1 kv2
     let newSet = kvset1 ++ kvset2
-    case (mk1,mk2) of
-      (mk1, Nothing) -> putKVars $ (newSet,mk1):rest2
-      (Nothing, mk2) -> putKVars $ (newSet,mk2):rest2
-      (Just mk1, Just mk2) | mk1 == mk2 -> putKVars $ (newSet, Just mk1) :rest2
-                           | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint mk1 <> " and " <> ppPrint mk2]
+    case (pk1,pk2) of
+      (pk1, Nothing) -> putKVars $ (newSet,pk1):rest2
+      (Nothing, pk2) -> putKVars $ (newSet,pk2):rest2
+      (Just pk1, Just pk2) | pk1 == pk2 -> putKVars $ (newSet, Just pk1) :rest2
+                           | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint pk1 <> " and " <> ppPrint pk2]
 unifyPolyKinds (KindVar kv) kind = do
   sets <- getKVars
   ((kvset,mk),rest) <- partitionM sets kv
