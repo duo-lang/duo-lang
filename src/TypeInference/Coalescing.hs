@@ -112,7 +112,9 @@ coalesceType (TyUniVar _ PosRep pk tv) = do
     case M.lookup (tv, Pos) recVarMap of
       Nothing     -> do
         newName <- getSkolemVar tv
-        return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep (CBox $ returnKind pk) newName : lbs')
+        case pk of 
+          KindVar kv -> return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep (MKindVar kv) newName : lbs')
+          _ -> return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep (CBox $ returnKind pk) newName : lbs')
       Just recVar -> 
         return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk recVar  : lbs'))
 coalesceType (TyUniVar _ NegRep pk tv) = do
@@ -128,7 +130,9 @@ coalesceType (TyUniVar _ NegRep pk tv) = do
       case M.lookup (tv, Neg) recVarMap of
         Nothing -> do
           newName <- getSkolemVar tv
-          return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep (CBox $ returnKind pk) newName : ubs')
+          case pk of 
+            KindVar kv -> return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep (MKindVar kv) newName : ubs')
+            _ -> return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep (CBox $ returnKind pk) newName : ubs')
         Just recVar -> 
           return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk recVar  : ubs')) 
 coalesceType (TyData loc rep mk xtors) = do

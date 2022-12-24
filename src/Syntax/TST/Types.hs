@@ -154,21 +154,25 @@ getPolarity (TyFlipPol rep _)              = rep
 class GetMonoKind (a :: Type) where
   getMonoKind :: a -> MonoKind
 
+instance GetMonoKind PolyKind where 
+  getMonoKind (MkPolyKind _ eo) = CBox eo
+  getMonoKind (KindVar kv) = MKindVar kv
+
 instance GetMonoKind (Typ pol) where 
   getMonoKind (TySkolemVar _ _ mk _)        = mk
-  getMonoKind (TyUniVar _ _ pk _)           = CBox $ returnKind pk
-  getMonoKind (TyRecVar _ _ pk _)           = CBox $ returnKind pk
+  getMonoKind (TyUniVar _ _ pk _)           = getMonoKind pk
+  getMonoKind (TyRecVar _ _ pk _)           = getMonoKind pk 
   getMonoKind (TyData _ _ mk _ )            = mk
   getMonoKind (TyCodata _ _ mk _ )          = mk
-  getMonoKind (TyDataRefined _ _ pk _ _ )   = CBox $ returnKind pk
-  getMonoKind (TyCodataRefined _ _ pk _ _ ) = CBox $ returnKind pk
-  getMonoKind (TyNominal _ _ pk _ )         = CBox $ returnKind pk
+  getMonoKind (TyDataRefined _ _ pk _ _ )   = getMonoKind pk 
+  getMonoKind (TyCodataRefined _ _ pk _ _ ) = getMonoKind pk
+  getMonoKind (TyNominal _ _ pk _ )         = getMonoKind pk
   getMonoKind (TyApp _ _ ty _)              = getMonoKind ty
   getMonoKind (TySyn _ _ _ ty)              = getMonoKind ty
-  getMonoKind (TyTop _ pk)                  = CBox $ returnKind pk
-  getMonoKind (TyBot _ pk)                  = CBox $ returnKind pk
-  getMonoKind (TyUnion _ pk _ _)            = CBox $ returnKind pk
-  getMonoKind (TyInter _ pk _ _)            = CBox $ returnKind pk
+  getMonoKind (TyTop _ pk)                  = getMonoKind pk
+  getMonoKind (TyBot _ pk)                  = getMonoKind pk
+  getMonoKind (TyUnion _ pk _ _)            = getMonoKind pk
+  getMonoKind (TyInter _ pk _ _)            = getMonoKind pk
   getMonoKind (TyRec _ _ _ ty)              = getMonoKind ty
   getMonoKind TyI64{}                       = I64Rep
   getMonoKind TyF64{}                       = F64Rep
@@ -406,6 +410,7 @@ class ZonkKind (a::Type) where
   zonkKind :: Bisubstitution UniVT -> a -> a
 
 instance ZonkKind MonoKind where 
+  zonkKind _ (MKindVar kv) = MKindVar kv
   zonkKind _ (CBox cc) = CBox cc
   zonkKind _ F64Rep = F64Rep 
   zonkKind _ I64Rep = I64Rep

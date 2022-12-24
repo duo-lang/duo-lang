@@ -125,37 +125,55 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST :: TST.Typ pol -> RST.Typ pol
   embedTST (TST.TySkolemVar loc pol mk tv) =
     RST.TyKindAnnot mk $ RST.TySkolemVar loc pol tv
-  embedTST (TST.TyUniVar loc pol pk tv) =
-    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyUniVar loc pol tv
-  embedTST (TST.TyRecVar loc pol pk tv) =
-    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyRecVar loc pol tv
+  embedTST (TST.TyUniVar loc pol (MkPolyKind _ rk) tv) =
+    RST.TyKindAnnot (CBox rk) $ RST.TyUniVar loc pol tv
+  embedTST (TST.TyUniVar loc pol (KindVar kv) tv) =
+    RST.TyKindAnnot (MKindVar kv) $ RST.TyUniVar loc pol tv
+  embedTST (TST.TyRecVar loc pol (MkPolyKind _ rk) tv) =
+    RST.TyKindAnnot (CBox rk) $ RST.TyRecVar loc pol tv
+  embedTST (TST.TyRecVar loc pol (KindVar kv) tv) =
+    RST.TyKindAnnot (MKindVar kv) $ RST.TyRecVar loc pol tv
   embedTST (TST.TyData loc pol mk xtors) =
     RST.TyKindAnnot mk $ RST.TyData loc pol (map embedTST xtors)
   embedTST (TST.TyCodata loc pol mk xtors) =
     RST.TyKindAnnot mk $ RST.TyCodata loc pol (map embedTST xtors)
-  embedTST (TST.TyDataRefined loc pol pk tn xtors) =
-    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyDataRefined loc pol pk tn (map embedTST xtors)
-  embedTST (TST.TyCodataRefined loc pol pk tn xtors) = 
-    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyCodataRefined loc pol pk tn (map embedTST xtors)
+  embedTST (TST.TyDataRefined loc pol pk@(MkPolyKind _ rk) tn xtors) =
+    RST.TyKindAnnot (CBox rk) $ RST.TyDataRefined loc pol pk tn (map embedTST xtors)
+  embedTST (TST.TyDataRefined loc pol pk@(KindVar kv) tn xtors) =
+    RST.TyKindAnnot (MKindVar kv) $ RST.TyDataRefined loc pol pk tn (map embedTST xtors)
+  embedTST (TST.TyCodataRefined loc pol pk@(MkPolyKind _ rk) tn xtors) = 
+    RST.TyKindAnnot (CBox rk) $ RST.TyCodataRefined loc pol pk tn (map embedTST xtors)
+  embedTST (TST.TyCodataRefined loc pol pk@(KindVar kv) tn xtors) = 
+    RST.TyKindAnnot (MKindVar kv) $ RST.TyCodataRefined loc pol pk tn (map embedTST xtors)
   -- if arguments are applied to TyNominal, don't annotate the Kind, otherwise the parser will break after prettyprint
   embedTST (TST.TyApp loc pol (TST.TyNominal loc' pol' polyknd tn) args) = 
     RST.TyApp loc pol (RST.TyNominal loc' pol' polyknd tn) (embedTST <$> args)
   -- if thre is no application, kind annotation is needed, otherwise x:(Nat:CBV) := x will break after prettyprint
-  embedTST (TST.TyNominal loc pol polyknd tn) = do
-    RST.TyKindAnnot (CBox $ returnKind polyknd) $ RST.TyNominal loc pol polyknd tn  
+  embedTST (TST.TyNominal loc pol pk@(MkPolyKind _ rk) tn) = do
+    RST.TyKindAnnot (CBox rk) $ RST.TyNominal loc pol pk tn  
+  embedTST (TST.TyNominal loc pol pk@(KindVar kv) tn) = do
+    RST.TyKindAnnot (MKindVar kv) $ RST.TyNominal loc pol pk tn  
   embedTST (TST.TyApp loc pol ty args) = do
     RST.TyApp loc pol (embedTST ty) (embedTST <$> args)
   embedTST (TST.TySyn loc pol tn tp) = do 
     let knd = TST.getMonoKind tp 
     RST.TyKindAnnot knd $ RST.TySyn loc pol tn (embedTST tp)
-  embedTST (TST.TyBot loc pk ) =
-    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyBot loc
-  embedTST (TST.TyTop loc pk ) =
-    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyTop loc
-  embedTST (TST.TyUnion loc pk tp1 tp2) =
-    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyUnion loc (embedTST tp1) (embedTST tp2)
-  embedTST (TST.TyInter loc pk tn1 tn2) =
-    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TyInter loc (embedTST tn1) (embedTST tn2)
+  embedTST (TST.TyBot loc (MkPolyKind _ rk) ) =
+    RST.TyKindAnnot (CBox rk) $ RST.TyBot loc
+  embedTST (TST.TyBot loc (KindVar kv) ) =
+    RST.TyKindAnnot (MKindVar kv) $ RST.TyBot loc
+  embedTST (TST.TyTop loc (MkPolyKind _ rk) ) =
+    RST.TyKindAnnot (CBox rk) $ RST.TyTop loc
+  embedTST (TST.TyTop loc (KindVar kv) ) =
+    RST.TyKindAnnot (MKindVar kv) $ RST.TyTop loc
+  embedTST (TST.TyUnion loc (MkPolyKind _ rk) tp1 tp2) =
+    RST.TyKindAnnot (CBox rk) $ RST.TyUnion loc (embedTST tp1) (embedTST tp2)
+  embedTST (TST.TyUnion loc (KindVar kv) tp1 tp2) =
+    RST.TyKindAnnot (MKindVar kv) $ RST.TyUnion loc (embedTST tp1) (embedTST tp2)
+  embedTST (TST.TyInter loc (MkPolyKind _ rk) tn1 tn2) =
+    RST.TyKindAnnot (CBox rk) $ RST.TyInter loc (embedTST tn1) (embedTST tn2)
+  embedTST (TST.TyInter loc (KindVar kv) tn1 tn2) =
+    RST.TyKindAnnot (MKindVar kv) $ RST.TyInter loc (embedTST tn1) (embedTST tn2)
   embedTST (TST.TyRec loc pol rv tp) = do
     let knd = TST.getMonoKind tp
     RST.TyKindAnnot knd $ RST.TyRec loc pol rv (embedTST  tp)

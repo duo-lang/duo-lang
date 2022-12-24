@@ -175,14 +175,16 @@ data NodeLabel =
     } deriving (Eq,Show,Ord)
 
 emptyNodeLabel :: Polarity -> MonoKind -> NodeLabel
-emptyNodeLabel pol (CBox eo) = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty (MkPolyKind [] eo)
-emptyNodeLabel pol I64Rep = MkPrimitiveNodeLabel pol I64
-emptyNodeLabel pol F64Rep = MkPrimitiveNodeLabel pol F64
-emptyNodeLabel pol StringRep = MkPrimitiveNodeLabel pol PString
-emptyNodeLabel pol CharRep = MkPrimitiveNodeLabel pol PChar
+emptyNodeLabel pol (CBox eo)     = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty (MkPolyKind [] eo)
+emptyNodeLabel pol I64Rep        = MkPrimitiveNodeLabel pol I64
+emptyNodeLabel pol F64Rep        = MkPrimitiveNodeLabel pol F64
+emptyNodeLabel pol StringRep     = MkPrimitiveNodeLabel pol PString
+emptyNodeLabel pol CharRep       = MkPrimitiveNodeLabel pol PChar
+emptyNodeLabel _ (MKindVar _)    = error "at this point no KindVars should be in the program"
 
 emptyNodeLabelPk :: Polarity -> PolyKind -> NodeLabel
-emptyNodeLabelPk pol = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty
+emptyNodeLabelPk _ (KindVar _) = error "at this point no KindVars should be in the program"
+emptyNodeLabelPk pol pk = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty pk
 
 
 singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> PolyKind -> NodeLabel
@@ -196,7 +198,8 @@ getPolarityNL (MkNodeLabel pol _ _ _ _ _ _) = pol
 getPolarityNL (MkPrimitiveNodeLabel pol _) = pol
 
 getKindNL :: NodeLabel -> MonoKind 
-getKindNL (MkNodeLabel _ _ _ _ _ _ mk) = CBox $ returnKind mk
+getKindNL (MkNodeLabel _ _ _ _ _ _ (KindVar _)) = error "at this point no KindVars should be in the program"
+getKindNL (MkNodeLabel _ _ _ _ _ _ pk@(MkPolyKind _ _)) = CBox $ returnKind pk
 getKindNL (MkPrimitiveNodeLabel _ I64) = I64Rep
 getKindNL (MkPrimitiveNodeLabel _ F64) = F64Rep
 getKindNL (MkPrimitiveNodeLabel _ PChar) = CharRep

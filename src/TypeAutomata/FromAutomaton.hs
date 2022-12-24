@@ -95,7 +95,8 @@ getNodeKind i = do
   gr <- asks graph
   case lab gr i of
     Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
-    Just (MkNodeLabel _ _ _ _ _ _ pk) -> return (CBox $ returnKind pk)
+    Just (MkNodeLabel _ _ _ _ _ _ pk@(MkPolyKind _ _ )) -> return (CBox $ returnKind pk)
+    Just (MkNodeLabel _ _ _ _ _ _ (KindVar _)) -> throwAutomatonError defaultLoc [T.pack "Kind Variable should not appear in the program at this point"]
     Just (MkPrimitiveNodeLabel _ primTy) ->
       case primTy of
         I64 -> return I64Rep
@@ -184,7 +185,8 @@ nodeToTypeNoCache rep i  = do
           toPrimType rep PChar = TyChar defaultLoc rep
           toPrimType rep PString = TyString defaultLoc rep
       pure (toPrimType rep tp)
-    MkNodeLabel _ datSet codatSet tns refDat refCodat pk -> do
+    MkNodeLabel _ _ _ _ _ _ (KindVar _) -> throwAutomatonError defaultLoc ["Kind Variable should not appear in the program at this point"]
+    MkNodeLabel _ datSet codatSet tns refDat refCodat pk@(MkPolyKind _ _) -> do
       outs <- nodeToOuts i
       let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
       let refDatTypes = M.toList refDat -- Unique data ref types

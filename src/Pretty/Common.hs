@@ -131,6 +131,7 @@ instance PrettyAnn MonoKind where
   prettyAnn I64Rep = "I64Rep"
   prettyAnn CharRep = "CharRep"
   prettyAnn StringRep = "StringRep"
+  prettyAnn (MKindVar kv) = prettyAnn kv
 
 instance PrettyAnn KVar where
   prettyAnn (MkKVar kv) = prettyAnn kv

@@ -53,6 +53,7 @@ getXtorKinds loc (xtor:xtors) = do
   
 getKindDecl ::  TST.DataDecl -> GenM (MonoKind,[MonoKind])
 getKindDecl decl = do
+  -- this can never be a kind var
   let polyknd = TST.data_kind decl
   let argKnds = map (\(_,_,mk) -> mk) (kindArgs polyknd)
   return (CBox $ returnKind polyknd, argKnds)
@@ -513,6 +514,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkXtors :: Loc -> [TST.XtorSig pol] -> TST.DataDecl -> GenM ()
       checkXtors _ [] _ = return ()
       checkXtors loc (fst:rst) decl = do
+        -- this can never be a kind var
         let retKnd = CBox $ returnKind $ TST.data_kind decl
         let retKnds = map getMonoKind (TST.sig_args fst)
         if all (==retKnd) retKnds then
@@ -529,6 +531,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkXtors :: Loc -> [TST.XtorSig (RST.FlipPol pol)] -> TST.DataDecl -> GenM ()
       checkXtors _ [] _ = return ()
       checkXtors loc (fst:rst) decl = do
+        -- this can never be a kind  var 
         let retKnd = CBox $ returnKind $ TST.data_kind decl
         let retKnds = map getMonoKind (TST.sig_args fst)
         if all (==retKnd) retKnds then
