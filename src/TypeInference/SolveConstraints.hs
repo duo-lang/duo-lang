@@ -532,7 +532,7 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
   let bisubst = (MkBisubstitution (M.empty, m) :: Bisubstitution UniVT)
   let zonkedlbs = zonk UniRep bisubst <$> lbs
   let zonkedubs = zonk UniRep bisubst <$> ubs
-  let zonkedKind = zonkKind bisubst k
+  let zonkedKind = zonkPolyKind m k
   VariableState zonkedlbs zonkedubs tc zonkedKind
 
 -- | Creates the variable states that results from solving constraints.

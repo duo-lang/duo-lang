@@ -472,9 +472,9 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         else 
           throwOtherError loc ["Kind of Xtor " <> ppPrint argKnds <> " does not match declaration kind " <> ppPrint mk]
       compMonoKind:: MonoKind -> MonoKind -> GenM Bool
-      --compMonoKind mk (KindVar kv) = do 
-      --  addConstraint $ KindEq KindConstraint mk (KindVar kv) 
-      --  return True
+      compMonoKind mk (MKindVar kv) = do 
+        addConstraint $ MonoKindEq KindConstraint mk (MKindVar kv) 
+        return True
       compMonoKind mk mk' = return (mk == mk')
 
 
@@ -498,9 +498,9 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         else 
           throwOtherError loc ["Kind of Xtor " <> ppPrint argKnds <> " does not match declaration kind " <> ppPrint mk]
       compMonoKind:: MonoKind -> MonoKind -> GenM Bool
-      --compMonoKind mk (KindVar kv) = do 
-      --  addConstraint $ KindEq KindConstraint mk (KindVar kv) 
-      --  return True
+      compMonoKind mk (MKindVar kv) = do 
+        addConstraint $ MonoKindEq KindConstraint mk (MKindVar kv) 
+        return True
       compMonoKind mk mk' = return (mk == mk')
 
 
@@ -541,23 +541,24 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyApp _loc' _pol' (RST.TyNominal loc pol polyknd tyn) vartys) = do 
     vartys' <- mapM annotateKind vartys
     let argKnds = map (\(_, _, mk) -> mk) (kindArgs polyknd)
-    checkArgKnds loc (NE.toList vartys') argKnds
-    return (TST.TyApp loc pol (TST.TyNominal loc pol polyknd tyn) vartys')
+    if length vartys' /= length argKnds then
+      throwOtherError loc ["Wrong number of arguments of type " <> ppPrint tyn] 
+    else do
+      let argKnds' = case argKnds of (fst:rst) -> fst:|rst; _ -> error "cannnot happen"
+      vartys'' <- mapM (checkArgKnds loc) (NE.zip vartys' argKnds')
+      return (TST.TyApp loc pol (TST.TyNominal loc pol polyknd tyn) vartys'')
     where
-      checkArgKnds :: Loc -> [TST.VariantType pol] -> [MonoKind] -> GenM ()
-      checkArgKnds _ [] [] = return ()
-      checkArgKnds loc (_:_) [] = throwOtherError loc ["Too many type Arguments"]
-      checkArgKnds loc [] (_:_) = throwOtherError loc ["Too few type Arguments"]
-      checkArgKnds loc (fstVarty:rstVarty) (fstMk:rstMk) = 
-        case TST.getMonoKind fstVarty of 
-          (MKindVar kv) -> do  
-            addConstraint (MonoKindEq KindConstraint (MKindVar kv) fstMk)
-            checkArgKnds loc rstVarty rstMk 
-          mk -> 
-            if mk == fstMk then do
-              checkArgKnds loc rstVarty rstMk 
-            else do 
-              throwOtherError loc ["Kind of VariantType: " <> ppPrint fstVarty <> " does not match kind of declaration " <> ppPrint fstMk]
+      checkArgKnds :: Loc -> (TST.VariantType pol, MonoKind) -> GenM (TST.VariantType pol)
+      checkArgKnds loc (_,MKindVar _) = throwOtherError loc ["Kind variables should not appear in nominal declarations"]
+      checkArgKnds loc (varty,mk) =  
+        case TST.getMonoKind varty of 
+          (MKindVar kv) -> return $ TST.zonkMonoKind (M.singleton kv mk) varty
+          mk' -> 
+            if mk == mk' then 
+              return varty 
+            else 
+              throwOtherError loc ["Kind of applied type " <> ppPrint varty <> " does not match with declaration"]
+
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
     case kindArgs polyknd of 
       [] -> do 
