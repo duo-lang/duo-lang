@@ -25,7 +25,7 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind(CBox),PolyKind(KindVar))
+import Syntax.CST.Kinds (KVar, MonoKind(CBox),PolyKind(..))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
@@ -54,6 +54,15 @@ import Pretty.Program ()
 import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
 
+getAnnotKind :: TST.Typ pol -> Maybe (TST.TypeScheme pol) -> Maybe (KVar, PolyKind)
+getAnnotKind tyInf maybeAnnot = 
+  case (TST.getPolyKind tyInf,maybeAnnot) of 
+    (Just (KindVar kv),Just annot) -> 
+      case (TST.getPolyKind $ TST.ts_monotype annot, TST.getMonoKind $ TST.ts_monotype annot) of 
+        (Just pk,_)       -> Just (kv,pk)
+        (Nothing,CBox eo) -> Just (kv, MkPolyKind [] eo)
+        _                 -> Nothing
+    _ -> Nothing
 
 checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
 checkKindAnnot Nothing _ = return Nothing
@@ -109,7 +118,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 2. Solve the constraints.
   tyAnnotChecked <- checkKindAnnot pcdecl_annot pcdecl_loc
   let tyInf = TST.getTypeTerm tmInferred
-  let annotKind = case ((TST.getKind $ TST.getTypeTerm tmInferred),tyAnnotChecked) of (KindVar kv,Just annot) -> Just (kv,TST.getKind $ TST.ts_monotype annot); _ -> Nothing
+  let annotKind = getAnnotKind tyInf tyAnnotChecked 
   solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet annotKind env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result

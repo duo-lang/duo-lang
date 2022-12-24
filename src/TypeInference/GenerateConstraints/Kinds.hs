@@ -9,7 +9,7 @@ import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST
-import Syntax.TST.Types (getKind)
+import Syntax.TST.Types (getMonoKind,getPolyKind)
 import Syntax.CST.Kinds
 import Syntax.CST.Names 
 import Pretty.Pretty
@@ -216,20 +216,22 @@ annotTy (RST.TyTop loc) = throwOtherError loc ["TyTop should not be contained in
 annotTy (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
-  let knd = TST.getKind ty1' 
-  let pknd = case knd of CBox eo -> MkPolyKind [] eo; _ -> error "not implemented"
-  if knd == TST.getKind ty2' then 
-    return $ TST.TyUnion loc pknd ty1' ty2'
+  let pknd = TST.getPolyKind ty1' 
+  if pknd == TST.getPolyKind ty2' then
+    case pknd of 
+      Nothing -> throwOtherError loc [T.pack ("No polykind for " <> show ty1' <> " in union")]
+      Just pk -> return $ TST.TyUnion loc pk ty1' ty2'
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in union do not match"]
 
 annotTy (RST.TyInter loc ty1 ty2) = do 
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
-  let knd = TST.getKind ty1' 
-  let pknd = case knd of CBox eo -> MkPolyKind [] eo; _ -> error "not implemented"
-  if knd == TST.getKind ty2' then 
-    return $ TST.TyInter loc pknd ty1' ty2'
+  let pknd = TST.getPolyKind ty1' 
+  if pknd == TST.getPolyKind ty2' then 
+    case pknd of 
+      Nothing -> throwOtherError loc [T.pack ("No polykind for " <> show ty1' <> " in union")]
+      Just pk -> return $ TST.TyInter loc pk ty1' ty2'
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
 annotTy (RST.TyRec loc pol rv ty) = case ty of 
@@ -253,7 +255,7 @@ annotTy (RST.TyFlipPol pol ty) = do
   return $ TST.TyFlipPol pol ty'
 annotTy (RST.TyKindAnnot mk ty) = do
   ty' <- annotTy ty
-  let knd = getKind ty'
+  let knd = getMonoKind ty'
   if knd == mk then
     return ty' 
   else 
@@ -463,7 +465,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       compXtorKinds _ [] (_:_) = error "too many xtor kinds (should not happen)"
       compXtorKinds _ (_:_) [] = error "not all xtor kinds found (should already fail during lookup)"
       compXtorKinds loc (fstXtor:rstXtors) ((mk,_):rstKinds) = do
-        let argKnds = map getKind (TST.sig_args fstXtor)
+        let argKnds = map getMonoKind (TST.sig_args fstXtor)
         allEq <- mapM (compMonoKind mk) argKnds
         if and allEq then 
           compXtorKinds loc rstXtors rstKinds 
@@ -489,7 +491,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       compXtorKinds _ [] (_:_) = error "too many xtor kinds (should not happen)"
       compXtorKinds _ (_:_) [] = error "not all xtor kinds found (should already fail during lookup)"
       compXtorKinds loc (fstXtor:rstXtors) ((mk,_):rstKinds) = do
-        let argKnds = map getKind (TST.sig_args fstXtor)
+        let argKnds = map getMonoKind (TST.sig_args fstXtor)
         allEq <- mapM (compMonoKind mk) argKnds
         if and allEq then 
           compXtorKinds loc rstXtors rstKinds 
@@ -512,7 +514,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkXtors _ [] _ = return ()
       checkXtors loc (fst:rst) decl = do
         let retKnd = CBox $ returnKind $ TST.data_kind decl
-        let retKnds = map getKind (TST.sig_args fst)
+        let retKnds = map getMonoKind (TST.sig_args fst)
         if all (==retKnd) retKnds then
           checkXtors loc rst decl 
         else 
@@ -528,14 +530,13 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkXtors _ [] _ = return ()
       checkXtors loc (fst:rst) decl = do
         let retKnd = CBox $ returnKind $ TST.data_kind decl
-        let retKnds = map getKind (TST.sig_args fst)
+        let retKnds = map getMonoKind (TST.sig_args fst)
         if all (==retKnd) retKnds then
           checkXtors loc rst decl 
         else 
           throwOtherError loc ["Xtors do not have the correct kinds"]
 
   annotateKind (RST.TyApp _loc' _pol' (RST.TyNominal loc pol polyknd tyn) vartys) = do 
-    -- insert polykind to use for inner recvars
     vartys' <- mapM annotateKind vartys
     let argKnds = map (\(_, _, mk) -> mk) (kindArgs polyknd)
     checkArgKnds loc (NE.toList vartys') argKnds
@@ -546,8 +547,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkArgKnds loc (_:_) [] = throwOtherError loc ["Too many type Arguments"]
       checkArgKnds loc [] (_:_) = throwOtherError loc ["Too few type Arguments"]
       checkArgKnds loc (fstVarty:rstVarty) (fstMk:rstMk) = 
-        case TST.getKind fstVarty of 
-          --(KindVar kv) -> do 
+        case TST.getMonoKind fstVarty of 
+          -- (KindVar kv) -> do 
           --  addConstraint (KindEq KindConstraint (KindVar kv) fstMk)
           --  checkArgKnds loc rstVarty rstMk 
           mk -> 
@@ -576,17 +577,25 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     ty1' <- annotateKind ty1
     ty2' <- annotateKind ty2
     kv <- newKVar 
-    addConstraint (MonoKindEq KindConstraint (getKind ty1') (getKind ty2'))
-    --addConstraint (KindEq KindConstraint (KindVar kv) (getKind ty1'))
-    return (TST.TyUnion loc (KindVar kv) ty1' ty2')
+    addConstraint (MonoKindEq KindConstraint (getMonoKind ty1') (getMonoKind ty2'))
+    let pk = getPolyKind ty1'
+    case pk of 
+      Just pk' -> do 
+        addConstraint (KindEq KindConstraint (KindVar kv) pk')
+        return (TST.TyUnion loc (KindVar kv) ty1' ty2')
+      _ -> return (TST.TyUnion loc (KindVar kv) ty1' ty2')
     
   annotateKind (RST.TyInter loc ty1 ty2) = do
     ty1' <- annotateKind ty1
     ty2' <- annotateKind ty2
     kv <- newKVar 
-    addConstraint (MonoKindEq KindConstraint (getKind ty1') (getKind ty2'))
-    --addConstraint (KindEq KindConstraint (KindVar kv) (getKind ty1'))
-    return (TST.TyInter loc (KindVar kv) ty1' ty2')
+    addConstraint (MonoKindEq KindConstraint (getMonoKind ty1') (getMonoKind ty2'))
+    let pk = getPolyKind ty1'
+    case pk of 
+      Just pk' -> do 
+        addConstraint (KindEq KindConstraint (KindVar kv) pk')
+        return (TST.TyInter loc (KindVar kv) ty1' ty2')
+      _ -> return (TST.TyInter loc (KindVar kv) ty1' ty2') 
     
   annotateKind (RST.TyRec loc pol rv ty) = do
     pknd <- getPk ty
@@ -628,7 +637,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   
   annotateKind (RST.TyKindAnnot mk ty) = do 
     ty' <- annotateKind ty 
-    addConstraint $ MonoKindEq KindConstraint (TST.getKind ty') mk 
+    addConstraint $ MonoKindEq KindConstraint (TST.getMonoKind ty') mk 
     return ty'
 
 

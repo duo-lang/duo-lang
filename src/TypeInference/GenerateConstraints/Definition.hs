@@ -255,8 +255,8 @@ lookupContext loc rep idx@(i,j) = do
 instantiateTypeScheme :: FreeVarName -> Loc -> TST.TypeScheme pol -> GenM (TST.Typ pol)
 instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do 
   freshVars <- forM ts_vars (\(tv,knd) -> freshTVar (TypeSchemeInstance fv loc) (case knd of CBox eo -> Just $ MkPolyKind [] eo; _ -> error "not implemented") >>= \ty -> return (tv, ty))
-  forM_ freshVars (\(_,ty) -> addConstraint (MonoKindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ fst ty)))
-  forM_ freshVars (\(_,ty) -> addConstraint (MonoKindEq  KindConstraint (TST.getKind ts_monotype) (TST.getKind $ snd ty)))
+  forM_ freshVars (\(_,ty) -> addConstraint (MonoKindEq  KindConstraint (TST.getMonoKind ts_monotype) (TST.getMonoKind $ fst ty)))
+  forM_ freshVars (\(_,ty) -> addConstraint (MonoKindEq  KindConstraint (TST.getMonoKind ts_monotype) (TST.getMonoKind $ snd ty)))
   pure $ TST.zonk TST.SkolemRep (TST.MkBisubstitution (M.fromList freshVars)) ts_monotype
 
 ---------------------------------------------------------------------------------------------
