@@ -1,12 +1,12 @@
-module TypeAutomata.Intersection (emptyIntersection) where
+module TypeAutomata.Intersection (emptyIntersection,intersectIsEmpty,intersectAut) where
 
 
-import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), NodeLabel (..), EdgeLabelNormal)
+import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), NodeLabel (..), EdgeLabelNormal, TypeAut)
 import Control.Monad.Identity (Identity(..))
 import Data.Graph.Inductive.Graph (Node, Graph (..), lsuc, lab)
 import qualified Data.Map as M
 import qualified Data.Set as S
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, isJust)
 import Control.Monad.State
 import qualified Data.Bifunctor as BF
 import Data.List (nub, (\\))
@@ -19,6 +19,8 @@ import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
 import TypeAutomata.Determinize (determinize)
 import TypeAutomata.RemoveEpsilon (removeEpsilonEdges)
 import TypeAutomata.ToAutomaton (typeToAut)
+import Data.Map (Map)
+import TypeAutomata.Utils (typeAutIsEmpty)
 
 
 -- | Check for two type schemes whether their intersection type automaton is empty.
@@ -86,3 +88,73 @@ intersectLabels (MkPrimitiveNodeLabel pol prim)
  | prim /= prim' = Nothing
  | otherwise = Just $ MkPrimitiveNodeLabel pol prim
 intersectLabels _ _ = Nothing
+
+-- | Check for two type schemes whether their intersection type automaton is empty.
+intersectIsEmpty :: TypeScheme pol -> TypeScheme pol -> Either (NonEmpty Error) Bool
+intersectIsEmpty ty1 ty2 = do
+  aut1 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty1
+  aut2 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty2
+  pure $ typeAutIsEmpty $ intersectAut aut1 aut2
+
+intersectAut :: TypeAutDet pol -> TypeAutDet pol -> TypeAutDet pol
+--  intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges $ intersectAutM aut1 aut2
+intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize $intersected
+  where
+    intersected = runIdentity $ flip evalStateT initState $ runIntersect $ intersectAutM aut1 aut2
+    initState = IS { is_nodes = M.empty, is_nodelabels = M.empty, is_edges = M.empty, is_counter = 0, is_todo = [(runIdentity $ ta_starts aut1, runIdentity $ ta_starts aut2)] }
+
+data IntersectS
+  = IS { is_nodes :: Map (Node,Node) Node, is_nodelabels :: Map Node NodeLabel, is_edges :: Map Node [(Node, Node, EdgeLabelNormal)], is_counter :: Node, is_todo :: [(Node, Node)] }
+
+newtype IntersectM' m a = IM { runIntersect :: StateT IntersectS m a }
+  deriving newtype (Functor,Applicative,Monad,MonadState IntersectS)
+
+type IntersectM = IntersectM' Identity
+
+addNode :: (Node,Node) -> IntersectM Node
+addNode (nl,nr) = do
+  c <- gets is_counter
+  modify (\is@IS { is_nodes } -> is { is_nodes = M.insert (nl,nr) c is_nodes, is_counter = c+1 })
+  return c
+
+intersectAutM :: TypeAutDet pol -> TypeAutDet pol -> IntersectM (TypeAut pol)
+intersectAutM aut1 aut2 = do
+    starts <- gets (head . is_todo)
+    go
+    nodes <- gets (M.toList . is_nodelabels)
+    nodeM <- gets is_nodes
+    edges' <- gets (M.toList . is_edges)
+    let edges = concatMap (\(n,es) -> map (\(n1,n2,l) -> (n, nodeM M.! (n1,n2), l)) es) edges'
+    let gr = mkGraph nodes edges
+    start <- gets (flip (M.!) starts . is_nodes)
+    -- TODO: get flow edges
+    let fl = []
+    pure $ TypeAut { ta_core = TypeAutCore { ta_gr = gr, ta_flowEdges = fl }, ta_starts = [start], ta_pol = ta_pol aut1 }
+  where
+    gr1 = ta_gr (ta_core aut1)
+    gr2 = ta_gr (ta_core aut2)
+    go :: IntersectM ()
+    go = do
+      todos <- gets is_todo
+      cache <- gets is_nodes
+      case todos of
+        [] -> pure ()
+        (todo@(n1,n2):todos') -> flip (>>) go $ if isJust $ todo `M.lookup` cache
+          then modify (\is -> is { is_todo = todos' }) 
+          else do
+            let unsafeLab gr n = fromMaybe (error "successor node is not in graph") $ lab gr n
+            let l1 = unsafeLab gr1 n1
+            let l2 = unsafeLab gr2 n2
+            let lIntersect = fromMaybe (error $ "could not intersect labels in " ++ show l1 ++ " " ++ show l2) $ intersectLabels l1 l2
+            n <- addNode (n1,n2)
+            modify (\is@IS { is_nodelabels = labs } -> is { is_nodelabels = M.insert n lIntersect labs })
+            let nexts1 = lsuc gr1 n1
+            let nexts2 = lsuc gr2 n2
+            let outEdges = [ (n1, n2, l) | (n1, l) <- nexts1, (n2, l') <- nexts2, l == l' ]
+            modify ( \is@IS { is_edges = edges } -> is { is_edges = M.insert n outEdges edges })
+            go
+
+            
+          
+
+

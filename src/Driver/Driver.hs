@@ -53,7 +53,7 @@ import Pretty.Common (Header(..))
 import Pretty.Program ()
 import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
-import TypeAutomata.Intersection (emptyIntersection)
+import TypeAutomata.Intersection (emptyIntersection, intersectIsEmpty)
 
 
 checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
@@ -236,11 +236,11 @@ checkOverlappingInstances loc cn (typ, tyn) = do
           let otherErr = ErrOther $ SomeOtherError loc $ T.unlines [ "The instance declared is overlapping and violates type class coherence."
                                                                    , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ
                                                                    ]
-          case emptyIntersection (TST.generalize typ) (TST.generalize typ') of 
+          case intersectIsEmpty (TST.generalize typ) (TST.generalize typ') of 
             Left errors -> throwError errors
             Right False -> throwError (otherErr NE.:| [])
             Right True -> do
-              case emptyIntersection (TST.generalize tyn) (TST.generalize tyn') of
+              case intersectIsEmpty (TST.generalize tyn) (TST.generalize tyn') of
                 Left errors -> throwError errors
                 Right False -> throwError (otherErr NE.:| [])
                 Right True -> pure ()
