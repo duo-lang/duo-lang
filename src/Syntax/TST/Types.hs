@@ -295,9 +295,19 @@ data VarType
   | RecVT
 
 type family BisubstMap (vt :: VarType) :: Type where
-  BisubstMap UniVT    = (Map UniTVar (Typ Pos, Typ Neg), Map KVar PolyKind)
+  BisubstMap UniVT    = (Map UniTVar (Typ Pos, Typ Neg), Map KVar PolyKind, Map KVar MonoKind)
   BisubstMap SkolemVT = Map SkolemTVar (Typ Pos, Typ Neg)
   BisubstMap RecVT    = Map RecTVar (Typ Pos, Typ Neg)
+
+getUVMap :: BisubstMap UniVT -> Map UniTVar (Typ Pos, Typ Neg)
+getUVMap (m,_,_) = m
+
+getKVMapPk :: BisubstMap UniVT -> Map KVar PolyKind
+getKVMapPk (_,m,_) = m
+
+getKVMapMk :: BisubstMap UniVT -> Map KVar MonoKind
+getKVMapMk (_,_,m) = m
+
 
 newtype Bisubstitution vt = MkBisubstitution { bisubst_map :: BisubstMap vt }
 
@@ -312,16 +322,18 @@ class Zonk (a :: Type) where
 
 instance Zonk (Typ pol) where
   zonk UniRep bisubst ty@(TyUniVar _ PosRep _ tv) = 
-    case M.lookup tv (fst (bisubst_map bisubst)) of
-      Nothing -> zonkPolyKind (snd $ bisubst_map bisubst) ty 
-      Just (tyPos,_) -> zonkPolyKind (snd $ bisubst_map bisubst) tyPos
+    let zonkFun x = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) x in
+    case M.lookup tv (getUVMap (bisubst_map bisubst)) of
+      Nothing -> zonkFun ty
+      Just (tyPos,_) -> zonkFun tyPos
   zonk UniRep bisubst ty@(TyUniVar _ NegRep _ tv) = 
-    case M.lookup tv (fst (bisubst_map bisubst)) of
-      Nothing -> zonkPolyKind (snd $ bisubst_map bisubst) ty
-      Just (_,tyNeg) -> zonkPolyKind (snd $ bisubst_map bisubst) tyNeg
+    let zonkFun x = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) x in
+    case M.lookup tv (getUVMap (bisubst_map bisubst)) of
+      Nothing -> zonkFun ty 
+      Just (_,tyNeg) -> zonkFun tyNeg 
   zonk SkolemRep _ ty@TyUniVar{} = ty
   zonk RecRep _ ty@TyUniVar{} = ty
-  zonk UniRep bisubst ty@TySkolemVar{} = zonkPolyKind (snd $ bisubst_map bisubst) ty
+  zonk UniRep bisubst ty@TySkolemVar{} = zonkMonoKind (getKVMapMk $ bisubst_map bisubst)  $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) ty
   zonk SkolemRep bisubst ty@(TySkolemVar _ PosRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
      Nothing -> ty -- Recursive variable!
      Just (tyPos,_) -> tyPos
@@ -329,7 +341,7 @@ instance Zonk (Typ pol) where
      Nothing -> ty -- Recursive variable!
      Just (_,tyNeg) -> tyNeg
   zonk RecRep _ ty@TySkolemVar{} = ty
-  zonk UniRep bisubst ty@TyRecVar{} = zonkPolyKind (snd $ bisubst_map bisubst) ty
+  zonk UniRep bisubst ty@TyRecVar{} = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) ty
   zonk SkolemRep _ ty@TyRecVar{} = ty
   zonk RecRep bisubst ty@(TyRecVar _ PosRep _ tv) = case M.lookup tv (bisubst_map bisubst) of
     Nothing -> ty
@@ -338,41 +350,52 @@ instance Zonk (Typ pol) where
     Nothing -> ty
     Just (_,tyNeg) -> tyNeg
   zonk UniRep bisubst (TyData loc rep mk xtors) =
-     TyData loc rep (zonkPolyKind (snd $ bisubst_map bisubst) mk) (zonk UniRep bisubst <$> xtors)
+     let knd = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) mk in
+     TyData loc rep knd (zonk UniRep bisubst <$> xtors)
   zonk vt bisubst (TyData loc rep mk xtors) =
      TyData loc rep  mk (zonk vt bisubst <$> xtors)
   zonk UniRep bisubst (TyCodata loc rep mk xtors) =
-     TyCodata loc rep (zonkPolyKind (snd $ bisubst_map bisubst) mk) (zonk UniRep bisubst <$> xtors)
+     let knd = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) mk in
+     TyCodata loc rep knd (zonk UniRep bisubst <$> xtors)
   zonk vt bisubst (TyCodata loc rep mk xtors) =
      TyCodata loc rep mk (zonk vt bisubst <$> xtors)
   zonk UniRep bisubst (TyDataRefined loc rep pk tn xtors) =
-     TyDataRefined loc rep (zonkPolyKind (snd $ bisubst_map bisubst) pk) tn (zonk UniRep bisubst <$> xtors)
+     let knd = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) pk in
+     TyDataRefined loc rep knd tn (zonk UniRep bisubst <$> xtors)
   zonk vt bisubst (TyDataRefined loc rep pk tn xtors) =
      TyDataRefined loc rep pk tn (zonk vt bisubst <$> xtors)
   zonk UniRep bisubst (TyCodataRefined loc rep pk tn xtors) =
-     TyCodataRefined loc rep (zonkPolyKind (snd $ bisubst_map bisubst) pk) tn (zonk UniRep bisubst <$> xtors)
+     let knd = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) pk in
+     TyCodataRefined loc rep knd tn (zonk UniRep bisubst <$> xtors)
   zonk vt bisubst (TyCodataRefined loc rep pk tn xtors) =
      TyCodataRefined loc rep pk tn (zonk vt bisubst <$> xtors)
-  zonk UniRep bisubst (TyNominal loc rep knd tn) = 
-    TyNominal loc rep (zonkPolyKind (snd $ bisubst_map bisubst) knd) tn 
+  zonk UniRep bisubst (TyNominal loc rep pk tn) = 
+    let knd = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) pk in
+    TyNominal loc rep knd tn 
   zonk _ _ (TyNominal loc rep kind tn) =
      TyNominal loc rep kind tn 
   zonk vt bisubst (TyApp loc rep ty args) = 
     TyApp loc rep (zonk vt bisubst ty) (zonk vt bisubst <$> args)
   zonk vt bisubst (TySyn loc rep nm ty) =
      TySyn loc rep nm (zonk vt bisubst ty)
-  zonk UniRep bisubst (TyTop loc pk) = TyTop loc (zonkPolyKind (snd $ bisubst_map bisubst) pk)
+  zonk UniRep bisubst (TyTop loc pk) = 
+    let knd = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) pk in
+    TyTop loc knd
   zonk _vt _ (TyTop loc mk) =
     TyTop loc mk
-  zonk UniRep bisubst (TyBot loc pk) = TyBot loc (zonkPolyKind (snd $ bisubst_map bisubst) pk)
+  zonk UniRep bisubst (TyBot loc pk) = 
+    let knd = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) pk in
+    TyBot loc knd
   zonk _vt _ (TyBot loc pk) =
     TyBot loc pk
-  zonk UniRep bisubst (TyUnion loc pknd ty1 ty2) = 
-    TyUnion loc (zonkPolyKind (snd $ bisubst_map bisubst) pknd) (zonk UniRep bisubst ty1) (zonk UniRep bisubst ty2)
+  zonk UniRep bisubst (TyUnion loc pk ty1 ty2) = 
+    let knd = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) pk in
+    TyUnion loc knd (zonk UniRep bisubst ty1) (zonk UniRep bisubst ty2)
   zonk vt bisubst (TyUnion loc pknd ty ty') =
     TyUnion loc pknd (zonk vt bisubst ty) (zonk vt bisubst ty')
-  zonk UniRep bisubst (TyInter loc pknd ty1 ty2) = 
-    TyInter loc (zonkPolyKind (snd $ bisubst_map bisubst) pknd) (zonk UniRep bisubst ty1) (zonk UniRep bisubst ty2)
+  zonk UniRep bisubst (TyInter loc pk ty1 ty2) = 
+    let knd = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) pk in
+    TyInter loc knd (zonk UniRep bisubst ty1) (zonk UniRep bisubst ty2)
   zonk vt bisubst (TyInter loc pknd ty ty') =
     TyInter loc pknd (zonk vt bisubst ty) (zonk vt bisubst ty')
   zonk RecRep bisubst (TyRec loc rep tv ty) =
@@ -402,7 +425,8 @@ instance Zonk (PrdCnsType pol) where
 
 instance Zonk (TypeScheme pol) where 
   zonk UniRep bisubst (TypeScheme {ts_loc = loc, ts_vars = tvars, ts_monotype = ty}) =
-    TypeScheme {ts_loc = loc, ts_vars = map (zonkPolyKind (snd $ bisubst_map bisubst)) tvars, ts_monotype = zonk UniRep bisubst ty}
+    let zonkFun x = zonkMonoKind (getKVMapMk $ bisubst_map bisubst) $ zonkPolyKind (getKVMapPk $ bisubst_map bisubst) x in
+    TypeScheme {ts_loc = loc, ts_vars = map zonkFun tvars, ts_monotype = zonk UniRep bisubst ty}
   zonk _ _ _ = error "Not implemented"
 
 class ZonkKind (a::Type) where 

@@ -172,18 +172,23 @@ prettySkolBisubst (v, (typ,tyn)) = nest 3 $ line <> vsep [ prettyAnn v <+> "+ â¤
                                                          , prettyAnn v <+> "- â¤‡" <+> prettyAnn tyn
                                                          ]
 
-prettyKindSubst :: (KVar, PolyKind) -> Doc Annotation
-prettyKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
+prettyPKindSubst :: (KVar, PolyKind) -> Doc Annotation
+prettyPKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
+
+prettyMKindSubst :: (KVar, MonoKind) -> Doc Annotation
+prettyMKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
+
 
 instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
   prettyAnn uvsubst = vsep
     [ headerise "-" " " "Bisubstitution (UniTVar)"
     , ""
     , "Unification Variables: "
-    , vsep $ prettyBisubst <$> M.toList (fst (TST.bisubst_map uvsubst))
+    , vsep $ prettyBisubst <$> M.toList (TST.getUVMap (TST.bisubst_map uvsubst))
     , ""
     , "Kind Variables: "
-    , vsep $ intersperse "" (prettyKindSubst <$> M.toList (snd (TST.bisubst_map uvsubst)))
+    , vsep $ intersperse "" (prettyPKindSubst <$> M.toList (TST.getKVMapPk (TST.bisubst_map uvsubst)))
+    , vsep $ intersperse "" (prettyMKindSubst <$> M.toList (TST.getKVMapMk (TST.bisubst_map uvsubst)))
     ]
 
 instance PrettyAnn (TST.Bisubstitution TST.SkolemVT) where
