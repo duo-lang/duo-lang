@@ -234,7 +234,7 @@ checkOverlappingInstances loc cn (typ, tyn) = do
   where checkOverlap :: Loc -> (TST.Typ RST.Pos, TST.Typ RST.Neg) -> (FreeVarName, TST.Typ RST.Pos, TST.Typ RST.Neg) -> DriverM ()
         checkOverlap loc (typ, tyn) (inst, typ', tyn') = do
           let otherErr = ErrOther $ SomeOtherError loc $ T.unlines [ "The instance declared is overlapping and violates type class coherence."
-                                                                   , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ
+                                                                   , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ'
                                                                    ]
           case intersectIsEmpty (TST.generalize typ) (TST.generalize typ') of 
             Left errors -> throwError errors
