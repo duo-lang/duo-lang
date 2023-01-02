@@ -1,0 +1,39 @@
+module Class.NatFoldable;
+
+import Data.Peano;
+import Data.Tensor;
+
+class NatFoldable(+a : CBV){
+    Fold(a, return Nat)
+};
+
+instance natTensorFoldable : NatFoldable Tensor(Nat, Nat) {
+    Fold(p, k) => case p of {
+        MkTensor(n, m) => add n m >> k
+    }
+};
+
+-- | Non empty list of natural numbers.
+data NatList {
+    Singleton(Nat),
+    Cons(Nat, NatList)
+};
+
+instance natListFoldable : NatFoldable NatList {
+    Fold(l, k) => case l of {
+        Singleton(n) => n >> k,
+        Cons(n, ns) => Fold(ns, mu x. add x n >> k)
+    }
+};
+
+data NatTree {
+    Leaf(Nat),
+    Branch(NatTree, NatTree)
+};
+
+instance natTreeFoldable : NatFoldable NatTree {
+    Fold(t, k) => case t of {
+        Leaf(n) => n >> k,
+        Branch(l, r) => add (mu k1. Fold(l, k1)) (mu k2. Fold(r, k2)) >> k
+    }
+};
