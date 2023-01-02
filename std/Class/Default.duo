@@ -4,6 +4,7 @@ import Data.Bool;
 import Data.Peano;
 import Data.Unit;
 
+-- | The class of non-empty types exhibiting a default value.
 class Default(-a : CBV){
     Default(return a)
 };

@@ -3,6 +3,7 @@ module Class.NatFoldable;
 import Data.Peano;
 import Data.Tensor;
 
+-- | The class of nonempty types that can be folded into a natural number.
 class NatFoldable(+a : CBV){
     Fold(a, return Nat)
 };
@@ -13,7 +14,7 @@ instance natTensorFoldable : NatFoldable Tensor(Nat, Nat) {
     }
 };
 
--- | Non empty list of natural numbers.
+-- | A non-empty list of natural numbers.
 data NatList {
     Singleton(Nat),
     Cons(Nat, NatList)
@@ -26,6 +27,7 @@ instance natListFoldable : NatFoldable NatList {
     }
 };
 
+-- | A leaf-oriented tree of natural numbers.
 data NatTree {
     Leaf(Nat),
     Branch(NatTree, NatTree)
