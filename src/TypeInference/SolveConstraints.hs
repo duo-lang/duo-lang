@@ -258,72 +258,33 @@ unifyPolyKinds (KindVar kv) kind = do
                else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint kind <> " and " <> ppPrint mk]
 unifyPolyKinds kind (KindVar kv) = unifyPolyKinds (KindVar kv) kind
 
-computeKVarSolutionMk :: KindPolicy
+computeKVarSolution :: KindPolicy
                     -> Maybe (KVar, PolyKind)
-                    -> [([KVar], Maybe MonoKind)]
-                    -> Either (NE.NonEmpty Error) (Map KVar MonoKind)
-computeKVarSolutionMk DefaultCBV Nothing sets =  
-  return $ computeKVarSolutionMk' ((\(xs,pk) -> case pk of Nothing -> (xs,CBox CBV); Just mk -> (xs,mk)) <$> sets)
-computeKVarSolutionMk DefaultCBN Nothing sets = 
-  return $ computeKVarSolutionMk' ((\(xs,pk) -> case pk of Nothing -> (xs,CBox CBN); Just mk -> (xs,mk)) <$> sets)
-computeKVarSolutionMk ErrorUnresolved Nothing sets | all (\(_,mk) -> isJust mk) sets = do
-  pure $ computeKVarSolutionMk' (map (Data.Bifunctor.second fromJust) sets)
-                                         | otherwise = do
-  let kvars :: [KVar] = join $ fst <$> filter (\(_,mk) -> isNothing mk) sets
-  let msg = "The following kind variables could not be resolved: " <> mconcat (intersperse ", " (ppPrint <$> kvars))
-  Left $  (NE.:| []) $  ErrConstraintSolver $ SomeConstraintSolverError defaultLoc msg
-computeKVarSolutionMk policy (Just (kv,annotKind)) sets = do 
-  let annotAdded = removeNothing kv annotKind sets
-  computeKVarSolutionMk policy Nothing annotAdded
+                    -> [([KVar],Maybe MonoKind)]
+                    -> [([KVar],Maybe PolyKind)]
+                    -> Either (NE.NonEmpty Error) (Map KVar MonoKind, Map KVar PolyKind)
+computeKVarSolution kp annot kvmk kvpk = do
+  -- build the maps and get all kvars with nothing
+  let (nothingMk, mkVars) = buildMap kvmk
+  let (nothingPk, pkVars) = buildMap kvpk
+  -- get unmatched kvars
+  let leftOvers = filter (containsKVar mkVars) nothingMk ++ filter (containsKVar pkVars) nothingPk
+  case kp of 
+    DefaultCBV -> Right (M.fromList $ foldr (\kv kvMap -> (kv,CBox CBV):kvMap) mkVars leftOvers, M.fromList pkVars)
+    DefaultCBN -> Right (M.fromList $ foldr (\kv kvMap -> (kv,CBox CBN):kvMap) mkVars leftOvers, M.fromList pkVars)
+    ErrorUnresolved -> do 
+      case leftOvers of
+        [] -> Right (M.fromList mkVars, M.fromList pkVars)
+        _ -> Left $  (NE.:| []) $  ErrConstraintSolver $ SomeConstraintSolverError defaultLoc "not finished"
   where 
-    removeNothing::KVar->PolyKind->[([KVar], Maybe MonoKind)]->[([KVar], Maybe MonoKind)] 
-    removeNothing _ _ [] = []
-    removeNothing kv mk ((kvs, Just mk'):rst) = (kvs,Just mk'):removeNothing kv mk rst
-    removeNothing kv pk ((kvs,Nothing):rst) = 
-      case filter (/= kv) kvs of 
-        [] -> ([kv], Just $ CBox $ returnKind pk) : removeNothing kv pk rst
-        rst' -> ([kv],Just $ CBox $ returnKind pk) : ((rst',Nothing) : removeNothing kv pk rst)
-
-
-
-computeKVarSolutionPk :: KindPolicy
-                    -> Maybe (KVar, PolyKind)
-                    -> [([KVar], Maybe PolyKind)]
-                    -> Either (NE.NonEmpty Error) (Map KVar PolyKind)
-computeKVarSolutionPk DefaultCBV Nothing sets =  
-  return $ computeKVarSolutionPk' ((\(xs,pk) -> case pk of Nothing -> (xs,MkPolyKind [] CBV); Just pk -> (xs,pk)) <$> sets)
-computeKVarSolutionPk DefaultCBN Nothing sets = 
-  return $ computeKVarSolutionPk' ((\(xs,pk) -> case pk of Nothing -> (xs,MkPolyKind [] CBN); Just pk -> (xs,pk)) <$> sets)
-computeKVarSolutionPk ErrorUnresolved Nothing sets | all (\(_,mk) -> isJust mk) sets = do
-  pure $ computeKVarSolutionPk' (map (Data.Bifunctor.second fromJust) sets)
-                                         | otherwise = do
-  let kvars :: [KVar] = join $ fst <$> filter (\(_,mk) -> isNothing mk) sets
-  let msg = "The following kind variables could not be resolved: " <> mconcat (intersperse ", " (ppPrint <$> kvars))
-  Left $  (NE.:| []) $  ErrConstraintSolver $ SomeConstraintSolverError defaultLoc msg
-computeKVarSolutionPk policy (Just (kv,annotKind)) sets = do 
-  let annotAdded = removeNothing kv annotKind sets
-  computeKVarSolutionPk policy Nothing annotAdded
-  where 
-    removeNothing::KVar->PolyKind->[([KVar], Maybe PolyKind)]->[([KVar], Maybe PolyKind)] 
-    removeNothing _ _ [] = []
-    removeNothing kv mk ((kvs, Just mk'):rst) = (kvs,Just mk'):removeNothing kv mk rst
-    removeNothing kv mk ((kvs,Nothing):rst) = 
-      case filter (/= kv) kvs of 
-        [] -> ([kv], Just mk) : removeNothing kv mk rst
-        rst' -> ([kv],Just mk) : ((rst',Nothing) : removeNothing kv mk rst)
-
-computeKVarSolutionPk' :: [([KVar],PolyKind)] -> Map KVar PolyKind
-computeKVarSolutionPk' sets = M.fromList (concatMap f sets)
-  where
-    f :: ([a],PolyKind) -> [(a,PolyKind)]
-    f (xs, mk) = zip xs (repeat mk)
-
-computeKVarSolutionMk' :: [([KVar],MonoKind)] -> Map KVar MonoKind
-computeKVarSolutionMk' sets = M.fromList (concatMap f sets)
-  where
-    f :: ([a],MonoKind) -> [(a,MonoKind)]
-    f (xs, mk) = zip xs (repeat mk)
-
+    buildMap :: [([KVar],Maybe a)] -> ([KVar],[(KVar, a)])
+    buildMap kvars = 
+      let foldFun (xs,mknd) (nothings, kvmap) = case mknd of Nothing -> (xs++nothings,kvmap); Just knd -> (nothings,zip xs (repeat knd)) 
+      in
+      foldr foldFun ([],[]) kvars 
+    containsKVar :: [(KVar,a)] -> KVar -> Bool
+    containsKVar [] _ = False
+    containsKVar ((kv,_):rst) kv' = (kv == kv') || containsKVar rst kv'
 
 data KindPolicy
   = DefaultCBV
@@ -591,8 +552,7 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
 solveConstraints :: ConstraintSet -> Maybe (KVar, PolyKind) -> Map ModuleName Environment -> Either (NE.NonEmpty Error) SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) annotKind env = do
   (_, solverState) <- runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet)
-  kvarSolutionMk <- computeKVarSolutionMk ErrorUnresolved annotKind (sst_kvarsMk solverState) 
-  kvarSolutionPk <- computeKVarSolutionPk ErrorUnresolved annotKind (sst_kvarsPk solverState)
+  (kvarSolutionMk,kvarSolutionPk) <- computeKVarSolution ErrorUnresolved annotKind (sst_kvarsMk solverState) (sst_kvarsPk solverState)
   let tvarSol = zonkVariableState kvarSolutionPk <$> sst_bounds solverState
   return $ MkSolverResult tvarSol kvarSolutionPk kvarSolutionMk (sst_cache solverState)
 
