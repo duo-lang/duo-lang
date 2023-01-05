@@ -558,7 +558,9 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkArgKnds loc (_,MKindVar _) = throwOtherError loc ["Kind variables should not appear in nominal declarations"]
       checkArgKnds loc (varty,mk) =  
         case TST.getMonoKind varty of 
-          (MKindVar kv) -> return $ TST.zonkMonoKind (M.singleton kv mk) varty
+          (MKindVar kv) -> do
+            addConstraint (MonoKindEq KindConstraint (MKindVar kv) mk)
+            return varty
           mk' -> 
             if mk == mk' then 
               return varty 
