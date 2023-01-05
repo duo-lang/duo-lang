@@ -16,9 +16,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.List (partition, intersperse)
-import Data.Maybe (fromJust, isJust, isNothing)
-import Data.Bifunctor (second)
+import Data.List (partition)
 
 import Driver.Environment (Environment (..))
 import Errors
@@ -282,7 +280,7 @@ computeKVarSolution kp annot kvmk kvpk = do
   where 
     buildMap :: [([KVar],Maybe a)] -> ([KVar],[(KVar, a)])
     buildMap kvars = 
-      let foldFun (xs,mknd) (nothings, kvmap) = case mknd of Nothing -> (xs++nothings,kvmap); Just knd -> (nothings,zip xs (repeat knd)) 
+      let foldFun (xs,mknd) (nothings, kvmap) = case mknd of Nothing -> (xs++nothings,kvmap); Just knd -> (nothings,zip xs (repeat knd)++kvmap) 
       in
       foldr foldFun ([],[]) kvars 
     containsKVar :: [(KVar,a)] -> KVar -> Bool
