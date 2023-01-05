@@ -269,12 +269,15 @@ computeKVarSolution kp annot kvmk kvpk = do
   let (nothingPk, pkVars) = buildMap kvpk
   -- get unmatched kvars
   let leftOvers = filter (containsKVar mkVars) nothingMk ++ filter (containsKVar pkVars) nothingPk
+  -- insert mks into pks and vice versa, in case there is a kv that is used as mono and polykind
+  let pkVars' = foldr (\(kv,mk) pkList -> case mk of CBox eo -> (kv,MkPolyKind [] eo):pkList; _->pkList) pkVars mkVars
+  let mkVars' = foldr (\(kv,pk) mkList -> (kv, CBox $ returnKind pk):mkList) mkVars pkVars
   case kp of 
-    DefaultCBV -> Right (M.fromList $ foldr (\kv kvMap -> (kv,CBox CBV):kvMap) mkVars leftOvers, M.fromList pkVars)
-    DefaultCBN -> Right (M.fromList $ foldr (\kv kvMap -> (kv,CBox CBN):kvMap) mkVars leftOvers, M.fromList pkVars)
+    DefaultCBV -> Right (M.fromList $ foldr (\kv kvMap -> (kv,CBox CBV):kvMap) mkVars' leftOvers, M.fromList pkVars')
+    DefaultCBN -> Right (M.fromList $ foldr (\kv kvMap -> (kv,CBox CBN):kvMap) mkVars' leftOvers, M.fromList pkVars')
     ErrorUnresolved -> do 
       case leftOvers of
-        [] -> Right (M.fromList mkVars, M.fromList pkVars)
+        [] -> Right (M.fromList mkVars', M.fromList pkVars')
         _ -> Left $  (NE.:| []) $  ErrConstraintSolver $ SomeConstraintSolverError defaultLoc "not finished"
   where 
     buildMap :: [([KVar],Maybe a)] -> ([KVar],[(KVar, a)])
