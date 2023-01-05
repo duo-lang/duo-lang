@@ -387,21 +387,27 @@ instance AnnotateKind  (RST.Typ RST.Pos, RST.Typ RST.Neg) (TST.Typ RST.Pos, TST.
 instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
   annotateKind ::  RST.TypeScheme pol -> GenM (TST.TypeScheme pol)
   annotateKind RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = do
-    ty' <- annotateKind ty
     newTVars <- mapM addTVar tvs
+    ty' <- annotateKind ty
     return TST.TypeScheme {ts_loc = loc, ts_vars = newTVars,ts_monotype = ty'}
     where 
       addTVar :: MaybeKindedSkolem -> GenM KindedSkolem
       addTVar (sk, mmk) = do 
         skMap <- gets usedSkolemVars
-        case M.lookup sk skMap of 
-          Nothing -> throwOtherError defaultLoc ["Skolem Variable " <> ppPrint sk <> " is defined but not used"]
-          Just mk -> 
-            case mmk of 
-              Nothing -> return (sk,mk)
-              Just mk' -> do
-                addConstraint $ MonoKindEq KindConstraint mk mk' 
-                return (sk, mk')
+        case (M.lookup sk skMap, mmk) of 
+          (Nothing, Nothing) -> do
+            kvNew <- newKVar
+            let newSkMap = M.insert sk (MKindVar kvNew) skMap
+            modify (\gs@GenerateState{} -> gs { usedSkolemVars = newSkMap })
+            return (sk,MKindVar kvNew)
+          (Just mk,Nothing) -> return (sk,mk)
+          (Nothing, Just mk) -> do
+            let newSkMap = M.insert sk mk skMap
+            modify (\gs@GenerateState{} -> gs { usedSkolemVars = newSkMap })
+            return (sk,mk)
+          (Just mk, Just mk') -> do
+            addConstraint $ MonoKindEq KindConstraint mk mk' 
+            return (sk,mk)
                 
 instance AnnotateKind (RST.VariantType pol) (TST.VariantType pol) where
   annotateKind ::  RST.VariantType pol -> GenM (TST.VariantType pol)
