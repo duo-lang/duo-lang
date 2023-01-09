@@ -7,6 +7,7 @@ module TypeInference.SolveConstraints
     isSubtype
   ) where
 
+
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -184,7 +185,8 @@ partitionMMk sets kv = do
 
 
 unifyMonoKinds :: MonoKind -> MonoKind -> SolverM ()
-unifyMonoKinds (MKindVar kv1) (MKindVar kv2) = do
+unifyMonoKinds (MKindVar kv1) (MKindVar kv2) = 
+  if kv1 == kv2 then return () else do
   sets <- getKVarsMk
   ((kvset1,mk1),rest1) <- partitionMMk sets kv1
   if kv2 `elem` kvset1 then
@@ -233,7 +235,8 @@ unifyPolyKinds (MkPolyKind args1 eo1) (MkPolyKind args2 eo2) = do
         unifyMonoKinds mk1 mk2 
         compArgs rst1 rst2 
         else throwSolverError defaultLoc ["Arguments " <> ppPrint var1 <> " " <> ppPrint sk1 <> ":"<> ppPrint mk1 <> " and " <> ppPrint var2 <> " " <> ppPrint sk2 <> ":" <> ppPrint mk2 <> " don't match"]
-unifyPolyKinds (KindVar kv1) (KindVar kv2) = do
+unifyPolyKinds (KindVar kv1) (KindVar kv2) = 
+  if kv1 == kv2 then return () else do
   sets <- getKVarsPk
   ((kvset1,pk1),rest1) <- partitionMPk sets kv1
   if kv2 `elem` kvset1 then
@@ -266,26 +269,30 @@ computeKVarSolution kp annot kvmk kvpk = do
   let (nothingMk, mkVars) = buildMap kvmk
   let (nothingPk, pkVars) = buildMap kvpk
   -- get unmatched kvars
-  let leftOvers = filter (containsKVar mkVars) nothingMk ++ filter (containsKVar pkVars) nothingPk
+  let leftOvers = filter (notcontainsKVar mkVars) nothingPk ++ filter (notcontainsKVar pkVars) nothingMk
+  let (pkVars',leftOvers') = insertAnnot annot leftOvers pkVars
   -- insert mks into pks and vice versa, in case there is a kv that is used as mono and polykind
-  let pkVars' = foldr (\(kv,mk) pkList -> case mk of CBox eo -> (kv,MkPolyKind [] eo):pkList; _->pkList) pkVars mkVars
-  let mkVars' = foldr (\(kv,pk) mkList -> (kv, CBox $ returnKind pk):mkList) mkVars pkVars
+  let pkVars'' = foldr (\(kv,mk) pkList -> case mk of CBox eo -> (kv,MkPolyKind [] eo):pkList; _->pkList) pkVars' mkVars
+  let mkVars' = foldr (\(kv,pk) mkList -> (kv, CBox $ returnKind pk):mkList) mkVars pkVars'
   case kp of 
-    DefaultCBV -> Right (M.fromList $ foldr (\kv kvMap -> (kv,CBox CBV):kvMap) mkVars' leftOvers, M.fromList pkVars')
-    DefaultCBN -> Right (M.fromList $ foldr (\kv kvMap -> (kv,CBox CBN):kvMap) mkVars' leftOvers, M.fromList pkVars')
+    DefaultCBV -> Right (M.fromList $ foldr (\kv kvMap -> (kv,CBox CBV):kvMap) mkVars' leftOvers', M.fromList pkVars'')
+    DefaultCBN -> Right (M.fromList $ foldr (\kv kvMap -> (kv,CBox CBN):kvMap) mkVars' leftOvers', M.fromList pkVars'')
     ErrorUnresolved -> do 
-      case leftOvers of
-        [] -> Right (M.fromList mkVars', M.fromList pkVars')
-        _ -> Left $  (NE.:| []) $  ErrConstraintSolver $ SomeConstraintSolverError defaultLoc "not finished"
+      case leftOvers' of
+        [] -> Right (M.fromList mkVars', M.fromList pkVars'')
+        _ -> Left $  (NE.:| []) $  ErrConstraintSolver $ SomeConstraintSolverError defaultLoc "could not resolve all kvars"
   where 
     buildMap :: [([KVar],Maybe a)] -> ([KVar],[(KVar, a)])
     buildMap kvars = 
       let foldFun (xs,mknd) (nothings, kvmap) = case mknd of Nothing -> (xs++nothings,kvmap); Just knd -> (nothings,zip xs (repeat knd)++kvmap) 
       in
       foldr foldFun ([],[]) kvars 
-    containsKVar :: [(KVar,a)] -> KVar -> Bool
-    containsKVar [] _ = False
-    containsKVar ((kv,_):rst) kv' = (kv == kv') || containsKVar rst kv'
+    notcontainsKVar :: [(KVar,a)] -> KVar -> Bool
+    notcontainsKVar [] _ = True
+    notcontainsKVar ((kv,_):rst) kv' = (kv /= kv') && notcontainsKVar rst kv'
+    insertAnnot :: Maybe (KVar, PolyKind) -> [KVar] -> [(KVar, PolyKind)] -> ([(KVar, PolyKind)],[KVar])
+    insertAnnot Nothing nothings kvars = (kvars,nothings)
+    insertAnnot (Just (kv,pk)) nothings kvarsPk = if kv `elem` nothings then ((kv,pk):kvarsPk, filter (/= kv) nothings) else (kvarsPk,nothings)
 
 data KindPolicy
   = DefaultCBV
