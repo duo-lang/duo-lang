@@ -193,8 +193,6 @@ class GetPolyKind (a :: Type) where
 instance GetPolyKind (Typ pol) where 
   getPolyKind (TyUniVar _ _ pk _)           = Just pk
   getPolyKind (TyRecVar _ _ pk _)           = Just pk 
-  getPolyKind (TyData _ _ mk _ )            = case mk of CBox eo -> Just $ MkPolyKind [] eo; _ -> Nothing 
-  getPolyKind (TyCodata _ _ mk _ )          = case mk of CBox eo -> Just $ MkPolyKind [] eo; _ -> Nothing 
   getPolyKind (TyDataRefined _ _ pk _ _ )   = Just pk
   getPolyKind (TyCodataRefined _ _ pk _ _ ) = Just pk 
   getPolyKind (TyNominal _ _ pk _ )         = Just pk 
@@ -206,7 +204,10 @@ instance GetPolyKind (Typ pol) where
   getPolyKind (TyInter _ pk _ _)            = Just pk
   getPolyKind (TyRec _ _ _ ty)              = getPolyKind ty
   getPolyKind (TyFlipPol _ ty)              = getPolyKind ty
-  getPolyKind _                             = Nothing
+  getPolyKind ty                            = case getMonoKind ty of 
+    CBox eo -> Just $ MkPolyKind [] eo
+    MKindVar kv -> Just $ KindVar kv
+    _ -> Nothing
 
 instance GetPolyKind (PrdCnsType pol) where 
   getPolyKind (PrdCnsType _ ty) = getPolyKind ty

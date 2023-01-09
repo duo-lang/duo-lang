@@ -292,7 +292,7 @@ inferDecl mn (Core.DataDecl decl) = do
 --
 inferDecl _mn (Core.XtorDecl decl) = do
   -- check constructor kinds
-  let retKnd = CBox $ RST.strxtordecl_evalOrder decl
+  let retKnd = RST.strxtordecl_evalOrder decl
   let xtornm = RST.strxtordecl_name decl
   let argKnds = map snd (RST.strxtordecl_arity decl)
   let f env = env { kindEnv = M.insert xtornm (retKnd, argKnds) (kindEnv env)}
