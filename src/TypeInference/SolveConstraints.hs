@@ -195,8 +195,12 @@ unifyMonoKinds (MKindVar kv1) (MKindVar kv2) =
     ((kvset2,mk2), rest2) <- partitionMMk rest1 kv2
     let newSet = kvset1 ++ kvset2
     case (mk1,mk2) of
-      (pk1, Nothing) -> putKVarsMk $ (newSet,pk1):rest2
-      (Nothing, pk2) -> putKVarsMk $ (newSet,pk2):rest2
+      (pk1, Nothing) -> do 
+        putKVarsMk $ (newSet,pk1):rest2
+        unifyPolyKinds (KindVar kv1) (KindVar kv2)
+      (Nothing, pk2) -> do
+        putKVarsMk $ (newSet,pk2):rest2
+        unifyPolyKinds (KindVar kv1) (KindVar kv2)
       (Just mk1, Just mk2) | mk1 == mk2 -> putKVarsMk $ (newSet, Just mk1) :rest2
                            | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint mk1 <> " and " <> ppPrint mk2]
 
@@ -245,8 +249,12 @@ unifyPolyKinds (KindVar kv1) (KindVar kv2) =
     ((kvset2,pk2), rest2) <- partitionMPk rest1 kv2
     let newSet = kvset1 ++ kvset2
     case (pk1,pk2) of
-      (pk1, Nothing) -> putKVarsPk $ (newSet,pk1):rest2
-      (Nothing, pk2) -> putKVarsPk $ (newSet,pk2):rest2
+      (pk1, Nothing) -> do 
+        putKVarsPk $ (newSet,pk1):rest2
+        unifyMonoKinds (MKindVar kv1) (MKindVar kv2)
+      (Nothing, pk2) -> do 
+        putKVarsPk $ (newSet,pk2):rest2
+        unifyMonoKinds (MKindVar kv1) (MKindVar kv2)
       (Just pk1, Just pk2) | pk1 == pk2 -> putKVarsPk $ (newSet, Just pk1) :rest2
                            | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint pk1 <> " and " <> ppPrint pk2]
 unifyPolyKinds (KindVar kv) kind = do
