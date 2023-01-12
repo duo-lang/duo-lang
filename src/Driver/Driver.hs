@@ -235,7 +235,7 @@ checkOverlappingInstances loc cn (typ, tyn) = do
         checkOverlap loc (typ, tyn) (inst, typ', tyn') = do
           printGraphs <- gets (infOptsPrintGraphs . drvOpts)
           let err = ErrOther $ SomeOtherError loc $ T.unlines [ "The instance declared is overlapping and violates type class coherence."
-                                                              , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ
+                                                              , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ'
                                                               ]
           emptyIntersectionPos <- intersectIsEmpty printGraphs (TST.generalize typ) (TST.generalize typ')
           emptyIntersectionNeg <- intersectIsEmpty printGraphs (TST.generalize tyn) (TST.generalize tyn')
