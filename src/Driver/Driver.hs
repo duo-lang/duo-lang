@@ -233,17 +233,13 @@ checkOverlappingInstances loc cn (typ, tyn) = do
     Just insts -> mapM_ (checkOverlap loc (typ, tyn)) (S.toList insts)
   where checkOverlap :: Loc -> (TST.Typ RST.Pos, TST.Typ RST.Neg) -> (FreeVarName, TST.Typ RST.Pos, TST.Typ RST.Neg) -> DriverM ()
         checkOverlap loc (typ, tyn) (inst, typ', tyn') = do
-          let otherErr = ErrOther $ SomeOtherError loc $ T.unlines [ "The instance declared is overlapping and violates type class coherence."
-                                                                   , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ
-                                                                   ]
-          case intersectIsEmpty (TST.generalize typ) (TST.generalize typ') of 
-            Left errors -> throwError errors
-            Right False -> throwError (otherErr NE.:| [])
-            Right True -> do
-              case intersectIsEmpty (TST.generalize tyn) (TST.generalize tyn') of
-                Left errors -> throwError errors
-                Right False -> throwError (otherErr NE.:| [])
-                Right True -> pure ()
+          printGraphs <- gets (infOptsPrintGraphs . drvOpts)
+          let err = ErrOther $ SomeOtherError loc $ T.unlines [ "The instance declared is overlapping and violates type class coherence."
+                                                              , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ
+                                                              ]
+          emptyIntersectionPos <- intersectIsEmpty printGraphs (TST.generalize typ) (TST.generalize typ')
+          emptyIntersectionNeg <- intersectIsEmpty printGraphs (TST.generalize tyn) (TST.generalize tyn')
+          unless (emptyIntersectionPos && emptyIntersectionNeg) (throwError (err NE.:| []))
 
 inferClassDeclaration :: ModuleName
                       -> RST.ClassDeclaration

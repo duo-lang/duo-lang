@@ -21,6 +21,9 @@ import TypeAutomata.RemoveEpsilon (removeEpsilonEdges)
 import TypeAutomata.ToAutomaton (typeToAut)
 import Data.Map (Map)
 import TypeAutomata.Utils (typeAutIsEmpty)
+import TypeAutomata.Simplify (printGraph)
+import Pretty.Pretty (ppPrint)
+import qualified Data.Text as T
 
 
 -- | Check for two type schemes whether their intersection type automaton is empty.
@@ -90,11 +93,16 @@ intersectLabels (MkPrimitiveNodeLabel pol prim)
 intersectLabels _ _ = Nothing
 
 -- | Check for two type schemes whether their intersection type automaton is empty.
-intersectIsEmpty :: TypeScheme pol -> TypeScheme pol -> Either (NonEmpty Error) Bool
-intersectIsEmpty ty1 ty2 = do
-  aut1 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty1
-  aut2 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty2
-  pure $ typeAutIsEmpty $ intersectAut aut1 aut2
+intersectIsEmpty :: MonadIO m => Bool -> TypeScheme pol -> TypeScheme pol -> m Bool
+intersectIsEmpty print ty1 ty2 = do
+  case minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty1 of
+    Left _err -> pure False
+    Right aut1 -> case minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty2 of
+      Left _err -> pure False
+      Right aut2 -> do
+        let intersect = intersectAut aut1 aut2
+        printGraph print False ("inter" <> T.unpack (ppPrint ty1) <> "x" <> T.unpack (ppPrint ty2)) intersect
+        pure $ typeAutIsEmpty intersect
 
 intersectAut :: TypeAutDet pol -> TypeAutDet pol -> TypeAutDet pol
 --  intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges $ intersectAutM aut1 aut2
