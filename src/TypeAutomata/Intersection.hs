@@ -104,7 +104,17 @@ intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize $int
     initState = IS { is_nodes = M.empty, is_nodelabels = M.empty, is_edges = M.empty, is_counter = 0, is_todo = [(runIdentity $ ta_starts aut1, runIdentity $ ta_starts aut2)] }
 
 data IntersectS
-  = IS { is_nodes :: Map (Node,Node) Node, is_nodelabels :: Map Node NodeLabel, is_edges :: Map Node [(Node, Node, EdgeLabelNormal)], is_counter :: Node, is_todo :: [(Node, Node)] }
+  = IS { is_nodes :: Map (Node,Node) Node
+       -- ^ map pairs of nodes from original automata to nodes in result automaton
+       , is_nodelabels :: Map Node NodeLabel
+       -- ^ labels of nodes in result automaton
+       , is_edges :: Map Node [(Node, Node, EdgeLabelNormal)]
+       -- ^ edges going from a result node to pairs of original nodes
+       , is_counter :: Node
+       -- ^ fresh node ID for result automaton
+       , is_todo :: [(Node, Node)]
+       -- ^ node pairs that still need to be visited
+       }
 
 newtype IntersectM' m a = IM { runIntersect :: StateT IntersectS m a }
   deriving newtype (Functor,Applicative,Monad,MonadState IntersectS)
