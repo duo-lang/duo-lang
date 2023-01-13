@@ -2,6 +2,7 @@ module TypeInference.GenerateConstraints.Kinds
   ( AnnotateKind(..)
   , getKindDecl
   , resolveDataDecl
+  , genKindConstr
   ) where
 
 
@@ -36,6 +37,17 @@ import Syntax.RST.Types (Polarity(..), PolarityRep (..))
 --------------------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------------------
+
+genKindConstr :: Loc -> TST.Typ pol1 -> TST.Typ pol2 -> GenM () 
+genKindConstr loc ty1 ty2 = case (TST.getPolyKind ty1, TST.getPolyKind ty2) of 
+  (Nothing, Nothing) -> 
+    let (knd1,knd2) = (TST.getMonoKind ty1,TST.getMonoKind ty2)
+    in 
+      if knd1 == knd2 then return () else throwOtherError loc ["Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2 <> " are not compatible"]
+  (Just pk1, Just pk2) -> do 
+    addConstraint $ KindEq KindConstraint pk1 pk2
+    return () 
+  _ -> throwOtherError loc ["Kinds " <> ppPrint (TST.getMonoKind ty1) <> " and " <> ppPrint (TST.getMonoKind ty2) <> " are not compatible"]
 
 getXtorKinds :: Loc -> [RST.XtorSig pol] -> GenM EvaluationOrder
 getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
@@ -550,15 +562,17 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkArgKnds :: Loc -> (TST.VariantType pol, MonoKind) -> GenM (TST.VariantType pol)
       checkArgKnds loc (_,MKindVar _) = throwOtherError loc ["Kind variables should not appear in nominal declarations"]
       checkArgKnds loc (varty,mk) =  
-        case TST.getMonoKind varty of 
-          (MKindVar kv) -> do
-            addConstraint (MonoKindEq KindConstraint (MKindVar kv) mk)
+        case (TST.getPolyKind varty,mk) of
+          (Just pk, CBox eo) -> do 
+            addConstraint (KindEq KindConstraint pk (MkPolyKind [] eo))
             return varty
-          mk' -> 
-            if mk == mk' then 
+          (Just pk, primk) -> throwOtherError loc ["Kind " <> ppPrint pk <> " of applied type doesn't match with kind of declaration " <> ppPrint primk]
+          (Nothing, CBox _) -> throwOtherError loc ["Kind " <> ppPrint (TST.getMonoKind varty) <> " of applied type doesn't match with kind of declaration " <> ppPrint mk]
+          (Nothing, primk) -> 
+            if TST.getMonoKind varty == primk then 
               return varty 
-            else 
-              throwOtherError loc ["Kind of applied type " <> ppPrint varty <> " does not match with declaration"]
+            else throwOtherError loc ["Kind " <> ppPrint (TST.getMonoKind varty) <> " of applied type does not match with declaration " <> ppPrint mk]
+              
 
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
     case kindArgs polyknd of 
@@ -636,8 +650,13 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   
   annotateKind (RST.TyKindAnnot mk ty) = do 
     ty' <- annotateKind ty 
-    addConstraint $ MonoKindEq KindConstraint (TST.getMonoKind ty') mk 
-    return ty'
-
+    case (TST.getPolyKind ty',mk) of 
+      (Just pk, CBox eo) -> do 
+        addConstraint $ KindEq KindConstraint pk (MkPolyKind [] eo)
+        return ty'
+      (Just pk, primk) -> throwOtherError (getLoc ty') ["Annotated kind "<> ppPrint primk <> " doesn't match inferred kind " <> ppPrint pk]
+      (Nothing, CBox eo) -> throwOtherError (getLoc ty') ["Annotated kind "<> ppPrint (CBox eo) <> " doesn't match inferred kind " <> ppPrint (TST.getMonoKind ty')]
+      (Nothing, primk) -> do 
+        if TST.getMonoKind ty' == primk then return ty' else throwOtherError (getLoc ty') ["Annotated kind "<> ppPrint primk <> " doesn't match inferred kind " <> ppPrint (TST.getMonoKind ty')]
 
 

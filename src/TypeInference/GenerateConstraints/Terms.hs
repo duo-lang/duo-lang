@@ -50,14 +50,14 @@ genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = do
   throwGenError (LinearContextsUnequalLength loc info ctx1 ctx2)
 genConstraintsCtxts [] [] _ = return ()
 genConstraintsCtxts ((TST.PrdCnsType PrdRep ty1) : rest1) (TST.PrdCnsType PrdRep ty2 : rest2) info = do
+  loc <- asks (location . snd)
   addConstraint $ SubType info ty1 ty2
-  -- subtypes need the same kind
-  addConstraint $ MonoKindEq KindConstraint (TST.getMonoKind ty1) (TST.getMonoKind ty2) 
+  genKindConstr loc ty1 ty2 
   genConstraintsCtxts rest1 rest2 info
 genConstraintsCtxts ((TST.PrdCnsType CnsRep ty1) : rest1) (TST.PrdCnsType CnsRep ty2 : rest2) info = do
+  loc <- asks (location . snd)
   addConstraint $ SubType info ty2 ty1
-  -- subtypes need the same kind
-  addConstraint $ MonoKindEq KindConstraint (TST.getMonoKind ty1) (TST.getMonoKind ty2) 
+  genKindConstr loc ty1 ty2
   genConstraintsCtxts rest1 rest2 info
 genConstraintsCtxts (TST.PrdCnsType PrdRep _:_) (TST.PrdCnsType CnsRep _:_) info = do
   loc <- asks (location . snd)
@@ -338,8 +338,9 @@ instance GenConstraints Core.Command TST.Command where
     let ty1 = TST.getTypeTerm t1'
     let ty2 = TST.getTypeTerm t2'
     addConstraint (SubType (CommandConstraint loc) ty1 ty2)
-    addConstraint (MonoKindEq KindConstraint (TST.getMonoKind ty1) (TST.getMonoKind ty2))
+    genKindConstr loc ty1 ty2
     pure (TST.Apply loc annot (TST.getMonoKind ty1) t1' t2')
+
   genConstraints (Core.PrimOp loc op subst) = do
     substInferred <- genConstraints subst
     let substTypes = TST.getTypArgs substInferred
@@ -401,13 +402,13 @@ genConstraintsTermRecursive mn loc fv PrdRep tm = do
   tm <- withTerm mn PrdRep fv (TST.FreeVar loc PrdRep x fv) loc (TST.TypeScheme loc [] x) (genConstraints tm)
   let xTy = TST.getTypeTerm tm
   addConstraint (SubType RecursionConstraint xTy y)
-  addConstraint (MonoKindEq KindConstraint (TST.getMonoKind xTy) (TST.getMonoKind y))
+  genKindConstr loc xTy y
   return tm
 genConstraintsTermRecursive mn loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv) Nothing
   tm <- withTerm mn CnsRep fv (TST.FreeVar loc CnsRep y fv) loc (TST.TypeScheme loc [] y) (genConstraints tm)
   let yTy = TST.getTypeTerm tm
   addConstraint (SubType RecursionConstraint x yTy)
-  addConstraint (MonoKindEq KindConstraint (TST.getMonoKind x) (TST.getMonoKind yTy))
+  genKindConstr loc x yTy
 
   return tm

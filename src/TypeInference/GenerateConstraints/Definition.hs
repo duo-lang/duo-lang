@@ -58,6 +58,7 @@ import Syntax.TST.Program as TST
 import TypeInference.Constraints
 import Loc ( Loc, defaultLoc )
 import Utils ( indexMaybe )
+import Pretty.Pretty
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -256,9 +257,22 @@ lookupContext loc rep idx@(i,j) = do
 instantiateTypeScheme :: FreeVarName -> Loc -> TST.TypeScheme pol -> GenM (TST.Typ pol)
 instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do 
   freshVars <- forM ts_vars (\(tv,knd) -> freshTVar (TypeSchemeInstance fv loc) (Just knd) >>= \ty -> return (tv, ty))
-  forM_ freshVars (\(_,ty) -> addConstraint (MonoKindEq  KindConstraint (TST.getMonoKind ts_monotype) (TST.getMonoKind $ fst ty)))
-  forM_ freshVars (\(_,ty) -> addConstraint (MonoKindEq  KindConstraint (TST.getMonoKind ts_monotype) (TST.getMonoKind $ snd ty)))
+  mapM_ (addKindConstr loc ts_monotype) freshVars
   pure $ TST.zonk TST.SkolemRep (TST.MkBisubstitution (M.fromList freshVars)) ts_monotype
+  where 
+    addKindConstr :: Loc -> TST.Typ pol -> (SkolemTVar, (TST.Typ Pos, TST.Typ Neg)) -> GenM () 
+    addKindConstr loc ty (_,(typos,tyneg)) =  
+      case (TST.getPolyKind ty, TST.getPolyKind typos, TST.getPolyKind tyneg) of 
+        (Nothing, Nothing, Nothing) -> 
+          if TST.getMonoKind ty == TST.getMonoKind typos && TST.getMonoKind ty == TST.getMonoKind tyneg then 
+            return () 
+          else throwOtherError loc ["Kinds " <> ppPrint (TST.getMonoKind ty) <> " and " <> ppPrint (TST.getMonoKind typos) <> " don't match"]
+        (Just pk1, Just pk2, Just pk3) -> do 
+          addConstraint $ KindEq KindConstraint pk1 pk2
+          addConstraint $ KindEq KindConstraint pk1 pk3
+          return () 
+        _ -> throwOtherError loc ["Kinds " <> ppPrint (TST.getPolyKind ty) <> " and " <> ppPrint (TST.getPolyKind typos) <> " don't match"]
+        
 
 ---------------------------------------------------------------------------------------------
 -- Adding a constraint
