@@ -436,7 +436,7 @@ instance Zonk (PrdCnsType pol) where
 
 instance Zonk (TypeScheme pol) where 
   zonk UniRep bisubst (TypeScheme {ts_loc = loc, ts_vars = tvars, ts_monotype = ty}) =
-    TypeScheme {ts_loc = loc, ts_vars = tvars, ts_monotype = zonk UniRep bisubst ty}
+    TypeScheme {ts_loc = loc, ts_vars = zonkKind (snd $ bisubst_map bisubst) <$> tvars, ts_monotype = zonk UniRep bisubst ty}
   zonk _ _ _ = error "Not implemented"
 
 class ZonkKind (a::Type) where 
