@@ -208,22 +208,22 @@ insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert 
 insertType (TyRecVar _ rep _ tv) = lookupTRecVar rep tv
 insertType (TyTop _ knd) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabelPk Neg knd)
+  insertNode newNode (emptyNodeLabel Neg knd)
   pure newNode
 insertType (TyBot _ knd) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabelPk Pos knd)
+  insertNode newNode (emptyNodeLabel Pos knd)
   pure newNode
 insertType (TyUnion _ knd ty1 ty2) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabelPk Pos knd)
+  insertNode newNode (emptyNodeLabel Pos knd)
   ty1' <- insertType ty1
   ty2' <- insertType ty2
   insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
   pure newNode
 insertType (TyInter _ knd ty1 ty2) = do
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabelPk Neg knd)
+  insertNode newNode (emptyNodeLabel Neg knd)
   ty1' <- insertType ty1
   ty2' <- insertType ty2
   insertEdges [(newNode, ty1', EpsilonEdge ()), (newNode, ty2', EpsilonEdge ())]
@@ -231,7 +231,9 @@ insertType (TyInter _ knd ty1 ty2) = do
 insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode (emptyNodeLabel pol (getMonoKind ty))
+  case getPolyKind ty of 
+    Just pk -> insertNode newNode (emptyNodeLabel pol pk)
+    Nothing -> insertNode newNode (emptyPrimLabel pol (getMonoKind ty))
   let extendEnv PosRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Just newNode, Nothing) tRecVars
       extendEnv NegRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Nothing, Just newNode) tRecVars
   n <- local (extendEnv rep) (insertType ty)
@@ -247,7 +249,7 @@ insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyApp _ _ (TyNominal _ rep polyknd tn) args) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabelPk pol polyknd) { nl_nominal = S.singleton (tn, NE.toList $ toVariance <$> args) })
+  insertNode newNode ((emptyNodeLabel pol polyknd) { nl_nominal = S.singleton (tn, NE.toList $ toVariance <$> args) })
   argNodes <- forM args insertVariantType
   insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate (NE.toList argNodes))
   return newNode
@@ -256,7 +258,7 @@ insertType (TyNominal _ rep polyknd tn) = do
     [] -> do
       let pol = polarityRepToPol rep 
       newNode <- newNodeM
-      insertNode newNode ((emptyNodeLabelPk pol polyknd) {nl_nominal = S.singleton (tn,[]) })
+      insertNode newNode ((emptyNodeLabel pol polyknd) {nl_nominal = S.singleton (tn,[]) })
       return newNode
     _ -> throwAutomatonError defaultLoc ["Nominal type "<> ppPrint tn <> "was not fully applied"]
 insertType TyApp{} = throwAutomatonError defaultLoc ["Types can only be applied to nominal types"]

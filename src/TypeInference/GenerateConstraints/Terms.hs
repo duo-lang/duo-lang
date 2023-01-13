@@ -293,13 +293,13 @@ instance GenConstraints Core.Command TST.Command where
   genConstraints (Core.Method loc mn cn (Just ty) subst) = do
     decl <- lookupClassDecl loc cn
     insertSkolemsClass decl
-    case classdecl_kinds decl of
+    case kindArgs $ classdecl_kinds decl of
       [] -> throwGenError (NoParamTypeClass loc)
       [(var, _, _)] -> do
         -- let resolvedType = (resolveType k typ, resolveType k tyn)
         resolvedType <- annotateKind ty
         -- generate kind constraints
-        let tyParamsMap = paramsMap (classdecl_kinds decl) [resolvedType]
+        let tyParamsMap = paramsMap (kindArgs $ classdecl_kinds decl) [resolvedType]
         negTypes <- lookupMethodType loc mn decl NegRep
         ctxtNeg <- annotateKind negTypes
         let negTypes' = TST.zonk TST.SkolemRep tyParamsMap ctxtNeg 
@@ -358,7 +358,7 @@ instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
     checkInstanceCoverage instancedecl_loc decl ((\(Core.XtorPat _ xt _) -> MkMethodName $ unXtorName xt) . Core.instancecase_pat <$> instancedecl_cases) 
     -- Generate fresh unification variables for type parameters
     instancety <- annotateKind instancedecl_typ
-    let tyParamsMap = paramsMap (classdecl_kinds decl) [instancety] 
+    let tyParamsMap = paramsMap (kindArgs $ classdecl_kinds decl) [instancety] 
     inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
                     let mn :: MethodName = MkMethodName $ unXtorName xt
                     -- We lookup the types belonging to the xtor in the type declaration.

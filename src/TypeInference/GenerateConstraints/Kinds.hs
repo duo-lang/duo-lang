@@ -138,12 +138,13 @@ annotVarTy (RST.ContravariantType ty) = do
   return $ TST.ContravariantType ty'
 
 
-getKindSkolem :: PolyKind -> SkolemTVar -> MonoKind
+getKindSkolem :: PolyKind -> SkolemTVar -> PolyKind
 getKindSkolem polyknd = searchKindArgs (kindArgs polyknd)
   where 
-    searchKindArgs :: [(Variance, SkolemTVar, MonoKind)] -> SkolemTVar -> MonoKind
+    searchKindArgs :: [(Variance, SkolemTVar, MonoKind)] -> SkolemTVar -> PolyKind
     searchKindArgs [] _ = error "Skolem Variable not found in argument types of polykind"
-    searchKindArgs ((_,tv,mk):rst) tv' = if tv == tv' then mk else searchKindArgs rst tv'
+    searchKindArgs ((_,tv,CBox eo):rst) tv' = if tv == tv' then MkPolyKind [] eo else searchKindArgs rst tv'
+    searchKindArgs ((_,tv,knd):_) _ = error ("Skolem Variable " <> show tv <> " can't have kind " <> show knd)
 
 annotTy :: RST.Typ pol -> DataDeclM (TST.Typ pol)
 annotTy (RST.TySkolemVar loc pol tv) = do 
@@ -387,26 +388,18 @@ instance AnnotateKind  (RST.Typ RST.Pos, RST.Typ RST.Neg) (TST.Typ RST.Pos, TST.
 instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
   annotateKind ::  RST.TypeScheme pol -> GenM (TST.TypeScheme pol)
   annotateKind RST.TypeScheme {ts_loc = loc, ts_vars = tvs, ts_monotype = ty} = do
-    newTVars <- mapM addTVar tvs
     ty' <- annotateKind ty
+    newTVars <- mapM addTVar tvs
     return TST.TypeScheme {ts_loc = loc, ts_vars = newTVars,ts_monotype = ty'}
     where 
       addTVar :: MaybeKindedSkolem -> GenM KindedSkolem
       addTVar (sk, mmk) = do 
         skMap <- gets usedSkolemVars
         case (M.lookup sk skMap, mmk) of 
-          (Nothing, Nothing) -> do
-            kvNew <- newKVar
-            let newSkMap = M.insert sk (MKindVar kvNew) skMap
-            modify (\gs@GenerateState{} -> gs { usedSkolemVars = newSkMap })
-            return (sk,MKindVar kvNew)
+          (Nothing, _) -> throwOtherError loc ["Skolem Variable " <> ppPrint sk <> " defined but not used"]
           (Just mk,Nothing) -> return (sk,mk)
-          (Nothing, Just mk) -> do
-            let newSkMap = M.insert sk mk skMap
-            modify (\gs@GenerateState{} -> gs { usedSkolemVars = newSkMap })
-            return (sk,mk)
           (Just mk, Just mk') -> do
-            addConstraint $ MonoKindEq KindConstraint mk mk' 
+            addConstraint $ KindEq KindConstraint mk mk' 
             return (sk,mk)
                 
 instance AnnotateKind (RST.VariantType pol) (TST.VariantType pol) where
@@ -437,9 +430,9 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     case M.lookup tv skMap of 
       Nothing -> do
         kv <- newKVar
-        let newM = M.insert tv (MKindVar kv) skMap
+        let newM = M.insert tv (KindVar kv) skMap
         modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
-        return (TST.TySkolemVar loc pol (MKindVar kv) tv)
+        return (TST.TySkolemVar loc pol (KindVar kv) tv)
       Just mk -> return (TST.TySkolemVar loc pol mk tv)
 
   annotateKind (RST.TyUniVar loc pol tv) = do 

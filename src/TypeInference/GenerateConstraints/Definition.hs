@@ -70,7 +70,7 @@ data GenerateState = GenerateState
   , kVarCount :: Int
   , constraintSet :: ConstraintSet
   , usedRecVars :: M.Map RecTVar PolyKind
-  , usedSkolemVars :: M.Map SkolemTVar MonoKind
+  , usedSkolemVars :: M.Map SkolemTVar PolyKind
   , usedUniVars :: M.Map UniTVar PolyKind
   }
 
@@ -184,11 +184,11 @@ freshTVarsForTypeParams rep decl =
 
 createMethodSubst :: Loc -> ClassDeclaration -> GenM (TST.Bisubstitution TST.SkolemVT, [UniTVar])
 createMethodSubst loc decl =
-  let kindArgs = classdecl_kinds decl
+  let pkArgs = kindArgs $ classdecl_kinds decl
       cn = classdecl_name decl
   in do
-    (vars, uvs) <- freshTVars cn kindArgs
-    pure (paramsMap kindArgs vars, uvs)
+    (vars, uvs) <- freshTVars cn pkArgs
+    pure (paramsMap pkArgs vars, uvs)
    where
    freshTVars ::  ClassName -> [(Variance,SkolemTVar, MonoKind)] -> GenM ([(TST.Typ Pos, TST.Typ Neg)], [UniTVar])
    freshTVars _ [] = pure ([], [])
@@ -211,15 +211,16 @@ paramsMap kindArgs freshVars =
 
 insertSkolemsClass :: RST.ClassDeclaration -> GenM()
 insertSkolemsClass decl = do
-  let tyParams = classdecl_kinds decl
+  let tyParams = kindArgs $ classdecl_kinds decl
   skMap <- gets usedSkolemVars
   let newM = insertSkolems tyParams skMap
   modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM})
   return ()
   where
-    insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar MonoKind -> M.Map SkolemTVar MonoKind
+    insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar PolyKind -> M.Map SkolemTVar PolyKind
     insertSkolems [] mp = mp
-    insertSkolems ((_,tv,mk):rst) mp = insertSkolems rst (M.insert tv mk mp)
+    insertSkolems ((_,tv,CBox eo):rst) mp = insertSkolems rst (M.insert tv (MkPolyKind [] eo) mp)
+    insertSkolems ((_,tv,primk):_) _ = error ("Skolem Variable " <> show tv <> " can't have kind " <> show primk)
 
 ---------------------------------------------------------------------------------------------
 -- Running computations in an extended context or environment
@@ -254,7 +255,7 @@ lookupContext loc rep idx@(i,j) = do
 --
 instantiateTypeScheme :: FreeVarName -> Loc -> TST.TypeScheme pol -> GenM (TST.Typ pol)
 instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do 
-  freshVars <- forM ts_vars (\(tv,knd) -> freshTVar (TypeSchemeInstance fv loc) (case knd of CBox eo -> Just $ MkPolyKind [] eo; _ -> error "not implemented") >>= \ty -> return (tv, ty))
+  freshVars <- forM ts_vars (\(tv,knd) -> freshTVar (TypeSchemeInstance fv loc) (Just knd) >>= \ty -> return (tv, ty))
   forM_ freshVars (\(_,ty) -> addConstraint (MonoKindEq  KindConstraint (TST.getMonoKind ts_monotype) (TST.getMonoKind $ fst ty)))
   forM_ freshVars (\(_,ty) -> addConstraint (MonoKindEq  KindConstraint (TST.getMonoKind ts_monotype) (TST.getMonoKind $ snd ty)))
   pure $ TST.zonk TST.SkolemRep (TST.MkBisubstitution (M.fromList freshVars)) ts_monotype

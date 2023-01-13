@@ -118,7 +118,7 @@ getNodeKindPk i = do
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks tvMap
-  knd <- getNodeKind i
+  knd <- getNodeKindPk i
   return (TySkolemVar defaultLoc rep knd <$> S.toList (fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]

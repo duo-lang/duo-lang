@@ -123,8 +123,8 @@ instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
 
 instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST :: TST.Typ pol -> RST.Typ pol
-  embedTST (TST.TySkolemVar loc pol mk tv) =
-    RST.TyKindAnnot mk $ RST.TySkolemVar loc pol tv
+  embedTST (TST.TySkolemVar loc pol pk tv) =
+    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TySkolemVar loc pol tv
   embedTST (TST.TyUniVar loc pol (MkPolyKind _ rk) tv) =
     RST.TyKindAnnot (CBox rk) $ RST.TyUniVar loc pol tv
   embedTST (TST.TyUniVar loc pol (KindVar kv) tv) =

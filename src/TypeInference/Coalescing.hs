@@ -12,7 +12,6 @@ import Data.Text qualified as T
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..),Polarity(..))
 import Syntax.CST.Names
-import Syntax.CST.Kinds(MonoKind(..), PolyKind(..))
 import TypeInference.Constraints
 import Loc ( defaultLoc )
 
@@ -95,8 +94,8 @@ coalesce result@MkSolverResult { tvarSolution, kvarSolutionPk, kvarSolutionMk } 
         xs = zip res $ runCoalesceM result $ mapM f (zip res kinds)
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
-coalesceType (TySkolemVar loc rep mk tv) =  do
-  return (TySkolemVar loc rep mk tv)
+coalesceType (TySkolemVar loc rep pk tv) =  do
+  return (TySkolemVar loc rep pk tv)
 coalesceType (TyRecVar loc rep pk tv) = do 
   return (TyRecVar loc rep pk tv)
 coalesceType (TyUniVar _ PosRep pk tv) = do
@@ -112,9 +111,7 @@ coalesceType (TyUniVar _ PosRep pk tv) = do
     case M.lookup (tv, Pos) recVarMap of
       Nothing     -> do
         newName <- getSkolemVar tv
-        case pk of 
-          KindVar kv -> return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep (MKindVar kv) newName : lbs')
-          _ -> return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep (CBox $ returnKind pk) newName : lbs')
+        return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk newName : lbs')
       Just recVar -> 
         return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk recVar  : lbs'))
 coalesceType (TyUniVar _ NegRep pk tv) = do
@@ -130,9 +127,7 @@ coalesceType (TyUniVar _ NegRep pk tv) = do
       case M.lookup (tv, Neg) recVarMap of
         Nothing -> do
           newName <- getSkolemVar tv
-          case pk of 
-            KindVar kv -> return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep (MKindVar kv) newName : ubs')
-            _ -> return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep (CBox $ returnKind pk) newName : ubs')
+          return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep pk newName : ubs')
         Just recVar -> 
           return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk recVar  : ubs')) 
 coalesceType (TyData loc rep mk xtors) = do

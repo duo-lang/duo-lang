@@ -49,8 +49,8 @@ data MonoKind
   | MKindVar KVar
   deriving (Show, Eq, Ord)
 
-type MaybeKindedSkolem = (SkolemTVar, Maybe MonoKind)
-type KindedSkolem = (SkolemTVar,MonoKind)
+type MaybeKindedSkolem = (SkolemTVar, Maybe PolyKind)
+type KindedSkolem = (SkolemTVar,PolyKind)
 
 
 ------------------------------------------------------------------------------

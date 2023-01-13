@@ -267,8 +267,8 @@ resolveTySynDeclaration CST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, t
 -- Type Class Declaration
 ---------------------------------------------------------------------------------
 
-checkVarianceClassDeclaration :: Loc -> [(Variance, SkolemTVar, MonoKind)] -> [CST.XtorSig] -> ResolverM ()
-checkVarianceClassDeclaration loc kinds = mapM_ (checkVarianceXtor loc Covariant (MkPolyKind kinds CBV))
+checkVarianceClassDeclaration :: Loc -> PolyKind -> [CST.XtorSig] -> ResolverM ()
+checkVarianceClassDeclaration loc kinds = mapM_ (checkVarianceXtor loc Covariant kinds)
 
 resolveMethods :: [CST.XtorSig]
            -> ResolverM ([RST.MethodSig Pos], [RST.MethodSig Neg])

@@ -85,7 +85,7 @@ deriving instance Show (MethodSig pol)
 
 
 data Typ (pol :: Polarity) where
-  TySkolemVar     :: Loc -> PolarityRep pol -> MonoKind -> SkolemTVar -> Typ pol
+  TySkolemVar     :: Loc -> PolarityRep pol -> PolyKind -> SkolemTVar -> Typ pol
   TyUniVar        :: Loc -> PolarityRep pol -> PolyKind -> UniTVar -> Typ pol
   TyRecVar        :: Loc -> PolarityRep pol -> PolyKind -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
@@ -159,7 +159,7 @@ instance GetMonoKind PolyKind where
   getMonoKind (KindVar kv) = MKindVar kv
 
 instance GetMonoKind (Typ pol) where 
-  getMonoKind (TySkolemVar _ _ mk _)        = mk
+  getMonoKind (TySkolemVar _ _ pk _)        = getMonoKind pk
   getMonoKind (TyUniVar _ _ pk _)           = getMonoKind pk
   getMonoKind (TyRecVar _ _ pk _)           = getMonoKind pk 
   getMonoKind (TyData _ _ mk _ )            = mk
@@ -191,6 +191,7 @@ class GetPolyKind (a :: Type) where
   getPolyKind :: a -> Maybe PolyKind
 
 instance GetPolyKind (Typ pol) where 
+  getPolyKind (TySkolemVar _ _ pk _)        = Just pk
   getPolyKind (TyUniVar _ _ pk _)           = Just pk
   getPolyKind (TyRecVar _ _ pk _)           = Just pk 
   getPolyKind (TyDataRefined _ _ pk _ _ )   = Just pk
@@ -245,7 +246,7 @@ deriving instance Show (TopAnnot Neg)
 
 -- | Typeclass for computing free type variables
 class FreeTVars (a :: Type) where
-  freeTVars :: a -> Set (SkolemTVar, MonoKind)
+  freeTVars :: a -> Set (SkolemTVar, PolyKind)
 
 instance FreeTVars (Typ pol) where
   freeTVars (TySkolemVar _ _ knd tv)         = S.singleton (tv,knd)
