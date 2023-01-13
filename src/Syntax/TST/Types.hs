@@ -118,6 +118,29 @@ deriving instance Eq (Typ pol)
 deriving instance Ord (Typ pol)
 deriving instance Show (Typ pol)
 
+instance HasLoc (Typ pol) where 
+  getLoc :: Typ pol -> Loc
+  getLoc (TySkolemVar loc _ _ _)       = loc
+  getLoc (TyUniVar loc _ _ _)          = loc
+  getLoc (TyRecVar loc _ _ _)          = loc
+  getLoc (TyData loc _ _ _ )           = loc
+  getLoc (TyCodata loc _ _ _)          = loc
+  getLoc (TyDataRefined loc _ _ _ _)   = loc
+  getLoc (TyCodataRefined loc _ _ _ _) = loc
+  getLoc (TyNominal loc _ _ _)         = loc
+  getLoc (TyApp loc _ _ _)             = loc
+  getLoc (TySyn loc _ _ _)             = loc
+  getLoc (TyBot loc _)                 = loc
+  getLoc (TyTop loc _)                 = loc
+  getLoc (TyUnion loc _ _ _)           = loc 
+  getLoc (TyInter loc _ _ _)           = loc
+  getLoc (TyRec loc _ _ _)             = loc
+  getLoc (TyI64 loc _)                 = loc
+  getLoc (TyF64 loc _)                 = loc
+  getLoc (TyChar loc _)                = loc
+  getLoc (TyString loc _)              = loc
+  getLoc (TyFlipPol _ ty)              = getLoc ty
+
 mkUnion :: Loc -> PolyKind -> [Typ Pos] -> Typ Pos
 mkUnion loc knd   []     = TyBot loc knd
 mkUnion _   _   [t]    = t
