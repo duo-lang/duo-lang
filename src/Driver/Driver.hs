@@ -60,7 +60,7 @@ getAnnotKind tyInf maybeAnnot =
     (Just (KindVar kv),Just annot) -> 
       case (TST.getPolyKind $ TST.ts_monotype annot, TST.getMonoKind $ TST.ts_monotype annot) of 
         (Just pk,_)       -> Just (kv,pk)
-        (Nothing,CBox eo) -> Just (kv, MkPolyKind [] eo)
+        (Nothing,Just (CBox eo)) -> Just (kv, MkPolyKind [] eo)
         _                 -> Nothing
     _ -> Nothing
 

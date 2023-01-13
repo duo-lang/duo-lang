@@ -174,18 +174,18 @@ getPolarity (TyFlipPol rep _)              = rep
 
 
 class GetMonoKind (a :: Type) where
-  getMonoKind :: a -> MonoKind
+  getMonoKind :: a -> Maybe MonoKind
 
 instance GetMonoKind PolyKind where 
-  getMonoKind (MkPolyKind _ eo) = CBox eo
-  getMonoKind (KindVar kv) = error "Can't get MonoKind of Kind Variable"
+  getMonoKind (MkPolyKind _ eo) = Just $ CBox eo
+  getMonoKind (KindVar _) = Nothing 
 
 instance GetMonoKind (Typ pol) where 
   getMonoKind (TySkolemVar _ _ pk _)        = getMonoKind pk
   getMonoKind (TyUniVar _ _ pk _)           = getMonoKind pk
   getMonoKind (TyRecVar _ _ pk _)           = getMonoKind pk 
-  getMonoKind (TyData _ _ mk _ )            = mk
-  getMonoKind (TyCodata _ _ mk _ )          = mk
+  getMonoKind (TyData _ _ mk _ )            = Just mk
+  getMonoKind (TyCodata _ _ mk _ )          = Just mk
   getMonoKind (TyDataRefined _ _ pk _ _ )   = getMonoKind pk 
   getMonoKind (TyCodataRefined _ _ pk _ _ ) = getMonoKind pk
   getMonoKind (TyNominal _ _ pk _ )         = getMonoKind pk
@@ -196,10 +196,10 @@ instance GetMonoKind (Typ pol) where
   getMonoKind (TyUnion _ pk _ _)            = getMonoKind pk
   getMonoKind (TyInter _ pk _ _)            = getMonoKind pk
   getMonoKind (TyRec _ _ _ ty)              = getMonoKind ty
-  getMonoKind TyI64{}                       = I64Rep
-  getMonoKind TyF64{}                       = F64Rep
-  getMonoKind TyChar{}                      = CharRep
-  getMonoKind TyString{}                    = StringRep
+  getMonoKind TyI64{}                       = Just I64Rep
+  getMonoKind TyF64{}                       = Just F64Rep
+  getMonoKind TyChar{}                      = Just CharRep
+  getMonoKind TyString{}                    = Just StringRep
   getMonoKind (TyFlipPol _ ty)              = getMonoKind ty
 
 instance GetMonoKind (PrdCnsType pol) where 
@@ -228,7 +228,7 @@ instance GetPolyKind (Typ pol) where
   getPolyKind (TyRec _ _ _ ty)              = getPolyKind ty
   getPolyKind (TyFlipPol _ ty)              = getPolyKind ty
   getPolyKind ty                            = case getMonoKind ty of 
-    CBox eo -> Just $ MkPolyKind [] eo
+    Just (CBox eo) -> Just $ MkPolyKind [] eo
     _ -> Nothing
 
 instance GetPolyKind (PrdCnsType pol) where 

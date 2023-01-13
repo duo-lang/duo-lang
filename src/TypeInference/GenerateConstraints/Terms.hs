@@ -28,6 +28,7 @@ import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 import Syntax.TST.Terms (Substitution(..))
+import Data.Maybe (fromJust)
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -228,7 +229,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
                         xtor <- lookupXtorSig loc xt RST.PosRep
-                        let argKnds = map TST.getMonoKind (TST.sig_args xtor)
+                        let argKnds = map (Data.Maybe.fromJust . TST.getMonoKind) (TST.sig_args xtor)
                         let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, Just z))) args argKnds
                         (uvarsPos, uvarsNeg) <- freshTVars tVarArgs
                         -- Check the command in the context extended with the positive unification variables
@@ -339,7 +340,7 @@ instance GenConstraints Core.Command TST.Command where
     let ty2 = TST.getTypeTerm t2'
     addConstraint (SubType (CommandConstraint loc) ty1 ty2)
     genKindConstr loc ty1 ty2
-    pure (TST.Apply loc annot (TST.getMonoKind ty1) t1' t2')
+    pure (TST.Apply loc annot (Data.Maybe.fromJust $ TST.getMonoKind ty1) t1' t2')
 
   genConstraints (Core.PrimOp loc op subst) = do
     substInferred <- genConstraints subst

@@ -155,9 +155,10 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     RST.TyNominal loc pol pk tn  
   embedTST (TST.TyApp loc pol ty args) = do
     RST.TyApp loc pol (embedTST ty) (embedTST <$> args)
-  embedTST (TST.TySyn loc pol tn tp) = do 
-    let knd = TST.getMonoKind tp 
-    RST.TyKindAnnot knd $ RST.TySyn loc pol tn (embedTST tp)
+  embedTST (TST.TySyn loc pol tn tp) = 
+    case TST.getMonoKind tp of 
+      Nothing -> RST.TySyn loc pol tn (embedTST tp)
+      Just knd -> RST.TyKindAnnot knd $ RST.TySyn loc pol tn (embedTST tp)
   embedTST (TST.TyBot loc (MkPolyKind _ rk) ) =
     RST.TyKindAnnot (CBox rk) $ RST.TyBot loc
   embedTST (TST.TyBot loc (KindVar _) ) =
@@ -174,9 +175,10 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     RST.TyKindAnnot (CBox rk) $ RST.TyInter loc (embedTST tn1) (embedTST tn2)
   embedTST (TST.TyInter loc (KindVar _) tn1 tn2) =
     RST.TyInter loc (embedTST tn1) (embedTST tn2)
-  embedTST (TST.TyRec loc pol rv tp) = do
-    let knd = TST.getMonoKind tp
-    RST.TyKindAnnot knd $ RST.TyRec loc pol rv (embedTST  tp)
+  embedTST (TST.TyRec loc pol rv tp) = 
+    case TST.getMonoKind tp of 
+      Nothing -> RST.TyRec loc pol rv (embedTST  tp)
+      Just knd -> RST.TyKindAnnot knd $ RST.TyRec loc pol rv (embedTST  tp)
   embedTST (TST.TyI64 loc pol) =
     RST.TyI64 loc pol
   embedTST (TST.TyF64 loc pol) =

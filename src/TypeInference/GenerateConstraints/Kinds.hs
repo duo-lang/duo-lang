@@ -270,7 +270,7 @@ annotTy (RST.TyFlipPol pol ty) = do
 annotTy (RST.TyKindAnnot mk ty) = do
   ty' <- annotTy ty
   let knd = getMonoKind ty'
-  if knd == mk then
+  if knd == Just mk then
     return ty' 
   else 
     throwOtherError defaultLoc ["Annotated Kind " <> ppPrint mk <> " and Inferred Kind " <> ppPrint knd <> " do not match"]
@@ -477,7 +477,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       compXtorKinds _ (_:_) [] = error "not all xtor kinds found (should already fail during lookup)"
       compXtorKinds loc (fstXtor:rstXtors) ((eo,_):rstKinds) = do
         let argKnds = map getMonoKind (TST.sig_args fstXtor)
-        let allEq = map (== CBox eo) argKnds
+        let allEq = map (== Just (CBox eo)) argKnds
         if and allEq then 
           compXtorKinds loc rstXtors rstKinds 
         else 
@@ -497,7 +497,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       compXtorKinds _ (_:_) [] = error "not all xtor kinds found (should already fail during lookup)"
       compXtorKinds loc (fstXtor:rstXtors) ((eo,_):rstKinds) = do
         let argKnds = map getMonoKind (TST.sig_args fstXtor)
-        let allEq = map (== CBox eo) argKnds
+        let allEq = map (== Just (CBox eo)) argKnds
         if and allEq then 
           compXtorKinds loc rstXtors rstKinds 
         else 
@@ -515,7 +515,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         -- this can never be a kind var
         let retKnd = CBox $ returnKind $ TST.data_kind decl
         let retKnds = map getMonoKind (TST.sig_args fst)
-        if all (==retKnd) retKnds then
+        if all (==Just retKnd) retKnds then
           checkXtors loc rst decl 
         else 
           throwOtherError loc ["Xtors do not have the correct kinds"]
@@ -532,7 +532,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         -- this can never be a kind  var 
         let retKnd = CBox $ returnKind $ TST.data_kind decl
         let retKnds = map getMonoKind (TST.sig_args fst)
-        if all (==retKnd) retKnds then
+        if all (==Just retKnd) retKnds then
           checkXtors loc rst decl 
         else 
           throwOtherError loc ["Xtors do not have the correct kinds"]
@@ -556,7 +556,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
           (Just pk, primk) -> throwOtherError loc ["Kind " <> ppPrint pk <> " of applied type doesn't match with kind of declaration " <> ppPrint primk]
           (Nothing, CBox _) -> throwOtherError loc ["Kind " <> ppPrint (TST.getMonoKind varty) <> " of applied type doesn't match with kind of declaration " <> ppPrint mk]
           (Nothing, primk) -> 
-            if TST.getMonoKind varty == primk then 
+            if TST.getMonoKind varty == Just primk then 
               return varty 
             else throwOtherError loc ["Kind " <> ppPrint (TST.getMonoKind varty) <> " of applied type does not match with declaration " <> ppPrint mk]
               
@@ -644,6 +644,6 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       (Just pk, primk) -> throwOtherError (getLoc ty') ["Annotated kind "<> ppPrint primk <> " doesn't match inferred kind " <> ppPrint pk]
       (Nothing, CBox eo) -> throwOtherError (getLoc ty') ["Annotated kind "<> ppPrint (CBox eo) <> " doesn't match inferred kind " <> ppPrint (TST.getMonoKind ty')]
       (Nothing, primk) -> do 
-        if TST.getMonoKind ty' == primk then return ty' else throwOtherError (getLoc ty') ["Annotated kind "<> ppPrint primk <> " doesn't match inferred kind " <> ppPrint (TST.getMonoKind ty')]
+        if TST.getMonoKind ty' == Just primk then return ty' else throwOtherError (getLoc ty') ["Annotated kind "<> ppPrint primk <> " doesn't match inferred kind " <> ppPrint (TST.getMonoKind ty')]
 
 

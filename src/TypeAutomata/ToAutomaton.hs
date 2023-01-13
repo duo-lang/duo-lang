@@ -12,6 +12,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
+import Data.Maybe (fromJust)
 import Data.List.NonEmpty qualified as NE
 
 import Errors ( Error, throwAutomatonError )
@@ -233,7 +234,7 @@ insertType (TyRec _ rep rv ty) = do
   newNode <- newNodeM
   case getPolyKind ty of 
     Just pk -> insertNode newNode (emptyNodeLabel pol pk)
-    Nothing -> insertNode newNode (emptyPrimLabel pol (getMonoKind ty))
+    Nothing -> insertNode newNode (emptyPrimLabel pol (Data.Maybe.fromJust $ getMonoKind ty))
   let extendEnv PosRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Just newNode, Nothing) tRecVars
       extendEnv NegRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Nothing, Just newNode) tRecVars
   n <- local (extendEnv rep) (insertType ty)
