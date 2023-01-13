@@ -7,6 +7,7 @@ module TypeInference.SolveConstraints
     isSubtype
   ) where
 
+import Debug.Trace
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -172,8 +173,8 @@ unifyPolyKinds (MkPolyKind args1 eo1) (MkPolyKind args2 eo2) = do
   where 
     compArgs ::[(Variance, SkolemTVar, MonoKind)] ->[(Variance, SkolemTVar, MonoKind)] -> SolverM ()
     compArgs [] [] = return () 
-    compArgs _ [] = throwSolverError defaultLoc ["Numbers of type arguments don't match"]
-    compArgs [] _ = throwSolverError defaultLoc ["Numbers of type arguments don't match"]
+    compArgs _ [] = return () --throwSolverError defaultLoc ["Numbers of type arguments don't match"]
+    compArgs [] _ = return () --throwSolverError defaultLoc ["Numbers of type arguments don't match"]
     compArgs ((var1,sk1,mk1):rst1) ((var2,sk2,mk2):rst2) = 
       if var1 == var2 && mk1 == mk2 then 
         compArgs rst1 rst2 
@@ -199,9 +200,9 @@ unifyPolyKinds (KindVar kv) kind = do
   ((kvset,mk),rest) <- partitionMPk sets kv
   case mk of
     Nothing -> putKVars $ (kvset, Just kind):rest
-    Just mk -> if kind == mk
-               then return ()
-               else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint kind <> " and " <> ppPrint mk]
+    Just mk -> do 
+      unifyPolyKinds kind mk
+      return ()
 unifyPolyKinds kind (KindVar kv) = unifyPolyKinds (KindVar kv) kind
 
 computeKVarSolution :: KindPolicy
