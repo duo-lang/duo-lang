@@ -46,7 +46,6 @@ data MonoKind
   | F64Rep
   | CharRep
   | StringRep
-  | MKindVar KVar
   deriving (Show, Eq, Ord)
 
 type MaybeKindedSkolem = (SkolemTVar, Maybe PolyKind)

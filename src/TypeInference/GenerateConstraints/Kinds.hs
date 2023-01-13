@@ -475,19 +475,13 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       compXtorKinds _ [] [] = return ()
       compXtorKinds _ [] (_:_) = error "too many xtor kinds (should not happen)"
       compXtorKinds _ (_:_) [] = error "not all xtor kinds found (should already fail during lookup)"
-      compXtorKinds loc (fstXtor:rstXtors) ((mk,_):rstKinds) = do
+      compXtorKinds loc (fstXtor:rstXtors) ((eo,_):rstKinds) = do
         let argKnds = map getMonoKind (TST.sig_args fstXtor)
-        allEq <- mapM (compMonoKind mk) argKnds
+        let allEq = map (== CBox eo) argKnds
         if and allEq then 
           compXtorKinds loc rstXtors rstKinds 
         else 
-          throwOtherError loc ["Kind of Xtor " <> ppPrint argKnds <> " does not match declaration kind " <> ppPrint mk]
-      compMonoKind:: EvaluationOrder -> MonoKind -> GenM Bool
-      compMonoKind eo (MKindVar kv) = do 
-        addConstraint $ KindEq KindConstraint (MkPolyKind [] eo) (KindVar kv) 
-        return True
-      compMonoKind eo mk' = return (CBox eo == mk')
-
+          throwOtherError loc ["Kind of Xtor " <> ppPrint argKnds <> " does not match declaration kind " <> ppPrint (CBox eo)]
 
   annotateKind (RST.TyCodata loc pol xtors) = do 
     let xtorNames = map RST.sig_name xtors
@@ -501,19 +495,13 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       compXtorKinds _ [] [] = return ()
       compXtorKinds _ [] (_:_) = error "too many xtor kinds (should not happen)"
       compXtorKinds _ (_:_) [] = error "not all xtor kinds found (should already fail during lookup)"
-      compXtorKinds loc (fstXtor:rstXtors) ((mk,_):rstKinds) = do
+      compXtorKinds loc (fstXtor:rstXtors) ((eo,_):rstKinds) = do
         let argKnds = map getMonoKind (TST.sig_args fstXtor)
-        allEq <- mapM (compMonoKind mk) argKnds
+        let allEq = map (== CBox eo) argKnds
         if and allEq then 
           compXtorKinds loc rstXtors rstKinds 
         else 
-          throwOtherError loc ["Kind of Xtor " <> ppPrint argKnds <> " does not match declaration kind " <> ppPrint mk]
-      compMonoKind:: EvaluationOrder -> MonoKind -> GenM Bool
-      compMonoKind eo (MKindVar kv) = do 
-        addConstraint $ KindEq KindConstraint (MkPolyKind [] eo) (KindVar kv) 
-        return True
-      compMonoKind eo mk' = return (CBox eo == mk')
-
+          throwOtherError loc ["Kind of Xtor " <> ppPrint argKnds <> " does not match declaration kind " <> ppPrint (CBox eo)]
 
   annotateKind (RST.TyDataRefined loc pol pknd tyn xtors) = do 
     xtors' <- mapM annotateKind xtors
@@ -560,7 +548,6 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       return (TST.TyApp loc pol (TST.TyNominal loc pol polyknd tyn) vartys'')
     where
       checkArgKnds :: Loc -> (TST.VariantType pol, MonoKind) -> GenM (TST.VariantType pol)
-      checkArgKnds loc (_,MKindVar _) = throwOtherError loc ["Kind variables should not appear in nominal declarations"]
       checkArgKnds loc (varty,mk) =  
         case (TST.getPolyKind varty,mk) of
           (Just pk, CBox eo) -> do 

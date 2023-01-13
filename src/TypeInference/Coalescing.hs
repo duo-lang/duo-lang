@@ -83,7 +83,7 @@ getOrElseUpdateRecVar ptv = do
 
 
 coalesce :: SolverResult -> Bisubstitution UniVT
-coalesce result@MkSolverResult { tvarSolution, kvarSolutionPk, kvarSolutionMk } = MkBisubstitution (M.fromList xs,kvarSolutionPk,kvarSolutionMk)
+coalesce result@MkSolverResult { tvarSolution, kvarSolution } = MkBisubstitution (M.fromList xs,kvarSolution)
     where
         res = M.keys tvarSolution
         kinds = map (\x -> vst_kind (fromMaybe  (error "UniVar not found in SolverResult (should never happen)") (M.lookup x tvarSolution))) res

@@ -182,11 +182,10 @@ instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
     [ headerise "-" " " "Bisubstitution (UniTVar)"
     , ""
     , "Unification Variables: "
-    , vsep $ prettyBisubst <$> M.toList (TST.getUVMap (TST.bisubst_map uvsubst))
+    , vsep $ prettyBisubst <$> M.toList (fst (TST.bisubst_map uvsubst))
     , ""
     , "Kind Variables: "
-    , vsep $ intersperse "" (prettyPKindSubst <$> M.toList (TST.getKVMapPk (TST.bisubst_map uvsubst)))
-    , vsep $ intersperse "" (prettyMKindSubst <$> M.toList (TST.getKVMapMk (TST.bisubst_map uvsubst)))
+    , vsep $ intersperse "" (prettyPKindSubst <$> M.toList (snd (TST.bisubst_map uvsubst)))
     ]
 
 instance PrettyAnn (TST.Bisubstitution TST.SkolemVT) where

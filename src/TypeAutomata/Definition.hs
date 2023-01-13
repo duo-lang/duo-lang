@@ -180,7 +180,6 @@ emptyPrimLabel pol I64Rep        = MkPrimitiveNodeLabel pol I64
 emptyPrimLabel pol F64Rep        = MkPrimitiveNodeLabel pol F64
 emptyPrimLabel pol StringRep     = MkPrimitiveNodeLabel pol PString
 emptyPrimLabel pol CharRep       = MkPrimitiveNodeLabel pol PChar
-emptyPrimLabel _ (MKindVar _)    = error "at this point no KindVars should be in the program"
 
 emptyNodeLabel :: Polarity -> PolyKind -> NodeLabel
 emptyNodeLabel _ (KindVar _) = error "at this point no KindVars should be in the program"
