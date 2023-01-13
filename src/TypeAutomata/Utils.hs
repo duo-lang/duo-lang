@@ -1,5 +1,5 @@
 
-module TypeAutomata.Utils 
+module TypeAutomata.Utils
   ( typeAutEqual
   , typeAutIsEmpty) where
 
@@ -15,7 +15,7 @@ import Control.Monad.State (StateT(runStateT), MonadTrans (..))
 import Control.Monad.State.Class ( MonadState(..), modify )
 import Control.Monad ( guard, forM_ )
 
-import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), TypeGr, EdgeLabelNormal, NodeLabel, emptyNodeLabel, getKindNL)
+import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), TypeGr, EdgeLabelNormal, NodeLabel (..), emptyNodeLabel, getKindNL)
 import Data.Graph.Inductive (Gr)
 import Syntax.RST.Types (PolarityRep, polarityRepToPol)
 
@@ -44,15 +44,13 @@ typeAutEqualM (gr1, n) (gr2, m) = do
 sucWith :: (DynGraph gr, Eq b) => gr a b -> Node -> b -> Maybe Node
 sucWith gr i el = lookup el (map swap (lsuc gr i))
 
+isEmptyLabel :: NodeLabel -> Bool
+isEmptyLabel (MkNodeLabel {nl_data, nl_codata, nl_nominal, nl_ref_data, nl_ref_codata})
+             = nothingOrEmpty nl_data && nothingOrEmpty nl_codata && S.null nl_nominal && mapNull nl_ref_data && mapNull nl_ref_codata
+  where nothingOrEmpty Nothing = True
+        nothingOrEmpty (Just s) = S.null s
+        mapNull = M.foldr (\x y -> S.null x && y) True
+isEmptyLabel _ = False
+
 typeAutIsEmpty :: forall pol. TypeAutDet pol -> Bool
-typeAutIsEmpty aut = typeAutEqual aut emptyTypeAut
-  where
-    p :: PolarityRep pol
-    p = ta_pol aut
-    emptyTypeAut :: TypeAutDet pol
-    emptyTypeAut = TypeAut p 0 emptyCore
-    emptyCore :: TypeAutCore EdgeLabelNormal
-    emptyCore = TypeAutCore emptyGr []
-    emptyGr :: Gr NodeLabel EdgeLabelNormal
-    emptyGr = mkGraph [(0,emptyNodeLabel (polarityRepToPol p) k)] []
-    k = getKindNL $ fromJust $ lab (ta_gr $ ta_core aut) $ runIdentity $ ta_starts aut
+typeAutIsEmpty (TypeAut _ (Identity _) (TypeAutCore gr _)) = all (isEmptyLabel . snd) (labNodes gr)
