@@ -20,7 +20,7 @@ import TypeAutomata.Determinize (determinize)
 import TypeAutomata.RemoveEpsilon (removeEpsilonEdges)
 import TypeAutomata.ToAutomaton (typeToAut)
 import Data.Map (Map)
-import TypeAutomata.Utils (typeAutIsEmpty)
+import TypeAutomata.Utils (typeAutIsEmpty, isEmptyLabel)
 import TypeAutomata.Simplify (printGraph)
 import Pretty.Pretty (ppPrint)
 import qualified Data.Text as T
@@ -40,7 +40,12 @@ checkEmptyIntersection (TypeAut _ (Identity starts1) (TypeAutCore gr1 _flowEdges
   = evalStateT (explore gr1 gr2) (ExploreState { known = [], todos = [(starts1, starts2)] })
 
 
-data ExploreState = ExploreState { known :: [(Node, Node)], todos :: [(Node, Node)] }
+data ExploreState
+  = ExploreState
+  { known :: [(Node, Node)]
+  , todos :: [(Node, Node)]
+  }
+
 type ExploreM = StateT ExploreState (Either (NonEmpty Error))
 
 -- | Exhaustively explore the intersection of two graphs and return true if it is empty.
@@ -66,13 +71,6 @@ explore gr1 gr2 = do
           modify (\(ExploreState { known }) -> ExploreState { known = (n,m):known, todos = nub $ (newNodes \\ known) ++ rest })
           explore gr1 gr2
         else pure False
-
-isEmptyLabel :: NodeLabel -> Bool
-isEmptyLabel (MkNodeLabel {nl_data, nl_codata, nl_nominal, nl_ref_data, nl_ref_codata})
-             = nothingOrEmpty nl_data && nothingOrEmpty nl_codata && S.null nl_nominal && M.null nl_ref_data && M.null nl_ref_codata
-  where nothingOrEmpty Nothing = True
-        nothingOrEmpty (Just s) = S.null s
-isEmptyLabel _ = False
 
 -- | Intersection of labels, returns Nothing if labels cannot be safely combined.
 intersectLabels :: NodeLabel -> NodeLabel -> Maybe NodeLabel
@@ -104,9 +102,10 @@ intersectIsEmpty print ty1 ty2 = do
         printGraph print False ("inter" <> T.unpack (ppPrint ty1) <> "x" <> T.unpack (ppPrint ty2)) intersect
         pure $ typeAutIsEmpty intersect
 
+-- | Create  the intersection automaton of two type automata.
 intersectAut :: TypeAutDet pol -> TypeAutDet pol -> TypeAutDet pol
 --  intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges $ intersectAutM aut1 aut2
-intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize $intersected
+intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize $ intersected
   where
     intersected = runIdentity $ flip evalStateT initState $ runIntersect $ intersectAutM aut1 aut2
     initState = IS { is_nodes = M.empty, is_nodelabels = M.empty, is_edges = M.empty, is_counter = 0, is_todo = [(runIdentity $ ta_starts aut1, runIdentity $ ta_starts aut2)] }
@@ -169,7 +168,9 @@ intersectAutM aut1 aut2 = do
             let nexts1 = lsuc gr1 n1
             let nexts2 = lsuc gr2 n2
             let outEdges = [ (n1, n2, l) | (n1, l) <- nexts1, (n2, l') <- nexts2, l == l' ]
-            modify ( \is@IS { is_edges = edges } -> is { is_edges = M.insert n outEdges edges })
+            modify $ \is@IS { is_edges = edges } -> is { is_edges = M.insert n outEdges edges
+                                                       , is_todo  = ((\(n,m,_) -> (n,m)) <$> outEdges) ++ todos'
+                                                       }
             go
 
             

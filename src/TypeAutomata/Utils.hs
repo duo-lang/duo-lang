@@ -1,7 +1,9 @@
 
 module TypeAutomata.Utils
   ( typeAutEqual
-  , typeAutIsEmpty) where
+  , typeAutIsEmpty
+  , isEmptyLabel
+  ) where
 
 import Data.Map (Map)
 import qualified Data.Map.Strict as M
@@ -15,9 +17,7 @@ import Control.Monad.State (StateT(runStateT), MonadTrans (..))
 import Control.Monad.State.Class ( MonadState(..), modify )
 import Control.Monad ( guard, forM_ )
 
-import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), TypeGr, EdgeLabelNormal, NodeLabel (..), emptyNodeLabel, getKindNL)
-import Data.Graph.Inductive (Gr)
-import Syntax.RST.Types (PolarityRep, polarityRepToPol)
+import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), TypeGr, NodeLabel (..))
 
 typeAutEqual :: TypeAutDet pol -> TypeAutDet pol -> Bool
 typeAutEqual (TypeAut _ (Identity start1) (TypeAutCore gr1 flowEdges1))
@@ -52,5 +52,6 @@ isEmptyLabel (MkNodeLabel {nl_data, nl_codata, nl_nominal, nl_ref_data, nl_ref_c
         mapNull = M.foldr (\x y -> S.null x && y) True
 isEmptyLabel _ = False
 
+-- | Check whether all labels in an automaton are empty.
 typeAutIsEmpty :: forall pol. TypeAutDet pol -> Bool
 typeAutIsEmpty (TypeAut _ (Identity _) (TypeAutCore gr _)) = all (isEmptyLabel . snd) (labNodes gr)

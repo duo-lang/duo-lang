@@ -41,7 +41,7 @@ import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
       genConstraintsTermRecursive )
-import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints, isSubtype)
+import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints)
 import Loc ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
@@ -53,7 +53,7 @@ import Pretty.Common (Header(..))
 import Pretty.Program ()
 import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
-import TypeAutomata.Intersection (emptyIntersection, intersectIsEmpty)
+import TypeAutomata.Intersection (intersectIsEmpty)
 
 
 checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
@@ -61,7 +61,7 @@ checkKindAnnot Nothing _ = return Nothing
 checkKindAnnot (Just tyAnnotated) loc = do
   env <- gets drvEnv
   (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
-  solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs Nothing env
+  solverResAnnot <- liftEitherErrLoc loc $ TypeInference.SolveConstraints.solveConstraints annotConstrs Nothing env
   let bisubstAnnot = coalesce solverResAnnot
   let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot annotChecked
   return $ Just typAnnotZonked
@@ -110,13 +110,13 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 2. Solve the constraints.
   tyAnnotChecked <- checkKindAnnot pcdecl_annot pcdecl_loc
   let annotKind = case ((TST.getKind $ TST.getTypeTerm tmInferred),tyAnnotChecked) of (KindVar kv,Just annot) -> Just (kv,TST.getKind $ TST.ts_monotype annot); _ -> Nothing
-  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet annotKind env
+  solverResult <- liftEitherErrLoc pcdecl_loc $ TypeInference.SolveConstraints.solveConstraints constraintSet annotKind env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
   -- 4. Solve the type class constraints.
-  instances <- liftEitherErrLoc pcdecl_loc $ solveClassConstraints solverResult bisubst env
+  instances <- liftEitherErrLoc pcdecl_loc $ TypeInference.SolveConstraints.solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
   tmInferred <- liftEitherErrLoc pcdecl_loc (insertInstance instances tmInferred)
   -- 5. Read of the type and generate the resulting type
@@ -164,7 +164,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   -- Generate the constraints
   (cmdInferred,constraints) <- liftEitherErr (runGenM cmddecl_loc env (genConstraints cmddecl_cmd))
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints Nothing env
+  solverResult <- liftEitherErrLoc cmddecl_loc $ TypeInference.SolveConstraints.solveConstraints constraints Nothing env
   guardVerbose $ do
     ppPrintIO (Header (unFreeVarName cmddecl_name))
     ppPrintIO ("" :: T.Text)
@@ -176,7 +176,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
   -- Solve the type class constraints.
-  instances <- liftEitherErrLoc cmddecl_loc $ solveClassConstraints solverResult bisubst env
+  instances <- liftEitherErrLoc cmddecl_loc $ TypeInference.SolveConstraints.solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
   cmdInferred <- liftEitherErrLoc cmddecl_loc (insertInstance instances cmdInferred)
   -- Insert into environment
@@ -196,7 +196,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   -- Generate the constraints
   (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraints decl))
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints Nothing env
+  solverResult <- liftEitherErrLoc instancedecl_loc $ TypeInference.SolveConstraints.solveConstraints constraints Nothing env
   guardVerbose $ do
     ppPrintIO (Header  $ unClassName instancedecl_class <> " " <> ppPrint (fst instancedecl_typ))
     ppPrintIO ("" :: T.Text)
@@ -215,7 +215,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   guardVerbose $ ppPrintIO bisubst
   -- Solve the type class constraints.
   env <- gets drvEnv
-  instances <- liftEitherErrLoc instancedecl_loc $ solveClassConstraints solverResult bisubst env
+  instances <- liftEitherErrLoc instancedecl_loc $ TypeInference.SolveConstraints.solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
   instanceInferred <- liftEitherErrLoc instancedecl_loc (insertInstance instances instanceInferred)      
   -- Insert inferred instance into environment   
