@@ -95,7 +95,7 @@ getNodeKind i = do
   gr <- asks graph
   case lab gr i of
     Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
-    Just (MkNodeLabel _ _ _ _ _ _ mk) -> return (CBox mk)
+    Just (MkNodeLabel _ _ _ _ _ _ pk) -> return (CBox $ returnKind pk)
     Just (MkPrimitiveNodeLabel _ primTy) ->
       case primTy of
         I64 -> return I64Rep
@@ -167,7 +167,6 @@ nodeToType rep i = do
 nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i  = do
   gr <- asks graph
-  knd <- getNodeKind i
   case fromJust (lab gr i) of
     MkPrimitiveNodeLabel _ tp -> do
       let toPrimType :: PolarityRep pol -> PrimitiveType -> Typ pol
@@ -176,7 +175,7 @@ nodeToTypeNoCache rep i  = do
           toPrimType rep PChar = TyChar defaultLoc rep
           toPrimType rep PString = TyString defaultLoc rep
       pure (toPrimType rep tp)
-    MkNodeLabel _ datSet codatSet tns refDat refCodat _ -> do
+    MkNodeLabel _ datSet codatSet tns refDat refCodat pk -> do
       outs <- nodeToOuts i
       let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
       let refDatTypes = M.toList refDat -- Unique data ref types
@@ -192,7 +191,7 @@ nodeToTypeNoCache rep i  = do
               let nodes = computeArgNodes outs CST.Data xt
               argTypes <- argNodesToArgTypes nodes rep
               return (MkXtorSig (labelName xt) argTypes)
-            return [TyData defaultLoc rep knd sig]
+            return [TyData defaultLoc rep (CBox $ returnKind pk) sig]
         -- Creating codata types
         codatL <- case maybeCodat of
           Nothing -> return []
@@ -201,7 +200,7 @@ nodeToTypeNoCache rep i  = do
               let nodes = computeArgNodes outs CST.Codata xt
               argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
               return (MkXtorSig (labelName xt) argTypes)
-            return [TyCodata defaultLoc rep knd sig]
+            return [TyCodata defaultLoc rep (CBox $ returnKind pk) sig]
         -- Creating ref data types
         refDatL <- do
           forM refDatTypes $ \(tn,xtors) -> do
@@ -209,7 +208,7 @@ nodeToTypeNoCache rep i  = do
               let nodes = computeArgNodes outs CST.Data xt
               argTypes <- argNodesToArgTypes nodes rep
               return (MkXtorSig (labelName xt) argTypes)
-            return $ TyDataRefined defaultLoc rep knd tn sig
+            return $ TyDataRefined defaultLoc rep pk tn sig
         -- Creating ref codata types
         refCodatL <- do
           forM refCodatTypes $ \(tn,xtors) -> do
@@ -217,7 +216,7 @@ nodeToTypeNoCache rep i  = do
               let nodes = computeArgNodes outs CST.Codata xt
               argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
               return (MkXtorSig (labelName xt) argTypes)
-            return $ TyCodataRefined defaultLoc rep knd tn sig
+            return $ TyCodataRefined defaultLoc rep pk tn sig
         -- Creating Nominal types
         let adjEdges = lsuc gr i
         let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
@@ -230,28 +229,16 @@ nodeToTypeNoCache rep i  = do
               let f (node, Covariant) = CovariantType <$> nodeToType rep node
                   f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
               args <- mapM f argNodes 
-              polyknd <- getPolyKnd knd args 
               case args of 
-                [] -> pure $ TyNominal defaultLoc rep polyknd tn
-                (fst:rst) -> pure $ TyApp defaultLoc rep (TyNominal defaultLoc rep polyknd tn) (fst:|rst)
+                [] -> pure $ TyNominal defaultLoc rep pk tn
+                (fst:rst) -> pure $ TyApp defaultLoc rep (TyNominal defaultLoc rep pk tn) (fst:|rst)
 
         let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
         return $ case rep of
-          PosRep -> mkUnion defaultLoc knd typs
-          NegRep -> mkInter defaultLoc knd typs
+          PosRep -> mkUnion defaultLoc (CBox $ returnKind pk) typs
+          NegRep -> mkInter defaultLoc (CBox $ returnKind pk) typs
 
       -- If the graph is cyclic, make a recursive type
       if i `elem` dfs (suc gr i) gr
         then return $ TyRec defaultLoc rep (MkRecTVar ("r" <> T.pack (show i))) resType
         else return resType
-      where 
-        getPolyKnd :: MonoKind -> [VariantType pol] -> AutToTypeM PolyKind
-        getPolyKnd (CBox ev) args = do 
-          let args' = zip args [1..length args-1]
-          return $ MkPolyKind (map argToKindArg args') ev
-        getPolyKnd _ _ = throwOtherError defaultLoc ["Nominal Type can only have CBV or CBN as kind"]
-        argToKindArg :: (VariantType pol,Int) -> (Variance, SkolemTVar, MonoKind)
-        argToKindArg (ContravariantType ty, n) = 
-          (Contravariant, MkSkolemTVar $ "a" <> T.pack (show n),getKind ty)
-        argToKindArg (CovariantType ty, n) = 
-          (Covariant, MkSkolemTVar $ "a" <> T.pack (show n), getKind ty)

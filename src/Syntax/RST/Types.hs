@@ -131,8 +131,8 @@ data Typ (pol     :: Polarity) where
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData          :: Loc -> PolarityRep pol               -> [XtorSig pol]           -> Typ pol
   TyCodata        :: Loc -> PolarityRep pol               -> [XtorSig (FlipPol pol)] -> Typ pol
-  TyDataRefined   :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig pol]           -> Typ pol
-  TyCodataRefined :: Loc -> PolarityRep pol -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
+  TyDataRefined   :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName -> [XtorSig pol]           -> Typ pol
+  TyCodataRefined :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
   TyNominal       :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName  -> Typ pol
   TyApp           :: Loc -> PolarityRep pol -> Typ pol -> NonEmpty (VariantType pol) -> Typ pol
@@ -170,27 +170,27 @@ mkInter _   [t]    = t
 mkInter loc (t:ts) = TyInter loc t (mkInter loc ts)
 
 getPolarity :: Typ pol -> PolarityRep pol
-getPolarity (TySkolemVar _ rep  _)      = rep
-getPolarity (TyUniVar _ rep  _)         = rep
-getPolarity (TyRecVar _ rep  _)         = rep
-getPolarity (TyData _ rep _)            = rep
-getPolarity (TyCodata _ rep _)          = rep
-getPolarity (TyDataRefined _ rep _ _)   = rep
-getPolarity (TyCodataRefined _ rep _ _) = rep
-getPolarity (TyNominal _ rep  _ _)      = rep
-getPolarity (TyApp _ rep _ _)           = rep
-getPolarity (TySyn _ rep _ _)           = rep
-getPolarity TyTop {}                    = NegRep
-getPolarity TyBot {}                    = PosRep
-getPolarity TyUnion {}                  = PosRep
-getPolarity TyInter {}                  = NegRep
-getPolarity (TyRec _ rep _ _)           = rep
-getPolarity (TyI64 _ rep)               = rep
-getPolarity (TyF64 _ rep)               = rep
-getPolarity (TyChar _ rep)              = rep
-getPolarity (TyString _ rep)            = rep
-getPolarity (TyFlipPol rep _)           = rep
-getPolarity (TyKindAnnot _ ty)          = getPolarity ty
+getPolarity (TySkolemVar _ rep  _)        = rep
+getPolarity (TyUniVar _ rep  _)           = rep
+getPolarity (TyRecVar _ rep  _)           = rep
+getPolarity (TyData _ rep _)              = rep
+getPolarity (TyCodata _ rep _)            = rep
+getPolarity (TyDataRefined _ rep _ _ _)   = rep
+getPolarity (TyCodataRefined _ rep _ _ _) = rep
+getPolarity (TyNominal _ rep  _ _)        = rep
+getPolarity (TyApp _ rep _ _)             = rep
+getPolarity (TySyn _ rep _ _)             = rep
+getPolarity TyTop {}                      = NegRep
+getPolarity TyBot {}                      = PosRep
+getPolarity TyUnion {}                    = PosRep
+getPolarity TyInter {}                    = NegRep
+getPolarity (TyRec _ rep _ _)             = rep
+getPolarity (TyI64 _ rep)                 = rep
+getPolarity (TyF64 _ rep)                 = rep
+getPolarity (TyChar _ rep)                = rep
+getPolarity (TyString _ rep)              = rep
+getPolarity (TyFlipPol rep _)             = rep
+getPolarity (TyKindAnnot _ ty)            = getPolarity ty
 
 
 ------------------------------------------------------------------------------
@@ -213,8 +213,8 @@ instance ReplaceNominal (Typ pol) where
   replaceNominal _ _ _ ty@TyRecVar{}                     = ty
   replaceNominal p n t (TyData loc rep args)             = TyData loc rep (replaceNominal p n t <$> args)
   replaceNominal p n t (TyCodata loc rep args)           = TyCodata loc rep (replaceNominal p n t <$> args)
-  replaceNominal p n t (TyDataRefined loc rep tn args)   = TyDataRefined loc rep tn (replaceNominal p n t <$> args)
-  replaceNominal p n t (TyCodataRefined loc rep tn args) = TyCodataRefined loc rep tn (replaceNominal p n t <$> args)
+  replaceNominal p n t (TyDataRefined loc rep pknd tn args)   = TyDataRefined loc rep pknd tn (replaceNominal p n t <$> args)
+  replaceNominal p n t (TyCodataRefined loc rep pknd tn args) = TyCodataRefined loc rep pknd tn (replaceNominal p n t <$> args)
   replaceNominal p n t (TyNominal loc rep pk t')         = if t == t'
                                                            then case rep of { PosRep -> p; NegRep -> n }
                                                            else TyNominal loc rep pk t' 
@@ -289,8 +289,8 @@ instance FreeTVars (Typ pol) where
   freeTVars (TySyn _ _ _ ty)              = freeTVars ty
   freeTVars (TyData _ _ xtors)            = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ xtors)          = S.unions (freeTVars <$> xtors)
-  freeTVars (TyDataRefined _ _ _ xtors)   = S.unions (freeTVars <$> xtors)
-  freeTVars (TyCodataRefined _ _ _ xtors) = S.unions (freeTVars <$> xtors)
+  freeTVars (TyDataRefined _ _ _ _ xtors)   = S.unions (freeTVars <$> xtors)
+  freeTVars (TyCodataRefined _ _ _ _ xtors) = S.unions (freeTVars <$> xtors)
   freeTVars (TyI64 _ _)                   = S.empty
   freeTVars (TyF64 _ _)                   = S.empty
   freeTVars (TyChar _ _)                  = S.empty
