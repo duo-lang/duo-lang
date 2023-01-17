@@ -69,7 +69,7 @@ data GenerateState = GenerateState
   { uVarCount :: Int
   , kVarCount :: Int
   , constraintSet :: ConstraintSet
-  , usedRecVars :: M.Map RecTVar MonoKind
+  , usedRecVars :: M.Map RecTVar PolyKind
   , usedSkolemVars :: M.Map SkolemTVar MonoKind
   , usedUniVars :: M.Map UniTVar MonoKind
   }

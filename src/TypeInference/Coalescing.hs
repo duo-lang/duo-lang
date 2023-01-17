@@ -12,6 +12,7 @@ import Data.Text qualified as T
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..),Polarity(..))
 import Syntax.CST.Names
+import Syntax.CST.Kinds(MonoKind(..), PolyKind(..))
 import TypeInference.Constraints
 import Loc ( defaultLoc )
 
@@ -96,56 +97,66 @@ coalesce result@MkSolverResult { tvarSolution, kvarSolution } = MkBisubstitution
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
 coalesceType (TySkolemVar loc rep mk tv) =  do
   return (TySkolemVar loc rep mk tv)
-coalesceType (TyRecVar loc rep mk tv) = do 
-  return (TyRecVar loc rep mk tv)
+coalesceType (TyRecVar loc rep pk tv) = do 
+  return (TyRecVar loc rep pk tv)
 coalesceType (TyUniVar _ PosRep mk tv) = do
-    isInProcess <- inProcess (tv, Pos)
-    if isInProcess
-        then do
-            recVar <- getOrElseUpdateRecVar (tv, Pos)
-            return (TyRecVar defaultLoc PosRep mk recVar)
-        else do
-            VariableState { vst_lowerbounds } <- getVariableState tv
-            let f r = r { r_inProcess =  S.insert (tv, Pos) (r_inProcess r) }
-            lbs' <- local f $ sequence $ coalesceType <$> vst_lowerbounds
-            recVarMap <- gets s_recursive
-            case M.lookup (tv, Pos) recVarMap of
-                Nothing     -> do
-                    newName <- getSkolemVar tv
-                    return $                                            mkUnion defaultLoc mk (TySkolemVar defaultLoc PosRep mk newName : lbs')
-                Just recVar -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc mk (TyRecVar defaultLoc PosRep mk recVar  : lbs'))
+  isInProcess <- inProcess (tv, Pos)
+  if isInProcess then
+    case mk of 
+      CBox eo -> do
+        recVar <- getOrElseUpdateRecVar (tv, Pos)
+        return (TyRecVar defaultLoc PosRep (MkPolyKind [] eo) recVar)
+      mk -> error ("Recurvive variable can only have kind CBV or CBN not " <> show mk)
+  else do
+    VariableState { vst_lowerbounds } <- getVariableState tv
+    let f r = r { r_inProcess =  S.insert (tv, Pos) (r_inProcess r) }
+    lbs' <- local f $ mapM coalesceType vst_lowerbounds
+    recVarMap <- gets s_recursive
+    case M.lookup (tv, Pos) recVarMap of
+      Nothing     -> do
+        newName <- getSkolemVar tv
+        return $ mkUnion defaultLoc mk (TySkolemVar defaultLoc PosRep mk newName : lbs')
+      Just recVar -> do
+        case mk of 
+          CBox eo -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc mk (TyRecVar defaultLoc PosRep (MkPolyKind [] eo) recVar  : lbs'))
+          mk -> error ("Recursive variable can only have kind CBV or CBN, not "<>show mk)
 coalesceType (TyUniVar _ NegRep mk tv) = do
-    isInProcess <- inProcess (tv, Neg)
-    if isInProcess
-        then do
-            recVar <- getOrElseUpdateRecVar (tv, Neg)
-            return (TyRecVar defaultLoc NegRep mk recVar)
-        else do
-            VariableState { vst_upperbounds } <- getVariableState tv
-            let f r = r { r_inProcess =  S.insert (tv, Neg) (r_inProcess r) }
-            ubs' <- local f $ sequence $ coalesceType <$> vst_upperbounds
-            recVarMap <- gets s_recursive
-            case M.lookup (tv, Neg) recVarMap of
-                Nothing     -> do
-                    newName <- getSkolemVar tv
-                    return $                                            mkInter defaultLoc mk (TySkolemVar defaultLoc NegRep mk newName : ubs')
-                Just recVar -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc mk (TyRecVar defaultLoc NegRep mk recVar  : ubs'))
+  isInProcess <- inProcess (tv, Neg)
+  if isInProcess then 
+    case mk of 
+      CBox eo -> do
+        recVar <- getOrElseUpdateRecVar (tv, Neg)
+        return (TyRecVar defaultLoc NegRep (MkPolyKind [] eo) recVar)
+      mk -> error ("Recursive variable can only have kind CBV or CBN, not "<>show mk)
+    else do
+      VariableState { vst_upperbounds } <- getVariableState tv
+      let f r = r { r_inProcess =  S.insert (tv, Neg) (r_inProcess r) }
+      ubs' <- local f $ mapM coalesceType vst_upperbounds 
+      recVarMap <- gets s_recursive
+      case M.lookup (tv, Neg) recVarMap of
+        Nothing -> do
+          newName <- getSkolemVar tv
+          return $ mkInter defaultLoc mk (TySkolemVar defaultLoc NegRep mk newName : ubs')
+        Just recVar -> case mk of 
+          CBox eo -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc mk (TyRecVar defaultLoc NegRep (MkPolyKind [] eo) recVar  : ubs'))
+          mk -> error ("Recursive variable can only have kind CBV or CBN, not "<>show mk)
+
 coalesceType (TyData loc rep mk xtors) = do
-    xtors' <- sequence $ coalesceXtor <$> xtors
+    xtors' <- mapM coalesceXtor xtors
     return (TyData loc rep mk xtors')
 coalesceType (TyCodata loc rep mk xtors) = do
-    xtors' <- sequence $ coalesceXtor <$> xtors
+    xtors' <- mapM coalesceXtor xtors
     return (TyCodata loc rep mk xtors')
 coalesceType (TyDataRefined loc rep mk tn xtors) = do
-    xtors' <- sequence $ coalesceXtor <$> xtors
+    xtors' <- mapM coalesceXtor xtors
     return (TyDataRefined loc rep mk tn xtors')
 coalesceType (TyCodataRefined loc rep mk tn xtors) = do
-    xtors' <- sequence $ coalesceXtor <$> xtors
+    xtors' <- mapM coalesceXtor xtors
     return (TyCodataRefined loc rep mk tn xtors')
 coalesceType (TyNominal loc rep mk tn) = do
     return $ TyNominal loc rep mk tn 
 coalesceType (TyApp loc rep ty args) = do 
-    args' <- sequence $ coalesceVariantType <$> args
+    args' <- mapM coalesceVariantType args
     ty' <- coalesceType ty
     return $ TyApp loc rep ty' args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
