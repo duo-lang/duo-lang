@@ -190,8 +190,8 @@ dualType pol (TST.TyUniVar _loc _ kind x) =
   TST.TyUniVar defaultLoc (flipPolarityRep pol) (dualMonoKind kind) x
 dualType pol (TST.TySkolemVar _loc _ kind x) =
   TST.TySkolemVar defaultLoc (flipPolarityRep pol) (dualMonoKind kind) x
-dualType pol (TST.TyRecVar _loc _ kind x) =
-  TST.TyRecVar defaultLoc (flipPolarityRep pol) (dualMonoKind kind) x
+dualType pol (TST.TyRecVar _loc _ pk x) =
+  TST.TyRecVar defaultLoc (flipPolarityRep pol) (dualPolyKind pk) x
 dualType pol (TST.TyNominal _ _ kind tn) =
   TST.TyNominal defaultLoc  (flipPolarityRep pol) (dualPolyKind kind) (dualRnTypeName tn)
 dualType pol (TST.TyApp _ _ ty args) = 

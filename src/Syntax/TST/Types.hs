@@ -87,7 +87,7 @@ deriving instance Show (MethodSig pol)
 data Typ (pol :: Polarity) where
   TySkolemVar     :: Loc -> PolarityRep pol -> MonoKind -> SkolemTVar -> Typ pol
   TyUniVar        :: Loc -> PolarityRep pol -> MonoKind -> UniTVar -> Typ pol
-  TyRecVar        :: Loc -> PolarityRep pol -> MonoKind -> RecTVar -> Typ pol
+  TyRecVar        :: Loc -> PolarityRep pol -> PolyKind -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData          :: Loc -> PolarityRep pol -> MonoKind                  -> [XtorSig pol]           -> Typ pol
@@ -156,7 +156,7 @@ class GetKind (a :: Type) where
 instance GetKind (Typ pol) where 
   getKind (TySkolemVar _ _ mk _)        = mk
   getKind (TyUniVar _ _ mk _)           = mk
-  getKind (TyRecVar _ _ mk _)           = mk
+  getKind (TyRecVar _ _ pk _)           = CBox $ returnKind pk
   getKind (TyData _ _ mk _ )            = mk
   getKind (TyCodata _ _ mk _ )          = mk
   getKind (TyDataRefined _ _ pk _ _ )   = CBox $ returnKind pk
@@ -392,8 +392,8 @@ instance ZonkKind (Typ pol) where
     TySkolemVar loc rep (zonkKind bisubst mk) tv
   zonkKind bisubst (TyUniVar loc rep mk tv) = 
     TyUniVar loc rep (zonkKind bisubst mk) tv
-  zonkKind bisubst (TyRecVar loc rep mk tv) =
-    TyRecVar loc rep (zonkKind bisubst mk) tv
+  zonkKind bisubst (TyRecVar loc rep pk tv) =
+    TyRecVar loc rep (zonkKind bisubst pk) tv
   zonkKind bisubst (TyData loc pol mk xtors) =
     TyData loc pol (zonkKind bisubst mk) (zonkKind bisubst xtors)
   zonkKind bisubst (TyCodata loc pol mk xtors) = 

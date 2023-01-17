@@ -103,6 +103,15 @@ getNodeKind i = do
         PChar -> return CharRep
         PString -> return StringRep
 
+getNodeKindRec :: Node -> AutToTypeM PolyKind
+getNodeKindRec i = do 
+  gr <- asks graph 
+  case lab gr i of 
+    Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
+    Just (MkNodeLabel _ _ _ _ _ _ pk) -> return pk
+    _ -> throwAutomatonError defaultLoc ["Recursive Variables can only have kind CBV or CBN"]
+
+
 
 
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
@@ -159,7 +168,7 @@ nodeToType rep i = do
   inCache <- checkCache i
   if inCache
     then do 
-      knd <- getNodeKind i
+      knd <- getNodeKindRec i
       pure (TyRecVar defaultLoc rep knd (MkRecTVar ("r" <> T.pack (show i))))
     else nodeToTypeNoCache rep i
 
