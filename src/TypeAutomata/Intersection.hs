@@ -93,14 +93,15 @@ intersectLabels _ _ = Nothing
 -- | Check for two type schemes whether their intersection type automaton is empty.
 intersectIsEmpty :: MonadIO m => Bool -> TypeScheme pol -> TypeScheme pol -> m Bool
 intersectIsEmpty print ty1 ty2 = do
-  case minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty1 of
-    Left _err -> pure False
-    Right aut1 -> case minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty2 of
-      Left _err -> pure False
-      Right aut2 -> do
-        let intersect = intersectAut aut1 aut2
-        printGraph print False ("inter" <> T.unpack (ppPrint ty1) <> "x" <> T.unpack (ppPrint ty2)) intersect
-        pure $ typeAutIsEmpty intersect
+  case (tyToMinAut ty1, tyToMinAut ty2) of
+    (Right aut1, Right aut2) -> do
+      let intersect = intersectAut aut1 aut2
+      printGraph print False ("inter" <> T.unpack (ppPrint ty1) <> "x" <> T.unpack (ppPrint ty2)) intersect
+      pure $ typeAutIsEmpty intersect
+    _ -> pure False
+  where
+    tyToMinAut :: TypeScheme pol -> Either (NonEmpty Error) (TypeAutDet pol)
+    tyToMinAut ty = minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty
 
 -- | Create  the intersection automaton of two type automata.
 intersectAut :: TypeAutDet pol -> TypeAutDet pol -> TypeAutDet pol
