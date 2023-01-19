@@ -12,6 +12,7 @@ import Data.Text qualified as T
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..),Polarity(..))
 import Syntax.CST.Names
+import Syntax.CST.Kinds (AnyKind(..))
 import TypeInference.Constraints
 import Loc ( defaultLoc )
 
@@ -102,34 +103,41 @@ coalesceType (TyUniVar _ PosRep pk tv) = do
   isInProcess <- inProcess (tv, Pos)
   if isInProcess then do
     recVar <- getOrElseUpdateRecVar (tv, Pos)
-    return (TyRecVar defaultLoc PosRep pk recVar)
+    case pk of 
+      MkPknd pk' -> return (TyRecVar defaultLoc PosRep pk' recVar)
+      primk -> error ("Recursive Variable " <> show recVar <> " can't have primitive kind " <> show primk)
   else do
     VariableState { vst_lowerbounds } <- getVariableState tv
     let f r = r { r_inProcess =  S.insert (tv, Pos) (r_inProcess r) }
     lbs' <- local f $ mapM coalesceType vst_lowerbounds
     recVarMap <- gets s_recursive
-    case M.lookup (tv, Pos) recVarMap of
-      Nothing     -> do
+    case (pk, M.lookup (tv, Pos) recVarMap) of
+      (MkPknd pk', Nothing)     -> do
         newName <- getSkolemVar tv
-        return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk newName : lbs')
-      Just recVar -> 
-        return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk recVar  : lbs'))
+        return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk' newName : lbs')
+      (MkPknd pk', Just recVar) ->  
+        return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk' recVar  : lbs'))
+      (primk, _) -> error ("Type Variable can't have primitive kind " <> show primk)
+
 coalesceType (TyUniVar _ NegRep pk tv) = do
   isInProcess <- inProcess (tv, Neg)
   if isInProcess then do
     recVar <- getOrElseUpdateRecVar (tv, Neg)
-    return (TyRecVar defaultLoc NegRep pk recVar)
+    case pk of 
+      MkPknd pk' -> return (TyRecVar defaultLoc NegRep pk' recVar)
+      primk -> error ("Recursive Variable " <> show recVar <> " can't have primitive kind " <> show primk)
   else do
       VariableState { vst_upperbounds } <- getVariableState tv
       let f r = r { r_inProcess =  S.insert (tv, Neg) (r_inProcess r) }
       ubs' <- local f $ mapM coalesceType vst_upperbounds 
       recVarMap <- gets s_recursive
-      case M.lookup (tv, Neg) recVarMap of
-        Nothing -> do
+      case (pk, M.lookup (tv, Neg) recVarMap) of
+        (MkPknd pk', Nothing) -> do
           newName <- getSkolemVar tv
-          return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep pk newName : ubs')
-        Just recVar -> 
-          return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk recVar  : ubs')) 
+          return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep pk' newName : ubs')
+        (MkPknd pk', Just recVar) -> 
+          return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk' recVar  : ubs')) 
+        (primk, _) -> error ("Type Variable can't have primitive kind " <> show primk)
 coalesceType (TyData loc rep mk xtors) = do
     xtors' <- mapM coalesceXtor xtors
     return (TyData loc rep mk xtors')

@@ -14,7 +14,7 @@ import Data.Void
 import Syntax.CST.Names ( RnTypeName, XtorName )
 import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..))
 import Syntax.RST.Types ( Polarity, PolarityRep(..))
-import Syntax.CST.Kinds ( Variance, MonoKind(..), PolyKind(..))
+import Syntax.CST.Kinds ( Variance, MonoKind(..), PolyKind(..),AnyKind(..))
 
 --------------------------------------------------------------------------------
 -- # Type Automata
@@ -181,9 +181,13 @@ emptyPrimLabel pol F64Rep        = MkPrimitiveNodeLabel pol F64
 emptyPrimLabel pol StringRep     = MkPrimitiveNodeLabel pol PString
 emptyPrimLabel pol CharRep       = MkPrimitiveNodeLabel pol PChar
 
-emptyNodeLabel :: Polarity -> PolyKind -> NodeLabel
-emptyNodeLabel _ (KindVar _) = error "at this point no KindVars should be in the program"
-emptyNodeLabel pol pk = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty pk
+emptyNodeLabel :: Polarity -> AnyKind -> NodeLabel
+emptyNodeLabel _ (MkPknd (KindVar _)) = error "at this point no KindVars should be in the program"
+emptyNodeLabel pol (MkPknd pk)  = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty pk
+emptyNodeLabel pol MkI64        = MkPrimitiveNodeLabel pol I64
+emptyNodeLabel pol MkF64        = MkPrimitiveNodeLabel pol F64
+emptyNodeLabel pol MkString     = MkPrimitiveNodeLabel pol PString
+emptyNodeLabel pol MkChar       = MkPrimitiveNodeLabel pol PChar
 
 
 singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> PolyKind -> NodeLabel

@@ -66,6 +66,12 @@ deriving instance (Show PolyKind)
 deriving instance (Eq PolyKind)
 deriving instance (Ord PolyKind)
 
+--either polykind or primitive kind
+data AnyKind = MkPknd PolyKind | MkI64 | MkF64 | MkChar | MkString 
+deriving instance (Show AnyKind)
+deriving instance (Eq AnyKind)
+deriving instance (Ord AnyKind)
+
 allTypeVars :: PolyKind -> Set SkolemTVar
 allTypeVars MkPolyKind{ kindArgs } =
   S.fromList ((\(_,var,_) -> var) <$> kindArgs)

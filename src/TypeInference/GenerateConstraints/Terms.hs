@@ -330,7 +330,7 @@ instance GenConstraints Core.Command TST.Command where
     let pk = TST.getPolyKind cnsTy 
     case pk of 
       Just pk' -> do
-        addConstraint (KindEq KindConstraint peanoKnd pk')
+        addConstraint (KindEq KindConstraint (MkPknd peanoKnd) (MkPknd pk'))
         return (TST.Read loc cns')
       _ -> return (TST.Read loc cns')
   genConstraints (Core.Apply loc annot t1 t2) = do

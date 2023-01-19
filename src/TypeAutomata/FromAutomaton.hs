@@ -148,15 +148,15 @@ argNodesToArgTypes argNodes rep = do
          knds <- mapM getNodeKindPk ns
          knd <- checkTypKinds knds
          pure $ PrdCnsType PrdRep $ case rep of
-                                       PosRep -> mkUnion defaultLoc knd typs
-                                       NegRep -> mkInter defaultLoc knd typs
+                                       PosRep -> mkUnion defaultLoc (MkPknd knd) typs
+                                       NegRep -> mkInter defaultLoc (MkPknd knd) typs
       (Cns, ns) -> do
          typs <- forM ns (nodeToType (flipPolarityRep rep))
          knds <- mapM getNodeKindPk ns
          knd <- checkTypKinds knds
          pure $ PrdCnsType CnsRep $ case rep of
-                                       PosRep -> mkInter defaultLoc knd typs
-                                       NegRep -> mkUnion defaultLoc knd typs
+                                       PosRep -> mkInter defaultLoc (MkPknd knd) typs
+                                       NegRep -> mkUnion defaultLoc (MkPknd knd) typs
 
 checkTypKinds :: [PolyKind] -> AutToTypeM PolyKind
 checkTypKinds [] = throwAutomatonError  defaultLoc [T.pack "Can't get Kind of empty list of types"]
@@ -246,8 +246,8 @@ nodeToTypeNoCache rep i  = do
 
         let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
         return $ case rep of
-          PosRep -> mkUnion defaultLoc pk typs
-          NegRep -> mkInter defaultLoc pk typs
+          PosRep -> mkUnion defaultLoc (MkPknd pk) typs
+          NegRep -> mkInter defaultLoc (MkPknd pk) typs
 
       -- If the graph is cyclic, make a recursive type
       if i `elem` dfs (suc gr i) gr

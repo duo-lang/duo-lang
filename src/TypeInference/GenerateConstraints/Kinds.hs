@@ -44,7 +44,7 @@ genKindConstr loc ty1 ty2 = case (TST.getPolyKind ty1, TST.getPolyKind ty2) of
     in 
        if knd1 == knd2 then return () else throwOtherError loc ["Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2 <> " are not compatible"]
   (Just pk1, Just pk2) -> do 
-    addConstraint $ KindEq KindConstraint pk1 pk2
+    addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk2)
     return () 
   _ -> throwOtherError loc ["Kinds " <> ppPrint (TST.getMonoKind ty1) <> " and " <> ppPrint (TST.getMonoKind ty2) <> " are not compatible"]
 
@@ -59,7 +59,7 @@ getXtorKinds loc (xtor:xtors) = do
   (mk, _) <- lookupXtorKind nm
   mk' <- getXtorKinds loc xtors
   -- all constructors of a structural type need to have the same return kind
-  addConstraint (KindEq KindConstraint (MkPolyKind [] mk) (MkPolyKind [] mk'))
+  addConstraint (KindEq KindConstraint (MkPknd $ MkPolyKind [] mk) (MkPknd $ MkPolyKind [] mk'))
   return mk
   
 getKindDecl ::  TST.DataDecl -> GenM (MonoKind,[MonoKind])
@@ -233,7 +233,7 @@ annotTy (RST.TyUnion loc ty1 ty2) = do
   if pknd == TST.getPolyKind ty2' then
     case pknd of 
       Nothing -> throwOtherError loc [T.pack ("No polykind for " <> show ty1' <> " in union")]
-      Just pk -> return $ TST.TyUnion loc pk ty1' ty2'
+      Just pk -> return $ TST.TyUnion loc (MkPknd pk) ty1' ty2'
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in union do not match"]
 
@@ -244,7 +244,7 @@ annotTy (RST.TyInter loc ty1 ty2) = do
   if pknd == TST.getPolyKind ty2' then 
     case pknd of 
       Nothing -> throwOtherError loc [T.pack ("No polykind for " <> show ty1' <> " in union")]
-      Just pk -> return $ TST.TyInter loc pk ty1' ty2'
+      Just pk -> return $ TST.TyInter loc (MkPknd pk) ty1' ty2'
   else 
     throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
 annotTy (RST.TyRec loc pol rv ty) = case ty of 
@@ -408,10 +408,10 @@ instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
         skMap <- gets usedSkolemVars
         case (M.lookup sk skMap, mmk) of 
           (Nothing, _) -> throwOtherError loc ["Skolem Variable " <> ppPrint sk <> " defined but not used"]
-          (Just mk,Nothing) -> return (sk,mk)
-          (Just mk, Just mk') -> do
-            addConstraint $ KindEq KindConstraint mk mk' 
-            return (sk,mk)
+          (Just pk,Nothing) -> return (sk,pk)
+          (Just pk, Just pk') -> do
+            addConstraint $ KindEq KindConstraint (MkPknd pk) (MkPknd pk')
+            return (sk,pk)
                 
 instance AnnotateKind (RST.VariantType pol) (TST.VariantType pol) where
   annotateKind ::  RST.VariantType pol -> GenM (TST.VariantType pol)
@@ -451,9 +451,9 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     case M.lookup tv uniMap of 
       Nothing -> do
         kv <- newKVar
-        let newM = M.insert tv (KindVar kv) uniMap
+        let newM = M.insert tv (MkPknd $ KindVar kv) uniMap
         modify (\gs@GenerateState{} -> gs { usedUniVars = newM })
-        return (TST.TyUniVar loc pol (KindVar kv) tv)
+        return (TST.TyUniVar loc pol (MkPknd $ KindVar kv) tv)
       Just mk -> return (TST.TyUniVar loc pol mk tv)
 
   annotateKind (RST.TyRecVar loc pol rv) = do
@@ -481,7 +481,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       compSingle :: Loc -> EvaluationOrder -> Maybe PolyKind -> GenM ()
       compSingle loc eo (Just (MkPolyKind _ eo')) = if eo == eo' then return () else throwOtherError loc ["Kinds " <> ppPrint (CBox eo) <> " and " <> ppPrint (CBox eo') <> " are not compatible"]
       compSingle _ eo (Just (KindVar kv)) = do 
-        addConstraint $ KindEq KindConstraint (KindVar kv) (MkPolyKind [] eo)
+        addConstraint $ KindEq KindConstraint (MkPknd $ KindVar kv) (MkPknd $ MkPolyKind [] eo)
         return ()
       compSingle loc _ Nothing = throwOtherError loc ["TyData Xtor can't have primitive kind"]
 
@@ -507,7 +507,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       compSingle :: Loc -> EvaluationOrder -> Maybe PolyKind -> GenM ()
       compSingle loc eo (Just (MkPolyKind _ eo')) = if eo == eo' then return () else throwOtherError loc ["Kinds " <> ppPrint (CBox eo) <> " and " <> ppPrint (CBox eo') <> " are not compatible"]
       compSingle _ eo (Just (KindVar kv)) = do 
-        addConstraint $ KindEq KindConstraint (KindVar kv) (MkPolyKind [] eo)
+        addConstraint $ KindEq KindConstraint (MkPknd $ KindVar kv) (MkPknd $ MkPolyKind [] eo)
         return ()
       compSingle loc _ Nothing = throwOtherError loc ["TyCodata Xtor can't have primitive kind"]
 
@@ -560,7 +560,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkArgKnds loc (varty,mk) =  
         case (TST.getPolyKind varty,mk) of
           (Just pk, CBox eo) -> do 
-            addConstraint (KindEq KindConstraint pk (MkPolyKind [] eo))
+            addConstraint (KindEq KindConstraint (MkPknd pk) (MkPknd $ MkPolyKind [] eo))
             return varty
           (Just pk, primk) -> throwOtherError loc ["Kind " <> ppPrint pk <> " of applied type doesn't match with kind of declaration " <> ppPrint primk]
           (Nothing, CBox _) -> throwOtherError loc ["Kind " <> ppPrint (TST.getMonoKind varty) <> " of applied type doesn't match with kind of declaration " <> ppPrint mk]
@@ -582,10 +582,10 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     return (TST.TySyn loc pol tn ty')
 
   annotateKind (RST.TyBot loc) = do 
-    TST.TyBot loc . KindVar <$> newKVar
+    TST.TyBot loc . MkPknd . KindVar <$> newKVar
 
   annotateKind (RST.TyTop loc) = do
-    TST.TyTop loc . KindVar <$> newKVar
+    TST.TyTop loc . MkPknd . KindVar <$> newKVar
 
   annotateKind (RST.TyUnion loc ty1 ty2) = do  
     ty1' <- annotateKind ty1
@@ -594,9 +594,9 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
 
     case (getPolyKind ty1', getPolyKind ty2') of 
       (Just pk1, Just pk2) -> do 
-        addConstraint $ KindEq KindConstraint pk1 pk2
-        addConstraint $ KindEq KindConstraint pk1 (KindVar kv)
-        return (TST.TyUnion loc (KindVar kv) ty1' ty2')
+        addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk2)
+        addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd $ KindVar kv)
+        return (TST.TyUnion loc (MkPknd $ KindVar kv) ty1' ty2')
       _ -> throwOtherError defaultLoc ["Union "<> ppPrint (getMonoKind ty1') <> " \\ / " <> ppPrint (getMonoKind ty2') <> " is not possible"]
     
   annotateKind (RST.TyInter loc ty1 ty2) = do
@@ -605,9 +605,9 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     kv <- newKVar 
     case (getPolyKind ty1', getPolyKind ty2') of 
       (Just pk1, Just pk2) -> do 
-        addConstraint $ KindEq KindConstraint pk1 pk2
-        addConstraint $ KindEq KindConstraint pk1 (KindVar kv)
-        return (TST.TyInter loc (KindVar kv) ty1' ty2')
+        addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk2)
+        addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd $ KindVar kv)
+        return (TST.TyInter loc (MkPknd $ KindVar kv) ty1' ty2')
       _ -> throwOtherError defaultLoc ["Intersection "<> ppPrint (getMonoKind ty1') <> " /\\ " <> ppPrint (getMonoKind ty2') <> " is not possible"]
     
   annotateKind (RST.TyRec loc pol rv ty) = do
@@ -648,7 +648,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     ty' <- annotateKind ty 
     case (TST.getPolyKind ty',mk) of 
       (Just pk, CBox eo) -> do 
-        addConstraint $ KindEq KindConstraint pk (MkPolyKind [] eo)
+        addConstraint $ KindEq KindConstraint (MkPknd pk) (MkPknd $ MkPolyKind [] eo)
         return ty'
       (Just pk, primk) -> throwOtherError (getLoc ty') ["Annotated kind "<> ppPrint primk <> " doesn't match inferred kind " <> ppPrint pk]
       (Nothing, CBox eo) -> throwOtherError (getLoc ty') ["Annotated kind "<> ppPrint (CBox eo) <> " doesn't match inferred kind " <> ppPrint (TST.getMonoKind ty')]

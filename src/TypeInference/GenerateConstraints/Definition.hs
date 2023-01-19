@@ -72,7 +72,7 @@ data GenerateState = GenerateState
   , constraintSet :: ConstraintSet
   , usedRecVars :: M.Map RecTVar PolyKind
   , usedSkolemVars :: M.Map SkolemTVar PolyKind
-  , usedUniVars :: M.Map UniTVar PolyKind
+  , usedUniVars :: M.Map UniTVar AnyKind
   }
 
 initialConstraintSet :: ConstraintSet
@@ -128,7 +128,7 @@ class GenConstraints a b | a -> b where
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
 
-freshTVar :: UVarProvenance -> Maybe PolyKind -> GenM (TST.Typ Pos, TST.Typ Neg)
+freshTVar :: UVarProvenance -> Maybe AnyKind -> GenM (TST.Typ Pos, TST.Typ Neg)
 freshTVar uvp Nothing = do
   uVarC <- gets uVarCount
   kVarC <- gets kVarCount
@@ -136,28 +136,28 @@ freshTVar uvp Nothing = do
   let tVar = MkUniTVar ("u" <> T.pack (show uVarC))
   let kVar = MkKVar ("k" <> T.pack (show kVarC))
   modify (\gs@GenerateState{constraintSet=cs@ConstraintSet {cs_uvars, cs_kvars }} -> 
-    gs {uVarCount = uVarC+1, kVarCount = kVarC+1, usedUniVars = M.insert tVar (KindVar kVar) uniMap,  
-        constraintSet = cs {cs_uvars = (tVar, uvp, KindVar kVar) : cs_uvars, cs_kvars = kVar : cs_kvars}})
-  return (TST.TyUniVar defaultLoc PosRep (KindVar kVar) tVar, TST.TyUniVar defaultLoc NegRep (KindVar kVar) tVar)
-freshTVar uvp (Just mk) = do
+    gs {uVarCount = uVarC+1, kVarCount = kVarC+1, usedUniVars = M.insert tVar (MkPknd $ KindVar kVar) uniMap,  
+        constraintSet = cs {cs_uvars = (tVar, uvp, MkPknd $ KindVar kVar) : cs_uvars, cs_kvars = kVar : cs_kvars}})
+  return (TST.TyUniVar defaultLoc PosRep (MkPknd $ KindVar kVar) tVar, TST.TyUniVar defaultLoc NegRep (MkPknd $ KindVar kVar) tVar)
+freshTVar uvp (Just pk) = do
   uVarC <- gets uVarCount
   uniMap <- gets usedUniVars
   let tVar = MkUniTVar ("u" <> T.pack (show uVarC))
   modify (\gs@GenerateState{constraintSet = cs@ConstraintSet{cs_uvars}} -> 
-    gs {uVarCount = uVarC+1, usedUniVars = M.insert tVar mk uniMap, constraintSet = cs {cs_uvars = (tVar, uvp,mk):cs_uvars}})
-  return (TST.TyUniVar defaultLoc PosRep mk tVar, TST.TyUniVar defaultLoc NegRep mk tVar)
+    gs {uVarCount = uVarC+1, usedUniVars = M.insert tVar pk uniMap, constraintSet = cs {cs_uvars = (tVar, uvp,pk):cs_uvars}})
+  return (TST.TyUniVar defaultLoc PosRep pk tVar, TST.TyUniVar defaultLoc NegRep pk tVar)
 
 freshTVars :: [(PrdCns, Maybe FreeVarName, Maybe MonoKind)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
 freshTVars [] = return ([],[])
 freshTVars ((Prd,fv,mk):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
   let pk = case mk of Just (CBox eo) -> MkPolyKind [] eo; _ -> error "not implemented"
-  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just pk)
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just (MkPknd pk))
   return (TST.PrdCnsType PrdRep tp:lctxtP, TST.PrdCnsType PrdRep tn:lctxtN)
 freshTVars ((Cns,fv,kv):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
   let pk = case kv of Just (CBox eo) -> MkPolyKind [] eo; _ -> error "not implemented"
-  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just pk)
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just (MkPknd pk))
   return (TST.PrdCnsType CnsRep tn:lctxtP, TST.PrdCnsType CnsRep tp:lctxtN)
 
 freshTVarsForTypeParams :: forall pol. PolarityRep pol -> TST.DataDecl -> GenM ([TST.VariantType pol], TST.Bisubstitution TST.SkolemVT)
@@ -176,7 +176,7 @@ freshTVarsForTypeParams rep decl =
    freshTVars tn ((variance,tv,mk) : vs) = do
     let pk = case mk of CBox eo -> MkPolyKind [] eo; _ -> error "not implemented"
     (vartypes,vs') <- freshTVars tn vs
-    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv) (Just pk)
+    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv) (Just (MkPknd pk))
     case (variance, rep) of
       (Covariant, PosRep)     -> pure (TST.CovariantType tyPos     : vartypes, (tyPos, tyNeg) : vs')
       (Covariant, NegRep)     -> pure (TST.CovariantType tyNeg     : vartypes, (tyPos, tyNeg) : vs')
@@ -196,7 +196,7 @@ createMethodSubst loc decl =
    freshTVars cn ((variance,tv,mk) : vs) = do
     let pk = case mk of CBox eo -> MkPolyKind [] eo; _ -> error "not implemented"
     (vs', uvs) <- freshTVars cn vs
-    (tyPos, tyNeg) <- freshTVar (TypeClassInstance cn tv) (Just pk)
+    (tyPos, tyNeg) <- freshTVar (TypeClassInstance cn tv) (Just (MkPknd pk))
     case tyPos of
       (TST.TyUniVar _ _ _ uv) -> do
         addConstraint $ case variance of
@@ -256,7 +256,7 @@ lookupContext loc rep idx@(i,j) = do
 --
 instantiateTypeScheme :: FreeVarName -> Loc -> TST.TypeScheme pol -> GenM (TST.Typ pol)
 instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do 
-  freshVars <- forM ts_vars (\(tv,knd) -> freshTVar (TypeSchemeInstance fv loc) (Just knd) >>= \ty -> return (tv, ty))
+  freshVars <- forM ts_vars (\(tv,knd) -> freshTVar (TypeSchemeInstance fv loc) (Just $ MkPknd knd) >>= \ty -> return (tv, ty))
   mapM_ (addKindConstr loc ts_monotype) freshVars
   pure $ TST.zonk TST.SkolemRep (TST.MkBisubstitution (M.fromList freshVars)) ts_monotype
   where 
@@ -268,8 +268,8 @@ instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do
             return () 
           else throwOtherError loc ["Kinds " <> ppPrint (TST.getMonoKind ty) <> " and " <> ppPrint (TST.getMonoKind typos) <> " don't match"]
         (Just pk1, Just pk2, Just pk3) -> do 
-          addConstraint $ KindEq KindConstraint pk1 pk2
-          addConstraint $ KindEq KindConstraint pk1 pk3
+          addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk2)
+          addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk3)
           return () 
         _ -> throwOtherError loc ["Kinds " <> ppPrint (TST.getPolyKind ty) <> " and " <> ppPrint (TST.getPolyKind typos) <> " don't match"]
         

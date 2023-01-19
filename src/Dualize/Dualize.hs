@@ -177,6 +177,9 @@ dualMonoKind mk = mk
 dualPolyKind :: PolyKind -> PolyKind 
 dualPolyKind pk = pk 
 
+dualAnyKind :: AnyKind -> AnyKind
+dualAnyKind knd = knd
+
 ------------------------------------------------------------------------------
 -- Types
 ------------------------------------------------------------------------------
@@ -187,7 +190,7 @@ dualType' CnsRep t = dualType NegRep t
 
 dualType :: PolarityRep pol -> TST.Typ pol -> TST.Typ (FlipPol pol)
 dualType pol (TST.TyUniVar _loc _ kind x) =
-  TST.TyUniVar defaultLoc (flipPolarityRep pol) (dualPolyKind kind) x
+  TST.TyUniVar defaultLoc (flipPolarityRep pol) (dualAnyKind kind) x
 dualType pol (TST.TySkolemVar _loc _ kind x) =
   TST.TySkolemVar defaultLoc (flipPolarityRep pol) (dualPolyKind kind) x
 dualType pol (TST.TyRecVar _loc _ pk x) =

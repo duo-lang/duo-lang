@@ -58,7 +58,7 @@ instance (PrettyAnn a) => PrettyAnn (Constraint a) where
   prettyAnn (TypeClass ann cn typ) =
     prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
 
-printUVar :: (UniTVar, UVarProvenance, PolyKind) -> Doc Annotation
+printUVar :: (UniTVar, UVarProvenance, AnyKind) -> Doc Annotation
 printUVar (tv,prov,kv) = prettyAnn tv <> ":" <> prettyAnn kv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
@@ -170,12 +170,8 @@ prettySkolBisubst (v, (typ,tyn)) = nest 3 $ line <> vsep [ prettyAnn v <+> "+ â¤
                                                          , prettyAnn v <+> "- â¤‡" <+> prettyAnn tyn
                                                          ]
 
-prettyPKindSubst :: (KVar, PolyKind) -> Doc Annotation
-prettyPKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
-
-prettyMKindSubst :: (KVar, MonoKind) -> Doc Annotation
-prettyMKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
-
+prettyKindSubst :: (KVar, AnyKind) -> Doc Annotation
+prettyKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
 
 instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
   prettyAnn uvsubst = vsep
@@ -185,7 +181,7 @@ instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
     , vsep $ prettyBisubst <$> M.toList (fst (TST.bisubst_map uvsubst))
     , ""
     , "Kind Variables: "
-    , vsep $ intersperse "" (prettyPKindSubst <$> M.toList (snd (TST.bisubst_map uvsubst)))
+    , vsep $ intersperse "" (prettyKindSubst <$> M.toList (snd (TST.bisubst_map uvsubst)))
     ]
 
 instance PrettyAnn (TST.Bisubstitution TST.SkolemVT) where

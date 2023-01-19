@@ -59,7 +59,7 @@ createNodes :: [KindedSkolem] -> [(SkolemTVar, (Node, NodeLabel), (Node, NodeLab
 createNodes tvars = createNode <$> createPairs tvars
   where
     createNode :: (KindedSkolem, Node, Node) -> (SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode ((tv, mk), posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos mk), (negNode, emptyNodeLabel Neg mk), (negNode, posNode))
+    createNode ((tv, mk), posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos (MkPknd mk)), (negNode, emptyNodeLabel Neg (MkPknd mk)), (negNode, posNode))
 
     createPairs :: [KindedSkolem] -> [(KindedSkolem, Node,Node)]
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
@@ -233,7 +233,7 @@ insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   case getPolyKind ty of 
-    Just pk -> insertNode newNode (emptyNodeLabel pol pk)
+    Just pk -> insertNode newNode (emptyNodeLabel pol (MkPknd pk))
     Nothing -> insertNode newNode (emptyPrimLabel pol (Data.Maybe.fromJust $ getMonoKind ty))
   let extendEnv PosRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Just newNode, Nothing) tRecVars
       extendEnv NegRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Nothing, Just newNode) tRecVars
@@ -250,7 +250,7 @@ insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyApp _ _ (TyNominal _ rep polyknd tn) args) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol polyknd) { nl_nominal = S.singleton (tn, NE.toList $ toVariance <$> args) })
+  insertNode newNode ((emptyNodeLabel pol (MkPknd polyknd)) { nl_nominal = S.singleton (tn, NE.toList $ toVariance <$> args) })
   argNodes <- forM args insertVariantType
   insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate (NE.toList argNodes))
   return newNode
@@ -259,7 +259,7 @@ insertType (TyNominal _ rep polyknd tn) = do
     [] -> do
       let pol = polarityRepToPol rep 
       newNode <- newNodeM
-      insertNode newNode ((emptyNodeLabel pol polyknd) {nl_nominal = S.singleton (tn,[]) })
+      insertNode newNode ((emptyNodeLabel pol (MkPknd polyknd)) {nl_nominal = S.singleton (tn,[]) })
       return newNode
     _ -> throwAutomatonError defaultLoc ["Nominal type "<> ppPrint tn <> "was not fully applied"]
 insertType TyApp{} = throwAutomatonError defaultLoc ["Types can only be applied to nominal types"]

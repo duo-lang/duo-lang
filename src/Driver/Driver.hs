@@ -25,7 +25,7 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (KVar, MonoKind(CBox),PolyKind(..))
+import Syntax.CST.Kinds (KVar, MonoKind(CBox),PolyKind(..),AnyKind(..))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
@@ -55,13 +55,13 @@ import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
 import TypeAutomata.Intersection (intersectIsEmpty)
 
-getAnnotKind :: TST.Typ pol -> Maybe (TST.TypeScheme pol) -> Maybe (KVar, PolyKind)
+getAnnotKind :: TST.Typ pol -> Maybe (TST.TypeScheme pol) -> Maybe (KVar, AnyKind)
 getAnnotKind tyInf maybeAnnot = 
   case (TST.getPolyKind tyInf,maybeAnnot) of 
     (Just (KindVar kv),Just annot) -> 
       case (TST.getPolyKind $ TST.ts_monotype annot, TST.getMonoKind $ TST.ts_monotype annot) of 
-        (Just pk,_)       -> Just (kv,pk)
-        (Nothing,Just (CBox eo)) -> Just (kv, MkPolyKind [] eo)
+        (Just pk,_)       -> Just (kv, MkPknd pk)
+        (Nothing,Just (CBox eo)) -> Just (kv, MkPknd $ MkPolyKind [] eo)
         _                 -> Nothing
     _ -> Nothing
 
