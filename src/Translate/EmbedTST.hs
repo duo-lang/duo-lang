@@ -136,10 +136,10 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     RST.TyKindAnnot (CBox rk) $ RST.TyRecVar loc pol tv
   embedTST (TST.TyRecVar loc pol (KindVar _) tv) =
     RST.TyRecVar loc pol tv
-  embedTST (TST.TyData loc pol mk xtors) =
-    RST.TyKindAnnot mk $ RST.TyData loc pol (map embedTST xtors)
-  embedTST (TST.TyCodata loc pol mk xtors) =
-    RST.TyKindAnnot mk $ RST.TyCodata loc pol (map embedTST xtors)
+  embedTST (TST.TyData loc pol eo xtors) =
+    RST.TyKindAnnot (CBox eo) $ RST.TyData loc pol (map embedTST xtors)
+  embedTST (TST.TyCodata loc pol eo xtors) =
+    RST.TyKindAnnot (CBox eo) $ RST.TyCodata loc pol (map embedTST xtors)
   embedTST (TST.TyDataRefined loc pol pk@(MkPolyKind _ rk) tn xtors) =
     RST.TyKindAnnot (CBox rk) $ RST.TyDataRefined loc pol pk tn (map embedTST xtors)
   embedTST (TST.TyDataRefined loc pol pk@(KindVar _) tn xtors) =
@@ -159,9 +159,13 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST (TST.TyApp loc pol ty args) = do
     RST.TyApp loc pol (embedTST ty) (embedTST <$> args)
   embedTST (TST.TySyn loc pol tn tp) = 
-    case TST.getMonoKind tp of 
-      Nothing -> RST.TySyn loc pol tn (embedTST tp)
-      Just knd -> RST.TyKindAnnot knd $ RST.TySyn loc pol tn (embedTST tp)
+    case TST.getKind tp of 
+      MkPknd (MkPolyKind _ eo) -> RST.TyKindAnnot (CBox eo) $ RST.TySyn loc pol tn (embedTST tp)
+      MkPknd (KindVar _) -> RST.TySyn loc pol tn (embedTST tp)
+      MkI64 -> RST.TyKindAnnot I64Rep $ RST.TySyn loc pol tn (embedTST tp)
+      MkF64 -> RST.TyKindAnnot F64Rep $ RST.TySyn loc pol tn (embedTST tp)
+      MkChar -> RST.TyKindAnnot CharRep $ RST.TySyn loc pol tn (embedTST tp)
+      MkString -> RST.TyKindAnnot StringRep $ RST.TySyn loc pol tn (embedTST tp)
   embedTST (TST.TyBot loc knd ) = case knd of
     MkPknd (MkPolyKind _ eo) -> RST.TyKindAnnot (CBox eo) $ RST.TyBot loc
     MkPknd (KindVar _) -> RST.TyBot loc
@@ -191,9 +195,13 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     MkChar -> RST.TyKindAnnot CharRep $ RST.TyInter loc (embedTST tn1) (embedTST tn2)
     MkString -> RST.TyKindAnnot StringRep $ RST.TyInter loc (embedTST tn1) (embedTST tn2)
   embedTST (TST.TyRec loc pol rv tp) = 
-    case TST.getMonoKind tp of 
-      Nothing -> RST.TyRec loc pol rv (embedTST  tp)
-      Just knd -> RST.TyKindAnnot knd $ RST.TyRec loc pol rv (embedTST  tp)
+    case TST.getKind tp of 
+      MkPknd (MkPolyKind _ eo) -> RST.TyKindAnnot (CBox eo) $ RST.TyRec loc pol rv (embedTST tp)
+      MkPknd (KindVar _) -> RST.TyRec loc pol rv (embedTST tp)
+      MkI64 -> RST.TyKindAnnot I64Rep $ RST.TyRec loc pol rv (embedTST  tp)
+      MkF64 -> RST.TyKindAnnot F64Rep $ RST.TyRec loc pol rv (embedTST  tp)
+      MkChar -> RST.TyKindAnnot CharRep $ RST.TyRec loc pol rv (embedTST  tp)
+      MkString -> RST.TyKindAnnot StringRep $ RST.TyRec loc pol rv (embedTST  tp)
   embedTST (TST.TyI64 loc pol) =
     RST.TyI64 loc pol
   embedTST (TST.TyF64 loc pol) =

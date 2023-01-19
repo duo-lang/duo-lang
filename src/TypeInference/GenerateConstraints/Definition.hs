@@ -147,17 +147,15 @@ freshTVar uvp (Just pk) = do
     gs {uVarCount = uVarC+1, usedUniVars = M.insert tVar pk uniMap, constraintSet = cs {cs_uvars = (tVar, uvp,pk):cs_uvars}})
   return (TST.TyUniVar defaultLoc PosRep pk tVar, TST.TyUniVar defaultLoc NegRep pk tVar)
 
-freshTVars :: [(PrdCns, Maybe FreeVarName, Maybe MonoKind)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
+freshTVars :: [(PrdCns, Maybe FreeVarName, AnyKind)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
 freshTVars [] = return ([],[])
-freshTVars ((Prd,fv,mk):rest) = do
+freshTVars ((Prd,fv,knd):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
-  let pk = case mk of Just (CBox eo) -> MkPolyKind [] eo; _ -> error "not implemented"
-  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just (MkPknd pk))
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just knd)
   return (TST.PrdCnsType PrdRep tp:lctxtP, TST.PrdCnsType PrdRep tn:lctxtN)
-freshTVars ((Cns,fv,kv):rest) = do
+freshTVars ((Cns,fv,knd):rest) = do
   (lctxtP, lctxtN) <- freshTVars rest
-  let pk = case kv of Just (CBox eo) -> MkPolyKind [] eo; _ -> error "not implemented"
-  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just (MkPknd pk))
+  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just knd)
   return (TST.PrdCnsType CnsRep tn:lctxtP, TST.PrdCnsType CnsRep tp:lctxtN)
 
 freshTVarsForTypeParams :: forall pol. PolarityRep pol -> TST.DataDecl -> GenM ([TST.VariantType pol], TST.Bisubstitution TST.SkolemVT)
@@ -262,16 +260,14 @@ instantiateTypeScheme fv loc TST.TypeScheme { ts_vars, ts_monotype } = do
   where 
     addKindConstr :: Loc -> TST.Typ pol -> (SkolemTVar, (TST.Typ Pos, TST.Typ Neg)) -> GenM () 
     addKindConstr loc ty (_,(typos,tyneg)) =  
-      case (TST.getPolyKind ty, TST.getPolyKind typos, TST.getPolyKind tyneg) of 
-        (Nothing, Nothing, Nothing) -> 
-          if TST.getMonoKind ty == TST.getMonoKind typos && TST.getMonoKind ty == TST.getMonoKind tyneg then 
-            return () 
-          else throwOtherError loc ["Kinds " <> ppPrint (TST.getMonoKind ty) <> " and " <> ppPrint (TST.getMonoKind typos) <> " don't match"]
-        (Just pk1, Just pk2, Just pk3) -> do 
+      case (TST.getKind ty, TST.getKind typos, TST.getKind tyneg) of 
+        (MkPknd pk1, MkPknd pk2, MkPknd pk3) -> do
           addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk2)
           addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk3)
           return () 
-        _ -> throwOtherError loc ["Kinds " <> ppPrint (TST.getPolyKind ty) <> " and " <> ppPrint (TST.getPolyKind typos) <> " don't match"]
+        (primk1, primk2, primk3) -> 
+          if primk1 == primk2 && primk1 == primk3 then return () 
+          else throwOtherError loc ["Kinds " <> ppPrint (TST.getKind ty) <> " and " <> ppPrint (TST.getKind typos) <> " don't match"]
         
 
 ---------------------------------------------------------------------------------------------

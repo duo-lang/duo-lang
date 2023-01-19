@@ -2,7 +2,6 @@ module TypeInference.GenerateConstraints.Kinds
   ( AnnotateKind(..)
   , getKindDecl
   , resolveDataDecl
-  , genKindConstr
   ) where
 
 
@@ -10,7 +9,7 @@ import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST
-import Syntax.TST.Types (getMonoKind,getPolyKind)
+import Syntax.TST.Types (getKind)
 import Syntax.CST.Kinds
 import Syntax.CST.Names 
 import Pretty.Pretty
@@ -36,17 +35,6 @@ import Syntax.RST.Types (Polarity(..), PolarityRep (..))
 --------------------------------------------------------------------------------------------
 -- Helpers
 --------------------------------------------------------------------------------------------
-
-genKindConstr :: Loc -> TST.Typ pol1 -> TST.Typ pol2 -> GenM () 
-genKindConstr loc ty1 ty2 = case (TST.getPolyKind ty1, TST.getPolyKind ty2) of 
-  (Nothing, Nothing) -> 
-    let (knd1,knd2) = (TST.getMonoKind ty1,TST.getMonoKind ty2)
-    in 
-       if knd1 == knd2 then return () else throwOtherError loc ["Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2 <> " are not compatible"]
-  (Just pk1, Just pk2) -> do 
-    addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk2)
-    return () 
-  _ -> throwOtherError loc ["Kinds " <> ppPrint (TST.getMonoKind ty1) <> " and " <> ppPrint (TST.getMonoKind ty2) <> " are not compatible"]
 
 getXtorKinds :: Loc -> [RST.XtorSig pol] -> GenM EvaluationOrder
 getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
@@ -176,7 +164,7 @@ annotTy (RST.TyData loc pol xtors) = do
     Nothing -> throwOtherError loc ["Not all xtors have the same return kind"]
     Just eo -> do 
       xtors' <- mapM annotXtor xtors
-      return $ TST.TyData loc pol (CBox eo) xtors' 
+      return $ TST.TyData loc pol eo xtors' 
   where
     compXtorKinds :: [EvaluationOrder] -> Maybe EvaluationOrder
     compXtorKinds [] = Nothing 
@@ -190,7 +178,7 @@ annotTy (RST.TyCodata loc pol xtors) = do
     Nothing -> throwOtherError loc ["Not all xtors have the same return kind"]
     Just eo -> do 
       xtors' <- mapM annotXtor xtors
-      return $ TST.TyCodata loc pol (CBox eo) xtors' 
+      return $ TST.TyCodata loc pol eo xtors' 
   where 
     compXtorKinds :: [EvaluationOrder] -> Maybe EvaluationOrder
     compXtorKinds [] = Nothing 
@@ -229,24 +217,21 @@ annotTy (RST.TyTop loc) = throwOtherError loc ["TyTop should not be contained in
 annotTy (RST.TyUnion loc ty1 ty2) = do 
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
-  let pknd = TST.getPolyKind ty1' 
-  if pknd == TST.getPolyKind ty2' then
-    case pknd of 
-      Nothing -> throwOtherError loc [T.pack ("No polykind for " <> show ty1' <> " in union")]
-      Just pk -> return $ TST.TyUnion loc (MkPknd pk) ty1' ty2'
+  let knd1 = getKind ty1'
+  let knd2 = getKind ty2'
+  if knd1 == knd2 then
+    return $ TST.TyUnion loc knd1 ty1' ty2'
   else 
-    throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in union do not match"]
-
+    throwOtherError loc ["Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2 <> " of union are not compatible"]
 annotTy (RST.TyInter loc ty1 ty2) = do 
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
-  let pknd = TST.getPolyKind ty1' 
-  if pknd == TST.getPolyKind ty2' then 
-    case pknd of 
-      Nothing -> throwOtherError loc [T.pack ("No polykind for " <> show ty1' <> " in union")]
-      Just pk -> return $ TST.TyInter loc (MkPknd pk) ty1' ty2'
+  let knd1 = getKind ty1'
+  let knd2 = getKind ty2'
+  if knd1 == knd2 then
+    return $ TST.TyInter loc knd1 ty1' ty2'
   else 
-    throwOtherError loc ["Kinds of " <> T.pack ( show ty1' ) <> " and " <> T.pack ( show ty2' ) <> " in intersection do not match"]
+    throwOtherError loc ["Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2 <> " of union are not compatible"]
 annotTy (RST.TyRec loc pol rv ty) = case ty of 
   -- recursive types can only appear inside Refinement declarations
   -- when they do, the recvars always represent the type that is being refined
@@ -268,14 +253,10 @@ annotTy (RST.TyFlipPol pol ty) = do
   return $ TST.TyFlipPol pol ty'
 annotTy (RST.TyKindAnnot mk ty) = do
   ty' <- annotTy ty
-  let knd = getMonoKind ty'
-  if knd == Just mk then
-    return ty' 
+  if getKind ty' == monoToAnyKind mk then
+    return ty'
   else 
-    throwOtherError defaultLoc ["Annotated Kind " <> ppPrint mk <> " and Inferred Kind " <> ppPrint knd <> " do not match"]
-
-  
-
+    throwOtherError (getLoc ty') ["Annotated Kind " <> ppPrint mk <> " and inferred kind " <> ppPrint (getKind ty') <> " are not compatible"]
 
 -- | Given the polarity (data/codata) and the name of a type, compute the empty refinement of that type.
 -- Example:
@@ -467,50 +448,52 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     xtorKnds <- mapM lookupXtorKind xtorNames
     eo <- getXtorKinds loc xtors
     xtors' <- mapM annotateKind xtors
-    compXtorKinds loc xtors' xtorKnds
-    return (TST.TyData loc pol (CBox eo) xtors')
+    if length xtors' == length xtorKnds then do 
+      mapM_  (checkXtor loc) (zip xtors' (map fst xtorKnds)) 
+      return (TST.TyData loc pol eo xtors')
+    else 
+      throwOtherError loc ["Number of Xtors and declaration doesn't match"]
     where 
-      compXtorKinds :: Loc -> [TST.XtorSig pol] -> [(EvaluationOrder,[MonoKind])] -> GenM ()
-      compXtorKinds _ [] [] = return ()
-      compXtorKinds _ [] (_:_) = error "too many xtor kinds (should not happen)"
-      compXtorKinds _ (_:_) [] = error "not all xtor kinds found (should already fail during lookup)"
-      compXtorKinds loc (fstXtor:rstXtors) ((eo,_):rstKinds) = do
-        let argKnds = map getPolyKind (TST.sig_args fstXtor)
-        mapM_ (compSingle loc eo) argKnds
-        compXtorKinds loc rstXtors rstKinds 
-      compSingle :: Loc -> EvaluationOrder -> Maybe PolyKind -> GenM ()
-      compSingle loc eo (Just (MkPolyKind _ eo')) = if eo == eo' then return () else throwOtherError loc ["Kinds " <> ppPrint (CBox eo) <> " and " <> ppPrint (CBox eo') <> " are not compatible"]
-      compSingle _ eo (Just (KindVar kv)) = do 
+      checkXtor :: Loc -> (TST.XtorSig pol,EvaluationOrder) -> GenM ()
+      checkXtor loc (xtor, eo) = do
+        let retKnds = map getKind (TST.sig_args xtor)
+        mapM_ (checkRetKnd loc eo) retKnds
+      checkRetKnd :: Loc -> EvaluationOrder -> AnyKind -> GenM () 
+      checkRetKnd loc eo (MkPknd (MkPolyKind _ eo')) = 
+        if eo==eo' then 
+          return ()
+        else
+          throwOtherError loc ["Evaluation Orders" <> ppPrint eo <> " and " <> ppPrint eo' <> " are not compatible"]
+      checkRetKnd _ eo (MkPknd (KindVar kv)) = do
         addConstraint $ KindEq KindConstraint (MkPknd $ KindVar kv) (MkPknd $ MkPolyKind [] eo)
         return ()
-      compSingle loc _ Nothing = throwOtherError loc ["TyData Xtor can't have primitive kind"]
-
-        
-
+      checkRetKnd loc primk eo = throwOtherError loc ["Kinds " <> ppPrint primk <> " and " <> ppPrint eo <> " are not compatible"]
 
   annotateKind (RST.TyCodata loc pol xtors) = do 
     let xtorNames = map RST.sig_name xtors
     xtorKnds <- mapM lookupXtorKind xtorNames
     eo <- getXtorKinds loc xtors
     xtors' <- mapM annotateKind xtors
-    compXtorKinds loc xtors' xtorKnds
-    return (TST.TyCodata loc pol (CBox eo) xtors')
+    if length xtors == length xtorKnds then do 
+      mapM_ (checkXtor loc) (zip xtors' (map fst xtorKnds))
+      return (TST.TyCodata loc pol eo xtors')
+    else
+      throwOtherError loc ["Number of Xtors and declaration doesn't match"]
     where 
-      compXtorKinds :: Loc -> [TST.XtorSig (RST.FlipPol pol)] -> [(EvaluationOrder,[MonoKind])] -> GenM ()
-      compXtorKinds _ [] [] = return ()
-      compXtorKinds _ [] (_:_) = error "too many xtor kinds (should not happen)"
-      compXtorKinds _ (_:_) [] = error "not all xtor kinds found (should already fail during lookup)"
-      compXtorKinds loc (fstXtor:rstXtors) ((eo,_):rstKinds) = do
-        let argKnds = map getPolyKind (TST.sig_args fstXtor)
-        mapM_ (compSingle loc eo) argKnds
-        compXtorKinds loc rstXtors rstKinds 
-      compSingle :: Loc -> EvaluationOrder -> Maybe PolyKind -> GenM ()
-      compSingle loc eo (Just (MkPolyKind _ eo')) = if eo == eo' then return () else throwOtherError loc ["Kinds " <> ppPrint (CBox eo) <> " and " <> ppPrint (CBox eo') <> " are not compatible"]
-      compSingle _ eo (Just (KindVar kv)) = do 
+      checkXtor :: Loc -> (TST.XtorSig (RST.FlipPol pol),EvaluationOrder) -> GenM ()
+      checkXtor loc (xtor, eo) = do
+        let retKnds = map getKind (TST.sig_args xtor)
+        mapM_ (checkRetKnd loc eo) retKnds
+      checkRetKnd :: Loc -> EvaluationOrder -> AnyKind -> GenM () 
+      checkRetKnd loc eo (MkPknd (MkPolyKind _ eo')) = 
+        if eo==eo' then 
+          return ()
+        else
+          throwOtherError loc ["Evaluation Orders" <> ppPrint eo <> " and " <> ppPrint eo' <> " are not compatible"]
+      checkRetKnd _ eo (MkPknd (KindVar kv)) = do
         addConstraint $ KindEq KindConstraint (MkPknd $ KindVar kv) (MkPknd $ MkPolyKind [] eo)
         return ()
-      compSingle loc _ Nothing = throwOtherError loc ["TyCodata Xtor can't have primitive kind"]
-
+      checkRetKnd loc primk eo = throwOtherError loc ["Kinds " <> ppPrint primk <> " and " <> ppPrint eo <> " are not compatible"]
  
   annotateKind (RST.TyDataRefined loc pol pknd tyn xtors) = do 
     xtors' <- mapM annotateKind xtors
@@ -523,8 +506,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkXtors loc (fst:rst) decl = do
         -- this can never be a kind var
         let retKnd = CBox $ returnKind $ TST.data_kind decl
-        let retKnds = map getMonoKind (TST.sig_args fst)
-        if all (==Just retKnd) retKnds then
+        let retKnds = map getKind (TST.sig_args fst)
+        if all (==monoToAnyKind retKnd) retKnds then
           checkXtors loc rst decl 
         else 
           throwOtherError loc ["Xtors do not have the correct kinds"]
@@ -540,8 +523,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkXtors loc (fst:rst) decl = do
         -- this can never be a kind  var 
         let retKnd = CBox $ returnKind $ TST.data_kind decl
-        let retKnds = map getMonoKind (TST.sig_args fst)
-        if all (==Just retKnd) retKnds then
+        let retKnds = map getKind (TST.sig_args fst)
+        if all (==monoToAnyKind retKnd) retKnds then
           checkXtors loc rst decl 
         else 
           throwOtherError loc ["Xtors do not have the correct kinds"]
@@ -553,22 +536,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       throwOtherError loc ["Wrong number of arguments of type " <> ppPrint tyn] 
     else do
       let argKnds' = case argKnds of (fst:rst) -> fst:|rst; _ -> error "cannnot happen"
-      vartys'' <- mapM (checkArgKnds loc) (NE.zip vartys' argKnds')
-      return (TST.TyApp loc pol (TST.TyNominal loc pol polyknd tyn) vartys'')
-    where
-      checkArgKnds :: Loc -> (TST.VariantType pol, MonoKind) -> GenM (TST.VariantType pol)
-      checkArgKnds loc (varty,mk) =  
-        case (TST.getPolyKind varty,mk) of
-          (Just pk, CBox eo) -> do 
-            addConstraint (KindEq KindConstraint (MkPknd pk) (MkPknd $ MkPolyKind [] eo))
-            return varty
-          (Just pk, primk) -> throwOtherError loc ["Kind " <> ppPrint pk <> " of applied type doesn't match with kind of declaration " <> ppPrint primk]
-          (Nothing, CBox _) -> throwOtherError loc ["Kind " <> ppPrint (TST.getMonoKind varty) <> " of applied type doesn't match with kind of declaration " <> ppPrint mk]
-          (Nothing, primk) -> 
-            if TST.getMonoKind varty == Just primk then 
-              return varty 
-            else throwOtherError loc ["Kind " <> ppPrint (TST.getMonoKind varty) <> " of applied type does not match with declaration " <> ppPrint mk]
-              
+      mapM_ (\(varty,mk) -> addConstraint $ KindEq KindConstraint (getKind varty) (monoToAnyKind mk)) (NE.zip vartys' argKnds')
+      return (TST.TyApp loc pol (TST.TyNominal loc pol polyknd tyn) vartys')
 
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
     case kindArgs polyknd of 
@@ -590,25 +559,18 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyUnion loc ty1 ty2) = do  
     ty1' <- annotateKind ty1
     ty2' <- annotateKind ty2
-    kv <- newKVar 
+    let knd1 = getKind ty1'
+    let knd2 = getKind ty2'
+    addConstraint $ KindEq KindConstraint knd1 knd2
+    return (TST.TyUnion loc knd1 ty1' ty2')
 
-    case (getPolyKind ty1', getPolyKind ty2') of 
-      (Just pk1, Just pk2) -> do 
-        addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk2)
-        addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd $ KindVar kv)
-        return (TST.TyUnion loc (MkPknd $ KindVar kv) ty1' ty2')
-      _ -> throwOtherError defaultLoc ["Union "<> ppPrint (getMonoKind ty1') <> " \\ / " <> ppPrint (getMonoKind ty2') <> " is not possible"]
-    
   annotateKind (RST.TyInter loc ty1 ty2) = do
     ty1' <- annotateKind ty1
     ty2' <- annotateKind ty2
-    kv <- newKVar 
-    case (getPolyKind ty1', getPolyKind ty2') of 
-      (Just pk1, Just pk2) -> do 
-        addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk2)
-        addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd $ KindVar kv)
-        return (TST.TyInter loc (MkPknd $ KindVar kv) ty1' ty2')
-      _ -> throwOtherError defaultLoc ["Intersection "<> ppPrint (getMonoKind ty1') <> " /\\ " <> ppPrint (getMonoKind ty2') <> " is not possible"]
+    let knd1 = getKind ty1'
+    let knd2 = getKind ty2'
+    addConstraint $ KindEq KindConstraint knd1 knd2
+    return (TST.TyInter loc knd1 ty1' ty2')
     
   annotateKind (RST.TyRec loc pol rv ty) = do
     pknd <- getPk ty
@@ -646,13 +608,5 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   
   annotateKind (RST.TyKindAnnot mk ty) = do 
     ty' <- annotateKind ty 
-    case (TST.getPolyKind ty',mk) of 
-      (Just pk, CBox eo) -> do 
-        addConstraint $ KindEq KindConstraint (MkPknd pk) (MkPknd $ MkPolyKind [] eo)
-        return ty'
-      (Just pk, primk) -> throwOtherError (getLoc ty') ["Annotated kind "<> ppPrint primk <> " doesn't match inferred kind " <> ppPrint pk]
-      (Nothing, CBox eo) -> throwOtherError (getLoc ty') ["Annotated kind "<> ppPrint (CBox eo) <> " doesn't match inferred kind " <> ppPrint (TST.getMonoKind ty')]
-      (Nothing, primk) -> do 
-        if TST.getMonoKind ty' == Just primk then return ty' else throwOtherError (getLoc ty') ["Annotated kind "<> ppPrint primk <> " doesn't match inferred kind " <> ppPrint (TST.getMonoKind ty')]
-
-
+    addConstraint $ KindEq KindConstraint (getKind ty') (monoToAnyKind mk)
+    return ty'

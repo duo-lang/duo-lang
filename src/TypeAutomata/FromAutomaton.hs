@@ -202,7 +202,7 @@ nodeToTypeNoCache rep i  = do
               let nodes = computeArgNodes outs CST.Data xt
               argTypes <- argNodesToArgTypes nodes rep
               return (MkXtorSig (labelName xt) argTypes)
-            return [TyData defaultLoc rep (CBox $ returnKind pk) sig]
+            return [TyData defaultLoc rep (returnKind pk) sig]
         -- Creating codata types
         codatL <- case maybeCodat of
           Nothing -> return []
@@ -211,7 +211,7 @@ nodeToTypeNoCache rep i  = do
               let nodes = computeArgNodes outs CST.Codata xt
               argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
               return (MkXtorSig (labelName xt) argTypes)
-            return [TyCodata defaultLoc rep (CBox $ returnKind pk) sig]
+            return [TyCodata defaultLoc rep (returnKind pk) sig]
         -- Creating ref data types
         refDatL <- do
           forM refDatTypes $ \(tn,xtors) -> do

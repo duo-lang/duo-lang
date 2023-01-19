@@ -114,11 +114,11 @@ xtorToHoverMap loc pc ty ns =  mkHoverMap loc msg
     msg = case pc of
       PrdRep -> T.unlines [ "#### " <> ppPrint ns <> " constructor"
                           , "- **Right-Intro**"
-                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getMonoKind ty) <> "`"
+                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
       CnsRep -> T.unlines [ "#### " <> ppPrint ns <> " destructor"
                           , "- **Left-Intro**"
-                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getMonoKind ty) <> "`"
+                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
 
 xcaseToHoverMap :: Loc -> PrdCnsRep pc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
@@ -128,11 +128,11 @@ xcaseToHoverMap loc pc ty ns = mkHoverMap loc msg
     msg = case pc of
       PrdRep -> T.unlines [ "#### " <> ppPrint ns <> " cocase"
                           , "- **Right-Intro**"
-                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getMonoKind ty) <> "`"
+                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
       CnsRep -> T.unlines [ "#### " <> ppPrint ns <> " case"
                           , "- **Left-Intro**"
-                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getMonoKind ty) <> "`"
+                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
 
 muAbsToHoverMap :: Loc -> PrdCnsRep pc -> TST.Typ pol -> HoverMap
@@ -141,10 +141,10 @@ muAbsToHoverMap loc pc ty = mkHoverMap loc msg
     msg :: Text
     msg = case pc of
       PrdRep -> T.unlines [ "#### μ-Abstraction"
-                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getMonoKind ty) <> "`"
+                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
       CnsRep -> T.unlines [ "#### ~μ-Abstraction"
-                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getMonoKind ty) <> "`"
+                          , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                 ]
 
 
@@ -154,7 +154,7 @@ dtorToHoverMap loc ty ns = mkHoverMap loc msg
     msg :: Text
     msg = T.unlines [ "#### " <> ppPrint ns <> " destructor application"
                     , "- **Right-Elim**"
-                    , "- Type: `" <> ppPrint ty <> ":"<> ppPrint (TST.getMonoKind ty) <> "`"
+                    , "- Type: `" <> ppPrint ty <> ":"<> ppPrint (TST.getKind ty) <> "`"
                     ]
 
 lambdaToHoverMap :: Loc -> TST.Typ pol -> HoverMap
@@ -163,7 +163,7 @@ lambdaToHoverMap loc ty = mkHoverMap loc msg
     msg :: Text
     msg = T.unlines [ "#### " <>  " lambda"
                     , "- **Right-Elim**"
-                    , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getMonoKind ty) <> "`"
+                    , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                     ]
 
 
@@ -173,7 +173,7 @@ caseToHoverMap loc ty ns = mkHoverMap loc msg
     msg :: Text
     msg = T.unlines [ "#### " <> ppPrint ns <> " case-of"
                     , "- **Right-Elim**"
-                    , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getMonoKind ty) <> "`"
+                    , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                     ]
 
 cocaseToHoverMap :: Loc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
@@ -182,7 +182,7 @@ cocaseToHoverMap loc ty ns = mkHoverMap loc msg
     msg :: Text
     msg = T.unlines [ "#### " <> ppPrint ns <> " cocase"
                     , "- **Right-Intro**"
-                    , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getMonoKind ty) <> "`"
+                    , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                     ]
 
 
@@ -377,7 +377,7 @@ instance ToHoverMap (TST.Typ pol) where
       msg = T.unlines [ "#### Type synonym"
                       , "- Name: `" <> ppPrint nm <> "`"
                       , "- Doc: " <> maybe "" ppPrint (rnTnDoc nm)
-                      , "- Definition: `" <> ppPrint ty <> ":" <> ppPrint (TST.getMonoKind ty) <> "`"
+                      , "- Definition: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                       , "- Polarity: " <> prettyPolRep rep
                       ]
     in
@@ -418,7 +418,7 @@ instance ToHoverMap (TST.Typ pol) where
     let
       msg = T.unlines [ "#### Recursive type"
                       , "- Polarity: " <> prettyPolRep rep
-                      , "- Type: " <> ppPrint ty <> ":" <> ppPrint (TST.getMonoKind ty)
+                      , "- Type: " <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty)
                       ]
     in
       M.union (mkHoverMap loc msg) (toHoverMap ty)

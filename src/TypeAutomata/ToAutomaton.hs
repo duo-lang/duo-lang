@@ -12,7 +12,6 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
-import Data.Maybe (fromJust)
 import Data.List.NonEmpty qualified as NE
 
 import Errors ( Error, throwAutomatonError )
@@ -232,18 +231,14 @@ insertType (TyInter _ knd ty1 ty2) = do
 insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  case getPolyKind ty of 
-    Just pk -> insertNode newNode (emptyNodeLabel pol (MkPknd pk))
-    Nothing -> insertNode newNode (emptyPrimLabel pol (Data.Maybe.fromJust $ getMonoKind ty))
+  insertNode newNode (emptyNodeLabel pol (getKind ty))
   let extendEnv PosRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Just newNode, Nothing) tRecVars
       extendEnv NegRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars $ M.insert rv (Nothing, Just newNode) tRecVars
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData _  polrep (CBox eo) xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
-insertType (TyData _ _ mk _) = throwAutomatonError defaultLoc ["Tried to insert TyData into automaton with incorrect kind " <> ppPrint mk]
-insertType (TyCodata _ polrep (CBox eo)  xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
-insertType (TyCodata _ _ mk _) = throwAutomatonError defaultLoc ["Tried to insert TyCodata into automaton with incorrect kind " <> ppPrint mk]
+insertType (TyData _  polrep eo xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
+insertType (TyCodata _ polrep eo  xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
 insertType (TyDataRefined _ polrep pk mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) pk xtors
 insertType (TyCodataRefined _ polrep pk mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) pk xtors
 insertType (TySyn _ _ _ ty) = insertType ty

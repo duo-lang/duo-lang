@@ -4,7 +4,6 @@ import Data.Set qualified as S
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty)
-import Data.Maybe (fromMaybe)
 import Data.Kind ( Type )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), FlipPol ,PrdCnsFlip)
 import Syntax.CST.Kinds
@@ -89,8 +88,8 @@ data Typ (pol :: Polarity) where
   TyRecVar        :: Loc -> PolarityRep pol -> PolyKind -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
-  TyData          :: Loc -> PolarityRep pol -> MonoKind                  -> [XtorSig pol]           -> Typ pol
-  TyCodata        :: Loc -> PolarityRep pol -> MonoKind                  -> [XtorSig (FlipPol pol)] -> Typ pol
+  TyData          :: Loc -> PolarityRep pol -> EvaluationOrder           -> [XtorSig pol]           -> Typ pol
+  TyCodata        :: Loc -> PolarityRep pol -> EvaluationOrder           -> [XtorSig (FlipPol pol)] -> Typ pol
   TyDataRefined   :: Loc -> PolarityRep pol -> PolyKind   -> RnTypeName  -> [XtorSig pol]           -> Typ pol
   TyCodataRefined :: Loc -> PolarityRep pol -> PolyKind   -> RnTypeName  -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
@@ -172,83 +171,40 @@ getPolarity (TyChar _ rep)                 = rep
 getPolarity (TyString _ rep)               = rep
 getPolarity (TyFlipPol rep _)              = rep
 
+class GetKind (a :: Type) where 
+  getKind :: a -> AnyKind
 
-class GetMonoKind (a :: Type) where
-  getMonoKind :: a -> Maybe MonoKind
+instance GetKind PolyKind where 
+  getKind = MkPknd
 
-instance GetMonoKind PolyKind where 
-  getMonoKind (MkPolyKind _ eo) = Just $ CBox eo
-  getMonoKind (KindVar _) = Nothing 
+instance GetKind (Typ pol) where 
+  getKind (TySkolemVar _ _ pk _)         = MkPknd pk
+  getKind (TyUniVar _ _ knd _)           = knd
+  getKind (TyRecVar _ _ pk _)            = MkPknd pk 
+  getKind (TyData _ _ eo _ )             = MkPknd $ MkPolyKind [] eo
+  getKind (TyCodata _ _ eo _ )           = MkPknd $ MkPolyKind [] eo
+  getKind (TyDataRefined _ _ pk _ _ )    = MkPknd pk
+  getKind (TyCodataRefined _ _ pk _ _ )  = MkPknd pk
+  getKind (TyNominal _ _ pk _ )          = MkPknd pk
+  getKind (TyApp _ _ ty _)               = getKind ty
+  getKind (TySyn _ _ _ ty)               = getKind ty
+  getKind (TyTop _ knd)                  = knd
+  getKind (TyBot _ knd)                  = knd
+  getKind (TyUnion _ knd _ _)            = knd
+  getKind (TyInter _ knd _ _)            = knd
+  getKind (TyRec _ _ _ ty)               = getKind ty
+  getKind TyI64{}                        = MkI64
+  getKind TyF64{}                        = MkF64
+  getKind TyChar{}                       = MkChar
+  getKind TyString{}                     = MkString
+  getKind (TyFlipPol _ ty)               = getKind ty
 
-instance GetMonoKind AnyKind where 
-  getMonoKind (MkPknd pk) = getMonoKind pk
-  getMonoKind MkI64 = Just I64Rep
-  getMonoKind MkF64 = Just F64Rep
-  getMonoKind MkChar = Just CharRep
-  getMonoKind MkString = Just StringRep
+instance GetKind (PrdCnsType pol) where 
+  getKind (PrdCnsType _ ty) = getKind ty
 
-instance GetMonoKind (Typ pol) where 
-  getMonoKind (TySkolemVar _ _ pk _)         = getMonoKind pk
-  getMonoKind (TyUniVar _ _ knd _)           = getMonoKind knd
-  getMonoKind (TyRecVar _ _ pk _)            = getMonoKind pk 
-  getMonoKind (TyData _ _ mk _ )             = Just mk
-  getMonoKind (TyCodata _ _ mk _ )           = Just mk
-  getMonoKind (TyDataRefined _ _ pk _ _ )    = getMonoKind pk 
-  getMonoKind (TyCodataRefined _ _ pk _ _ )  = getMonoKind pk
-  getMonoKind (TyNominal _ _ pk _ )          = getMonoKind pk
-  getMonoKind (TyApp _ _ ty _)               = getMonoKind ty
-  getMonoKind (TySyn _ _ _ ty)               = getMonoKind ty
-  getMonoKind (TyTop _ knd)                  = getMonoKind knd
-  getMonoKind (TyBot _ knd)                  = getMonoKind knd
-  getMonoKind (TyUnion _ knd _ _)            = getMonoKind knd
-  getMonoKind (TyInter _ knd _ _)            = getMonoKind knd
-  getMonoKind (TyRec _ _ _ ty)               = getMonoKind ty
-  getMonoKind TyI64{}                        = Just I64Rep
-  getMonoKind TyF64{}                        = Just F64Rep
-  getMonoKind TyChar{}                       = Just CharRep
-  getMonoKind TyString{}                     = Just StringRep
-  getMonoKind (TyFlipPol _ ty)               = getMonoKind ty
-
-instance GetMonoKind (PrdCnsType pol) where 
-  getMonoKind (PrdCnsType _ ty) = getMonoKind ty
-
-instance GetMonoKind (VariantType pol) where 
-  getMonoKind (CovariantType ty) = getMonoKind ty 
-  getMonoKind (ContravariantType ty) = getMonoKind ty
-
-class GetPolyKind (a :: Type) where 
-  getPolyKind :: a -> Maybe PolyKind
-
-instance GetPolyKind AnyKind where 
-  getPolyKind (MkPknd pk) = Just pk
-  getPolyKind _ = Nothing
-
-instance GetPolyKind (Typ pol) where 
-  getPolyKind (TySkolemVar _ _ pk _)         = Just pk
-  getPolyKind (TyUniVar _ _ knd _)           = getPolyKind knd
-  getPolyKind (TyRecVar _ _ pk _)            = Just pk 
-  getPolyKind (TyDataRefined _ _ pk _ _ )    = Just pk
-  getPolyKind (TyCodataRefined _ _ pk _ _ )  = Just pk 
-  getPolyKind (TyNominal _ _ pk _ )          = Just pk 
-  getPolyKind (TyApp _ _ ty _)               = getPolyKind ty 
-  getPolyKind (TySyn _ _ _ ty)               = getPolyKind ty
-  getPolyKind (TyTop _ knd)                  = getPolyKind knd
-  getPolyKind (TyBot _ knd)                  = getPolyKind knd
-  getPolyKind (TyUnion _ knd _ _)            = getPolyKind knd
-  getPolyKind (TyInter _ knd _ _)            = getPolyKind knd
-  getPolyKind (TyRec _ _ _ ty)               = getPolyKind ty
-  getPolyKind (TyFlipPol _ ty)               = getPolyKind ty
-  getPolyKind ty                             = case getMonoKind ty of 
-    Just (CBox eo) -> Just $ MkPolyKind [] eo
-    _ -> Nothing
-
-instance GetPolyKind (PrdCnsType pol) where 
-  getPolyKind (PrdCnsType _ ty) = getPolyKind ty
-
-instance GetPolyKind (VariantType pol) where 
-  getPolyKind (CovariantType ty) = getPolyKind ty 
-  getPolyKind (ContravariantType ty) = getPolyKind ty
-
+instance GetKind (VariantType pol) where 
+  getKind (CovariantType ty) = getKind ty 
+  getKind (ContravariantType ty) = getKind ty
 
 
 ------------------------------------------------------------------------------
@@ -453,19 +409,22 @@ instance Zonk (TypeScheme pol) where
 class ZonkKind (a::Type) where 
   zonkKind :: Map KVar AnyKind -> a -> a
 
-instance ZonkKind MonoKind where 
-  zonkKind _ mk = mk
-
-instance ZonkKind AnyKind where 
-  zonkKind bisubst (MkPknd pk) = MkPknd $ zonkKind bisubst pk
-  zonkKind _ primk = primk
-
 instance ZonkKind PolyKind where 
   zonkKind bisubst kindV@(KindVar kv) = case M.lookup kv bisubst of
     Nothing -> kindV
     Just (MkPknd pk) -> pk
     Just _ -> error "should never happen"
   zonkKind _ pk = pk
+
+instance ZonkKind MonoKind where 
+  zonkKind _ mk = mk
+
+instance ZonkKind EvaluationOrder where 
+  zonkKind _ eo = eo
+
+instance ZonkKind AnyKind where 
+  zonkKind bisubst (MkPknd pk) = MkPknd $ zonkKind bisubst pk
+  zonkKind _ primk = primk
 
 instance ZonkKind (Typ pol) where 
   zonkKind bisubst (TySkolemVar loc rep pk tv) = 

@@ -57,12 +57,8 @@ import TypeAutomata.Intersection (intersectIsEmpty)
 
 getAnnotKind :: TST.Typ pol -> Maybe (TST.TypeScheme pol) -> Maybe (KVar, AnyKind)
 getAnnotKind tyInf maybeAnnot = 
-  case (TST.getPolyKind tyInf,maybeAnnot) of 
-    (Just (KindVar kv),Just annot) -> 
-      case (TST.getPolyKind $ TST.ts_monotype annot, TST.getMonoKind $ TST.ts_monotype annot) of 
-        (Just pk,_)       -> Just (kv, MkPknd pk)
-        (Nothing,Just (CBox eo)) -> Just (kv, MkPknd $ MkPolyKind [] eo)
-        _                 -> Nothing
+  case (TST.getKind tyInf,maybeAnnot) of 
+    (MkPknd (KindVar kv),Just annot) -> Just (kv,TST.getKind (TST.ts_monotype annot))
     _ -> Nothing
 
 checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))

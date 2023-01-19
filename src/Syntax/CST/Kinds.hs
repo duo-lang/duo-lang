@@ -1,4 +1,4 @@
-module Syntax.CST.Kinds where
+ module Syntax.CST.Kinds where
 
 import Data.Set (Set)
 import Data.Set qualified as S
@@ -71,6 +71,21 @@ data AnyKind = MkPknd PolyKind | MkI64 | MkF64 | MkChar | MkString
 deriving instance (Show AnyKind)
 deriving instance (Eq AnyKind)
 deriving instance (Ord AnyKind)
+
+monoToAnyKind :: MonoKind -> AnyKind
+monoToAnyKind (CBox eo) = MkPknd (MkPolyKind [] eo)
+monoToAnyKind I64Rep = MkI64
+monoToAnyKind F64Rep = MkF64
+monoToAnyKind CharRep = MkChar
+monoToAnyKind StringRep = MkString
+
+anyToMonoKind :: AnyKind -> MonoKind 
+anyToMonoKind (MkPknd (MkPolyKind _ eo)) = CBox eo
+anyToMonoKind MkI64 = I64Rep
+anyToMonoKind MkF64 = F64Rep
+anyToMonoKind MkChar = CharRep
+anyToMonoKind MkString = StringRep
+anyToMonoKind _ = error "should never happen"
 
 allTypeVars :: PolyKind -> Set SkolemTVar
 allTypeVars MkPolyKind{ kindArgs } =

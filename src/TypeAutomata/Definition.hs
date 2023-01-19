@@ -14,7 +14,7 @@ import Data.Void
 import Syntax.CST.Names ( RnTypeName, XtorName )
 import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..))
 import Syntax.RST.Types ( Polarity, PolarityRep(..))
-import Syntax.CST.Kinds ( Variance, MonoKind(..), PolyKind(..),AnyKind(..))
+import Syntax.CST.Kinds ( Variance, PolyKind(..),AnyKind(..))
 
 --------------------------------------------------------------------------------
 -- # Type Automata
@@ -173,13 +173,6 @@ data NodeLabel =
     { pl_pol :: Polarity
     , pl_prim :: PrimitiveType
     } deriving (Eq,Show,Ord)
-
-emptyPrimLabel :: Polarity -> MonoKind -> NodeLabel
-emptyPrimLabel pol (CBox eo)     = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty (MkPolyKind [] eo)
-emptyPrimLabel pol I64Rep        = MkPrimitiveNodeLabel pol I64
-emptyPrimLabel pol F64Rep        = MkPrimitiveNodeLabel pol F64
-emptyPrimLabel pol StringRep     = MkPrimitiveNodeLabel pol PString
-emptyPrimLabel pol CharRep       = MkPrimitiveNodeLabel pol PChar
 
 emptyNodeLabel :: Polarity -> AnyKind -> NodeLabel
 emptyNodeLabel _ (MkPknd (KindVar _)) = error "at this point no KindVars should be in the program"

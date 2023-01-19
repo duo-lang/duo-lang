@@ -28,7 +28,6 @@ import Lookup
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 import Syntax.TST.Terms (Substitution(..))
-import Data.Maybe (fromJust)
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -51,14 +50,12 @@ genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = do
   throwGenError (LinearContextsUnequalLength loc info ctx1 ctx2)
 genConstraintsCtxts [] [] _ = return ()
 genConstraintsCtxts ((TST.PrdCnsType PrdRep ty1) : rest1) (TST.PrdCnsType PrdRep ty2 : rest2) info = do
-  loc <- asks (location . snd)
   addConstraint $ SubType info ty1 ty2
-  genKindConstr loc ty1 ty2 
+  addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2)
   genConstraintsCtxts rest1 rest2 info
 genConstraintsCtxts ((TST.PrdCnsType CnsRep ty1) : rest1) (TST.PrdCnsType CnsRep ty2 : rest2) info = do
-  loc <- asks (location . snd)
   addConstraint $ SubType info ty2 ty1
-  genKindConstr loc ty1 ty2
+  addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2)
   genConstraintsCtxts rest1 rest2 info
 genConstraintsCtxts (TST.PrdCnsType PrdRep _:_) (TST.PrdCnsType CnsRep _:_) info = do
   loc <- asks (location . snd)
@@ -163,7 +160,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- bound in the pattern.
                         xtorKnd <- lookupXtorKind xt
                         let argKnds = snd xtorKnd
-                        let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, Just z))) args argKnds
+                        let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, monoToAnyKind z))) args argKnds
                         (uvarsPos, uvarsNeg) <- freshTVars tVarArgs
                         -- Check the command in the context extended with the positive unification variables
                         cmdInferred <- withContext uvarsPos (genConstraints cmdcase_cmd)
@@ -229,8 +226,8 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
                         xtor <- lookupXtorSig loc xt RST.PosRep
-                        let argKnds = map (Data.Maybe.fromJust . TST.getMonoKind) (TST.sig_args xtor)
-                        let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, Just z))) args argKnds
+                        let argKnds = map TST.getKind (TST.sig_args xtor)
+                        let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, z))) args argKnds
                         (uvarsPos, uvarsNeg) <- freshTVars tVarArgs
                         -- Check the command in the context extended with the positive unification variables
                         cmdInferred <- withContext uvarsPos (genConstraints cmdcase_cmd)
@@ -327,20 +324,16 @@ instance GenConstraints Core.Command TST.Command where
     let peanoKnd = TST.data_kind peanoDecl
     let cnsTy = TST.getTypeTerm cns'
     addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm) cnsTy)
-    let pk = TST.getPolyKind cnsTy 
-    case pk of 
-      Just pk' -> do
-        addConstraint (KindEq KindConstraint (MkPknd peanoKnd) (MkPknd pk'))
-        return (TST.Read loc cns')
-      _ -> return (TST.Read loc cns')
+    addConstraint $ KindEq KindConstraint (MkPknd peanoKnd) (TST.getKind cnsTy)
+    return (TST.Read loc cns')
   genConstraints (Core.Apply loc annot t1 t2) = do
     t1' <- genConstraints t1
     t2' <- genConstraints t2
     let ty1 = TST.getTypeTerm t1'
     let ty2 = TST.getTypeTerm t2'
     addConstraint (SubType (CommandConstraint loc) ty1 ty2)
-    genKindConstr loc ty1 ty2
-    pure (TST.Apply loc annot (Data.Maybe.fromJust $ TST.getMonoKind ty1) t1' t2')
+    addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty1)
+    pure (TST.Apply loc annot (anyToMonoKind $ TST.getKind ty1) t1' t2')
 
   genConstraints (Core.PrimOp loc op subst) = do
     substInferred <- genConstraints subst
@@ -403,13 +396,12 @@ genConstraintsTermRecursive mn loc fv PrdRep tm = do
   tm <- withTerm mn PrdRep fv (TST.FreeVar loc PrdRep x fv) loc (TST.TypeScheme loc [] x) (genConstraints tm)
   let xTy = TST.getTypeTerm tm
   addConstraint (SubType RecursionConstraint xTy y)
-  genKindConstr loc xTy y
+  addConstraint $ KindEq KindConstraint (TST.getKind xTy) (TST.getKind y)
   return tm
 genConstraintsTermRecursive mn loc fv CnsRep tm = do
   (x,y) <- freshTVar (RecursiveUVar fv) Nothing
   tm <- withTerm mn CnsRep fv (TST.FreeVar loc CnsRep y fv) loc (TST.TypeScheme loc [] y) (genConstraints tm)
   let yTy = TST.getTypeTerm tm
   addConstraint (SubType RecursionConstraint x yTy)
-  genKindConstr loc x yTy
-
+  addConstraint $ KindEq KindConstraint (TST.getKind x) (TST.getKind yTy)
   return tm
