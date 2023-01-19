@@ -90,7 +90,7 @@ handlers = mconcat [ initializedHandler
 
 runLSP :: Maybe FilePath -> IO ()
 runLSP mLogPath = do
-  LSP.setupLogger mLogPath ["lspserver"] DEBUG
+  --  LSP.setupLogger mLogPath ["lspserver"] DEBUG
   debugM "lspserver" "Starting LSP Server"
   initialDefinition <- definition
   errCode <- LSP.runServer initialDefinition
