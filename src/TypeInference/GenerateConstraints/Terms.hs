@@ -3,6 +3,8 @@ module TypeInference.GenerateConstraints.Terms
   , genConstraintsTermRecursive
   ) where
 
+import Debug.Trace 
+
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -332,7 +334,7 @@ instance GenConstraints Core.Command TST.Command where
     let ty1 = TST.getTypeTerm t1'
     let ty2 = TST.getTypeTerm t2'
     addConstraint (SubType (CommandConstraint loc) ty1 ty2)
-    addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty1)
+    addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2)
     pure (TST.Apply loc annot (anyToMonoKind $ TST.getKind ty1) t1' t2')
 
   genConstraints (Core.PrimOp loc op subst) = do
