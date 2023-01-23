@@ -257,6 +257,14 @@ insertType (TyNominal _ rep polyknd tn) = do
       insertNode newNode ((emptyNodeLabel pol (MkPknd polyknd)) {nl_nominal = S.singleton (tn,[]) })
       return newNode
     _ -> throwAutomatonError defaultLoc ["Nominal type "<> ppPrint tn <> "was not fully applied"]
+insertType (TyApp _ _ (TyRecVar _ rep pknd _) args) = do
+  let pol = polarityRepToPol rep
+  newNode <- newNodeM
+  insertNode newNode (emptyNodeLabel pol (MkPknd pknd))
+  argNodes <- mapM insertVariantType args
+  insertEdges ((\(_, (n, _)) -> (newNode, n, EpsilonEdge ())) <$> enumerate (NE.toList argNodes))
+  return newNode
+
 insertType TyApp{} = throwAutomatonError defaultLoc ["Types can only be applied to nominal types"]
 insertType (TyI64 _ rep) = do
   let pol = polarityRepToPol rep

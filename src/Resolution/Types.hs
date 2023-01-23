@@ -83,10 +83,27 @@ resolveTyp rep (TyApp loc ty@(TyNominal _loc tyn) args) = do
       case args' of 
         [] -> pure ty'
         (fst:rst) -> pure $ RST.TyApp loc rep ty' (fst:|rst)
+resolveTyp rep (TyApp loc (TySkolemVar loc' rv) args) = do
+  let vr = skolemToRecRVar rv
+  args' <- mapM (typToVarTyp rep loc) args
+  return (RST.TyApp loc rep (RST.TyRecVar loc' rep vr) args') 
+  where 
+    typToVarTyp :: PolarityRep pol -> Loc -> Typ -> ResolverM (RST.VariantType pol)
+    typToVarTyp rep _ (TyXRefined loc Data tn sigs) = do 
+      NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
+      sigs <- resolveXTorSigs rep sigs
+      return $ RST.CovariantType $ RST.TyDataRefined loc rep pknd tn' sigs
+    typToVarTyp rep _ (TyXRefined loc Codata tn sigs) = do 
+      NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
+      sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
+      return $ RST.CovariantType $ RST.TyCodataRefined loc rep pknd tn' sigs
+
+    typToVarTyp _ loc ty = throwOtherError loc ["Recursive Variables can only be applied to refinement types, not " <> ppPrint ty]
+  
 resolveTyp rep (TyApp loc (TyKindAnnot mk ty) args) = do 
   resolved <-  resolveTyp rep (TyApp loc ty args)
   pure $ RST.TyKindAnnot mk resolved
-resolveTyp _ (TyApp loc ty _) = throwOtherError loc ["Types can only be applied to nominal types, was applied to ", ppPrint ty]
+resolveTyp _ (TyApp loc ty _) = throwOtherError loc ["Types can only be applied to nominal and refinement types, was applied to ", ppPrint ty]
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v
         local (\r -> r { rr_recVars = S.insert vr $ rr_recVars r  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
