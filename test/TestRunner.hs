@@ -1,6 +1,6 @@
 module Main where
 
-import Control.Monad.Except (runExcept, runExceptT, forM)
+import Control.Monad.Except (runExcept, runExceptT, forM_)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Either (isRight)
 import Data.List (sort)
@@ -12,6 +12,7 @@ import Test.Hspec.Formatters
 import Driver.Definition (defaultDriverState, parseAndCheckModule)
 import Driver.Driver (inferProgramIO)
 import Errors
+import Pretty.Pretty ( ppPrintString )
 import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified
@@ -98,7 +99,7 @@ main = do
         let fullName = moduleNameToFullPath mn fp
         --parsing one example after the other
         describe ("Parsing " ++ fullName) $ do
-          parsedExample <- getParsedDeclarations fp mn
+          let parsedExample = getParsedDeclarations fp mn
           case parsedExample of
             Left err -> it ("Could not parse " ++ fullName) $ expectationFailure (ppPrintString err)
             Right parseResult -> do
@@ -106,7 +107,7 @@ main = do
               describe ("Prettyprinting and parsing again " ++ fullName) (Spec.Prettyprinter.specParse ((fp, mn), Right parseResult))
               -- typecheck the example
               describe ("Typechecking " ++ fullName) $ do
-                typecheckedExample <- getTypecheckedDecls fp mn
+                let typecheckedExample = getTypecheckedDecls fp mn
                 case typecheckedExample of
                   Left err -> it "Could not typecheck example" $ expectationFailure (ppPrintString err)
                   Right typecheckResult -> do
@@ -120,11 +121,11 @@ main = do
         let fullName = moduleNameToFullPath mn fp
         -- parsing one counterexample after the other
         describe ("Parsing " ++ fullName) $ do
-          parsedCounterExample <- getParsedDeclarations fp mn
+          let parsedCounterExample = getParsedDeclarations fp mn
           case parsedCounterExample of
             Left err -> it ("Could not parse " ++ fullName) $ expectationFailure (ppPrintString err)
             Right parseResult -> do
-              typcheckedCounterExample <- getTypecheckedDecls fp mn
+              let typcheckedCounterExample = getTypecheckedDecls fp mn
               -- checkTypeInference
               describe "TypeInference with check" (Spec.TypeInferenceExamples.spec ((fp, mn), Right parseResult) typcheckedCounterExample)
 
