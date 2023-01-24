@@ -91,6 +91,49 @@ main = do
       -- only use files specified in command line
       OptFilter fs -> pure $ (,) "." . filePathToModuleName <$> fs
     counterExamples <- getAvailableCounterExamples
+
+    withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
+      -- tests for examples
+      forM_ examples $ \(fp, mn) -> do
+        let fullName = moduleNameToFullPath mn fp
+        --parsing one example after the other
+        describe ("Parsing " ++ fullName) $ do
+          parsedExample <- getParsedDeclarations fp mn
+          case parsedExample of
+            Left err -> it ("Could not parse " ++ fullName) $ expectationFailure (ppPrintString err)
+            Right parseResult -> do
+              -- if parse was successful, try prettyprinting test
+              describe ("Prettyprinting and parsing again " ++ fullName) (Spec.Prettyprinter.specParse ((fp, mn), Right parseResult))
+              -- typecheck the example
+              describe ("Typechecking " ++ fullName) $ do
+                typecheckedExample <- getTypecheckedDecls fp mn
+                case typecheckedExample of
+                  Left err -> it "Could not typecheck example" $ expectationFailure (ppPrintString err)
+                  Right typecheckResult -> do
+                    -- if typechecking successful, try Locallyclosed, typechecked pp and focusing test
+                    describe "example is locally closed" (Spec.LocallyClosed.spec ((fp, mn), Right typecheckResult)) -- <- here not typechecking examples too?
+                    describe "Prettyprinting and parsing + typechecking again" (Spec.Prettyprinter.specType ((fp, mn), Right typecheckResult))
+                    describe "Focusing works" (Spec.Focusing.spec ((fp, mn), Right typecheckResult))
+
+    -- tests for counterexamples
+      forM_ counterExamples $ \(fp, mn) -> do
+        let fullName = moduleNameToFullPath mn fp
+        -- parsing one counterexample after the other
+        describe ("Parsing " ++ fullName) $ do
+          parsedCounterExample <- getParsedDeclarations fp mn
+          case parsedCounterExample of
+            Left err -> it ("Could not parse " ++ fullName) $ expectationFailure (ppPrintString err)
+            Right parseResult -> do
+              typcheckedCounterExample <- getTypecheckedDecls fp mn
+              -- checkTypeInference
+              describe "TypeInference with check" (Spec.TypeInferenceExamples.spec ((fp, mn), Right parseResult) typcheckedCounterExample)
+
+      describe "OverlapCheck works" Spec.OverlapCheck.spec
+
+    -- TODO: fix spec files to run with a single parse
+
+
+    {-
     -- Collect the parsed declarations
     parsedExamples <- forM examples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
     parsedCounterExamples <- forM counterExamples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
@@ -106,5 +149,6 @@ main = do
       describe "Prettyprinted work again" (Spec.Prettyprinter.spec parsedExamples checkedExamplesFiltered)
       describe "Focusing works" (Spec.Focusing.spec checkedExamplesFiltered)
       describe "OverlapCheck works" Spec.OverlapCheck.spec
+    -}
 
 
