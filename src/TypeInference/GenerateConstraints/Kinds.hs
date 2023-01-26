@@ -184,26 +184,26 @@ annotTy (RST.TyCodata loc pol xtors) = do
     compXtorKinds [] = Nothing 
     compXtorKinds [mk] = Just mk
     compXtorKinds (xtor1:xtor2:rst) = if xtor1==xtor2 then compXtorKinds (xtor2:rst) else Nothing
-annotTy (RST.TyDataRefined loc pol pknd tyn _ xtors) =  do 
+annotTy (RST.TyDataRefined loc pol pknd tyn rv xtors) =  do 
   tyn' <- gets declTyName
   if tyn == tyn' then do
     let xtorNames = map RST.sig_name xtors
     xtors' <- getXtors pol xtorNames
-    return $ TST.TyDataRefined loc pol pknd tyn xtors' 
+    return $ TST.TyDataRefined loc pol pknd tyn rv xtors' 
   else do 
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) $ TST.data_xtors decl
-    return $ TST.TyDataRefined loc pol pknd tyn xtors' 
-annotTy (RST.TyCodataRefined loc pol pknd tyn _ xtors) = do 
+    return $ TST.TyDataRefined loc pol pknd tyn rv xtors' 
+annotTy (RST.TyCodataRefined loc pol pknd tyn rv xtors) = do 
   tyn' <- gets declTyName
   if tyn == tyn' then do 
     let xtorNames = map RST.sig_name xtors
     xtors' <- getXtors (RST.flipPolarityRep pol) xtorNames
-    return $ TST.TyCodataRefined loc pol pknd tyn xtors'
+    return $ TST.TyCodataRefined loc pol pknd tyn rv xtors'
   else do
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> snd; RST.NegRep -> fst) $ TST.data_xtors decl
-    return $ TST.TyCodataRefined loc pol pknd tyn xtors'
+    return $ TST.TyCodataRefined loc pol pknd tyn rv xtors'
 annotTy (RST.TyApp loc pol ty args) = do 
   ty' <- annotTy ty 
   args' <- mapM annotVarTy args
@@ -235,14 +235,14 @@ annotTy (RST.TyInter loc ty1 ty2) = do
 annotTy (RST.TyRec loc pol rv ty) = case ty of 
   -- recursive types can only appear inside Refinement declarations
   -- when they do, the recvars always represent the type that is being refined
-  RST.TyDataRefined loc' pol' pknd tyn _ xtors -> do 
+  RST.TyDataRefined loc' pol' pknd tyn mrv xtors -> do 
     addRecVar rv pknd
     xtors' <- mapM annotXtor xtors
-    return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' pknd tyn xtors')
-  RST.TyCodataRefined loc' pol' pknd tyn _ xtors -> do
+    return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' pknd tyn mrv xtors')
+  RST.TyCodataRefined loc' pol' pknd tyn mrv xtors -> do
     addRecVar rv pknd
     xtors' <- mapM annotXtor xtors
-    return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' pknd tyn xtors')
+    return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' pknd tyn mrv xtors')
   _ -> throwOtherError loc ["TyRec can only appear inside Refinement Declaration"]
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
 annotTy (RST.TyF64 loc pol) = return $ TST.TyF64 loc pol
@@ -497,11 +497,11 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         return ()
       checkRetKnd loc primk eo = throwOtherError loc ["Kinds " <> ppPrint primk <> " and " <> ppPrint eo <> " are not compatible"]
  
-  annotateKind (RST.TyDataRefined loc pol pknd tyn  _ xtors) = do 
+  annotateKind (RST.TyDataRefined loc pol pknd tyn  rv xtors) = do 
     xtors' <- mapM annotateKind xtors
     decl <- lookupTypeName loc tyn
     checkXtors loc xtors' decl
-    return (TST.TyDataRefined loc pol pknd tyn xtors')
+    return (TST.TyDataRefined loc pol pknd tyn rv xtors')
     where 
       checkXtors :: Loc -> [TST.XtorSig pol] -> TST.DataDecl -> GenM ()
       checkXtors _ [] _ = return ()
@@ -514,11 +514,11 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         else 
           throwOtherError loc ["Xtors do not have the correct kinds"]
 
-  annotateKind (RST.TyCodataRefined loc pol pknd tyn _ xtors) = do
+  annotateKind (RST.TyCodataRefined loc pol pknd tyn rv xtors) = do
     xtors' <- mapM annotateKind xtors
     decl <- lookupTypeName loc tyn
     checkXtors loc xtors' decl
-    return (TST.TyCodataRefined loc pol pknd tyn xtors')
+    return (TST.TyCodataRefined loc pol pknd tyn rv xtors')
     where 
       checkXtors :: Loc -> [TST.XtorSig (RST.FlipPol pol)] -> TST.DataDecl -> GenM ()
       checkXtors _ [] _ = return ()
