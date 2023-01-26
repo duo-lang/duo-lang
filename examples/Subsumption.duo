@@ -44,11 +44,11 @@ def rec prd ex12sub : (SNat \/ SNat:CBV)                                        
 
 def rec prd ex13    : (rec a. < Z, S(a) >:CBV)                                   := ex13;
 -- this won't work correctly until intersections and unions can have polykinds
---def rec prd ex13sub : rec a. < Z > \/ < S(a) >                                   := ex13;
+def rec prd ex13sub : rec a. < Z > \/ < S(a) >                                   := ex13;
 
 def rec prd ex14    : (< S(<Z>) >:CBV)                                           := ex14;
 def rec prd ex14sub : (< Z> \/ < S(<Z>) >:CBV)                                   := ex14;
 
 -- this won't work correctly until intersections and unions can have polykinds
---def rec prd ex15    : forall t0. (t0 -> (rec r4.(t0 \/ < S( r4 ) >)):CBV)        := ex15;
---def rec prd ex15sub : ((rec b. < Z , S( b ) > ) -> (rec c. < Z , S( c ) > ):CBV) := ex15;
+def rec prd ex15    : forall t0. (t0 -> (rec r4.(t0 \/ < S( r4 ) >)):CBV)        := ex15;
+def rec prd ex15sub : ((rec b. < Z , S( b ) > ) -> (rec c. < Z , S( c ) > ):CBV) := ex15;
