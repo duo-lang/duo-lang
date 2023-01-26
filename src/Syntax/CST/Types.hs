@@ -1,7 +1,7 @@
 module Syntax.CST.Types where
 
 import Syntax.CST.Names
-    ( BinOp, ClassName, SkolemTVar, TypeName, UniTVar, XtorName, RecTVar )
+    ( BinOp, ClassName, SkolemTVar, TypeName, UniTVar, XtorName )
 import Syntax.CST.Kinds
 import Data.List.NonEmpty (NonEmpty)
 import Loc ( Loc, HasLoc(..))
@@ -34,7 +34,7 @@ data Typ where
   TyUniVar :: Loc -> UniTVar -> Typ
   TySkolemVar :: Loc -> SkolemTVar -> Typ
   TyXData    :: Loc -> DataCodata             -> [XtorSig] -> Typ
-  TyXRefined :: Loc -> DataCodata -> TypeName -> Maybe RecTVar -> [XtorSig] -> Typ
+  TyXRefined :: Loc -> DataCodata -> TypeName -> Maybe SkolemTVar -> [XtorSig] -> Typ
   TyNominal :: Loc -> TypeName -> Typ
   TyApp :: Loc -> Typ -> NonEmpty Typ -> Typ
   TyRec :: Loc -> SkolemTVar -> Typ -> Typ
