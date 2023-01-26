@@ -138,6 +138,7 @@ refinementTypeP Data = do
     sc
     symbolP SymPipe
     sc
+    _ <- optional (tvarP >> symbolP SymPipe)
     ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, ctors))
   sc
