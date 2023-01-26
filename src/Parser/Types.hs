@@ -139,8 +139,9 @@ refinementTypeP Data = do
     symbolP SymPipe
     sc
     mrv <- optional tvarP
-    case mrv of Nothing -> sc; Just _ -> symbolP SymPipe
+    case mrv of Nothing -> sc; Just _ -> sc >> symbolP SymPipe
     let rv = case mrv of Nothing -> Nothing; Just (rv',_) -> Just rv'
+    sc
     ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, rv, ctors))
   sc
@@ -153,9 +154,9 @@ refinementTypeP Codata = do
     symbolP SymPipe
     sc
     mrv <- optional tvarP
-    case mrv of Nothing -> sc; Just _ -> symbolP SymPipe
+    case mrv of Nothing -> sc; Just _ -> sc >> symbolP SymPipe
     let rv = case mrv of Nothing -> Nothing; Just (rv',_) -> Just rv'
-
+    sc
     dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, rv, dtors))
   sc
