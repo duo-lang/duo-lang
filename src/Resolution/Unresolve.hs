@@ -583,10 +583,10 @@ instance Unresolve (RST.Typ pol) CST.Typ where
     pure $ CST.TyXData loc CST.Codata xtors'
   unresolve (RST.TyDataRefined loc _ _ tn xtors) = do
     xtors' <- mapM unresolve xtors
-    pure $ CST.TyXRefined loc CST.Data (rnTnName tn) xtors'
+    pure $ CST.TyXRefined loc CST.Data (rnTnName tn) Nothing xtors'
   unresolve (RST.TyCodataRefined loc _ _ tn xtors) = do
     xtors' <- mapM unresolve xtors
-    pure $ CST.TyXRefined loc CST.Codata (rnTnName tn) xtors'
+    pure $ CST.TyXRefined loc CST.Codata (rnTnName tn) Nothing xtors'
   unresolve (RST.TyApp loc _ ty args) = do 
     ty' <- unresolve ty
     args' <- mapM unresolve args

@@ -142,7 +142,7 @@ refinementTypeP Data = do
     ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, ctors))
   sc
-  pure (TyXRefined (Loc startPos endPos) Data tn ctors, endPos)
+  pure (TyXRefined (Loc startPos endPos) Data tn Nothing ctors, endPos)
 refinementTypeP Codata = do
   startPos <- getSourcePos
   ((tn, dtors), endPos) <- bracesP (do
@@ -153,7 +153,7 @@ refinementTypeP Codata = do
     dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, dtors))
   sc
-  pure (TyXRefined (Loc startPos endPos) Codata tn dtors, endPos)
+  pure (TyXRefined (Loc startPos endPos) Codata tn Nothing dtors, endPos)
 
 ---------------------------------------------------------------------------------
 -- Primitive types
