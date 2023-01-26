@@ -184,7 +184,7 @@ annotTy (RST.TyCodata loc pol xtors) = do
     compXtorKinds [] = Nothing 
     compXtorKinds [mk] = Just mk
     compXtorKinds (xtor1:xtor2:rst) = if xtor1==xtor2 then compXtorKinds (xtor2:rst) else Nothing
-annotTy (RST.TyDataRefined loc pol pknd tyn xtors) =  do 
+annotTy (RST.TyDataRefined loc pol pknd tyn _ xtors) =  do 
   tyn' <- gets declTyName
   if tyn == tyn' then do
     let xtorNames = map RST.sig_name xtors
@@ -194,7 +194,7 @@ annotTy (RST.TyDataRefined loc pol pknd tyn xtors) =  do
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) $ TST.data_xtors decl
     return $ TST.TyDataRefined loc pol pknd tyn xtors' 
-annotTy (RST.TyCodataRefined loc pol pknd tyn xtors) = do 
+annotTy (RST.TyCodataRefined loc pol pknd tyn _ xtors) = do 
   tyn' <- gets declTyName
   if tyn == tyn' then do 
     let xtorNames = map RST.sig_name xtors
@@ -235,11 +235,11 @@ annotTy (RST.TyInter loc ty1 ty2) = do
 annotTy (RST.TyRec loc pol rv ty) = case ty of 
   -- recursive types can only appear inside Refinement declarations
   -- when they do, the recvars always represent the type that is being refined
-  RST.TyDataRefined loc' pol' pknd tyn xtors -> do 
+  RST.TyDataRefined loc' pol' pknd tyn _ xtors -> do 
     addRecVar rv pknd
     xtors' <- mapM annotXtor xtors
     return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' pknd tyn xtors')
-  RST.TyCodataRefined loc' pol' pknd tyn xtors -> do
+  RST.TyCodataRefined loc' pol' pknd tyn _ xtors -> do
     addRecVar rv pknd
     xtors' <- mapM annotXtor xtors
     return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' pknd tyn xtors')
@@ -267,11 +267,12 @@ annotTy (RST.TyKindAnnot mk ty) = do
 computeEmptyRefinementType :: CST.DataCodata
                            -> RnTypeName
                            -> PolyKind
+                           -> Maybe RecTVar
                            -> DataDeclM (RST.Typ Pos, RST.Typ Neg)
-computeEmptyRefinementType CST.Data tn polyknd = do 
-  pure (RST.TyDataRefined   defaultLoc PosRep polyknd tn [], RST.TyDataRefined   defaultLoc NegRep polyknd tn [])
-computeEmptyRefinementType CST.Codata tn polyknd = do 
-  pure (RST.TyCodataRefined defaultLoc PosRep polyknd tn [], RST.TyCodataRefined defaultLoc NegRep polyknd tn [])
+computeEmptyRefinementType CST.Data tn polyknd mrv = do 
+  pure (RST.TyDataRefined   defaultLoc PosRep polyknd tn mrv [], RST.TyDataRefined   defaultLoc NegRep polyknd tn mrv [])
+computeEmptyRefinementType CST.Codata tn polyknd mrv = do 
+  pure (RST.TyCodataRefined defaultLoc PosRep polyknd tn mrv [], RST.TyCodataRefined defaultLoc NegRep polyknd tn mrv [])
 
 -- | Given the polarity (data/codata), the name and the constructors/destructors of a type, compute the
 -- full refinement of that type.
@@ -283,8 +284,9 @@ computeFullRefinementType :: CST.DataCodata
                           -> RnTypeName
                           -> ([RST.XtorSig Pos], [RST.XtorSig Neg])
                           -> PolyKind
+                          -> Maybe RecTVar
                           -> DataDeclM (RST.Typ Pos, RST.Typ Neg)
-computeFullRefinementType dc tn (xtorsPos, xtorsNeg) polyknd = do
+computeFullRefinementType dc tn (xtorsPos, xtorsNeg) polyknd mrv = do
   -- Define the variable that stands for the recursive occurrences in the translation.
   let recVar = MkRecTVar "α"
   let recVarPos = RST.TyRecVar defaultLoc PosRep recVar
@@ -294,11 +296,11 @@ computeFullRefinementType dc tn (xtorsPos, xtorsNeg) polyknd = do
   let xtorsReplacedNeg :: [RST.XtorSig Neg] = RST.replaceNominal recVarPos recVarNeg tn <$> xtorsNeg
   -- Assemble the 
   let fullRefinementTypePos :: RST.Typ Pos = case dc of
-                   CST.Data   -> RST.TyRec defaultLoc PosRep recVar (RST.TyDataRefined   defaultLoc PosRep polyknd tn xtorsReplacedPos)
-                   CST.Codata -> RST.TyRec defaultLoc PosRep recVar (RST.TyCodataRefined defaultLoc PosRep polyknd tn xtorsReplacedNeg)
+                   CST.Data   -> RST.TyRec defaultLoc PosRep recVar (RST.TyDataRefined   defaultLoc PosRep polyknd tn mrv xtorsReplacedPos)
+                   CST.Codata -> RST.TyRec defaultLoc PosRep recVar (RST.TyCodataRefined defaultLoc PosRep polyknd tn mrv xtorsReplacedNeg)
   let fullRefinementTypeNeg :: RST.Typ Neg = case dc of
-                   CST.Data   -> RST.TyRec defaultLoc NegRep recVar (RST.TyDataRefined defaultLoc NegRep polyknd tn   xtorsReplacedNeg)
-                   CST.Codata -> RST.TyRec defaultLoc NegRep recVar (RST.TyCodataRefined defaultLoc NegRep polyknd tn xtorsReplacedPos)
+                   CST.Data   -> RST.TyRec defaultLoc NegRep recVar (RST.TyDataRefined defaultLoc NegRep polyknd tn   mrv xtorsReplacedNeg)
+                   CST.Codata -> RST.TyRec defaultLoc NegRep recVar (RST.TyCodataRefined defaultLoc NegRep polyknd tn mrv xtorsReplacedPos)
   pure (fullRefinementTypePos, fullRefinementTypeNeg)
 
 annotateDataDecl :: RST.DataDecl -> DataDeclM TST.DataDecl 
@@ -329,10 +331,10 @@ annotateDataDecl RST.RefinementDecl {
   data_xtors = xtors
   } = do
     -- Compute the full and empty refinement types:
-    (emptyPos, emptyNeg) <- computeEmptyRefinementType pol tyn polyknd
+    (emptyPos, emptyNeg) <- computeEmptyRefinementType pol tyn polyknd Nothing
     emptPos' <- annotTy emptyPos
     emptNeg' <- annotTy emptyNeg
-    (fulPos, fulNeg) <- computeFullRefinementType pol tyn xtors polyknd
+    (fulPos, fulNeg) <- computeFullRefinementType pol tyn xtors polyknd Nothing
     fulPos' <- annotTy fulPos
     fulNeg' <- annotTy fulNeg
     -- Compute the annotated xtors (without refinement)
@@ -495,7 +497,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         return ()
       checkRetKnd loc primk eo = throwOtherError loc ["Kinds " <> ppPrint primk <> " and " <> ppPrint eo <> " are not compatible"]
  
-  annotateKind (RST.TyDataRefined loc pol pknd tyn xtors) = do 
+  annotateKind (RST.TyDataRefined loc pol pknd tyn  _ xtors) = do 
     xtors' <- mapM annotateKind xtors
     decl <- lookupTypeName loc tyn
     checkXtors loc xtors' decl
@@ -512,7 +514,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         else 
           throwOtherError loc ["Xtors do not have the correct kinds"]
 
-  annotateKind (RST.TyCodataRefined loc pol pknd tyn xtors) = do
+  annotateKind (RST.TyCodataRefined loc pol pknd tyn _ xtors) = do
     xtors' <- mapM annotateKind xtors
     decl <- lookupTypeName loc tyn
     checkXtors loc xtors' decl
@@ -586,8 +588,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
           eo <- getXtorKinds loc xtors
           return (MkPolyKind [] eo)
         getPk (RST.TyNominal _ _ pk _) = return pk
-        getPk (RST.TyDataRefined _ _ pknd _ _) = return pknd
-        getPk (RST.TyCodataRefined _ _ pknd _ _) = return pknd
+        getPk (RST.TyDataRefined _ _ pknd _ _ _) = return pknd
+        getPk (RST.TyCodataRefined _ _ pknd _ _ _) = return pknd
         getPk (RST.TyKindAnnot _ ty) = getPk ty
         getPk _ = throwOtherError defaultLoc ["could not find polykind (not fully implemented)"]
 
