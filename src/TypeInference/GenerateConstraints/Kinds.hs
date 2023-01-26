@@ -442,7 +442,11 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyRecVar loc pol rv) = do
     rvMap <- gets usedRecVars
     case M.lookup rv rvMap of 
-      Nothing -> error "Recvar has to be contained in a nominal or structural (refinement) type"
+      Nothing -> do
+        kv <- newKVar
+        let newM = M.insert rv (KindVar kv) rvMap
+        modify (\gs@GenerateState{} -> gs { usedRecVars = newM })
+        return (TST.TyRecVar loc pol (KindVar kv) rv)
       Just pk -> return (TST.TyRecVar loc pol pk rv)
 
   annotateKind (RST.TyData loc pol xtors) = do 
@@ -575,29 +579,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     return (TST.TyInter loc knd1 ty1' ty2')
     
   annotateKind (RST.TyRec loc pol rv ty) = do
-    pknd <- getPk ty
-    insertPk rv pknd
     ty' <- annotateKind ty
     return (TST.TyRec loc pol rv ty')
-      where 
-        getPk :: RST.Typ pol -> GenM PolyKind
-        getPk (RST.TyData loc _ xtors) = do
-          eo <- getXtorKinds loc xtors
-          return (MkPolyKind [] eo)
-        getPk (RST.TyCodata loc _ xtors) = do
-          eo <- getXtorKinds loc xtors
-          return (MkPolyKind [] eo)
-        getPk (RST.TyNominal _ _ pk _) = return pk
-        getPk (RST.TyDataRefined _ _ pknd _ _ _) = return pknd
-        getPk (RST.TyCodataRefined _ _ pknd _ _ _) = return pknd
-        getPk (RST.TyKindAnnot _ ty) = getPk ty
-        getPk _ = throwOtherError defaultLoc ["could not find polykind (not fully implemented)"]
-
-        insertPk :: RecTVar -> PolyKind -> GenM ()
-        insertPk rv knd = do  
-          rvMap <- gets usedRecVars
-          let newM = M.insert rv knd rvMap
-          modify (\gs@GenerateState{} -> gs { usedRecVars = newM })
 
   annotateKind (RST.TyI64 loc pol) = return (TST.TyI64 loc pol)
   annotateKind (RST.TyF64 loc pol) = return (TST.TyF64 loc pol)
