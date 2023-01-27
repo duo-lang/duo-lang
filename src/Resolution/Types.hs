@@ -51,9 +51,14 @@ resolveTyp rep (TyXData loc Data sigs) = do
 -- Refinement Data
 resolveTyp rep (TyXRefined loc Data tn mrv sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-    sigs <- resolveXTorSigs rep sigs
-    let rv = case mrv of Nothing -> Nothing; Just sk -> Just $ skolemToRecRVar sk
-    pure $ RST.TyDataRefined loc rep pknd tn' rv sigs
+    case mrv of 
+      Nothing -> do
+        sigs <- resolveXTorSigs rep sigs
+        pure $ RST.TyDataRefined loc rep pknd tn' Nothing sigs
+      Just sk -> do
+        let rv = skolemToRecRVar sk
+        sigs <- local (\r -> r { rr_recVars = S.insert rv $ rr_recVars r  } ) $ resolveXTorSigs rep sigs
+        return $ RST.TyDataRefined loc rep pknd tn' (Just rv) sigs 
 -- Nominal Codata
 resolveTyp rep (TyXData loc Codata sigs) = do
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
@@ -61,9 +66,15 @@ resolveTyp rep (TyXData loc Codata sigs) = do
 -- Refinement Codata
 resolveTyp rep (TyXRefined loc Codata tn mrv sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-    sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
-    let rv = case mrv of Nothing -> Nothing; Just sk -> Just $ skolemToRecRVar sk
-    pure $ RST.TyCodataRefined loc rep pknd tn' rv sigs
+    case mrv of 
+      Nothing -> do
+        sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
+        pure $ RST.TyCodataRefined loc rep pknd tn' Nothing sigs
+      Just sk -> do 
+        let rv = skolemToRecRVar sk
+        sigs <- local (\r -> r { rr_recVars = S.insert rv $ rr_recVars r  } ) $ resolveXTorSigs (flipPolarityRep rep) sigs
+        return $ RST.TyCodataRefined loc rep pknd tn' (Just rv) sigs 
+
 resolveTyp rep (TyNominal loc name) = do
   res <- lookupTypeConstructor loc name
   case res of 
@@ -85,22 +96,18 @@ resolveTyp rep (TyApp loc ty@(TyNominal _loc tyn) args) = do
       case args' of 
         [] -> pure ty'
         (fst:rst) -> pure $ RST.TyApp loc rep ty' (fst:|rst)
-resolveTyp rep (TyApp loc (TySkolemVar loc' rv) args) = do
-  let vr = skolemToRecRVar rv
-  args' <- mapM (typToVarTyp rep loc) args
-  return (RST.TyApp loc rep (RST.TyRecVar loc' rep vr) args') 
-  where 
-    typToVarTyp :: PolarityRep pol -> Loc -> Typ -> ResolverM (RST.VariantType pol)
-    typToVarTyp rep _ (TyXRefined loc Data tn sigs) = do 
-      NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-      sigs <- resolveXTorSigs rep sigs
-      return $ RST.CovariantType $ RST.TyDataRefined loc rep pknd tn' sigs
-    typToVarTyp rep _ (TyXRefined loc Codata tn sigs) = do 
-      NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-      sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
-      return $ RST.CovariantType $ RST.TyCodataRefined loc rep pknd tn' sigs
+resolveTyp rep (TyApp loc (TySkolemVar loc' sk) args) = do
+  recVars <- asks rr_recVars
+  let rv = skolemToRecRVar sk
+  if rv `S.member` recVars
+    then error "not implemented" --pure $ RST.TyApp loc rep (RST.TyRecVar loc' rep rv) []
+    else throwOtherError loc' ["Types can't be applied to Skolem Variables"]
 
-    typToVarTyp _ loc ty = throwOtherError loc ["Recursive Variables can only be applied to refinement types, not " <> ppPrint ty]
+
+ --return $ RST.TySkolemVar loc' rep rv
+  --let vr = skolemToRecRVar rv
+  --args' <- mapM (typToVarTyp rep loc) args
+  --return (RST.TyApp loc rep (RST.TyRecVar loc' rep vr) args') 
   
 resolveTyp rep (TyApp loc (TyKindAnnot mk ty) args) = do 
   resolved <-  resolveTyp rep (TyApp loc ty args)
