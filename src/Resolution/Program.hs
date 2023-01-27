@@ -146,9 +146,7 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
       -- Default the kind if none was specified:
       polyKind <- case data_kind of
                         Nothing -> pure $ MkPolyKind [] (case data_polarity of CST.Data -> CBV; CST.Codata -> CBN)
-                        Just knd -> case knd of
-                          pk@(MkPolyKind [] _) -> pure pk
-                          _                    -> throwOtherError data_loc ["Parameterized refinement types are currently not allowed."]
+                        Just knd -> pure knd
       -- checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
       -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
       let g :: TypeNameResolve -> TypeNameResolve
