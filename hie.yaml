@@ -1,2 +1,52 @@
 cradle:
   stack:
+    - path: "./src"
+      component: "duo-lang:lib"
+
+    - path: "./app/Main.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/Run.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/Typecheck.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/Deps.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/LSP/Definition.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/LSP/Handler/CodeAction.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/LSP/Handler/Completion.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/LSP/Handler/Hover.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/LSP/Handler/JumpToDef.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/LSP/Handler/Various.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/LSP/LSP.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/LSP/MegaparsecToLSP.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/Options.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./app/Paths_duo_lang.hs"
+      component: "duo-lang:exe:duo"
+
+    - path: "./test"
+      component: "duo-lang:test:duo-lang-test"
+
+    - path: "./bench/BenchRunner.hs"
+      component: "duo-lang:bench:duo-lang-bench"

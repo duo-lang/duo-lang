@@ -1,6 +1,6 @@
 module Main where
 
-import Control.Monad.Except (runExcept, runExceptT, forM_)
+import Control.Monad.Except (runExcept, runExceptT, forM, forM_)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Either (isRight)
 import Data.List (sort)
@@ -92,7 +92,29 @@ main = do
       -- only use files specified in command line
       OptFilter fs -> pure $ (,) "." . filePathToModuleName <$> fs
     counterExamples <- getAvailableCounterExamples
+    -- Collect the parsed declarations
+    parsedExamples <- forM examples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
+    parsedCounterExamples <- forM counterExamples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
 
+    typecheckedExamples <- forM parsedExamples $ \(example, cst) -> do
+      let fullName = moduleNameToFullPath (snd example) (fst example)
+      withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
+          describe ("Prettyprinting and parsing again " ++ fullName) (Spec.Prettyprinter.specParse (example, cst))
+      case cst of
+        Left err -> return $ putStrLn (ppPrintString err)
+        Right res -> uncurry getTypecheckedDecls example >>= \res -> pure (example, res)
+    
+    forM_ typecheckedExamples $ \(example, tst) -> do
+      case tst of 
+        Left err -> return $ putStrLn (ppPrintString err)
+        Right typecheckResult -> withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
+              describe "example is locally closed" (Spec.LocallyClosed.spec (example, Right typecheckResult)) -- <- here not typechecking examples too?
+              describe "Prettyprinting and parsing + typechecking again" (Spec.Prettyprinter.specType (example, Right typecheckResult))
+              describe "Focusing works" (Spec.Focusing.spec (example, Right typecheckResult))
+
+
+    -------------------
+    {- FIRST ATTEMPT
     
     -- tests for examples
     forM_ examples $ \(fp, mn) -> do
@@ -134,10 +156,11 @@ main = do
     withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
       describe "OverlapCheck works" Spec.OverlapCheck.spec
 
-    -- TODO: fix spec files to run with a single parse
 
+    -}
+    ---------------------
+    {- THE OLD VERSION
 
-    {-
     -- Collect the parsed declarations
     parsedExamples <- forM examples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
     parsedCounterExamples <- forM counterExamples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
