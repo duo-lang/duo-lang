@@ -12,12 +12,11 @@ import Syntax.CST.Names
       FreeVarName,
       ModuleName (..),
       Precedence,
-      SkolemTVar,
       TyOpName,
       TypeName,
       XtorName )
 import Syntax.CST.Kinds
-    ( EvaluationOrder, MonoKind, PolyKind, Variance )
+    ( EvaluationOrder, MonoKind, PolyKind, )
 import Loc ( HasLoc(..), Loc, defaultLoc )
 import Errors (Error, throwOtherError)
 import qualified Data.List.NonEmpty as NE

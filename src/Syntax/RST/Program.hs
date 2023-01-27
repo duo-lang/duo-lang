@@ -10,13 +10,12 @@ import Syntax.CST.Names
       FreeVarName,
       Precedence,
       RnTypeName,
-      SkolemTVar,
       TyOpName,
       TypeName,
       ModuleName,
       XtorName )
 import Syntax.CST.Kinds
-    ( EvaluationOrder, MonoKind, PolyKind, Variance )
+    ( EvaluationOrder, MonoKind, PolyKind )
 import Syntax.CST.Types ( DataCodata, PrdCns(..), PrdCnsRep(..) )
 
 import Loc ( Loc )
