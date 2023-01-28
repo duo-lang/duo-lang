@@ -96,23 +96,39 @@ main = do
     parsedExamples <- forM examples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
     parsedCounterExamples <- forM counterExamples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
 
+    -- examples
     typecheckedExamples <- forM parsedExamples $ \(example, cst) -> do
       let fullName = moduleNameToFullPath (snd example) (fst example)
       withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
           describe ("Prettyprinting and parsing again " ++ fullName) (Spec.Prettyprinter.specParse (example, cst))
       case cst of
-        Left err -> return $ putStrLn (ppPrintString err)
+        Left err -> putStrLn (ppPrintString err) >> pure (example, Left err)
         Right res -> uncurry getTypecheckedDecls example >>= \res -> pure (example, res)
     
     forM_ typecheckedExamples $ \(example, tst) -> do
       case tst of 
-        Left err -> return $ putStrLn (ppPrintString err)
-        Right typecheckResult -> withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
+        Left err -> pure (example, Left err) 
+        Right typecheckResult -> do 
+          withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
               describe "example is locally closed" (Spec.LocallyClosed.spec (example, Right typecheckResult)) -- <- here not typechecking examples too?
               describe "Prettyprinting and parsing + typechecking again" (Spec.Prettyprinter.specType (example, Right typecheckResult))
               describe "Focusing works" (Spec.Focusing.spec (example, Right typecheckResult))
+          pure (example, Right typecheckResult)
 
-
+    -- counterexamples 
+    forM_ parsedCounterExamples $ \(example, cst) -> do
+      let fullName = moduleNameToFullPath (snd example) (fst example)
+      case cst of
+        Left err -> pure (example, Left err)
+        Right parseResult -> do 
+          typecheckedDecl <- uncurry getTypecheckedDecls example >>= \res -> pure (example, res)
+          let tst = snd typecheckedDecl
+          case tst of
+            Left err -> pure (example, Left err)
+            Right typecheckResult -> do 
+              withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
+                  describe "TypeInference with check" (Spec.TypeInferenceExamples.spec (example, cst) tst)
+              pure (example, tst)
     -------------------
     {- FIRST ATTEMPT
     
