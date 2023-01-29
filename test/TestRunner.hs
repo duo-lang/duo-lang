@@ -74,12 +74,22 @@ getTypecheckedDecls fp mn = do
       fmap snd <$> (fst <$> inferProgramIO defaultDriverState decls)
     Left err -> return (Left err)
 
+
+-- ? ---
 getSymbolTable :: FilePath -> ModuleName -> IO (Either (NonEmpty Error) SymbolTable)
 getSymbolTable fp mn = do
   decls <- getParsedDeclarations fp mn
   case decls of
     Right decls -> pure (runExcept (createSymbolTable decls))
     Left err -> return (Left err)
+--------
+
+parseExampleList :: [(FilePath, ModuleName)] -> IO [((FilePath, ModuleName), Either (NonEmpty Error) CST.Module)]
+parseExampleList examples = do
+  result <- forM examples $ \example -> 
+    uncurry getParsedDeclarations example >>= 
+      \res -> pure (example, res)
+  pure result
 
 
 main :: IO ()
@@ -93,8 +103,8 @@ main = do
       OptFilter fs -> pure $ (,) "." . filePathToModuleName <$> fs
     counterExamples <- getAvailableCounterExamples
     -- Collect the parsed declarations
-    parsedExamples <- forM examples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
-    parsedCounterExamples <- forM counterExamples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
+    parsedExamples <- parseExampleList examples
+    parsedCounterExamples <- parseExampleList counterExamples
 
     -- examples
     typecheckedExamples <- forM parsedExamples $ \(example, cst) -> do
@@ -129,69 +139,3 @@ main = do
               withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
                   describe "TypeInference with check" (Spec.TypeInferenceExamples.spec (example, cst) tst)
               pure (example, tst)
-    -------------------
-    {- FIRST ATTEMPT
-    
-    -- tests for examples
-    forM_ examples $ \(fp, mn) -> do
-      let fullName = moduleNameToFullPath mn fp
-      --parsing one example after the other
-      parsedExample <- getParsedDeclarations fp mn
-      case parsedExample of
-          Left err -> return $ putStrLn (ppPrintString err) -- ?
-          Right parseResult -> do
-            -- if parse was successful, try prettyprinting test
-            withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-              describe ("Prettyprinting and parsing again " ++ fullName) (Spec.Prettyprinter.specParse ((fp, mn), Right parseResult))
-            -- typecheck the example
-            --describe ("Typechecking " ++ fullName) $ do
-            typecheckedExample <- getTypecheckedDecls fp mn
-            case typecheckedExample of
-                Left err -> return $ putStrLn ("could not typecheck " ++ fullName ++ "\n" ++ ppPrintString err) -- ?
-                Right typecheckResult -> do
-                  -- if typechecking successful, try Locallyclosed, typechecked pp and focusing test
-                  withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-                    describe "example is locally closed" (Spec.LocallyClosed.spec ((fp, mn), Right typecheckResult)) -- <- here not typechecking examples too?
-                    describe "Prettyprinting and parsing + typechecking again" (Spec.Prettyprinter.specType ((fp, mn), Right typecheckResult))
-                    describe "Focusing works" (Spec.Focusing.spec ((fp, mn), Right typecheckResult))
-
-  -- tests for counterexamples
-    forM_ counterExamples $ \(fp, mn) -> do
-      let fullName = moduleNameToFullPath mn fp
-      -- parsing one counterexample after the other
-      --describe ("Parsing " ++ fullName) $ do
-      parsedCounterExample <- getParsedDeclarations fp mn
-      case parsedCounterExample of
-          Left err -> return $ putStrLn (ppPrintString err) -- ?
-          Right parseResult -> do
-            typecheckedCounterExample <- getTypecheckedDecls fp mn
-            -- checkTypeInference
-            withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-              describe "TypeInference with check" (Spec.TypeInferenceExamples.spec ((fp, mn), Right parseResult) typecheckedCounterExample)
-
-    withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-      describe "OverlapCheck works" Spec.OverlapCheck.spec
-
-
-    -}
-    ---------------------
-    {- THE OLD VERSION
-
-    -- Collect the parsed declarations
-    parsedExamples <- forM examples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
-    parsedCounterExamples <- forM counterExamples $ \example -> uncurry getParsedDeclarations example >>= \res -> pure (example, res)
-    -- Collect the typechecked declarations
-    checkedExamples <- forM examples $ \example -> uncurry getTypecheckedDecls example >>= \res -> pure (example, res)
-    let checkedExamplesFiltered = filter (isRight . snd) checkedExamples
-    checkedCounterExamples <- forM counterExamples $ \example -> uncurry getTypecheckedDecls example >>= \res -> pure (example, res)
-    -- Create symbol tables for tests
-    -- Run the testsuite
-    withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-      describe "All examples are locally closed" (Spec.LocallyClosed.spec checkedExamples)
-      describe "ExampleSpec" (Spec.TypeInferenceExamples.spec parsedCounterExamples checkedCounterExamples)
-      describe "Prettyprinted work again" (Spec.Prettyprinter.spec parsedExamples checkedExamplesFiltered)
-      describe "Focusing works" (Spec.Focusing.spec checkedExamplesFiltered)
-      describe "OverlapCheck works" Spec.OverlapCheck.spec
-    -}
-
-
