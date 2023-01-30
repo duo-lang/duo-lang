@@ -8,12 +8,6 @@ class Summable(+a : CBV){
     Fold(a, return Nat)
 };
 
-instance natTensorSummable : Summable Tensor(Nat, Nat) {
-    Fold(p, k) => case p of {
-        MkTensor(n, m) => add n m >> k
-    }
-};
-
 -- | A non-empty list of natural numbers.
 data NatList {
     Singleton(Nat),
