@@ -8,7 +8,7 @@ class Summable(+a : CBV){
     Fold(a, return Nat)
 };
 
-instance natTensorFoldable : Summable Tensor(Nat, Nat) {
+instance natTensorSummable : Summable Tensor(Nat, Nat) {
     Fold(p, k) => case p of {
         MkTensor(n, m) => add n m >> k
     }
@@ -20,7 +20,7 @@ data NatList {
     Cons(Nat, NatList)
 };
 
-instance natListFoldable : Summable NatList {
+instance natListSummable : Summable NatList {
     Fold(l, k) => case l of {
         Singleton(n) => n >> k,
         Cons(n, ns) => Fold(ns, mu x. add x n >> k)
@@ -33,7 +33,7 @@ data NatTree {
     Branch(NatTree, NatTree)
 };
 
-instance natTreeFoldable : Summable NatTree {
+instance natTreeSummable : Summable NatTree {
     Fold(t, k) => case t of {
         Leaf(n) => n >> k,
         Branch(l, r) => add (mu k1. Fold(l, k1)) (mu k2. Fold(r, k2)) >> k
