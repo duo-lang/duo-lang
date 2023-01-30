@@ -4,3 +4,5 @@ import Data.PeanoRefinement;
 
 def prd x : <Nat|Z> := Z;
 def prd y : <Nat|r|Z> := Z;
+
+def rec prd z: rec r. <Z,S(<S(r)>)> := z;
