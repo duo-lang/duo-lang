@@ -7,6 +7,7 @@ module Resolution.Types
 
 import Control.Monad.Except (throwError)
 import Data.Set qualified as S
+import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NE
 
@@ -72,7 +73,7 @@ resolveTyp rep (TyXRefined loc Codata tn mrv sigs) = do
         pure $ RST.TyCodataRefined loc rep pknd tn' Nothing sigs
       Just sk -> do 
         let rv = skolemToRecRVar sk
-        sigs <- local (\r -> r { rr_recVars = S.insert rv $ rr_recVars r  } ) $ resolveXTorSigs (flipPolarityRep rep) sigs
+        sigs <- local (\r -> r { rr_ref_recVars = M.insert rv (tn,pknd) $ rr_ref_recVars r  } ) $ resolveXTorSigs (flipPolarityRep rep) sigs
         return $ RST.TyCodataRefined loc rep pknd tn' (Just rv) sigs 
 
 resolveTyp rep (TyNominal loc name) = do
@@ -97,17 +98,45 @@ resolveTyp rep (TyApp loc ty@(TyNominal _loc tyn) args) = do
         [] -> pure ty'
         (fst:rst) -> pure $ RST.TyApp loc rep ty' (fst:|rst)
 resolveTyp rep (TyApp loc (TySkolemVar loc' sk) args) = do
-  recVars <- asks rr_recVars
+  recVars <- asks rr_ref_recVars
   let rv = skolemToRecRVar sk
-  if rv `S.member` recVars
-    then error "not implemented" --pure $ RST.TyApp loc rep (RST.TyRecVar loc' rep rv) []
-    else throwOtherError loc' ["Types can't be applied to Skolem Variables"]
+  case M.lookup rv recVars of 
+    Nothing -> throwOtherError loc' ["Types can't be applied to Skolem Variables"]
+    Just (tn,pknd) -> do 
+      args'<- resolveTypeArgs loc rep tn pknd (NE.toList args)
+      let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst :| rst
+      pure $ RST.TyApp loc rep (RST.TyRecVar loc' rep rv) args''
+resolveTyp rep (TyApp loc (TyXRefined loc' Data tn mrv sigs) args) = do 
+    NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
+    case mrv of 
+      Nothing -> do
+        sigs <- resolveXTorSigs rep sigs
+        args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
+        let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
+        pure $ RST.TyApp loc rep (RST.TyDataRefined loc' rep pknd tn' Nothing sigs) args''
+      Just sk -> do 
+        let rv = skolemToRecRVar sk
+        sigs <- local (\r -> r { rr_ref_recVars = M.insert rv (tn,pknd) $ rr_ref_recVars r  } ) $ resolveXTorSigs rep sigs
+        args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
+        let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
+        return $ RST.TyApp loc rep (RST.TyDataRefined loc' rep pknd tn' (Just rv) sigs) args''
+
+resolveTyp rep (TyApp loc (TyXRefined loc' Codata tn mrv sigs) args) = do 
+    NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
+    case mrv of 
+      Nothing -> do
+        sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
+        args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
+        let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
+        pure $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' Nothing sigs) args''
+      Just sk -> do 
+        let rv = skolemToRecRVar sk
+        sigs <- local (\r -> r { rr_ref_recVars = M.insert rv (tn,pknd) $ rr_ref_recVars r  } ) $ resolveXTorSigs (flipPolarityRep rep) sigs
+        args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
+        let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
+        return $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' (Just rv) sigs) args''
 
 
- --return $ RST.TySkolemVar loc' rep rv
-  --let vr = skolemToRecRVar rv
-  --args' <- mapM (typToVarTyp rep loc) args
-  --return (RST.TyApp loc rep (RST.TyRecVar loc' rep vr) args') 
   
 resolveTyp rep (TyApp loc (TyKindAnnot mk ty) args) = do 
   resolved <-  resolveTyp rep (TyApp loc ty args)

@@ -382,7 +382,7 @@ runCompilationPlan compilationOrder = do
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
-      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveModule decls))
+      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty mempty) (resolveModule decls))
       -- 4. Desugar the program
       let desugaredProg = desugar resolvedDecls
       -- 5. Infer the declarations
