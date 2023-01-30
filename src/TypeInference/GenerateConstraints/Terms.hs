@@ -150,10 +150,9 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- Then we generate constraints between the inferred types of the substitution
     -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
     genConstraintsCtxts substTypes (TST.sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
-    knd <- getKindDecl decl
     case rep of
-      PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep (fst knd) (TST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
-      CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep (fst knd) (TST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
+      PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep (TST.data_kind decl) (TST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
+      CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep (TST.data_kind decl) (TST.data_name decl) [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
   --
   -- Structural pattern and copattern matches:
   --
@@ -246,10 +245,9 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- For the type, we return the unification variables which are now bounded by the least
                         -- and greatest type translation.
                         return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
-    knd <- getKindDecl decl
     case rep of
-      PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep (fst knd) (TST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
-      CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep (fst knd) (TST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
+      PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep (TST.data_kind decl) (TST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
+      CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep (TST.data_kind decl) (TST.data_name decl) (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
   --
   -- Mu and TildeMu abstractions:
   --

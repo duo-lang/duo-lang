@@ -41,7 +41,7 @@ import TypeInference.GenerateConstraints.Kinds
 import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
       genConstraintsTermRecursive )
-import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints, isSubtype)
+import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints)
 import Loc ( Loc, AttachLoc(attachLoc) )
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
@@ -53,6 +53,7 @@ import Pretty.Common (Header(..))
 import Pretty.Program ()
 import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
+import TypeAutomata.Intersection (intersectIsEmpty)
 
 
 checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
@@ -229,14 +230,16 @@ checkOverlappingInstances loc cn (typ, tyn) = do
   let instances = M.unions . fmap instanceEnv . M.elems $ env
   case M.lookup cn instances of
     Nothing -> pure () -- No overlapping instances
-    Just insts -> mapM_ (checkSubtype loc env (typ, tyn)) (S.toList insts)
-  where checkSubtype :: Loc -> Map ModuleName Environment -> (TST.Typ RST.Pos, TST.Typ RST.Neg) -> (FreeVarName, TST.Typ RST.Pos, TST.Typ RST.Neg) -> DriverM ()
-        checkSubtype loc env (typ, tyn) (inst, typ', tyn') = do
-          let isRelated = isSubtype env typ tyn' || isSubtype env typ' tyn
-          let err = ErrOther $ SomeOtherError loc $ T.unlines [ "The instance declared violates type class coherence."
-                                                              , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ
+    Just insts -> mapM_ (checkOverlap loc (typ, tyn)) (S.toList insts)
+  where checkOverlap :: Loc -> (TST.Typ RST.Pos, TST.Typ RST.Neg) -> (FreeVarName, TST.Typ RST.Pos, TST.Typ RST.Neg) -> DriverM ()
+        checkOverlap loc (typ, tyn) (inst, typ', tyn') = do
+          printGraphs <- gets (infOptsPrintGraphs . drvOpts)
+          let err = ErrOther $ SomeOtherError loc $ T.unlines [ "The instance declared is overlapping and violates type class coherence."
+                                                              , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ'
                                                               ]
-          when isRelated $ throwError (err NE.:| [])
+          emptyIntersectionPos <- intersectIsEmpty printGraphs (TST.generalize typ) (TST.generalize typ')
+          emptyIntersectionNeg <- intersectIsEmpty printGraphs (TST.generalize tyn) (TST.generalize tyn')
+          unless (emptyIntersectionPos && emptyIntersectionNeg) (throwError (err NE.:| []))
 
 inferClassDeclaration :: ModuleName
                       -> RST.ClassDeclaration

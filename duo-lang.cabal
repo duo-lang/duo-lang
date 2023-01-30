@@ -160,8 +160,10 @@ library
       Syntax.RST.Types
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition
+      TypeAutomata.Utils
       TypeAutomata.Determinize
       TypeAutomata.FromAutomaton
+      TypeAutomata.Intersection
       TypeAutomata.Lint
       TypeAutomata.Minimize
       TypeAutomata.RemoveEpsilon
