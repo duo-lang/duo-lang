@@ -5,4 +5,7 @@ import Data.PeanoRefinement;
 def prd x : <Nat|Z> := Z;
 def prd y : <Nat|r|Z> := Z;
 
-def rec prd z: rec r. <Z,S(<S(r)>)> := z;
+def prd z: < Nat |  S( (< Nat |  S( (< Nat | Z >) ) >) ) > := S(S(Z));
+def prd a: < Nat | r | S( (<Nat | S( (< Nat | Z>) ) >) ) > := S(S(Z));
+--<Nat|Z,S(<Nat|S(Nat)>)> := S(S(Z));
+--(< Nat |  S( (< Nat |  S( (< Nat |  Z >:CBV) ) >:CBV) ) >:CBV)

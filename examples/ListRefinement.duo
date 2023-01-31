@@ -1,6 +1,15 @@
 module ListRefinement;
 
+import Data.Peano;
+
+data Z : CBV { 
+    MkZ
+};
+
 refinement data List : (+a : CBV) -> CBV {
     Nil,
     Cons(a, List(a))
 };
+
+def prd x : <List|Nil> := Nil;
+def prd y : <List|Nil>(Z) := Nil;
