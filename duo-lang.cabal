@@ -139,7 +139,6 @@ library
       Resolution.Types
       Resolution.Unresolve
       Dualize.Dualize
-      Dualize.DualizeClone
       Sugar.Desugar
       Sugar.Core
       Sugar.TST
@@ -181,6 +180,7 @@ library
       Translate.EmbedTST
       Translate.InsertInstance
       Utils
+      Xfunctionalize.Xfunctionalize
   other-modules:
       Paths_duo_lang
   hs-source-dirs:

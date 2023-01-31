@@ -1,0 +1,4 @@
+module Playground;
+
+import Data.Peano; -- Num is defined here, syntactic sugar for Peano number is given with Z=0, S(Z)=1, S(S(Z))=2, ...
+

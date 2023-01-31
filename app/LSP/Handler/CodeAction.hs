@@ -25,7 +25,7 @@ import Language.LSP.Types ( TextDocumentIdentifier(..)
                           , SMethod (..)
                           , uriToFilePath
                           , CodeActionKind (..)
-                          , ErrorCode (..) )
+                          , ErrorCode (..))
 import Language.LSP.Server
     (  requestHandler, sendRequest, Handlers, getConfig )
 import System.Log.Logger ( debugM )
@@ -40,7 +40,7 @@ import Driver.Definition
       queryTypecheckedModule )
 import Driver.Driver ( runCompilationModule )
 import Dualize.Dualize (dualDataDecl, dualPrdCnsDeclaration, dualCmdDeclaration)
-import Dualize.DualizeClone (dualCloneDataDecl, dualClonePrdCnsDeclaration, dualCloneCmdDeclaration)
+import Xfunctionalize.Xfunctionalize qualified as XFunc
 import LSP.Definition ( LSPMonad, LSPConfig (..), sendInfo, getCachedModule )
 import LSP.MegaparsecToLSP ( locToRange, lookupPos, locToEndRange )
 import Pretty.Pretty ( ppPrint )
@@ -63,6 +63,7 @@ import Utils (filePathToModuleName)
 import System.Directory (makeRelativeToCurrentDirectory)
 import Data.IORef (readIORef)
 
+
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
 ---------------------------------------------------------------------------------
@@ -78,6 +79,9 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
       sendInfo ("Cache not initialized for: " <> T.pack (show uri))
       responder (Right (List []))
     Just mod -> responder (Right (getCodeActions ident range mod))
+      
+
+
 
 
   -- mfile <- getVirtualFile (toNormalizedUri uri)
@@ -108,6 +112,30 @@ workspaceEditToCodeAction edit descr =
                    , _command = Nothing
                    , _xdata = Nothing
                    }
+
+
+workspaceEditToCodeActionWithCommand :: (WorkspaceEdit |? WorkspaceEdit) -> Text -> Command |? CodeAction
+workspaceEditToCodeActionWithCommand (InR edit) descr =
+  InR $ CodeAction { _title = descr
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just edit
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
+workspaceEditToCodeActionWithCommand (InL _) descr =
+  InR $ CodeAction { _title = descr
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Nothing
+                   , _command = Just (Command{_title="transformation_not_possible", _command="transformation-not-possible" , _arguments=Nothing})
+                   , _xdata = Nothing
+                   }
+
 
 ---------------------------------------------------------------------------------
 -- Class for generating code actions
@@ -152,9 +180,8 @@ instance GetCodeActions (TST.PrdCnsDeclaration pc) where
       cbvfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBV decl) ("Focus CBV " <> unFreeVarName (TST.pcdecl_name decl)) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBV pcdecl_term)]
       cbnfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBN decl) ("Focus CBN " <> unFreeVarName (TST.pcdecl_name decl)) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
       dualize  = [ workspaceEditToCodeAction (generateDualizeEdit id decl) ("Dualize term " <> ppPrint (TST.pcdecl_name decl)) ]
-      dualizeClone  = [ workspaceEditToCodeAction (generateDualizeCloneEdit id decl) ("DualizeClone term " <> ppPrint (TST.pcdecl_name decl)) ]
     in
-      List (desugar <> cbvfocus <> cbnfocus <> dualize <> dualizeClone)
+      List (desugar <> cbvfocus <> cbnfocus <> dualize)
 
 -- code actions for command declerations
 instance GetCodeActions TST.CommandDeclaration where
@@ -169,9 +196,8 @@ instance GetCodeActions TST.CommandDeclaration where
       cbnfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBN decl) ("Focus CBN " <> unFreeVarName (TST.cmddecl_name decl)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
       eval     = [ generateCmdEvalCodeAction id decl ]
       dualize  = [ workspaceEditToCodeAction (generateDualizeCommandEdit id decl) ("Dualize command " <> ppPrint (TST.cmddecl_name decl)) ]
-      dualizeClone = [workspaceEditToCodeAction(generateDualizeCloneCommandEdit id decl) ("DualizeClone command" <> ppPrint (TST.cmddecl_name decl)) ]
     in
-      List (desugar <> cbvfocus <> cbnfocus <> dualize <> eval <> dualizeClone)
+      List (desugar <> cbvfocus <> cbnfocus <> dualize <> eval)
 
 -- code actions for data declarations 
 instance GetCodeActions TST.DataDecl where
@@ -182,9 +208,9 @@ instance GetCodeActions TST.DataDecl where
   getCodeActions id _ decl =
     let
       dualize = [ workspaceEditToCodeAction (generateDualizeDeclEdit id (TST.data_loc decl) decl) ("Dualize declaration " <> ppPrint (TST.data_name decl)) ]
-      dualizeClone = [ workspaceEditToCodeAction (generateDualizeDeclEdit id (TST.data_loc decl) decl) ("DualizeClone declaration " <> ppPrint (TST.data_name decl)) ]
+      xfunctionalize = [ workspaceEditToCodeActionWithCommand (generateXfunctionalizeDeclEdit id (TST.data_loc decl) decl) ("Xfunctionalize declaration" <> ppPrint (TST.data_name decl))]
     in
-      List (dualize <> dualizeClone)
+      List (dualize <> xfunctionalize)
 
 ---------------------------------------------------------------------------------
 -- Provide TypeAnnot Action
@@ -249,6 +275,25 @@ generateDualizeDeclEdit (TextDocumentIdentifier uri) loc decl =
 
 
 ---------------------------------------------------------------------------------
+-- Provide De- and Refunctianlization Action
+-- no implementation yet
+---------------------------------------------------------------------------------
+generateXfunctionalizeDeclEdit :: TextDocumentIdentifier -> Loc -> TST.DataDecl -> (WorkspaceEdit |? WorkspaceEdit)
+generateXfunctionalizeDeclEdit (TextDocumentIdentifier uri) loc decl = 
+  let 
+    transformable = XFunc.transformable decl
+  in
+    if transformable then
+      InR $ WorkspaceEdit{ _changes = Nothing
+                         , _documentChanges = Nothing
+                         , _changeAnnotations = Nothing};
+    else
+      InL $ WorkspaceEdit{ _changes = Nothing
+                         , _documentChanges = Nothing
+                         , _changeAnnotations = Nothing};
+
+
+---------------------------------------------------------------------------------
 -- Provide Focus Actions
 ---------------------------------------------------------------------------------
 
@@ -276,59 +321,6 @@ generateCmdFocusEdit (TextDocumentIdentifier uri) eo decl =
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing
                   }
-
----------------------------------------------------------------------------------
--- Provide DualizeClone Action
----------------------------------------------------------------------------------
-
-generateDualizeCloneCommandEdit :: TextDocumentIdentifier -> TST.CommandDeclaration -> WorkspaceEdit
-generateDualizeCloneCommandEdit (TextDocumentIdentifier uri) decl@(TST.MkCommandDeclaration loc _ _ _) =
-  let
-    replacement = case dualCmdDeclaration decl of
-      (Left error) -> ppPrint $ T.pack (show error)
-      (Right decl') -> ppPrint (TST.CmdDecl decl')
-    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
-  in
-    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
-                  , _documentChanges = Nothing
-                  , _changeAnnotations = Nothing }
-
-
-generateDualizeCloneEdit :: forall pc. TextDocumentIdentifier -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
-generateDualizeCloneEdit (TextDocumentIdentifier uri) decl@(TST.MkPrdCnsDeclaration loc _ rep _ _ _ _) =
-  let
-    replacement = case dualPrdCnsDeclaration decl of
-      (Left error) -> ppPrint $ T.pack (show error)
-      (Right decl') -> case rep of
-        PrdRep -> ppPrint (TST.PrdCnsDecl CnsRep decl')
-        CnsRep -> ppPrint (TST.PrdCnsDecl PrdRep decl')
-    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
-  in
-    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
-                  , _documentChanges = Nothing
-                  , _changeAnnotations = Nothing }
-
-
-generateDualizeCloneDeclEdit :: TextDocumentIdentifier -> Loc -> TST.DataDecl -> WorkspaceEdit
-generateDualizeCloneDeclEdit (TextDocumentIdentifier uri) loc decl =
-  let
-    decl' = dualDataDecl decl
-    replacement = ppPrint (TST.DataDecl  decl')
-    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
-  in
-    WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
-                  , _documentChanges = Nothing
-                  , _changeAnnotations = Nothing }
-
-
----------------------------------------------------------------------------------
--- Provide Defunctionalize Actions
----------------------------------------------------------------------------------
--- TODO
----------------------------------------------------------------------------------
--- Provide Refunctionalize Actions
----------------------------------------------------------------------------------
--- TODO
 
 ---------------------------------------------------------------------------------
 -- Provide Desugar Actions
@@ -437,11 +429,11 @@ addCommentedAbove range uri content =
 evalHandler :: Handlers LSPMonad
 evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params} responder -> do
   let source = "lspserver.evalHandler"
-  liftIO $ debugM source "Received eval request"
   let ExecuteCommandParams{_command, _arguments} = _params
   case _command of
     "duo-inline-eval" -> do
       -- parse arguments back from JSON
+      liftIO $ debugM source "Received eval request"
       args <- evalArgsFromJSON
                 (stopHandler responder source "Arguments should not be empty")
                 (stopHandler responder source "Specified more than one argument!")
@@ -472,5 +464,8 @@ evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params}
 
       -- signal success
       responder (Right $ J.toJSON ())
+    "transformation-not-possible" -> do
+      liftIO $ debugM source "Received transformation request"
+      sendInfo "Transformation not possible"
     _ -> responder (Left $ ResponseError InvalidRequest ("Request " <> _command <> " is invalid") Nothing)
 

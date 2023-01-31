@@ -13,12 +13,20 @@ data List : CBV {
     Cons(Nat,List)
 };
 
-def rec prd indexchanged : List -> Nat -> Maybe(Nat) :=
+data Test : (+a: CBV) -> CBV{
+    Test1(a),
+    Test2(a)
+};
+
+
+
+
+def rec prd index: List -> Nat -> Maybe(Nat) :=
     \l n => case l of {
         Nil => Nothing,
         Cons(head,tail) => case n of {
             Z => Just(head),
-            S(num) => indexchanged tail num
+            S(num) => index tail num
         }
 };
 
@@ -48,6 +56,7 @@ def prd listWithCodata := cons 1 (cons 2 (cons 3 nil));
 --------------------------------------------------------
 
 -- on data
+
 def prd ifThenElse : Bool -> Nat -> Nat -> Nat :=
     \b e1 e2 => case b of {
         True => e1,
@@ -81,7 +90,7 @@ def prd ifThenElseWithCodata := true.IfThenElse(1,0,*);
 
 --------------------------------------------------------
 -- main
-def cmd main := #Print(indexchanged listWithData 2, #ExitSuccess);
+def cmd main := #Print(index listWithData 2, #ExitSuccess);
 
 
 

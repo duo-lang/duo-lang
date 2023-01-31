@@ -12,7 +12,7 @@ import System.Log.Logger ( Priority(DEBUG), debugM )
 
 import LSP.Definition ( LSPConfig(..), LSPMonad(unLSPMonad) )
 import LSP.Handler.Hover ( hoverHandler )
-import LSP.Handler.CodeAction ( codeActionHandler, evalHandler )
+import LSP.Handler.CodeAction ( codeActionHandler, evalHandler)
 import LSP.Handler.Completion ( completionHandler )
 import LSP.Handler.JumpToDef ( jumpToDefHandler )
 import LSP.Handler.Various
@@ -43,7 +43,7 @@ serverOptions = LSP.Options
   , signatureHelpRetriggerCharacters = Nothing
   , codeActionKinds = Just [LSP.CodeActionQuickFix]
   , documentOnTypeFormattingTriggerCharacters = Nothing
-  , executeCommandCommands = Just ["duo-inline-eval"]
+  , executeCommandCommands = Just ["duo-inline-eval","transformation-not-possible"]
   , serverInfo = Just LSP.ServerInfo { _name = "duo-lsp"
                                      , _version = Just (T.pack $ showVersion version)
                                      }
