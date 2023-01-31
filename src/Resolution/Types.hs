@@ -134,10 +134,7 @@ resolveTyp rep (TyApp loc (TyXRefined loc' Codata tn mrv sigs) args) = do
         sigs <- local (\r -> r { rr_ref_recVars = M.insert rv (tn,pknd) $ rr_ref_recVars r  } ) $ resolveXTorSigs (flipPolarityRep rep) sigs
         args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
         let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
-        return $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' (Just rv) sigs) args''
-
-
-  
+        return $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' (Just rv) sigs) args'' 
 resolveTyp rep (TyApp loc (TyKindAnnot mk ty) args) = do 
   resolved <-  resolveTyp rep (TyApp loc ty args)
   pure $ RST.TyKindAnnot mk resolved

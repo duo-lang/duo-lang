@@ -264,6 +264,20 @@ insertType (TyApp _ _ (TyRecVar _ rep pknd _) args) = do
   argNodes <- mapM insertVariantType args
   insertEdges ((\(_, (n, _)) -> (newNode, n, EpsilonEdge ())) <$> enumerate (NE.toList argNodes))
   return newNode
+insertType (TyApp _ _ (TyDataRefined _ rep  pknd _ _ _) args) = do 
+  let pol = polarityRepToPol rep 
+  newNode <- newNodeM
+  insertNode newNode (emptyNodeLabel pol (MkPknd pknd))
+  argNodes <- mapM insertVariantType args
+  insertEdges ((\(_, (n, _)) -> (newNode, n, EpsilonEdge ())) <$> enumerate (NE.toList argNodes))
+  return newNode
+insertType (TyApp _ _ (TyCodataRefined _ rep  pknd _ _ _) args) = do 
+  let pol = polarityRepToPol rep 
+  newNode <- newNodeM
+  insertNode newNode (emptyNodeLabel pol (MkPknd pknd))
+  argNodes <- mapM insertVariantType args
+  insertEdges ((\(_, (n, _)) -> (newNode, n, EpsilonEdge ())) <$> enumerate (NE.toList argNodes))
+  return newNode
 
 insertType TyApp{} = throwAutomatonError defaultLoc ["Types can only be applied to nominal types"]
 insertType (TyI64 _ rep) = do
