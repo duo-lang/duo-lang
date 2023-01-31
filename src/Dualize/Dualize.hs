@@ -37,13 +37,11 @@ data DualizeError
  deriving Show
 
 -- PrdCns is the Datatype that includes Prd and Cns
--- pattern matching is used
 flipPC :: PrdCns -> PrdCns
 flipPC Prd = Cns
 flipPC Cns = Prd
 
 -- uses the DataCodata Datatype from CST
--- pattern matching is used
 flipDC :: CST.DataCodata -> CST.DataCodata
 flipDC CST.Data = CST.Codata 
 flipDC CST.Codata = CST.Data 

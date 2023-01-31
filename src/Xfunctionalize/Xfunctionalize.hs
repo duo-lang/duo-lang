@@ -22,7 +22,12 @@ import Data.Set qualified as Set
 -- import Loc -- source code locations, see src/Loc.hs
 
 
+hasNestedPatternMatches :: Bool
+hasNestedPatternMatches = False
+
+dataDeclHasArguments :: TST.DataDecl -> Bool
+dataDeclHasArguments decl = Set.size (allTypeVars (TST.data_kind decl)) == 0
 
 transformable :: TST.DataDecl -> Bool
-transformable decl = Set.size (allTypeVars (TST.data_kind decl)) == 0
+transformable = dataDeclHasArguments
 
