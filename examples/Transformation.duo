@@ -1,0 +1,38 @@
+module Transformation;
+
+import Data.Peano;
+import Data.Maybe;
+import Data.Bool;
+
+data List : CBV {
+    Nil,
+    Cons(Nat,List)
+};
+
+def rec prd index : List -> Nat -> Maybe(Nat) :=
+    \l n => case l of {
+        Nil => Nothing,
+        Cons(head, tail) => case n of {
+            Z => Just(head),
+            S(num) => index tail num
+        }
+    };
+
+codata CoList : CBV {
+    Index(Nat, return Maybe(Nat))
+};
+
+def prd nil : CoList := cocase {
+    Index(n,*) => Nothing
+};
+
+def rec prd cons : Nat -> CoList -> CoList := \head tail => cocase {
+    Index(n,*) => case n of {
+        Z => Just(head),
+        S(num) => tail.Index(num,*)
+    }
+};
+
+--examples
+def prd listWithData := Cons(1, Cons(2, Cons(3,Nil)));
+def prd listWithCodata := cons 1 (cons 2 (cons 3 nil));
