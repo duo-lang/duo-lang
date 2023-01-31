@@ -178,6 +178,7 @@ library
       TypeInference.GenerateConstraints.Kinds
       TypeInference.SolveConstraints
       TypeInference.Constraints
+      Transformation.Transformation
       Translate.Focusing
       Translate.EmbedTST
       Translate.InsertInstance
