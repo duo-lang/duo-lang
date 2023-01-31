@@ -148,9 +148,32 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- Then we generate constraints between the inferred types of the substitution
     -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
     genConstraintsCtxts substTypes (TST.sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
-    case rep of
-      PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep (TST.data_kind decl) (TST.data_name decl) Nothing [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
-      CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep (TST.data_kind decl) (TST.data_name decl) Nothing [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
+    case rep of 
+      PrdRep -> do
+        xtorSig <- lookupXtorSig loc xt NegRep
+        -- Generate fresh unification variables for type parameters
+        (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
+        -- Substitute these for the type parameters in the constructor signature
+        let sig_args' = TST.zonk TST.SkolemRep tyParamsMap (TST.sig_args xtorSig)
+        genConstraintsCtxts substTypes sig_args' (CtorArgsConstraint loc)
+        let refTy = TST.TyDataRefined   defaultLoc PosRep (TST.data_kind decl) (TST.data_name decl) Nothing [TST.MkXtorSig xt substTypes]
+        case args of
+          [] -> return $ TST.Xtor loc annot rep refTy CST.Refinement xt substInferred
+          (fst:rst) -> return $ TST.Xtor loc annot rep (TST.TyApp defaultLoc PosRep refTy (fst:|rst)) CST.Refinement xt substInferred
+      CnsRep -> do
+        xtorSig <- lookupXtorSig loc xt NegRep
+        -- Generate fresh unification variables for type parameters
+        (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
+        -- Substitute these for the type parameters in the constructor signature
+        let sig_args' = TST.zonk TST.SkolemRep tyParamsMap (TST.sig_args xtorSig)
+        genConstraintsCtxts substTypes sig_args' (DtorArgsConstraint loc)
+
+        let refTy = TST.TyCodataRefined defaultLoc NegRep (TST.data_kind decl) (TST.data_name decl) Nothing [TST.MkXtorSig xt substTypes]
+        case args of 
+          [] -> return $ TST.Xtor loc annot rep refTy CST.Refinement xt substInferred
+          (fst:rst) -> return $ TST.Xtor loc annot rep (TST.TyApp defaultLoc NegRep refTy (fst:|rst)) CST.Refinement xt substInferred
+
+
   --
   -- Structural pattern and copattern matches:
   --
