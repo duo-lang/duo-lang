@@ -145,7 +145,12 @@ refinementTypeP Data = do
     ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, rv, ctors))
   sc
-  pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
+  applied <- optional (tyParensP `sepBy` (symbolP SymComma >> sc))
+  case applied of 
+    Nothing -> pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
+    Just [] -> pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
+    Just ((ty1,_):tyr) -> 
+      pure (TyApp (Loc startPos endPos) (TyXRefined (Loc startPos endPos) Data tn rv ctors) (ty1:|map fst tyr),endPos)
 refinementTypeP Codata = do
   startPos <- getSourcePos
   ((tn, rv, dtors), endPos) <- bracesP (do
@@ -160,7 +165,12 @@ refinementTypeP Codata = do
     dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, rv, dtors))
   sc
-  pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
+  applied <- optional (tyParensP `sepBy` (symbolP SymComma >> sc))
+  case applied of 
+    Nothing -> pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
+    Just [] -> pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
+    Just ((ty1,_):tyr) -> 
+      pure (TyApp (Loc startPos endPos) (TyXRefined (Loc startPos endPos) Codata tn rv dtors) (ty1:|map fst tyr),endPos)
 
 ---------------------------------------------------------------------------------
 -- Primitive types
