@@ -61,6 +61,7 @@ import qualified Data.Map as M
 import Utils (filePathToModuleName)
 import System.Directory (makeRelativeToCurrentDirectory)
 import Data.IORef (readIORef)
+import qualified Transformation.Transformation as Transformation
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -105,6 +106,30 @@ workspaceEditToCodeAction edit descr =
                    , _disabled = Nothing
                    , _edit = Just edit
                    , _command = Nothing
+                   , _xdata = Nothing
+                   }
+
+workspaceEditToCodeActionWithCommand :: (WorkspaceEdit |? WorkspaceEdit) -> Text -> Command |? CodeAction
+workspaceEditToCodeActionWithCommand (InR edit) descr = 
+  InR $ CodeAction { _title = descr
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Just edit
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
+
+
+workspaceEditToCodeActionWithCommand (InL _) descr =
+  InR $ CodeAction { _title = descr
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Nothing
+                   , _command = Just Command {_title="transformation_not_possible", _command="transformation-not-possible", _arguments=Nothing}
                    , _xdata = Nothing
                    }
 
@@ -172,9 +197,12 @@ instance GetCodeActions TST.DataDecl where
   -- If we are not in the correct range, then don't generate code actions.
   getCodeActions _ Range {_start = start} decl | not (lookupPos start (TST.data_loc decl)) =
     List []
-  getCodeActions id _ decl = 
-    List [ workspaceEditToCodeAction (generateDualizeDeclEdit id (TST.data_loc decl) decl) ("Dualize declaration " <> ppPrint (TST.data_name decl)) ]
-
+  getCodeActions id _ decl =
+    let 
+      dualize = [ workspaceEditToCodeAction (generateDualizeDeclEdit id (TST.data_loc decl) decl) ("Dualize declaration " <> ppPrint (TST.data_name decl)) ]
+      transformation = [workspaceEditToCodeActionWithCommand (generateTransformationDeclEdit id (TST.data_loc decl) decl) ("Transform (co)datatype" <> ppPrint (TST.data_name decl)) ]
+    in
+      List (dualize <> transformation)
 ---------------------------------------------------------------------------------
 -- Provide TypeAnnot Action
 ---------------------------------------------------------------------------------
@@ -235,6 +263,25 @@ generateDualizeDeclEdit (TextDocumentIdentifier uri) loc decl =
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing }
+
+
+---------------------------------------------------------------------------------
+-- Provide Re-/Defunctionalize Actions (Transformation)
+---------------------------------------------------------------------------------
+
+generateTransformationDeclEdit :: TextDocumentIdentifier -> Loc -> TST.DataDecl -> (WorkspaceEdit |? WorkspaceEdit)
+generateTransformationDeclEdit (TextDocumentIdentifier _) _ decl =
+  let
+    transformable = Transformation.transformable decl
+  in
+    if transformable then
+      InR $ WorkspaceEdit{ _changes = Nothing
+                         , _documentChanges = Nothing
+                         , _changeAnnotations = Nothing}
+    else
+      InL $ WorkspaceEdit{ _changes = Nothing
+                         , _documentChanges = Nothing
+                         , _changeAnnotations = Nothing}
 
 
 ---------------------------------------------------------------------------------
@@ -373,10 +420,10 @@ addCommentedAbove range uri content =
 evalHandler :: Handlers LSPMonad
 evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params} responder -> do
   let source = "lspserver.evalHandler"
-  liftIO $ debugM source "Received eval request"
   let ExecuteCommandParams{_command, _arguments} = _params
   case _command of
     "duo-inline-eval" -> do
+      liftIO $ debugM source "Received eval request"
       -- parse arguments back from JSON
       args <- evalArgsFromJSON
                 (stopHandler responder source "Arguments should not be empty")
@@ -408,5 +455,8 @@ evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params}
 
       -- signal success
       responder (Right $ J.toJSON ())
+    "transformation-not-possible" -> do
+      liftIO $ debugM source "Received transformation request"
+      sendInfo "Transformation not possible"
     _ -> responder (Left $ ResponseError InvalidRequest ("Request " <> _command <> " is invalid") Nothing)
 
