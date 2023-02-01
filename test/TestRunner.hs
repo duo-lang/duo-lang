@@ -66,13 +66,9 @@ getParsedDeclarations fp mn = do
   let fullFp = moduleNameToFullPath mn fp
   runExceptT (parseAndCheckModule fullFp mn fp)
 
-getTypecheckedDecls :: FilePath -> ModuleName -> IO (Either (NonEmpty Error) TST.Module)
-getTypecheckedDecls fp mn = do
-  decls <- getParsedDeclarations fp mn
-  case decls of
-    Right decls -> do
-      fmap snd <$> (fst <$> inferProgramIO defaultDriverState decls)
-    Left err -> return (Left err)
+getTypecheckedDecls :: CST.Module -> IO (Either (NonEmpty Error) TST.Module)
+getTypecheckedDecls cst =
+    fmap snd <$> (fst <$> inferProgramIO defaultDriverState cst)
 
 
 -- ? ---
@@ -86,10 +82,10 @@ getSymbolTable fp mn = do
 
 parseExampleList :: [(FilePath, ModuleName)] -> IO [((FilePath, ModuleName), Either (NonEmpty Error) CST.Module)]
 parseExampleList examples = do
-  result <- forM examples $ \example -> 
-    uncurry getParsedDeclarations example >>= 
+  forM examples $ \example ->
+    uncurry getParsedDeclarations example >>=
       \res -> pure (example, res)
-  pure result
+
 
 
 main :: IO ()
@@ -107,18 +103,18 @@ main = do
     parsedCounterExamples <- parseExampleList counterExamples
 
     -- examples
-    typecheckedExamples <- forM parsedExamples $ \(example, cst) -> do
+    typecheckedExamples <- forM parsedExamples $ \(example, parse) -> do
       let fullName = moduleNameToFullPath (snd example) (fst example)
       withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-          describe ("Prettyprinting and parsing again " ++ fullName) (Spec.Prettyprinter.specParse (example, cst))
-      case cst of
+          describe ("Prettyprinting and parsing again " ++ fullName) (Spec.Prettyprinter.specParse (example, parse))
+      case parse of
         Left err -> putStrLn (ppPrintString err) >> pure (example, Left err)
-        Right res -> uncurry getTypecheckedDecls example >>= \res -> pure (example, res)
-    
+        Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, res)
+
     forM_ typecheckedExamples $ \(example, tst) -> do
-      case tst of 
-        Left err -> pure (example, Left err) 
-        Right typecheckResult -> do 
+      case tst of
+        Left err -> pure (example, Left err)
+        Right typecheckResult -> do
           withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
               describe "example is locally closed" (Spec.LocallyClosed.spec (example, Right typecheckResult)) -- <- here not typechecking examples too?
               describe "Prettyprinting and parsing + typechecking again" (Spec.Prettyprinter.specType (example, Right typecheckResult))
@@ -126,16 +122,15 @@ main = do
           pure (example, Right typecheckResult)
 
     -- counterexamples 
-    forM_ parsedCounterExamples $ \(example, cst) -> do
-      let fullName = moduleNameToFullPath (snd example) (fst example)
-      case cst of
+    forM_ parsedCounterExamples $ \(example, parse) -> do
+      case parse of
         Left err -> pure (example, Left err)
-        Right parseResult -> do 
-          typecheckedDecl <- uncurry getTypecheckedDecls example >>= \res -> pure (example, res)
+        Right cst -> do
+          typecheckedDecl <- getTypecheckedDecls cst >>= \res -> pure (example, res)
           let tst = snd typecheckedDecl
           case tst of
             Left err -> pure (example, Left err)
-            Right typecheckResult -> do 
+            Right typecheckResult -> do
               withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-                  describe "TypeInference with check" (Spec.TypeInferenceExamples.spec (example, cst) tst)
+                  describe "TypeInference with check" (Spec.TypeInferenceExamples.spec (example, parse) tst)
               pure (example, tst)
