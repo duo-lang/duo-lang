@@ -60,6 +60,7 @@ import Loc ( Loc, defaultLoc )
 import Utils ( indexMaybe )
 import Pretty.Pretty
 
+
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
 --

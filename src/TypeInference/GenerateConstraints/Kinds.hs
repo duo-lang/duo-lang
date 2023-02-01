@@ -555,6 +555,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       let argKnds' = case argKnds of (fst:rst) -> fst:|rst; _ -> error "cannnot happen"
       mapM_ (\(varty,mk) -> addConstraint $ KindEq KindConstraint (getKind varty) (monoToAnyKind mk)) (NE.zip vartys' argKnds')
       return (TST.TyApp loc pol (TST.TyNominal loc pol polyknd tyn) vartys')
+
   annotateKind (RST.TyApp loc pol tyr@RST.TyRecVar{} vartys) = do
     vartys' <- mapM annotateKind vartys
     let varknds = NE.map TST.getKind vartys'
@@ -574,24 +575,75 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
           mapM_ (\(mk,knd) -> addConstraint $ KindEq KindConstraint knd (monoToAnyKind mk)) zipped
       checkVarKnds _ (MkPknd (KindVar _)) _ = return ()
       checkVarKnds loc primk _ = throwOtherError loc ["Recursive Variable can't have primitive kind " <> ppPrint primk]
+
   annotateKind (RST.TyApp loc pol (RST.TyDataRefined loc' pol' pknd tyn mrv xtors) args) = do
     maybeInsertRV mrv pknd 
     args' <- mapM annotateKind args
-    xtors' <- mapM annotateKind xtors
-    return (TST.TyApp loc pol (TST.TyDataRefined loc' pol' pknd tyn mrv xtors') args')
+    let kndArgs = case kindArgs pknd of [] -> error "can't happen"; (fst:rst) -> fst :| rst
+    if length kndArgs /= length args' then throwOtherError loc ["Number of type arguments does not match with declaration"] else do
+      mapM_ (addArgConstrs loc) (NE.zip args' kndArgs)
+      xtors' <- mapM annotateKind xtors
+      return (TST.TyApp loc pol (TST.TyDataRefined loc' pol' pknd tyn mrv xtors') args')
     where 
-      maybeInsertRV :: Maybe RecTVar -> PolyKind -> GenM()
+      maybeInsertRV :: Maybe RecTVar -> PolyKind -> GenM ()
       maybeInsertRV Nothing _ = return () 
       maybeInsertRV (Just rv) pknd = insertRecVar rv pknd
+
+      addArgConstrs :: Loc -> (TST.VariantType pol,(Variance, SkolemTVar, MonoKind)) -> GenM () 
+      addArgConstrs loc (TST.CovariantType _,(Contravariant,_,_)) = throwOtherError loc ["Covariant Type used where contravariant was expected"]
+      addArgConstrs loc (TST.ContravariantType _,(Covariant,_,_)) =  throwOtherError loc ["Contravariant Type used where convariant was expected"]
+      addArgConstrs _ (TST.CovariantType ty,(Covariant,sk,CBox eo)) = do 
+        addConstraint $ KindEq KindConstraint (TST.getKind ty) (MkPknd $ MkPolyKind [] eo)
+        usedSkolems <- gets usedSkolemVars
+        case M.lookup sk usedSkolems of 
+          Nothing -> do 
+            let newM = M.insert sk (MkPolyKind [] eo) usedSkolems
+            modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
+          Just pk -> addConstraint $ KindEq KindConstraint (MkPknd pk) (MkPknd $ MkPolyKind [] eo)
+      addArgConstrs _ (TST.ContravariantType ty,(Contravariant,sk,CBox eo)) = do
+        addConstraint $ KindEq KindConstraint (TST.getKind ty) (MkPknd $ MkPolyKind [] eo)
+        usedSkolems <- gets usedSkolemVars
+        case M.lookup sk usedSkolems of 
+          Nothing -> do 
+            let newM = M.insert sk (MkPolyKind [] eo) usedSkolems
+            modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
+          Just pk -> addConstraint $ KindEq KindConstraint (MkPknd pk) (MkPknd $ MkPolyKind [] eo)
+      addArgConstrs loc _ = throwOtherError loc ["Skolem Variables cannot have primitive kinds"]
+
+
   annotateKind (RST.TyApp loc pol (RST.TyCodataRefined loc' pol' pknd tyn mrv xtors) args) = do
     maybeInsertRV mrv pknd 
     args' <- mapM annotateKind args
-    xtors' <- mapM annotateKind xtors
-    return (TST.TyApp loc pol (TST.TyCodataRefined loc' pol' pknd tyn mrv xtors') args')
+    let kndArgs = case kindArgs pknd of [] -> error "can't happen"; (fst:rst) -> fst :| rst
+    if length kndArgs /= length args' then throwOtherError loc ["Number of type arguments does not match with declaration"] else do
+      mapM_ (addArgConstrs loc) (NE.zip args' kndArgs)
+      xtors' <- mapM annotateKind xtors
+      return (TST.TyApp loc pol (TST.TyCodataRefined loc' pol' pknd tyn mrv xtors') args')
     where 
       maybeInsertRV :: Maybe RecTVar -> PolyKind -> GenM()
       maybeInsertRV Nothing _ = return () 
       maybeInsertRV (Just rv) pknd = insertRecVar rv pknd
+
+      addArgConstrs :: Loc -> (TST.VariantType pol,(Variance, SkolemTVar, MonoKind)) -> GenM () 
+      addArgConstrs loc (TST.CovariantType _,(Contravariant,_,_)) = throwOtherError loc ["Covariant Type used where contravariant was expected"]
+      addArgConstrs loc (TST.ContravariantType _,(Covariant,_,_)) =  throwOtherError loc ["Contravariant Type used where convariant was expected"]
+      addArgConstrs _ (TST.CovariantType ty,(Covariant,sk,CBox eo)) = do 
+        addConstraint $ KindEq KindConstraint (TST.getKind ty) (MkPknd $ MkPolyKind [] eo)
+        usedSkolems <- gets usedSkolemVars
+        case M.lookup sk usedSkolems of 
+          Nothing -> do 
+            let newM = M.insert sk (MkPolyKind [] eo) usedSkolems
+            modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
+          Just pk -> addConstraint $ KindEq KindConstraint (MkPknd pk) (MkPknd $ MkPolyKind [] eo)
+      addArgConstrs _ (TST.ContravariantType ty,(Contravariant,sk,CBox eo)) = do
+        addConstraint $ KindEq KindConstraint (TST.getKind ty) (MkPknd $ MkPolyKind [] eo)
+        usedSkolems <- gets usedSkolemVars
+        case M.lookup sk usedSkolems of 
+          Nothing -> do 
+            let newM = M.insert sk (MkPolyKind [] eo) usedSkolems
+            modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
+          Just pk -> addConstraint $ KindEq KindConstraint (MkPknd pk) (MkPknd $ MkPolyKind [] eo)
+      addArgConstrs loc _ = throwOtherError loc ["Skolem Variables cannot have primitive kinds"]
 
   annotateKind (RST.TyApp loc _ ty _ ) = throwOtherError loc ["Types can't be applied to type ", ppPrint ty]
 
