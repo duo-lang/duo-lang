@@ -27,6 +27,8 @@ import Utils (listRecursiveDuoFiles, filePathToModuleName, moduleNameToFullPath)
 import GHC.IO.Encoding (setLocaleEncoding)
 import System.IO (utf8)
 
+type Description = String
+
 data Options where
   OptEmpty  :: Options
   OptFilter :: [FilePath] -> Options
@@ -66,6 +68,12 @@ getParsedDeclarations fp mn = do
   let fullFp = moduleNameToFullPath mn fp
   runExceptT (parseAndCheckModule fullFp mn fp)
 
+parseExampleList :: [(FilePath, ModuleName)] -> IO [((FilePath, ModuleName), Either (NonEmpty Error) CST.Module)]
+parseExampleList examples = do
+  forM examples $ \example ->
+    uncurry getParsedDeclarations example >>=
+      \res -> pure (example, res)
+
 getTypecheckedDecls :: CST.Module -> IO (Either (NonEmpty Error) TST.Module)
 getTypecheckedDecls cst =
     fmap snd <$> (fst <$> inferProgramIO defaultDriverState cst)
@@ -80,11 +88,21 @@ getSymbolTable fp mn = do
     Left err -> return (Left err)
 --------
 
-parseExampleList :: [(FilePath, ModuleName)] -> IO [((FilePath, ModuleName), Either (NonEmpty Error) CST.Module)]
-parseExampleList examples = do
-  forM examples $ \example ->
-    uncurry getParsedDeclarations example >>=
-      \res -> pure (example, res)
+runSpecTest :: Description
+            -> [((FilePath, ModuleName), Either (NonEmpty Error) TST.Module)]
+            -> (((FilePath, ModuleName), Either (NonEmpty Error) TST.Module) -> Spec)
+            -> IO ()
+runSpecTest description examples spec = do
+  withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
+      describe description $ do 
+        forM_ examples $ \(example, tst) -> do
+          case tst of
+            Left err -> pure (example, Left err)
+            Right typecheckResult -> do
+              spec (example, Right typecheckResult) -- <- here not typechecking examples too?
+              pure (example, Right typecheckResult)
+
+
 
 
 
@@ -111,15 +129,12 @@ main = do
         Left err -> putStrLn (ppPrintString err) >> pure (example, Left err)
         Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, res)
 
-    forM_ typecheckedExamples $ \(example, tst) -> do
-      case tst of
-        Left err -> pure (example, Left err)
-        Right typecheckResult -> do
-          withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-              describe "example is locally closed" (Spec.LocallyClosed.spec (example, Right typecheckResult)) -- <- here not typechecking examples too?
-              describe "Prettyprinting and parsing + typechecking again" (Spec.Prettyprinter.specType (example, Right typecheckResult))
-              describe "Focusing works" (Spec.Focusing.spec (example, Right typecheckResult))
-          pure (example, Right typecheckResult)
+    
+
+    
+    runSpecTest "examples are locally closed" typecheckedExamples Spec.LocallyClosed.spec  -- <- here not typechecking examples too?
+    runSpecTest "Examples parse and typecheck after prettyprinting" typecheckedExamples Spec.Prettyprinter.specType
+    runSpecTest "examples can be focused" typecheckedExamples Spec.Focusing.spec
 
     -- counterexamples 
     forM_ parsedCounterExamples $ \(example, parse) -> do
