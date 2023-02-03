@@ -89,18 +89,18 @@ getSymbolTable fp mn = do
 --------
 
 runSpecTest :: Description
-            -> [((FilePath, ModuleName), Either (NonEmpty Error) TST.Module)]
-            -> (((FilePath, ModuleName), Either (NonEmpty Error) TST.Module) -> Spec)
+            -> [(a0, Either a1 b0)]
+            -> ((a0, Either a1 b0) -> Spec)
             -> IO ()
 runSpecTest description examples spec = do
   withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
       describe description $ do 
-        forM_ examples $ \(example, tst) -> do
-          case tst of
+        forM_ examples $ \(example, syntaxtree) -> do
+          case syntaxtree of
             Left err -> pure (example, Left err)
-            Right typecheckResult -> do
-              spec (example, Right typecheckResult) -- <- here not typechecking examples too?
-              pure (example, Right typecheckResult)
+            Right res -> do
+              spec (example, Right res) -- <- here not typechecking examples too?
+              pure (example, Right res)
 
 
 
@@ -120,20 +120,21 @@ main = do
     parsedExamples <- parseExampleList examples
     parsedCounterExamples <- parseExampleList counterExamples
 
-    -- examples
+
+
+    -- Tests before typechecking:
+    runSpecTest "Prettyprinting and parsing again" parsedExamples Spec.Prettyprinter.specParse
+    
+    -- Typechecking: 
     typecheckedExamples <- forM parsedExamples $ \(example, parse) -> do
       let fullName = moduleNameToFullPath (snd example) (fst example)
-      withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-          describe ("Prettyprinting and parsing again " ++ fullName) (Spec.Prettyprinter.specParse (example, parse))
       case parse of
         Left err -> putStrLn (ppPrintString err) >> pure (example, Left err)
         Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, res)
 
-    
-
-    
-    runSpecTest "examples are locally closed" typecheckedExamples Spec.LocallyClosed.spec  -- <- here not typechecking examples too?
+    -- Tests after typechecking
     runSpecTest "Examples parse and typecheck after prettyprinting" typecheckedExamples Spec.Prettyprinter.specType
+    runSpecTest "examples are locally closed" typecheckedExamples Spec.LocallyClosed.spec  -- <- here not typechecking examples too?
     runSpecTest "examples can be focused" typecheckedExamples Spec.Focusing.spec
 
     -- counterexamples 
