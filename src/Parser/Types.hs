@@ -13,6 +13,7 @@ module Parser.Types
   , combineXtors
   ) where
 
+import Debug.Trace
 
 import Text.Megaparsec hiding (State)
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -136,6 +137,7 @@ refinementTypeP Data = do
     sc
     ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, rv, ctors))
+--  trace ("parsed refinement " <> show tn <> show endPos) $ pure ()
   pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
  
 refinementTypeP Codata = do
@@ -151,6 +153,7 @@ refinementTypeP Codata = do
     sc
     dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, rv, dtors))
+--  trace ("parsed refinement " <> show tn) $ pure ()
   pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
 
 ---------------------------------------------------------------------------------
@@ -246,22 +249,31 @@ typAtomP = do
     <|> tyStringP
     <|> typeVariableP
   args <- optional tyArgsP
+--  trace ("parsed args " <> show args) $ pure ()
   endPos <- getSourcePos
-  pure (fstTy, endPos)
+--  trace ("endPos " <> show endPos) $ pure ()
+  case args of
+    Nothing -> pure (fstTy, endPos)
+    Just (args',endPos) -> pure (TyApp (Loc startPos endPos) fstTy args',endPos)
 
 tyArgsP :: Parser (NonEmpty Typ, SourcePos)
 tyArgsP = do 
   symbolP SymAtSign
+  sc
   symbolP SymParenLeft 
-  (ty1,_) <- typP
-  args <- typAtomP `sepBy` (sc >> symbolP SymComma >> sc)
+  sc
+  args <- typP `sepBy1` (symbolP SymComma >> sc)
+  sc
   symbolP SymParenRight
   sc
   endPos <- getSourcePos
-  pure (ty1:|map fst args,endPos)
+  case args of 
+    [] -> error ""
+    ((ty1,_):argRst) -> pure (ty1:|map fst argRst,endPos)
 
 tyOpChainP :: Parser (NonEmpty (Loc, BinOp, Typ), SourcePos)
 tyOpChainP = do
+  trace "parsing binopchain" $ pure ()
   let f = do
           startPos <- getSourcePos
           (op, endPos) <- tyBinOpP
@@ -276,8 +288,11 @@ tyOpChainP = do
 -- | Parse a type
 typP :: Parser (Typ, SourcePos)
 typP = do
+  trace "parsing atom " $  pure ()
   (fst, endPos) <- typAtomP
+  trace ("parsed atom " <> show fst) $ pure ()
   maybeChain <- optional tyOpChainP
+--  trace ("parsed chain " <> show maybeChain) $ pure ()
   case maybeChain of
     Nothing -> pure (fst, endPos)
     Just (chain, endPos) -> pure (TyBinOpChain fst chain, endPos)

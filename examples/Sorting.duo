@@ -15,7 +15,7 @@ data Ordering {
     GT
 };
 
-def rec prd splitAt : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
+def rec prd splitAt : forall a. Nat -> List@(a) -> Tensor@(List@(a), List@(a)) :=
     \n xs => case n of {
         Z => MkTensor(Nil, xs),
         S(n) => case xs of {
@@ -26,7 +26,7 @@ def rec prd splitAt : forall a. Nat -> List(a) -> Tensor(List(a), List(a)) :=
         }
     };
 
-def rec prd splitHalvesHelper : forall a. List(a) -> List(a) -> Notp(Tensor(List(a), List(a))) -> Void :=
+def rec prd splitHalvesHelper : forall a. List@(a) -> List@(a) -> Notp@(Tensor@(List@(a), List@(a))) -> Void :=
     \xs ys k => case k of {
         MkNotp(k) => case xs of {
             Nil => mu j. MkTensor(Nil, ys) >> k,
@@ -45,10 +45,10 @@ def rec prd splitHalvesHelper : forall a. List(a) -> List(a) -> Notp(Tensor(List
         }
     };
 
-def prd splitHalves : forall a. List(a) -> Tensor(List(a), List(a)) :=
+def prd splitHalves : forall a. List@(a) -> Tensor@(List@(a), List@(a)) :=
     \xs => mu k. splitHalvesHelper xs xs MkNotp(k) >> impossibleCnsV;
 
-def rec prd merge : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List(a) :=
+def rec prd merge : forall a. (a -> a -> Ordering) -> List@(a) -> List@(a) -> List@(a) :=
     \f left right => case left of {
         Nil => right,
         Cons(x, xs) => case right of {
@@ -61,7 +61,7 @@ def rec prd merge : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List
         }
     };
 
-def rec prd sort : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
+def rec prd sort : forall a. (a -> a -> Ordering) -> List@(a) -> List@(a) :=
     \f xs => case xs of {
         Nil => Nil,
         Cons(y, ys) => case ys of {

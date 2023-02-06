@@ -11,4 +11,4 @@ def rec prd idLRec := \l => case l of {
     Cons(x,xs) => Cons(x,idLRec xs)
 };
 
-def prd fail : List(Bool) := Cons(True, idLRec Cons(MkUnit,Nil));
+def prd fail : List@(Bool) := Cons(True, idLRec Cons(MkUnit,Nil));

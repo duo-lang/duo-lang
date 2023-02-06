@@ -10,18 +10,18 @@ import Data.Tensor;
 -- | The type of infinite Streams
 codata Stream : (+a : CBV) -> CBV {
     Head(return a),
-    Tail(return Stream(a))
+    Tail(return Stream@(a))
 };
 
 -- | Map a function over a stream.
-def rec prd streamMap : forall a b. (a -> b) -> Stream(a) -> Stream(b) :=
+def rec prd streamMap : forall a b. (a -> b) -> Stream@(a) -> Stream@(b) :=
   \f s => cocase {
     Head(*) => f (s.Head(*)),
     Tail(*) => streamMap f (s.Tail(*))
 };
 
 -- | Filter elements of a stream.
-def rec prd streamFilter : forall a. (a -> Bool) -> Stream(a) -> Stream(a) :=
+def rec prd streamFilter : forall a. (a -> Bool) -> Stream@(a) -> Stream@(a) :=
   \p s => cocase {
     Head(*) =>  case p (s.Head(*)) of {
       True => s.Head(*),
@@ -31,40 +31,40 @@ def rec prd streamFilter : forall a. (a -> Bool) -> Stream(a) -> Stream(a) :=
   };
 
 -- | Interleave two streams.
-def rec prd interleave : forall a. Stream(a) -> Stream(a) -> Stream(a) :=
+def rec prd interleave : forall a. Stream@(a) -> Stream@(a) -> Stream@(a) :=
   \s t => cocase {
     Head(*) => s.Head(*),
     Tail(*) => interleave t (s.Tail(*))
   };
 
 -- | Zip two streams to a stream of pairs.
-def rec prd zip : forall a b. Stream(a) -> Stream(b) -> Stream(Tensor(a, b)) :=
+def rec prd zip : forall a b. Stream@(a) -> Stream@(b) -> Stream@(Tensor@(a, b)) :=
   \s t => cocase {
     Head(*) => MkTensor(s.Head(*), t.Head(*)),
     Tail(*) => zip (s.Tail(*)) (t.Tail(*))
   };
 
 -- | Take n elements of a stream.
-def rec prd take : forall a. Nat -> Stream(a) -> List(a) :=
+def rec prd take : forall a. Nat -> Stream@(a) -> List@(a) :=
   \n s => case n of {
     Z => Nil,
     S(n) => Cons(s.Head(*), take n (s.Tail(*)))
   };
 
 -- | Return a constant stream for the given element.
-def rec prd constStream : forall a. a -> Stream(a) :=
+def rec prd constStream : forall a. a -> Stream@(a) :=
   \x => cocase {
     Head(*) => x,
     Tail(*) => constStream x
 };
 
 -- | Return a stream of repeated applications of f to x.
-def rec prd iterate : forall a. (a -> a) -> a -> Stream(a) :=
+def rec prd iterate : forall a. (a -> a) -> a -> Stream@(a) :=
   \f x => cocase {
     Head(*) => x,
     Tail(*) => iterate f (f x)
   };
 
 -- | Return a stream starting with natural number n.
-def prd from : Nat -> Stream(Nat) :=
+def prd from : Nat -> Stream@(Nat) :=
   iterate (\n => S(n));
