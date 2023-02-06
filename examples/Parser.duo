@@ -11,7 +11,7 @@ import Data.Unit;
 
 
 data ParseResult : CBV {
-    PR(List(Nat),return Unit)
+    PR(List@(Nat),return Unit)
 };
 
 
@@ -20,7 +20,7 @@ data ParseResult : CBV {
 -- the ParseResult contains the remaining input and, crucially, 
 -- another "backtracking" continuation
 codata Parser :  CBV {
-    Parse(List(Nat),return ParseResult,return Unit)
+    Parse(List@(Nat),return ParseResult,return Unit)
 }; 
 
 
@@ -59,8 +59,8 @@ def rec prd many1 : Parser -> Parser := \p => cocase {
 def prd many : Parser -> Parser := \p => alt success (many1 p);
 
 
-def prd l1 : List(Nat) := Cons(1,Cons(2,Cons(3,Nil)));
-def prd l2 : List(Nat) := Cons(3,Cons(2,Cons(1,Nil)));
+def prd l1 : List@(Nat) := Cons(1,Cons(2,Cons(3,Nil)));
+def prd l2 : List@(Nat) := Cons(3,Cons(2,Cons(1,Nil)));
 
 def prd parseOne : (Parser:CBV) := lit 1;
  
@@ -80,7 +80,7 @@ def cmd test6 := parseTwoOrOne >> Parse(l2,print,print) ;
 
 def prd parseOnes : (Parser:CBV) := seq (alt (seq (lit 1) (lit 1)) (lit 1)) (lit 1);
 
-def prd l3 : List(Nat) := Cons(1,Cons(1,Cons(1,Nil)));
+def prd l3 : List@(Nat) := Cons(1,Cons(1,Cons(1,Nil)));
 
 def cmd test7 := parseOnes >> Parse(l3,print,print) ;
 
@@ -90,12 +90,12 @@ def prd parseOneTwoFour : Parser := seq (seq (lit 1) (lit 2)) (lit 4);
 -- ( 123 | 12 | 35)^* 5 6
 def prd parseComplicated : (Parser:CBV) := seq (seq (many (alt (alt parseOneTwoThree parseOneTwo) (seq (lit 3) (lit 5)))) (lit 5)) (lit 6);
 
-def prd l4 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Nil))));
-def prd l5 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Cons(5,Nil)))));
-def prd l6 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(6,Cons(5,Nil)))));
-def prd l7 : List(Nat) := Cons(1,Cons(2,Cons(5,Nil)));
-def prd l8 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Nil)))));
-def prd l9 : List(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Cons(6,Nil))))));
+def prd l4 : List@(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Nil))));
+def prd l5 : List@(Nat) := Cons(1,Cons(2,Cons(3,Cons(5,Cons(5,Nil)))));
+def prd l6 : List@(Nat) := Cons(1,Cons(2,Cons(3,Cons(6,Cons(5,Nil)))));
+def prd l7 : List@(Nat) := Cons(1,Cons(2,Cons(5,Nil)));
+def prd l8 : List@(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Nil)))));
+def prd l9 : List@(Nat) := Cons(1,Cons(2,Cons(3,Cons(5, Cons(5,Cons(6,Nil))))));
 
 def cmd test8  := parseComplicated >> Parse(l4,print,print) ;
 def cmd test9  := parseComplicated >> Parse(l5,print,print) ;
@@ -107,7 +107,7 @@ def cmd test13 := parseComplicated >> Parse(l9,print,print) ;
 -- instead of modeling the parser as a codata producer, we could
 -- also model it as a data consumer. Is this better in any way?
 data Parser2 :  CBV {
-    Parse2(List(Nat),return ParseResult,return Unit)
+    Parse2(List@(Nat),return ParseResult,return Unit)
 
 }; 
 

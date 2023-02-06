@@ -11,15 +11,15 @@ data Plus : (+a : CBV, +b : CBV) -> CBV {
 type operator ⊕ leftassoc at 3 := Plus;
 
 -- | Curried version of the Left constructor.
-def prd left : forall a. a -> Plus(a,Bot) :=
+def prd left : forall a. a -> Plus@(a , Bot) :=
   \x => Left(x);
 
 -- | Curried version of the Right constructor.
-def prd right : forall a. a -> Plus(Bot,a) :=
+def prd right : forall a. a -> Plus@(Bot,a) :=
   \x => Right(x);
 
 -- Deconstruct Plus by providing two functions.
-def prd plusElim : forall a b c. (a -> c) -> (b -> c) -> Plus(a,b) -> c :=
+def prd plusElim : forall a b c. (a -> c) -> (b -> c) -> Plus@(a,b) -> c :=
   \f g e => case e of { Left(x) => f x
                       , Right(y) => g y
                       };

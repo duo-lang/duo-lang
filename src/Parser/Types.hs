@@ -13,6 +13,7 @@ module Parser.Types
   , combineXtors
   ) where
 
+
 import Text.Megaparsec hiding (State)
 import Data.List.NonEmpty (NonEmpty((:|)))
 
@@ -68,24 +69,15 @@ combineXtors = fmap combineXtor
 -- Nominal and Structural Types
 ---------------------------------------------------------------------------------
 
-nominalTypeArgsP :: SourcePos -> Parser ([Typ], SourcePos)
-nominalTypeArgsP endPos =
-  parensP ((fst <$> typP) `sepBy` (symbolP SymComma >> sc)) <|> pure ([], endPos)
-
-
 -- | Parse a nominal type.
 -- E.g. "Nat", or "List(Nat)"
 nominalTypeP :: Parser (Typ, SourcePos)
 nominalTypeP = do
   startPos <- getSourcePos
   (name, endPos) <- typeNameP
-  (args, endPos') <- nominalTypeArgsP endPos
   sc
-  let loc = Loc startPos endPos'
-  case args of 
-    [] -> pure (TyNominal loc name, endPos')
-    (fst:rst) -> pure (TyApp loc (TyNominal loc name) (fst:|rst), endPos')
-
+  pure (TyNominal (Loc startPos endPos) name, endPos)
+ 
 -- | Parse a data or codata type. E.g.:
 -- - "< ctor1 | ctor2 | ctor3 >"
 -- - "{ dtor1 , dtor2 , dtor3 }"
@@ -144,13 +136,8 @@ refinementTypeP Data = do
     sc
     ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, rv, ctors))
-  sc
-  applied <- optional (tyParensP `sepBy` (symbolP SymComma >> sc))
-  case applied of 
-    Nothing -> pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
-    Just [] -> pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
-    Just ((ty1,_):tyr) -> 
-      pure (TyApp (Loc startPos endPos) (TyXRefined (Loc startPos endPos) Data tn rv ctors) (ty1:|map fst tyr),endPos)
+  pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
+ 
 refinementTypeP Codata = do
   startPos <- getSourcePos
   ((tn, rv, dtors), endPos) <- bracesP (do
@@ -164,13 +151,7 @@ refinementTypeP Codata = do
     sc
     dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, rv, dtors))
-  sc
-  applied <- optional (tyParensP `sepBy` (symbolP SymComma >> sc))
-  case applied of 
-    Nothing -> pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
-    Just [] -> pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
-    Just ((ty1,_):tyr) -> 
-      pure (TyApp (Loc startPos endPos) (TyXRefined (Loc startPos endPos) Codata tn rv dtors) (ty1:|map fst tyr),endPos)
+  pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
 
 ---------------------------------------------------------------------------------
 -- Primitive types
@@ -247,21 +228,37 @@ tyBotP = do
 
 -- | Parse atomic types (i,e, without tyop chains)
 typAtomP :: Parser (Typ, SourcePos)
-typAtomP = tyParensP
-  <|> nominalTypeP
-  <|> try (refinementTypeP Data)
-  <|> try (refinementTypeP Codata)
-  <|> xdataTypeP Data
-  <|> xdataTypeP Codata
-  <|> recTypeP
-  <|> tyTopP
-  <|> tyBotP
-  <|> tyI64P
-  <|> tyF64P
-  <|> tyCharP
-  <|> tyStringP
-  <|> typeVariableP
+typAtomP = do 
+  startPos <- getSourcePos
+  (fstTy, _) <- 
+    tyParensP  
+    <|> nominalTypeP
+    <|> try (refinementTypeP Data)
+    <|> try (refinementTypeP Codata)
+    <|> xdataTypeP Data
+    <|> xdataTypeP Codata
+    <|> recTypeP
+    <|> tyTopP
+    <|> tyBotP
+    <|> tyI64P
+    <|> tyF64P
+    <|> tyCharP
+    <|> tyStringP
+    <|> typeVariableP
+  args <- optional tyArgsP
+  endPos <- getSourcePos
+  pure (fstTy, endPos)
 
+tyArgsP :: Parser (NonEmpty Typ, SourcePos)
+tyArgsP = do 
+  symbolP SymAtSign
+  symbolP SymParenLeft 
+  (ty1,_) <- typP
+  args <- typAtomP `sepBy` (sc >> symbolP SymComma >> sc)
+  symbolP SymParenRight
+  sc
+  endPos <- getSourcePos
+  pure (ty1:|map fst args,endPos)
 
 tyOpChainP :: Parser (NonEmpty (Loc, BinOp, Typ), SourcePos)
 tyOpChainP = do

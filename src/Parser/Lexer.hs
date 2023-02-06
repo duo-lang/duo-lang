@@ -399,6 +399,7 @@ data Symbol where
   SymHash             :: Symbol
   SymBacktick         :: Symbol
   SymForallUnicode    :: Symbol
+  SymAtSign           :: Symbol
   -- Lattice Types
   SymTopUnicode       :: Symbol
   SymBotUnicode       :: Symbol
@@ -441,6 +442,7 @@ instance Show Symbol where
   show SymHash             = "#"
   show SymBacktick         = "`"
   show SymForallUnicode    = "∀"
+  show SymAtSign           = "@"
   -- Lattice types
   show SymTopUnicode       = "⊤"
   show SymBotUnicode       = "⊥"

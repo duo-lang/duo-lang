@@ -65,6 +65,9 @@ parSym = annKeyword "⅋"
 returnKw :: Doc Annotation
 returnKw = annKeyword "return"
 
+atSym :: Doc Annotation
+atSym = prettyAnn ("@" :: String)
+
 ---------------------------------------------------------------------------------
 -- Names and Operators
 ---------------------------------------------------------------------------------
@@ -143,7 +146,7 @@ instance PrettyAnn CST.Typ where
   prettyAnn (CST.TyNominal _ tn) =
     prettyAnn tn 
   prettyAnn (CST.TyApp _ ty args) = 
-    prettyAnn ty <> parens' commaSym (NE.toList $ prettyAnn <$> args)
+    prettyAnn ty <> atSym <> parens' commaSym (NE.toList $ prettyAnn <$> args)
   -- Type operators
   prettyAnn (CST.TyBinOp _ t1 op t2) =
     parens $ prettyAnn t1 <+> prettyAnn op <+> prettyAnn t2
