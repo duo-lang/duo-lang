@@ -6,4 +6,4 @@ refinement data Bool : CBV {
     False
 };
 
-def prd x : < Bool | False, True > := True;
+def prd x : (< Bool | False, True >) := True;

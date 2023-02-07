@@ -3,4 +3,4 @@ module CE_053;
 import ListRefinement;
 
 --should not typecheck because List has not been fully applied
-def prd x: <List|Nil> := Nil;
+def prd x: (<List|Nil>) := Nil;
