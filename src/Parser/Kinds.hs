@@ -41,7 +41,7 @@ tvarAnnotP = annotP <|> unAnnotP
       sc
       symbolP SymColon 
       sc
-      knd <- monoKindP 
+      knd <- polyKindP 
       symbolP SymParenRight
       pure ((var,Just knd),pos)
     unAnnotP = do

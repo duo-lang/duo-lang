@@ -14,7 +14,7 @@ import Data.Void
 import Syntax.CST.Names ( RnTypeName, XtorName )
 import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..))
 import Syntax.RST.Types ( Polarity, PolarityRep(..))
-import Syntax.CST.Kinds ( Variance, MonoKind(..), PolyKind(..))
+import Syntax.CST.Kinds ( Variance, PolyKind(..),AnyKind(..))
 
 --------------------------------------------------------------------------------
 -- # Type Automata
@@ -174,16 +174,13 @@ data NodeLabel =
     , pl_prim :: PrimitiveType
     } deriving (Eq,Show,Ord)
 
-emptyNodeLabel :: Polarity -> MonoKind -> NodeLabel
-emptyNodeLabel pol (CBox eo) = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty (MkPolyKind [] eo)
-emptyNodeLabel pol I64Rep = MkPrimitiveNodeLabel pol I64
-emptyNodeLabel pol F64Rep = MkPrimitiveNodeLabel pol F64
-emptyNodeLabel pol StringRep = MkPrimitiveNodeLabel pol PString
-emptyNodeLabel pol CharRep = MkPrimitiveNodeLabel pol PChar
-emptyNodeLabel _ (KindVar _) = error "Tried to create empty node label with KindVar Kind"
-
-emptyNodeLabelPk :: Polarity -> PolyKind -> NodeLabel
-emptyNodeLabelPk pol = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty
+emptyNodeLabel :: Polarity -> AnyKind -> NodeLabel
+emptyNodeLabel _ (MkPknd (KindVar _)) = error "at this point no KindVars should be in the program"
+emptyNodeLabel pol (MkPknd pk)  = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty pk
+emptyNodeLabel pol MkI64        = MkPrimitiveNodeLabel pol I64
+emptyNodeLabel pol MkF64        = MkPrimitiveNodeLabel pol F64
+emptyNodeLabel pol MkString     = MkPrimitiveNodeLabel pol PString
+emptyNodeLabel pol MkChar       = MkPrimitiveNodeLabel pol PChar
 
 
 singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> PolyKind -> NodeLabel
@@ -196,12 +193,14 @@ getPolarityNL :: NodeLabel -> Polarity
 getPolarityNL (MkNodeLabel pol _ _ _ _ _ _) = pol
 getPolarityNL (MkPrimitiveNodeLabel pol _) = pol
 
-getKindNL :: NodeLabel -> MonoKind 
-getKindNL (MkNodeLabel _ _ _ _ _ _ mk) = CBox $ returnKind mk
-getKindNL (MkPrimitiveNodeLabel _ I64) = I64Rep
-getKindNL (MkPrimitiveNodeLabel _ F64) = F64Rep
-getKindNL (MkPrimitiveNodeLabel _ PChar) = CharRep
-getKindNL (MkPrimitiveNodeLabel _ PString) = StringRep
+getKindNL :: NodeLabel -> PolyKind 
+getKindNL (MkNodeLabel _ _ _ _ _ _ (KindVar _)) = error "at this point no KindVars should be in the program"
+getKindNL (MkNodeLabel _ _ _ _ _ _ pk) = pk
+getKindNL (MkPrimitiveNodeLabel _ _) = error "can't get polykind of primitive type"
+--getKindNL (MkPrimitiveNodeLabel _ I64) = I64Rep
+--getKindNL (MkPrimitiveNodeLabel _ F64) = F64Rep
+--getKindNL (MkPrimitiveNodeLabel _ PChar) = CharRep
+--getKindNL (MkPrimitiveNodeLabel _ PString) = StringRep
       
 --------------------------------------------------------------------------------
 -- Edge labels for type automata
