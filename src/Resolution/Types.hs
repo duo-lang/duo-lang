@@ -25,8 +25,6 @@ import Loc (Loc(..), defaultLoc)
 import Control.Monad.Reader (asks, MonadReader (local))
 
 
-import Debug.Trace
-
 ---------------------------------------------------------------------------------
 -- Lowering & Polarization (CST -> RST)
 ---------------------------------------------------------------------------------

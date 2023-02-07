@@ -8,7 +8,6 @@ module TypeInference.SolveConstraints
   ) where
 
 
-import Debug.Trace 
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -144,7 +143,6 @@ solve (cs:css) = do
         newCss <- addUpperBound uv ub
         solve (newCss ++ css)
       (SubType info lb (TyUniVar _ NegRep _ uv)) -> do
-        trace (show info) $ pure ()
         addToCache cs (UVarR uv lb)
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)
@@ -329,17 +327,9 @@ subConstraints (SubType _ ty1 (TyInter _ _ ty2 ty3)) = do
 --     ty1 <: rec a.ty2          ~>     ty1 <: ty2 [rec a.ty2 / a]
 --
 subConstraints (SubType info ty@(TyRec _ _ recTVar _) ty') = do
---  trace (show ty') $ pure ()
---  trace "unfold " $ pure () 
---  trace (show (unfoldRecType ty)) $ pure ()
---  trace (show info) $ pure ()
   let c = SubType RecTypeSubConstraint (unfoldRecType ty) ty'
   return (UnfoldL recTVar (SubVar (void c)), [c])
 subConstraints (SubType info ty' ty@(TyRec _ _ recTVar _)) = do
---  trace (show ty') $ pure ()
---  trace "unfolded " $ pure () 
---  trace (show (unfoldRecType ty)) $ pure ()
---`  trace (show info) $ pure ()
   let c = SubType RecTypeSubConstraint ty' (unfoldRecType ty)
   return (UnfoldR recTVar (SubVar (void c)), [c])
 -- Constraints between structural data or codata types:

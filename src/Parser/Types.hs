@@ -13,7 +13,6 @@ module Parser.Types
   , combineXtors
   ) where
 
-import Debug.Trace
 
 import Text.Megaparsec hiding (State)
 import Data.List.NonEmpty (NonEmpty((:|)))
