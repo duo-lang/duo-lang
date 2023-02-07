@@ -544,7 +544,6 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       let argKnds' = case argKnds of (fst:rst) -> fst:|rst; _ -> error "cannnot happen"
       mapM_ (\(varty,mk) -> addConstraint $ KindEq KindConstraint (getKind varty) (monoToAnyKind mk)) (NE.zip vartys' argKnds')
       return (TST.TyApp loc pol (TST.TyNominal loc pol polyknd tyn) vartys')
-
   annotateKind (RST.TyApp loc pol tyr@RST.TyRecVar{} vartys) = do
     vartys' <- mapM annotateKind vartys
     let varknds = NE.map TST.getKind vartys'
