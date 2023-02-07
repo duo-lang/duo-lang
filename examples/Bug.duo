@@ -1,9 +1,0 @@
-module Bug;
-
-
-refinement data Bool : CBV {
-    True,
-    False
-};
-
-def prd x : (< Bool | False, True >) := True;
