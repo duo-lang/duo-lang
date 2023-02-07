@@ -180,7 +180,7 @@ sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 insertXtors :: CST.DataCodata -> Polarity -> Maybe (RnTypeName, Maybe RecTVar) -> PolyKind -> [XtorSig pol] -> TTA Node
 insertXtors dc pol mtn pk xtors = do
   newNode <- newNodeM
-  insertNode newNode (singleNodeLabel pol dc mtn (S.fromList (sigToLabel <$> xtors)) pk)
+  insertNode newNode (singleNodeLabelXtor pol dc mtn (S.fromList (sigToLabel <$> xtors)) pk)
   forM_ xtors $ \(MkXtorSig xt ctxt) -> do
     forM_ (enumerate ctxt) $ \(i, pcType) -> do
       node <- insertPCType pcType
@@ -245,7 +245,7 @@ insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyApp _ _ (TyNominal _ rep polyknd tn) args) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol (MkPknd polyknd)) { nl_nominal = S.singleton (tn, NE.toList $ toVariance <$> args) })
+  insertNode newNode (singleNodeLabelNominal pol (tn, NE.toList $ toVariance <$> args) polyknd)
   argNodes <- forM args insertVariantType
   insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate (NE.toList argNodes))
   return newNode
@@ -254,7 +254,7 @@ insertType (TyNominal _ rep polyknd tn) = do
     [] -> do
       let pol = polarityRepToPol rep 
       newNode <- newNodeM
-      insertNode newNode ((emptyNodeLabel pol (MkPknd polyknd)) {nl_nominal = S.singleton (tn,[]) })
+      insertNode newNode (singleNodeLabelNominal pol (tn,[]) polyknd )
       return newNode
     _ -> throwAutomatonError defaultLoc ["Nominal type "<> ppPrint tn <> "was not fully applied"]
 insertType TyApp{} = throwAutomatonError defaultLoc ["Types can only be applied to nominal types"]
