@@ -3,7 +3,7 @@ module Class.Read;
 import Prim.Strings;
 import Data.Bool;
 
--- | Definition for type class of readable/parseable types.
+-- | The class of readable/parseable types.
 class Read(-a : CBV){
     Read(String, return a)
 };
