@@ -18,6 +18,7 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.List (partition)
+import Data.Text qualified as T 
 
 import Driver.Environment (Environment (..))
 import Errors
@@ -360,9 +361,42 @@ subConstraints (SubType _ (TyDataRefined _ PosRep _ tn1 _ ctors1) (TyDataRefined
   constraints <- forM ctors1 (checkXtor ctors2)
   pure (DataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
 
+subConstraints (SubType _ t1@TyDataRefined{} t2@TyDataRefined{}) = 
+      throwSolverError defaultLoc ["Cannot constrain refinement data types"
+                                 , "    " <> ppPrint t1
+                                 , "and"
+                                 , "    " <> ppPrint t2]
+
+subConstraints (SubType info (TyApp _ _ ty1@(TyDataRefined _ _ _ tn1 _ _) args1) (TyApp _ _ ty2@TyDataRefined{} args2)) = do
+  let 
+    f (CovariantType ty1) (CovariantType ty2) = SubType RefinementSubConstraint ty1 ty2
+    f (ContravariantType ty1) (ContravariantType ty2) = SubType RefinementSubConstraint ty2 ty1
+    f _ _ = error "cannot occur"
+    refConstr = SubType info ty1 ty2
+    constraints = refConstr : NE.toList (NE.zipWith f args1 args2)
+  pure (DataRefined tn1 $ SubVar . void <$> constraints, constraints)
+
+
 subConstraints (SubType _ (TyCodataRefined _ PosRep _ tn1 _ dtors1) (TyCodataRefined _ NegRep _ tn2 _ dtors2))  | tn1 == tn2 = do
   constraints <- forM dtors2 (checkXtor dtors1)
   pure (CodataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
+
+subConstraints (SubType _ t1@TyCodataRefined{} t2@TyCodataRefined{}) = 
+  throwSolverError defaultLoc ["Cannot constrain refinement codata types"
+                                 , "    " <> ppPrint t1
+                                 , "and"
+                                 , "    " <> ppPrint t2]
+
+
+subConstraints (SubType info (TyApp _ _ ty1@(TyCodataRefined _ _ _ tn1 _ _) args1) (TyApp _ _ ty2@TyCodataRefined{} args2)) = do
+  let 
+    f (CovariantType ty1) (CovariantType ty2) = SubType RefinementSubConstraint ty1 ty2
+    f (ContravariantType ty1) (ContravariantType ty2) = SubType RefinementSubConstraint ty2 ty1
+    f _ _ = error "cannot occur"
+    refConstr = SubType info ty1 ty2
+    constraints = refConstr : NE.toList (NE.zipWith f args1 args2)
+  pure (DataRefined tn1 $ SubVar . void <$> constraints, constraints)
+
 
 -- Constraints between nominal types:
 --
@@ -385,45 +419,9 @@ subConstraints (SubType _ t1@(TyNominal _ _ _ tn1) t2@(TyNominal _ _ _ tn2)) =
   if tn1==tn2 then 
     pure (Refl t1 t2, [])
   else 
-    throwSolverError defaultLoc ["Cannot constrain type"
+    throwSolverError defaultLoc ["Cannot constrain nominal types"
                                  , "    " <> ppPrint t1
-                                 , "by type"
-                                 , "    " <> ppPrint t2]
-
-subConstraints (SubType info (TyApp _ _ ty1@(TyDataRefined _ _ _ tn1 _ _) args1) (TyApp _ _ ty2@TyDataRefined{} args2)) = do
-  let 
-    f (CovariantType ty1) (CovariantType ty2) = SubType RefinementSubConstraint ty1 ty2
-    f (ContravariantType ty1) (ContravariantType ty2) = SubType RefinementSubConstraint ty2 ty1
-    f _ _ = error "cannot occur"
-    refConstr = SubType info ty1 ty2
-    constraints = refConstr : NE.toList (NE.zipWith f args1 args2)
-  pure (DataRefined tn1 $ SubVar . void <$> constraints, constraints)
-
-subConstraints (SubType info (TyApp _ _ ty1@(TyCodataRefined _ _ _ tn1 _ _) args1) (TyApp _ _ ty2@TyCodataRefined{} args2)) = do
-  let 
-    f (CovariantType ty1) (CovariantType ty2) = SubType RefinementSubConstraint ty1 ty2
-    f (ContravariantType ty1) (ContravariantType ty2) = SubType RefinementSubConstraint ty2 ty1
-    f _ _ = error "cannot occur"
-    refConstr = SubType info ty1 ty2
-    constraints = refConstr : NE.toList (NE.zipWith f args1 args2)
-  pure (DataRefined tn1 $ SubVar . void <$> constraints, constraints)
-
-subConstraints (SubType _ t1@(TyDataRefined _ _ _ tn1 _ _) t2@(TyDataRefined _ _ _ tn2 _ _)) = 
-  if tn1 == tn2 then
-    pure (Refl t1 t2, []) 
-  else 
-      throwSolverError defaultLoc ["Cannot constrain type"
-                                 , "    " <> ppPrint t1
-                                 , "by type"
-                                 , "    " <> ppPrint t2]
-
-subConstraints (SubType _ t1@(TyCodataRefined _ _ _ tn1 _ _) t2@(TyCodataRefined _ _ _ tn2 _ _)) = 
-  if tn1 == tn2 then
-    pure (Refl t1 t2, []) 
-  else 
-      throwSolverError defaultLoc ["Cannot constrain type"
-                                 , "    " <> ppPrint t1
-                                 , "by type"
+                                 , "and"
                                  , "    " <> ppPrint t2]
 
 -- Constraints between primitive types:
@@ -434,7 +432,7 @@ subConstraints (SubType _ p@(TyString _ _) n@(TyString _ _)) = pure (Refl p n, [
 -- All other constraints cannot be solved.
 subConstraints (SubType _ t1 t2) = do
   throwSolverError defaultLoc ["Cannot constrain type"
-                              , "    " <> ppPrint t1
+                              , "    " <> ppPrint t1 
                               , "by type"
                               , "    " <> ppPrint t2 ]
 -- subConstraints for type classes are deprecated
