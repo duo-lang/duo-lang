@@ -34,6 +34,7 @@ data ConstraintInfo
   | IntersectionUnionSubConstraint
   | RecTypeSubConstraint
   | NominalSubConstraint
+  | RefinementSubConstraint
   | KindConstraint
   | ClassResolutionConstraint
   deriving (Show)
