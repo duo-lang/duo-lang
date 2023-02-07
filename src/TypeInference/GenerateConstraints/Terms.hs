@@ -3,8 +3,6 @@ module TypeInference.GenerateConstraints.Terms
   , genConstraintsTermRecursive
   ) where
 
-import Debug.Trace 
-
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
