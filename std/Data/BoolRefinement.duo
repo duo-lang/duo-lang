@@ -10,13 +10,13 @@ refinement data Bool : CBV {
 };
 
 -- | Boolean negation.
-def prd not : < Bool | False, True > -> < Bool | False, True >:=
+def prd not : (< Bool | False, True >) -> (< Bool | False, True >) :=
   \b => case b of { True => False,
                     False => True
                   };
 
 -- | Boolean if-then-else
-def prd ifthenelse : forall a. < Bool | False, True > -> a -> a -> a :=
+def prd ifthenelse : forall a. (< Bool | False, True >) -> a -> a -> a :=
   \b e1 e2 => case b of { True => e1, False => e2 };
 
 -- | Boolean conjunction
