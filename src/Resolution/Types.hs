@@ -52,7 +52,7 @@ resolveTyp rep (TyXData loc Data sigs) = do
 resolveTyp rep (TyXRefined loc Data tn mrv sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs rep sigs
-    let rv = case mrv of Nothing -> Nothing; Just sk -> Just $ skolemToRecRVar sk
+    let rv = skolemToRecRVar <$> mrv
     pure $ RST.TyDataRefined loc rep pknd tn' rv sigs
 -- Nominal Codata
 resolveTyp rep (TyXData loc Codata sigs) = do
@@ -62,7 +62,7 @@ resolveTyp rep (TyXData loc Codata sigs) = do
 resolveTyp rep (TyXRefined loc Codata tn mrv sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
-    let rv = case mrv of Nothing -> Nothing; Just sk -> Just $ skolemToRecRVar sk
+    let rv = skolemToRecRVar <$> mrv
     pure $ RST.TyCodataRefined loc rep pknd tn' rv sigs
 resolveTyp rep (TyNominal loc name) = do
   res <- lookupTypeConstructor loc name
