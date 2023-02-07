@@ -132,9 +132,8 @@ refinementTypeP Data = do
     symbolP SymPipe
     sc
     mrv <- optional tvarP
-    case mrv of Nothing -> sc; Just _ -> sc >> symbolP SymPipe
+    case mrv of Nothing -> sc; Just _ -> sc >> symbolP SymPipe >> sc
     let rv = case mrv of Nothing -> Nothing; Just (rv',_) -> Just rv'
-    sc
     ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, rv, ctors))
   pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
@@ -147,9 +146,8 @@ refinementTypeP Codata = do
     symbolP SymPipe
     sc
     mrv <- optional tvarP
-    case mrv of Nothing -> sc; Just _ -> sc >> symbolP SymPipe
+    case mrv of Nothing -> sc; Just _ -> sc >> symbolP SymPipe >> sc
     let rv = case mrv of Nothing -> Nothing; Just (rv',_) -> Just rv'
-    sc
     dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, rv, dtors))
   pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
@@ -231,7 +229,7 @@ tyBotP = do
 typAtomP :: Parser (Typ, SourcePos)
 typAtomP = do 
   startPos <- getSourcePos
-  (fstTy, _) <- 
+  (fstTy, endPos) <- 
     tyParensP  
     <|> nominalTypeP
     <|> try (refinementTypeP Data)
