@@ -65,9 +65,7 @@ patternIToSubst (RST.XtorPatI _loc _xt (as1,(),as2)) = RST.MkSubstitution (f <$>
 
 isNumSTermRST :: RST.Term pc -> Maybe Int
 isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "Z") (RST.MkSubstitution [])) = Just 0
-isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n])) = case isNumSTermRST n of
-  Nothing -> Nothing
-  Just n -> Just (n + 1)
+isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n])) = fmap (+1) (isNumSTermRST n)
 isNumSTermRST _ = Nothing
 
 instance Unresolve RST.PrimitiveOp PrimName where
@@ -581,12 +579,14 @@ instance Unresolve (RST.Typ pol) CST.Typ where
   unresolve (RST.TyCodata loc _ xtors) = do
     xtors' <- mapM unresolve xtors
     pure $ CST.TyXData loc CST.Codata xtors'
-  unresolve (RST.TyDataRefined loc _ _ tn xtors) = do
+  unresolve (RST.TyDataRefined loc _ _ tn mrv xtors) = do
     xtors' <- mapM unresolve xtors
-    pure $ CST.TyXRefined loc CST.Data (rnTnName tn) xtors'
-  unresolve (RST.TyCodataRefined loc _ _ tn xtors) = do
+    let rv = fmap embedRecTVar mrv
+    pure $ CST.TyXRefined loc CST.Data (rnTnName tn) rv xtors'
+  unresolve (RST.TyCodataRefined loc _ _ tn mrv xtors) = do
     xtors' <- mapM unresolve xtors
-    pure $ CST.TyXRefined loc CST.Codata (rnTnName tn) xtors'
+    let rv = fmap embedRecTVar mrv
+    pure $ CST.TyXRefined loc CST.Codata (rnTnName tn) rv xtors'
   unresolve (RST.TyApp loc _ ty args) = do 
     ty' <- unresolve ty
     args' <- mapM unresolve args
