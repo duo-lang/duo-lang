@@ -1,5 +1,7 @@
 module ListRefinement;
 
+import Data.Peano;
+
 data Z : CBV { 
     MkZ
 };
@@ -14,5 +16,6 @@ def prd x : forall a. <List|Nil>@(a) := Nil;
 --doesn't typecheck because what type is applied is unclear
 --def prd y : <List|Nil>(Z) := Nil; 
 --def prd z : <List|Nil>(Z) := Cons(MkZ, Nil);
+
 
 
