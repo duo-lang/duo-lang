@@ -149,6 +149,8 @@ resolveTyp rep (TyApp loc (TyKindAnnot mk ty) args) = do
   resolved <-  resolveTyp rep (TyApp loc ty args)
   pure $ RST.TyKindAnnot mk resolved
 
+resolveTyp rep (TyApp loc (TyParens _ ty) args) = resolveTyp rep (TyApp loc ty args)
+
 resolveTyp _ (TyApp loc ty _) = throwOtherError loc ["Types can only be applied to nominal and refinement types, was applied to ", ppPrint ty]
 
 resolveTyp rep (TyRec loc v typ) = do

@@ -77,6 +77,7 @@ checkVarianceTyp loc _ _ (CST.TyNominal _loc' tyName) = do
   case kindArgs polyKnd' of 
     [] -> return () 
     _ -> throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too few arguments"]
+checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyParens _ ty) args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty args)
 checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyKindAnnot _ ty) args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty args)
 checkVarianceTyp loc _ _ CST.TyApp{} = 
   throwOtherError loc ["Types can only be applied to nominal types"]

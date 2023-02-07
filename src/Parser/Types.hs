@@ -137,7 +137,6 @@ refinementTypeP Data = do
     sc
     ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, rv, ctors))
---  trace ("parsed refinement " <> show tn <> show endPos) $ pure ()
   pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
  
 refinementTypeP Codata = do
@@ -153,7 +152,6 @@ refinementTypeP Codata = do
     sc
     dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
     pure (tn, rv, dtors))
---  trace ("parsed refinement " <> show tn) $ pure ()
   pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
 
 ---------------------------------------------------------------------------------
@@ -249,9 +247,7 @@ typAtomP = do
     <|> tyStringP
     <|> typeVariableP
   args <- optional tyArgsP
---  trace ("parsed args " <> show args) $ pure ()
   endPos <- getSourcePos
---  trace ("endPos " <> show endPos) $ pure ()
   case args of
     Nothing -> pure (fstTy, endPos)
     Just (args',endPos) -> pure (TyApp (Loc startPos endPos) fstTy args',endPos)
@@ -273,7 +269,6 @@ tyArgsP = do
 
 tyOpChainP :: Parser (NonEmpty (Loc, BinOp, Typ), SourcePos)
 tyOpChainP = do
-  trace "parsing binopchain" $ pure ()
   let f = do
           startPos <- getSourcePos
           (op, endPos) <- tyBinOpP
@@ -288,11 +283,8 @@ tyOpChainP = do
 -- | Parse a type
 typP :: Parser (Typ, SourcePos)
 typP = do
-  trace "parsing atom " $  pure ()
   (fst, endPos) <- typAtomP
-  trace ("parsed atom " <> show fst) $ pure ()
   maybeChain <- optional tyOpChainP
---  trace ("parsed chain " <> show maybeChain) $ pure ()
   case maybeChain of
     Nothing -> pure (fst, endPos)
     Just (chain, endPos) -> pure (TyBinOpChain fst chain, endPos)
