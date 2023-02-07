@@ -143,7 +143,8 @@ solve (cs:css) = do
         addToCache cs (UVarL uv ub)
         newCss <- addUpperBound uv ub
         solve (newCss ++ css)
-      (SubType _ lb (TyUniVar _ NegRep _ uv)) -> do
+      (SubType info lb (TyUniVar _ NegRep _ uv)) -> do
+        trace (show info) $ pure ()
         addToCache cs (UVarR uv lb)
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)

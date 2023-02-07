@@ -151,18 +151,18 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     genConstraintsCtxts substTypes (TST.sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
     -- generate Constraints for applied types (if there are any)
     -- why NegRep
-    xtorSig <- lookupXtorSig loc xt NegRep -- (case rep of { PrdRep -> NegRep; CnsRep -> PosRep })
     (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
-    let sig_args' = TST.zonk TST.SkolemRep tyParamsMap (TST.sig_args xtorSig)
-    genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
+    let sig_args' = TST.zonk TST.SkolemRep tyParamsMap substTypes
+    let sig_args'' = TST.zonk TST.SkolemRep tyParamsMap (TST.sig_args xtorSigUpper)
+    genConstraintsCtxts substTypes sig_args'' (case rep of {PrdRep -> DtorArgsConstraint loc; CnsRep -> CtorArgsConstraint loc} )
     let ty = case rep of 
                PrdRep -> do
-                 let refTy = TST.TyDataRefined   defaultLoc PosRep (TST.data_kind decl) (TST.data_name decl) Nothing [TST.MkXtorSig xt substTypes]
+                 let refTy = TST.TyDataRefined   defaultLoc PosRep (TST.data_kind decl) (TST.data_name decl) Nothing [TST.MkXtorSig xt sig_args']
                  case args of
                    [] -> refTy 
                    (fst:rst) -> TST.TyApp defaultLoc PosRep refTy (fst:|rst) 
                CnsRep -> do
-                 let refTy = TST.TyCodataRefined defaultLoc NegRep (TST.data_kind decl) (TST.data_name decl) Nothing [TST.MkXtorSig xt substTypes]
+                 let refTy = TST.TyCodataRefined defaultLoc NegRep (TST.data_kind decl) (TST.data_name decl) Nothing [TST.MkXtorSig xt sig_args']
                  case args of 
                    [] -> refTy 
                    (fst:rst) -> TST.TyApp defaultLoc NegRep refTy (fst:|rst)
