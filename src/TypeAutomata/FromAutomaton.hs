@@ -175,8 +175,8 @@ nodeToTypeNoCache rep i  = do
     MkNodeLabel _ datSet codatSet tns refDat refCodat pk@(MkPolyKind _ _) -> do
       outs <- nodeToOuts i
       let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
-      let refDatTypes = M.toList refDat -- Unique data ref types
-      let refCodatTypes = M.toList refCodat -- Unique codata ref types
+      let refDatTypes = M.toList (fst refDat) -- Unique data ref types
+      let refCodatTypes = M.toList (fst refCodat) -- Unique codata ref types
       resType <- local (visitNode i) $ do
         -- Creating type variables
         varL <- nodeToTVars rep i
@@ -205,7 +205,7 @@ nodeToTypeNoCache rep i  = do
               let nodes = computeArgNodes outs CST.Data xt
               argTypes <- argNodesToArgTypes nodes rep
               return (MkXtorSig (labelName xt) argTypes)
-            return $ TyDataRefined defaultLoc rep pk tn sig
+            return $ TyDataRefined defaultLoc rep pk tn (snd refDat) sig
         -- Creating ref codata types
         refCodatL <- do
           forM refCodatTypes $ \(tn,xtors) -> do
@@ -213,7 +213,7 @@ nodeToTypeNoCache rep i  = do
               let nodes = computeArgNodes outs CST.Codata xt
               argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
               return (MkXtorSig (labelName xt) argTypes)
-            return $ TyCodataRefined defaultLoc rep pk tn sig
+            return $ TyCodataRefined defaultLoc rep pk tn (snd refCodat) sig
         -- Creating Nominal types
         let adjEdges = lsuc gr i
         let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]

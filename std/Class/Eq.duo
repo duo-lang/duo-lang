@@ -4,7 +4,7 @@ module Class.Eq;
 import Data.Bool;
 import Data.Peano;
 
--- | Definition for equality type class.
+-- | The class of types which terms can be compared for equality.
 class Eq(+a : CBV) {
   Equals(a, a, return Bool),
   Differ(a, a, return Bool)
