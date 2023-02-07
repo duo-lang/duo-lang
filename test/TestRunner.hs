@@ -89,18 +89,16 @@ getSymbolTable fp mn = do
 --------
 
 runSpecTest :: Description
-            -> [(a0, Either a1 b0)]
-            -> ((a0, Either a1 b0) -> Spec)
-            -> IO ()
+            -> [((FilePath, ModuleName), Either (NonEmpty Error) b0)]
+            -> (((FilePath, ModuleName), Either (NonEmpty Error) b0) -> Spec)
+            -> Spec
 runSpecTest description examples spec = do
-  withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-      describe description $ do 
-        forM_ examples $ \(example, syntaxtree) -> do
-          case syntaxtree of
-            Left err -> pure (example, Left err)
-            Right res -> do
-              spec (example, Right res) -- <- here not typechecking examples too?
-              pure (example, Right res)
+  describe description $ do
+    forM_ examples $ \((fp, mn), syntaxtree) ->
+      case syntaxtree of
+        Left err -> it ("\n could not run the test on " ++ moduleNameToFullPath mn fp ++ ": ") $ expectationFailure (ppPrintString err)
+        Right res -> spec ((fp, mn), Right res)
+
 
 
 
@@ -122,31 +120,31 @@ main = do
 
 
 
-    -- Tests before typechecking:
-    runSpecTest "Prettyprinting and parsing again" parsedExamples Spec.Prettyprinter.specParse
-    
+
+
     -- Typechecking: 
     typecheckedExamples <- forM parsedExamples $ \(example, parse) -> do
-      let fullName = moduleNameToFullPath (snd example) (fst example)
       case parse of
         Left err -> putStrLn (ppPrintString err) >> pure (example, Left err)
         Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, res)
 
-    -- Tests after typechecking
-    runSpecTest "Examples parse and typecheck after prettyprinting" typecheckedExamples Spec.Prettyprinter.specType
-    runSpecTest "examples are locally closed" typecheckedExamples Spec.LocallyClosed.spec  -- <- here not typechecking examples too?
-    runSpecTest "examples can be focused" typecheckedExamples Spec.Focusing.spec
-
     -- counterexamples 
-    forM_ parsedCounterExamples $ \(example, parse) -> do
+    typecheckedCounterExamples <- forM parsedCounterExamples $ \(example, parse) -> do
       case parse of
-        Left err -> pure (example, Left err)
-        Right cst -> do
-          typecheckedDecl <- getTypecheckedDecls cst >>= \res -> pure (example, res)
-          let tst = snd typecheckedDecl
-          case tst of
-            Left err -> pure (example, Left err)
-            Right typecheckResult -> do
-              withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-                  describe "TypeInference with check" (Spec.TypeInferenceExamples.spec (example, parse) tst)
-              pure (example, tst)
+        Left err -> putStrLn (ppPrintString err) >> pure (example, Left err)
+        Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, Right (parse, res))
+
+
+    withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
+    -- Tests before typechecking:
+      runSpecTest "Prettyprinting and parsing again" parsedExamples Spec.Prettyprinter.specParse
+    -- Tests after typechecking
+      runSpecTest "Examples parse and typecheck after prettyprinting" typecheckedExamples Spec.Prettyprinter.specType
+      runSpecTest "examples are locally closed" typecheckedExamples Spec.LocallyClosed.spec  -- <- here not typechecking examples too?
+      runSpecTest "examples can be focused" typecheckedExamples Spec.Focusing.spec
+
+      describe "TypeInference with check"  $ do
+        forM_ typecheckedCounterExamples $ \(example, Right (parse, tst)) ->
+            Spec.TypeInferenceExamples.spec (example, parse) tst
+
+
