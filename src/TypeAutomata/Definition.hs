@@ -183,11 +183,11 @@ emptyNodeLabel pol MkString     = MkPrimitiveNodeLabel pol PString
 emptyNodeLabel pol MkChar       = MkPrimitiveNodeLabel pol PChar
 
 
-singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> Maybe RecTVar -> PolyKind -> NodeLabel
-singleNodeLabel pol Data Nothing xtors rv = MkNodeLabel pol (Just xtors) Nothing S.empty (M.empty,rv) (M.empty,Nothing)
-singleNodeLabel pol Codata Nothing xtors rv = MkNodeLabel pol Nothing (Just xtors) S.empty (M.empty,Nothing) (M.empty,rv)
-singleNodeLabel pol Data (Just tn) xtors rv = MkNodeLabel pol Nothing Nothing S.empty (M.singleton tn xtors,rv) (M.empty,Nothing)
-singleNodeLabel pol Codata (Just tn) xtors rv = MkNodeLabel pol Nothing Nothing S.empty (M.empty,Nothing) (M.singleton tn xtors, rv)
+singleNodeLabel :: Polarity -> DataCodata -> Maybe (RnTypeName, Maybe RecTVar) -> Set XtorLabel -> PolyKind -> NodeLabel
+singleNodeLabel pol Data Nothing xtors = MkNodeLabel pol (Just xtors) Nothing S.empty (M.empty,Nothing) (M.empty,Nothing)
+singleNodeLabel pol Codata Nothing xtors = MkNodeLabel pol Nothing (Just xtors) S.empty (M.empty,Nothing) (M.empty,Nothing)
+singleNodeLabel pol Data (Just (tn,rv)) xtors = MkNodeLabel pol Nothing Nothing S.empty (M.singleton tn xtors,rv) (M.empty,Nothing)
+singleNodeLabel pol Codata (Just (tn,rv)) xtors = MkNodeLabel pol Nothing Nothing S.empty (M.empty,Nothing) (M.singleton tn xtors, rv)
 
 getPolarityNL :: NodeLabel -> Polarity
 getPolarityNL (MkNodeLabel pol _ _ _ _ _ _) = pol
