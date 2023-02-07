@@ -8,6 +8,8 @@ module TypeInference.SolveConstraints
   ) where
 
 
+import Debug.Trace 
+
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -18,7 +20,6 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.List (partition)
-import Data.Text qualified as T 
 
 import Driver.Environment (Environment (..))
 import Errors
@@ -326,10 +327,18 @@ subConstraints (SubType _ ty1 (TyInter _ _ ty2 ty3)) = do
 --     rec a.ty1 <: ty2          ~>     ty1 [rec a.ty1 / a] <: ty2
 --     ty1 <: rec a.ty2          ~>     ty1 <: ty2 [rec a.ty2 / a]
 --
-subConstraints (SubType _ ty@(TyRec _ _ recTVar _) ty') = do
+subConstraints (SubType info ty@(TyRec _ _ recTVar _) ty') = do
+--  trace (show ty') $ pure ()
+--  trace "unfold " $ pure () 
+--  trace (show (unfoldRecType ty)) $ pure ()
+--  trace (show info) $ pure ()
   let c = SubType RecTypeSubConstraint (unfoldRecType ty) ty'
   return (UnfoldL recTVar (SubVar (void c)), [c])
-subConstraints (SubType _ ty' ty@(TyRec _ _ recTVar _)) = do
+subConstraints (SubType info ty' ty@(TyRec _ _ recTVar _)) = do
+--  trace (show ty') $ pure ()
+--  trace "unfolded " $ pure () 
+--  trace (show (unfoldRecType ty)) $ pure ()
+--`  trace (show info) $ pure ()
   let c = SubType RecTypeSubConstraint ty' (unfoldRecType ty)
   return (UnfoldR recTVar (SubVar (void c)), [c])
 -- Constraints between structural data or codata types:
@@ -430,11 +439,12 @@ subConstraints (SubType _ p@(TyF64 _ _) n@(TyF64 _ _)) = pure (Refl p n, [])
 subConstraints (SubType _ p@(TyChar _ _) n@(TyChar _ _)) = pure (Refl p n, [])
 subConstraints (SubType _ p@(TyString _ _) n@(TyString _ _)) = pure (Refl p n, [])
 -- All other constraints cannot be solved.
-subConstraints (SubType _ t1 t2) = do
+subConstraints (SubType info t1 t2) = do
   throwSolverError defaultLoc ["Cannot constrain type"
                               , "    " <> ppPrint t1 
                               , "by type"
-                              , "    " <> ppPrint t2 ]
+                              , "    " <> ppPrint t2 
+                              , ppPrint info]
 -- subConstraints for type classes are deprecated
 -- type class constraints should only be resolved after subtype constraints
 subConstraints TypeClass{} = throwSolverError defaultLoc ["subContraints should not be called on type class Constraints"]

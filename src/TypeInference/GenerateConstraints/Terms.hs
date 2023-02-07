@@ -3,6 +3,7 @@ module TypeInference.GenerateConstraints.Terms
   , genConstraintsTermRecursive
   ) where
 
+import Debug.Trace 
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -238,18 +239,15 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     decl <- lookupDataDecl loc (case Core.cmdcase_pat pmcase of (Core.XtorPat _ xt _) -> xt)
     -- We check that all cases in the pattern match belong to the type declaration.
     checkCorrectness loc ((\cs -> case Core.cmdcase_pat cs of Core.XtorPat _ xt _ -> xt) <$> cases) decl
-    -- Generate fresh unification variables for type parameters
-    (argsPos, tyParamsMapPos) <- freshTVarsForTypeParams PosRep decl
-    (argsNeg, tyParamsMapNeg) <- freshTVarsForTypeParams NegRep decl
     inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc xt args , cmdcase_cmd} -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
-                        xtorPos <- lookupXtorSig loc xt RST.PosRep
-                        xtorNeg <- lookupXtorSig loc xt RST.NegRep
-                        let posTys = TST.zonk TST.SkolemRep tyParamsMapPos (TST.sig_args xtorPos)
-                        let negTys = TST.zonk TST.SkolemRep tyParamsMapNeg (TST.sig_args xtorNeg)
+                        xtor <- lookupXtorSig loc xt RST.PosRep
+                        let argKnds = map TST.getKind (TST.sig_args xtor)
+                        let tVarArgs = zipWith (curry (\ ((x,y),z) -> (x,y,z))) args argKnds
+                        (uvarsPos, uvarsNeg) <- freshTVars tVarArgs
                         -- Check the command in the context extended with the positive unification variables
-                        cmdInferred <- withContext posTys (genConstraints cmdcase_cmd)
+                        cmdInferred <- withContext uvarsPos (genConstraints cmdcase_cmd)
                         -- We have to bound the unification variables with the lower and upper bounds generated
                         -- from the information in the type declaration. These lower and upper bounds correspond
                         -- to the least and greatest type translation.
@@ -257,19 +255,25 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         xtorUpper <- lookupXtorSigUpper loc xt 
                         let lowerBound' = TST.sig_args xtorLower
                         let upperBound' = TST.sig_args xtorUpper
-                        genConstraintsCtxts lowerBound' negTys (PatternMatchConstraint loc)
-                        genConstraintsCtxts posTys upperBound' (PatternMatchConstraint loc)
+                        genConstraintsCtxts lowerBound' uvarsNeg (PatternMatchConstraint loc)
+                        genConstraintsCtxts uvarsPos upperBound' (PatternMatchConstraint loc)
                         -- For the type, we return the unification variables which are now bounded by the least
                         -- and greatest type translation.
-                        return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt posTys))
+                        return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
+    -- Generate fresh unification variables for type parameters
+    (argsPos, tyParamsMapPos) <- freshTVarsForTypeParams PosRep decl
+    (argsNeg, tyParamsMapNeg) <- freshTVarsForTypeParams NegRep decl
+
     case rep of
-      PrdRep -> do
-        let refTy = TST.TyDataRefined defaultLoc PosRep (TST.data_kind decl) (TST.data_name decl) Nothing (snd <$> inferredCases)
-        let ty = case argsPos of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc PosRep refTy (fst:|rst)
-        return $ TST.XCase loc annot rep ty CST.Refinement (fst <$> inferredCases)
       CnsRep -> do
-        let refTy = TST.TyCodataRefined defaultLoc NegRep (TST.data_kind decl) (TST.data_name decl) Nothing (snd <$> inferredCases)
+        let xtors = TST.zonk TST.SkolemRep tyParamsMapNeg . snd <$> inferredCases
+        let refTy = TST.TyDataRefined defaultLoc NegRep (TST.data_kind decl) (TST.data_name decl) Nothing xtors
         let ty = case argsNeg of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc NegRep refTy (fst:|rst)
+        return $ TST.XCase loc annot rep ty CST.Refinement (fst <$> inferredCases)
+      PrdRep -> do
+        let xtors = TST.zonk TST.SkolemRep tyParamsMapPos . snd <$> inferredCases
+        let refTy = TST.TyCodataRefined defaultLoc PosRep (TST.data_kind decl) (TST.data_name decl) Nothing xtors
+        let ty = case argsPos of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc PosRep refTy (fst:|rst)
         return $ TST.XCase loc annot rep ty CST.Refinement (fst <$> inferredCases)
   --
   -- Mu and TildeMu abstractions:
