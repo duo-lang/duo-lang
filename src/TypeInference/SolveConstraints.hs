@@ -142,7 +142,7 @@ solve (cs:css) = do
         addToCache cs (UVarL uv ub)
         newCss <- addUpperBound uv ub
         solve (newCss ++ css)
-      (SubType info lb (TyUniVar _ NegRep _ uv)) -> do
+      (SubType _ lb (TyUniVar _ NegRep _ uv)) -> do
         addToCache cs (UVarR uv lb)
         newCss <- addLowerBound uv lb
         solve (newCss ++ css)
@@ -326,10 +326,10 @@ subConstraints (SubType _ ty1 (TyInter _ _ ty2 ty3)) = do
 --     rec a.ty1 <: ty2          ~>     ty1 [rec a.ty1 / a] <: ty2
 --     ty1 <: rec a.ty2          ~>     ty1 <: ty2 [rec a.ty2 / a]
 --
-subConstraints (SubType info ty@(TyRec _ _ recTVar _) ty') = do
+subConstraints (SubType _ ty@(TyRec _ _ recTVar _) ty') = do
   let c = SubType RecTypeSubConstraint (unfoldRecType ty) ty'
   return (UnfoldL recTVar (SubVar (void c)), [c])
-subConstraints (SubType info ty' ty@(TyRec _ _ recTVar _)) = do
+subConstraints (SubType _ ty' ty@(TyRec _ _ recTVar _)) = do
   let c = SubType RecTypeSubConstraint ty' (unfoldRecType ty)
   return (UnfoldR recTVar (SubVar (void c)), [c])
 -- Constraints between structural data or codata types:
