@@ -299,7 +299,7 @@ computeFullRefinementType :: CST.DataCodata
                           -> DataDeclM (RST.Typ Pos, RST.Typ Neg)
 computeFullRefinementType dc tn (xtorsPos, xtorsNeg) polyknd mrv = do
   -- Define the variable that stands for the recursive occurrences in the translation.
-  let recVar = MkRecTVar "α"
+  let recVar = case mrv of Nothing -> MkRecTVar "α"; Just rv -> rv
   let recVarPos = RST.TyRecVar defaultLoc PosRep recVar
   let recVarNeg = RST.TyRecVar defaultLoc NegRep recVar
   -- Replace all the recursive occurrences of the type by the variable "α" in the constructors/destructors.
@@ -307,11 +307,11 @@ computeFullRefinementType dc tn (xtorsPos, xtorsNeg) polyknd mrv = do
   let xtorsReplacedNeg :: [RST.XtorSig Neg] = RST.replaceNominal recVarPos recVarNeg tn <$> xtorsNeg
   -- Assemble the 
   let fullRefinementTypePos :: RST.Typ Pos = case dc of
-                   CST.Data   -> RST.TyRec defaultLoc PosRep recVar (RST.TyDataRefined   defaultLoc PosRep polyknd tn mrv xtorsReplacedPos)
-                   CST.Codata -> RST.TyRec defaultLoc PosRep recVar (RST.TyCodataRefined defaultLoc PosRep polyknd tn mrv xtorsReplacedNeg)
+                   CST.Data   -> RST.TyDataRefined   defaultLoc PosRep polyknd tn (Just recVar) xtorsReplacedPos
+                   CST.Codata -> RST.TyCodataRefined defaultLoc PosRep polyknd tn (Just recVar) xtorsReplacedNeg
   let fullRefinementTypeNeg :: RST.Typ Neg = case dc of
-                   CST.Data   -> RST.TyRec defaultLoc NegRep recVar (RST.TyDataRefined defaultLoc NegRep polyknd tn   mrv xtorsReplacedNeg)
-                   CST.Codata -> RST.TyRec defaultLoc NegRep recVar (RST.TyCodataRefined defaultLoc NegRep polyknd tn mrv xtorsReplacedPos)
+                   CST.Data   -> RST.TyDataRefined defaultLoc NegRep polyknd tn   (Just recVar) xtorsReplacedNeg
+                   CST.Codata -> RST.TyCodataRefined defaultLoc NegRep polyknd tn (Just recVar) xtorsReplacedPos
   pure (fullRefinementTypePos, fullRefinementTypeNeg)
 
 annotateDataDecl :: RST.DataDecl -> DataDeclM TST.DataDecl 

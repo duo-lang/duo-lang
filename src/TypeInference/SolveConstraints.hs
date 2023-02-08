@@ -19,6 +19,7 @@ import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.List (partition)
+import Data.Text qualified as T
 
 import Driver.Environment (Environment (..))
 import Errors
@@ -289,6 +290,21 @@ checkContexts (_:_) []    =
 -- The `subConstraints` function is the function which will produce the error if the
 -- constraint set generated from a program is not solvable.
 subConstraints :: Constraint ConstraintInfo -> SolverM (SubtypeWitness, [Constraint ConstraintInfo])
+
+-- Skolem Vars can only be subtypes of each other if they are the same
+-- double check if this should ever occur
+
+subConstraints (SubType _ p@(TySkolemVar _ _ _ sk1) n@(TySkolemVar _ _ _ sk2)) = 
+  if sk1 == sk2 then 
+    pure (Refl p n, []) 
+  else
+    throwSolverError defaultLoc ["Cannot constrain Skolems"
+                                 , "    " <> ppPrint p
+                                 , "and"
+                                 , "    " <> ppPrint n]
+
+
+
 -- Type synonyms are unfolded and are not preserved through constraint solving.
 -- A more efficient solution to directly compare type synonyms is possible in the
 -- future.
@@ -429,12 +445,13 @@ subConstraints (SubType _ p@(TyI64 _ _) n@(TyI64 _ _)) = pure (Refl p n, [])
 subConstraints (SubType _ p@(TyF64 _ _) n@(TyF64 _ _)) = pure (Refl p n, [])
 subConstraints (SubType _ p@(TyChar _ _) n@(TyChar _ _)) = pure (Refl p n, [])
 subConstraints (SubType _ p@(TyString _ _) n@(TyString _ _)) = pure (Refl p n, [])
+
 -- All other constraints cannot be solved.
 subConstraints (SubType info t1 t2) = do
   throwSolverError defaultLoc ["Cannot constrain type"
-                              , "    " <> ppPrint t1 
+                              , "    " <> T.pack (show t1) --ppPrint t1 
                               , "by type"
-                              , "    " <> ppPrint t2 
+                              , "    " <> T.pack (show t2) --ppPrint t2 
                               , ppPrint info]
 -- subConstraints for type classes are deprecated
 -- type class constraints should only be resolved after subtype constraints
