@@ -1,9 +1,17 @@
 module Bug;
 
-
-refinement data Bool : CBV {
-    True,
-    False
+-- | The function type
+codata Fun : (-a : CBV, +b : CBV) -> CBV {
+    Ap(a,return b)
 };
 
-def prd x : (< Bool | False, True >) := True;
+
+-- | The type of Peano natural numbers.
+refinement data Nat {
+    Z,
+    S(Nat)
+};
+
+def rec prd add :=
+  \n m => case n of { Z => m
+                    , S(n) => S(add n m)};
