@@ -91,7 +91,7 @@ nominalTypeP = do
 ---------------------------------------------------------------------------------
 
 refinementArgsP :: Parser (Maybe (TypeName, Maybe SkolemTVar))
-refinementArgsP = optional $ do
+refinementArgsP = optional $ try $ do
   (tn,_) <- typeNameP
   sc
   symbolP SymPipe
