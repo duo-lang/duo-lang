@@ -90,61 +90,42 @@ nominalTypeP = do
 -- Structural Types and Refinement Types
 ---------------------------------------------------------------------------------
 
--- | Parse a data or codata type. E.g.:
--- - "< ctor1 | ctor2 | ctor3 >"
--- - "{ dtor1 , dtor2 , dtor3 }"
-xdataTypeP :: DataCodata -> Parser (Typ, SourcePos)
-xdataTypeP Data = do
-  startPos <- getSourcePos
-  (xtorSigs, endPos) <- anglesP (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
+refinementArgsP :: Parser (Maybe (TypeName, Maybe SkolemTVar))
+refinementArgsP = optional $ do
+  (tn,_) <- typeNameP
   sc
-  pure (TyXData (Loc startPos endPos) Data xtorSigs, endPos)
-xdataTypeP Codata = do
-  startPos <- getSourcePos
-  (xtorSigs, endPos) <- bracesP (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
+  symbolP SymPipe
   sc
-  pure (TyXData (Loc startPos endPos) Codata xtorSigs, endPos)
+  rv <- optional $ tvarP <* (sc >> symbolP SymPipe >> sc)
+  pure (tn,fst <$> rv)
 
----------------------------------------------------------------------------------
--- Refinement types
----------------------------------------------------------------------------------
-
-refinementTypeP :: DataCodata -> Parser (Typ, SourcePos)
-refinementTypeP Data = do
-  startPos <- getSourcePos
-  ((tn,rv,ctors), endPos) <- anglesP (do
-    (tn,_) <- typeNameP
-    sc
-    symbolP SymPipe
-    sc
-    mrv <- optional tvarP
-    case mrv of Nothing -> sc; Just _ -> sc >> symbolP SymPipe
-    let rv = case mrv of Nothing -> Nothing; Just (rv',_) -> Just rv'
-    sc
-    ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
-    pure (tn, rv, ctors))
-  sc
-  pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
-refinementTypeP Codata = do
-  startPos <- getSourcePos
-  ((tn, rv, dtors), endPos) <- bracesP (do
-    (tn,_) <- typeNameP
-    sc
-    symbolP SymPipe
-    sc
-    mrv <- optional tvarP
-    case mrv of Nothing -> sc; Just _ -> sc >> symbolP SymPipe
-    let rv = case mrv of Nothing -> Nothing; Just (rv',_) -> Just rv'
-    sc
-    dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
-    pure (tn, rv, dtors))
-  sc
-  pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
 
 xdataOrRefinementP :: DataCodata -> Parser (Typ, SourcePos)
-xdataOrRefinementP dc =
-      try (refinementTypeP dc)
-  <|> xdataTypeP dc
+xdataOrRefinementP Data = do
+  startPos <- getSourcePos
+  symbolP SymAngleLeft
+  sc
+  refinementargs <- refinementArgsP
+  ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
+  symbolP SymAngleRight
+  endPos <- getSourcePos
+  sc
+  case refinementargs of
+    Nothing -> pure (TyXData (Loc startPos endPos) Data ctors, endPos)
+    Just (tn, rv) ->  pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
+xdataOrRefinementP Codata = do
+  startPos <- getSourcePos
+  symbolP SymBraceLeft
+  sc
+  refinementargs <- refinementArgsP
+  dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
+  symbolP SymBraceRight
+  endPos <- getSourcePos
+  sc
+  case refinementargs of
+    Nothing -> pure (TyXData (Loc startPos endPos) Codata dtors, endPos)
+    Just (tn, rv) -> pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
+
 
 ---------------------------------------------------------------------------------
 -- Type variables and recursive types
