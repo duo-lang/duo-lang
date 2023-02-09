@@ -4,7 +4,7 @@ import Prim.Strings;
 import Data.Bool;
 import Data.Peano;
 
--- | Definition for type class of showable types.
+-- | The class of showable/printable types.
 class Show(+a : CBV){
     Show(a, return String)
 };

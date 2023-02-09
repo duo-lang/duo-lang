@@ -64,6 +64,9 @@ resolveTyp rep (TyXRefined loc Data tn mrv sigs) = do
           let rv = skolemToRecRVar sk
           sigs <- local (\r -> r { rr_recVars = S.insert rv $ rr_recVars r  } ) $ resolveXTorSigs rep sigs
           return $ RST.TyDataRefined loc rep pknd tn' (Just rv) sigs 
+    sigs <- resolveXTorSigs rep sigs
+    let rv = skolemToRecRVar <$> mrv
+    pure $ RST.TyDataRefined loc rep pknd tn' rv sigs
 -- Nominal Codata
 resolveTyp rep (TyXData loc Codata sigs) = do
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
@@ -71,16 +74,9 @@ resolveTyp rep (TyXData loc Codata sigs) = do
 -- Refinement Codata
 resolveTyp rep (TyXRefined loc Codata tn mrv sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-    if not (null (kindArgs pknd)) then throwOtherError loc ["Type " <> ppPrint tn <> " was not fully applied"] else do
-      case mrv of 
-        Nothing -> do
-          sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
-          pure $ RST.TyCodataRefined loc rep pknd tn' Nothing sigs
-        Just sk -> do 
-          let rv = skolemToRecRVar sk
-          sigs <- local (\r -> r { rr_ref_recVars = M.insert rv (tn,pknd) $ rr_ref_recVars r  } ) $ resolveXTorSigs (flipPolarityRep rep) sigs
-          return $ RST.TyCodataRefined loc rep pknd tn' (Just rv) sigs 
-
+    sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
+    let rv = skolemToRecRVar <$> mrv
+    pure $ RST.TyCodataRefined loc rep pknd tn' rv sigs
 resolveTyp rep (TyNominal loc name) = do
   res <- lookupTypeConstructor loc name
   case res of 

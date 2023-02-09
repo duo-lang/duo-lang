@@ -90,20 +90,6 @@ checkCache i = do
   cache <- asks cache
   return (i `S.member` cache)
 
-getNodeKind :: Node -> AutToTypeM MonoKind
-getNodeKind i = do
-  gr <- asks graph
-  case lab gr i of
-    Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
-    Just (MkNodeLabel _ _ _ _ _ _ pk@(MkPolyKind _ _ )) -> return (CBox $ returnKind pk)
-    Just (MkNodeLabel _ _ _ _ _ _ (KindVar _)) -> throwAutomatonError defaultLoc [T.pack "Kind Variable should not appear in the program at this point"]
-    Just (MkPrimitiveNodeLabel _ primTy) ->
-      case primTy of
-        I64 -> return I64Rep
-        F64 -> return F64Rep
-        PChar -> return CharRep
-        PString -> return StringRep
-
 getNodeKindPk :: Node -> AutToTypeM PolyKind
 getNodeKindPk i = do 
   gr <- asks graph 

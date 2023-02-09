@@ -1,0 +1,22 @@
+module Class.Default;
+
+import Data.Bool;
+import Data.Peano;
+import Data.Unit;
+
+-- | The class of non-empty types exhibiting a default value.
+class Default(-a : CBV){
+    Default(return a)
+};
+
+instance defaultUnit : Default Unit {
+    Default(k) => MkUnit >> k
+};
+
+instance defaultNat : Default Nat {
+    Default(k) => Z >> k
+};
+
+instance defaultBool : Default Bool {
+    Default(k) => False >> k
+};

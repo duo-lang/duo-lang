@@ -10,7 +10,7 @@ data Ordering : CBV {
     GT
 };
 
--- | Definition for type class of ordered types.
+-- | The class of ordered types.
 class Ord(+a : CBV) {
     Compare(a, a, return Ordering)
 };

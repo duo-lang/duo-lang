@@ -1,0 +1,35 @@
+module Class.Summable;
+
+import Data.Peano;
+import Data.Tensor;
+
+-- | The class of nonempty types that can be folded into a natural number.
+class Summable(+a : CBV){
+    Fold(a, return Nat)
+};
+
+-- | A non-empty list of natural numbers.
+data NatList {
+    Singleton(Nat),
+    Cons(Nat, NatList)
+};
+
+instance natListSummable : Summable NatList {
+    Fold(l, k) => case l of {
+        Singleton(n) => n >> k,
+        Cons(n, ns) => Fold(ns, mu x. add x n >> k)
+    }
+};
+
+-- | A leaf-oriented tree of natural numbers.
+data NatTree {
+    Leaf(Nat),
+    Branch(NatTree, NatTree)
+};
+
+instance natTreeSummable : Summable NatTree {
+    Fold(t, k) => case t of {
+        Leaf(n) => n >> k,
+        Branch(l, r) => add (mu k1. Fold(l, k1)) (mu k2. Fold(r, k2)) >> k
+    }
+};
