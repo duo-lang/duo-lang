@@ -65,7 +65,7 @@ combineXtors :: [(XtorName, [(PrdCns, Typ)])] -> [XtorSig]
 combineXtors = fmap combineXtor
 
 ---------------------------------------------------------------------------------
--- Nominal and Structural Types
+-- Nominal Types
 ---------------------------------------------------------------------------------
 
 nominalTypeArgsP :: SourcePos -> Parser ([Typ], SourcePos)
@@ -86,6 +86,10 @@ nominalTypeP = do
     [] -> pure (TyNominal loc name, endPos')
     (fst:rst) -> pure (TyApp loc (TyNominal loc name) (fst:|rst), endPos')
 
+---------------------------------------------------------------------------------
+-- Structural Types and Refinement Types
+---------------------------------------------------------------------------------
+
 -- | Parse a data or codata type. E.g.:
 -- - "< ctor1 | ctor2 | ctor3 >"
 -- - "{ dtor1 , dtor2 , dtor3 }"
@@ -100,31 +104,6 @@ xdataTypeP Codata = do
   (xtorSigs, endPos) <- bracesP (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
   sc
   pure (TyXData (Loc startPos endPos) Codata xtorSigs, endPos)
-
-
-
----------------------------------------------------------------------------------
--- Type variables and recursive types
----------------------------------------------------------------------------------
-
--- | Parses a typevariable, and checks whether the typevariable is bound.
-typeVariableP :: Parser (Typ, SourcePos)
-typeVariableP = do
-  startPos <- getSourcePos
-  (tvar, endPos) <- tvarP
-  sc
-  pure (TySkolemVar (Loc startPos endPos) tvar, endPos)
-
-recTypeP :: Parser (Typ, SourcePos)
-recTypeP = do
-  startPos <- getSourcePos
-  _ <- keywordP KwRec
-  sc
-  (rv,_) <- tvarP
-  symbolP SymDot
-  sc
-  (ty, endPos) <- typP
-  pure (TyRec (Loc startPos endPos) rv ty, endPos)
 
 ---------------------------------------------------------------------------------
 -- Refinement types
@@ -161,6 +140,36 @@ refinementTypeP Codata = do
     pure (tn, rv, dtors))
   sc
   pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
+
+xdataOrRefinementP :: DataCodata -> Parser (Typ, SourcePos)
+xdataOrRefinementP dc =
+      try (refinementTypeP dc)
+  <|> xdataTypeP dc
+
+---------------------------------------------------------------------------------
+-- Type variables and recursive types
+---------------------------------------------------------------------------------
+
+-- | Parses a typevariable, and checks whether the typevariable is bound.
+typeVariableP :: Parser (Typ, SourcePos)
+typeVariableP = do
+  startPos <- getSourcePos
+  (tvar, endPos) <- tvarP
+  sc
+  pure (TySkolemVar (Loc startPos endPos) tvar, endPos)
+
+recTypeP :: Parser (Typ, SourcePos)
+recTypeP = do
+  startPos <- getSourcePos
+  _ <- keywordP KwRec
+  sc
+  (rv,_) <- tvarP
+  symbolP SymDot
+  sc
+  (ty, endPos) <- typP
+  pure (TyRec (Loc startPos endPos) rv ty, endPos)
+
+
 
 ---------------------------------------------------------------------------------
 -- Primitive types
@@ -239,10 +248,8 @@ tyBotP = do
 typAtomP :: Parser (Typ, SourcePos)
 typAtomP = tyParensP
   <|> nominalTypeP
-  <|> try (refinementTypeP Data)
-  <|> try (refinementTypeP Codata)
-  <|> xdataTypeP Data
-  <|> xdataTypeP Codata
+  <|> xdataOrRefinementP Data
+  <|> xdataOrRefinementP Codata
   <|> recTypeP
   <|> tyTopP
   <|> tyBotP
