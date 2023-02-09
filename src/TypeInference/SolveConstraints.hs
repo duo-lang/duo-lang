@@ -449,9 +449,9 @@ subConstraints (SubType _ p@(TyString _ _) n@(TyString _ _)) = pure (Refl p n, [
 -- All other constraints cannot be solved.
 subConstraints (SubType info t1 t2) = do
   throwSolverError defaultLoc ["Cannot constrain type"
-                              , "    " <> T.pack (show t1) --ppPrint t1 
+                              , "    " <> ppPrint t1 
                               , "by type"
-                              , "    " <> T.pack (show t2) --ppPrint t2 
+                              , "    " <> ppPrint t2 
                               , ppPrint info]
 -- subConstraints for type classes are deprecated
 -- type class constraints should only be resolved after subtype constraints
