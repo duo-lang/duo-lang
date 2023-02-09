@@ -160,15 +160,16 @@ freshTVars ((Cns,fv,knd):rest) = do
   return (TST.PrdCnsType CnsRep tn:lctxtP, TST.PrdCnsType CnsRep tp:lctxtN)
 
 freshTVarsForTypeParams :: forall pol. PolarityRep pol -> TST.DataDecl -> GenM ([TST.VariantType pol], TST.Bisubstitution TST.SkolemVT)
-freshTVarsForTypeParams rep decl =
-  let MkPolyKind { kindArgs } = TST.data_kind decl
-      tn = TST.data_name decl
-  in do
-    (varTypes, vars) <- freshTVars tn kindArgs
-    let map = paramsMap kindArgs vars
-    case rep of
-      PosRep -> pure (varTypes, map)
-      NegRep -> pure (varTypes, map)
+freshTVarsForTypeParams rep decl = do
+  kindArgs <- case TST.data_kind decl of
+                    MkPolyKind { kindArgs } -> pure kindArgs
+                    k -> throwOtherError (TST.data_loc decl) [ "Wrong kind for data declaration: expected polykind, found " <> T.pack (show k) ]
+  let tn = TST.data_name decl
+  (varTypes, vars) <- freshTVars tn kindArgs
+  let map = paramsMap kindArgs vars
+  case rep of
+    PosRep -> pure (varTypes, map)
+    NegRep -> pure (varTypes, map)
   where
    freshTVars :: RnTypeName -> [(Variance, SkolemTVar, MonoKind)] -> GenM ([TST.VariantType pol],[(TST.Typ Pos, TST.Typ Neg)])
    freshTVars _ [] = pure ([],[])

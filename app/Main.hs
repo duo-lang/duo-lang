@@ -40,7 +40,7 @@ getModuleName fp = do
                  Right mn -> pure (pure $ fst mn)
 
 dispatch :: Options -> IO ()
-dispatch (OptLSP log)           = runLSP log
+dispatch OptLSP                 = runLSP
 dispatch (OptRun fp opts)       = runRun opts =<< getModuleName fp
 dispatch (OptDeps fp)           = runDeps =<< getModuleName fp
 dispatch OptVersion             = printVersion
