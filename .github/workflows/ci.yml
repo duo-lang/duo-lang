@@ -24,7 +24,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - uses: haskell/actions/setup@v2.0.3
+    - name: Workaround runner image issue
+      # https://github.com/actions/runner-images/issues/7061
+      run: sudo chown -R $USER /usr/local/.ghcup
+      if: matrix.os == 'ubuntu-latest'
+    - uses: haskell/actions/setup@v2
       name: Setup Haskell Stack
       with:
         ghc-version: ${{ matrix.ghc }}
