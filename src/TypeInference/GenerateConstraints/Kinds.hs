@@ -543,10 +543,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         -- this can never be a kind var
         let retKnd = CBox $ returnKind $ TST.data_kind decl
         let retKnds = map getKind (TST.sig_args fst)
-        if all (==monoToAnyKind retKnd) retKnds then
-          checkXtors loc rst decl 
-        else 
-          throwOtherError loc ["Xtors do not have the correct kinds"]
+        mapM_ (addConstraint . KindEq KindConstraint (monoToAnyKind retKnd)) retKnds
+        checkXtors loc rst decl 
 
   annotateKind (RST.TyCodataRefined loc pol pknd tyn rv xtors) = do
     xtors' <- mapM annotateKind xtors
@@ -560,10 +558,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         -- this can never be a kind  var 
         let retKnd = CBox $ returnKind $ TST.data_kind decl
         let retKnds = map getKind (TST.sig_args fst)
-        if all (==monoToAnyKind retKnd) retKnds then
-          checkXtors loc rst decl 
-        else 
-          throwOtherError loc ["Xtors do not have the correct kinds"]
+        mapM_ (addConstraint . KindEq KindConstraint (monoToAnyKind retKnd)) retKnds
+        checkXtors loc rst decl 
 
   annotateKind (RST.TyApp _loc' _pol' (RST.TyNominal loc pol polyknd tyn) vartys) = do 
     vartys' <- mapM annotateKind vartys
