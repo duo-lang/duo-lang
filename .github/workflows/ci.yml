@@ -28,7 +28,7 @@ jobs:
       # https://github.com/actions/runner-images/issues/7061
       run: sudo chown -R $USER /usr/local/.ghcup
       if: matrix.os == 'ubuntu-latest'
-    - uses: haskell/actions/setup@latest
+    - uses: haskell/actions/setup
       name: Setup Haskell Stack
       with:
         ghc-version: ${{ matrix.ghc }}
