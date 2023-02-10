@@ -6,5 +6,8 @@ def prd x : (<Nat|Z>) := Z;
 def prd y : (<Nat|r|Z>) := Z;
 
 def prd z: (< Nat |  S( (< Nat |  S( (< Nat | Z >) ) >) ) >) := S(S(Z));
-def prd a: (< Nat | r | S( (<Nat | S( (< Nat | Z>) ) >) ) >) := S(S(Z));
+-- does not work yet
+--def prd a: (<Nat | r | S(< Nat | Z, S(r) >)>) := S(S(Z));
+--not sure if this is allowed 
+--def prd a: (< Nat | r | S( (<Nat | Z, S(r) >) ) >) := S(S(Z));
 

@@ -11,7 +11,6 @@ refinement data List : (+a : CBV) -> CBV {
 
 def prd x : forall a. <List|Nil>@(a) := Nil;
 def prd x2 : forall a. <List | r | Nil>@(a) := Nil;
---def prd x3 : <List | r | Nil, Cons( Cons(r) ) >@(Nat) := Cons(MkZ,Cons(MkZ,Nil));
 def prd y := Nil; 
 
 --  Computes the length of a list.
@@ -21,12 +20,12 @@ def rec prd length :=
         Cons(_, xs) => S(length xs)
     };
 
---  Append two lists together.
---def rec prd append :=
---    \xs ys => case xs of {
---        Nil => ys,
---        Cons(z, zs) => Cons(z, append zs ys)
---    };
+-- | Append two lists together.
+def rec prd append :=
+    \xs ys => case xs of {
+        Nil => ys,
+        Cons(z, zs) => Cons(z, append zs ys)
+    };
 
 --  Reverse order of a list.
 --def rec prd reverse :=
