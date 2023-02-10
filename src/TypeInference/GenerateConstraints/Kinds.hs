@@ -4,7 +4,6 @@ module TypeInference.GenerateConstraints.Kinds
   , resolveDataDecl
   ) where
 
-
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
@@ -198,19 +197,39 @@ annotTy (RST.TyCodata loc pol xtors) = do
 annotTy (RST.TyDataRefined loc pol pknd tyn rv xtors) =  do 
   tyn' <- gets declTyName
   if tyn == tyn' then do
-    let xtorNames = map RST.sig_name xtors
-    xtors' <- getXtors pol xtorNames
-    return $ TST.TyDataRefined loc pol pknd tyn rv xtors' 
+    case rv of 
+      Nothing -> do 
+        let xtorNames = map RST.sig_name xtors
+        xtors' <- getXtors pol xtorNames
+        return $ TST.TyDataRefined loc pol pknd tyn rv xtors' 
+      Just rv' -> do 
+        addRecVar rv' pknd
+        let tyrvPos = RST.TyRecVar loc PosRep rv'
+        let tyrvNeg = RST.TyRecVar loc NegRep rv'
+        let xtorsReplaced = RST.replaceNominal tyrvPos tyrvNeg tyn <$> xtors
+        xtors' <- mapM annotXtor xtorsReplaced
+        return $ TST.TyDataRefined loc pol pknd tyn rv xtors'
   else do 
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) $ TST.data_xtors decl
     return $ TST.TyDataRefined loc pol pknd tyn rv xtors' 
+
 annotTy (RST.TyCodataRefined loc pol pknd tyn rv xtors) = do 
   tyn' <- gets declTyName
   if tyn == tyn' then do 
-    let xtorNames = map RST.sig_name xtors
-    xtors' <- getXtors (RST.flipPolarityRep pol) xtorNames
-    return $ TST.TyCodataRefined loc pol pknd tyn rv xtors'
+    case rv of 
+      Nothing -> do
+        let xtorNames = map RST.sig_name xtors
+        xtors' <- getXtors (RST.flipPolarityRep pol) xtorNames
+        return $ TST.TyCodataRefined loc pol pknd tyn rv xtors'
+      Just rv' -> do
+        addRecVar rv' pknd
+        let tyrvPos = RST.TyRecVar loc PosRep rv'
+        let tyrvNeg = RST.TyRecVar loc NegRep rv'
+        let xtorsReplaced = RST.replaceNominal tyrvPos tyrvNeg tyn <$> xtors
+        xtors' <- mapM annotXtor xtorsReplaced
+        return $ TST.TyCodataRefined loc pol pknd tyn rv xtors'
+
   else do
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> snd; RST.NegRep -> fst) $ TST.data_xtors decl

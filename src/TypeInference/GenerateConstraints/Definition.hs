@@ -34,7 +34,6 @@ module TypeInference.GenerateConstraints.Definition
   , initialReader
 ) where
 
-
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
