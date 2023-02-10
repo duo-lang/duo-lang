@@ -246,8 +246,11 @@ insertType (TyRec _ rep rv ty) = do
   return newNode
 insertType (TyData _  polrep eo xtors)   = insertXtors CST.Data   polrep Nothing (MkPolyKind [] eo) xtors
 insertType (TyCodata _ polrep eo  xtors) = insertXtors CST.Codata polrep Nothing (MkPolyKind [] eo) xtors
-insertType (TyDataRefined _ polrep pk mtn rv xtors)   = insertXtors CST.Data   polrep (Just (mtn,rv)) pk xtors
-insertType (TyCodataRefined _ polrep pk mtn rv xtors) = insertXtors CST.Codata polrep (Just (mtn,rv)) pk xtors
+insertType (TyDataRefined _ polrep pk mtn Nothing xtors)   = insertXtors CST.Data   polrep (Just (mtn,Nothing)) pk xtors
+insertType (TyDataRefined _ polrep pk mtn (Just rv) xtors) = insertXtors CST.Data   polrep (Just (mtn,if rv `elem` recTVars xtors then Just rv else Nothing)) pk xtors
+insertType (TyCodataRefined _ polrep pk mtn Nothing xtors)   = insertXtors CST.Codata polrep (Just (mtn,Nothing)) pk xtors
+insertType (TyCodataRefined _ polrep pk mtn (Just rv) xtors) = insertXtors CST.Codata polrep (Just (mtn,if rv `elem` recTVars xtors then Just rv else Nothing)) pk xtors
+
 insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyApp _ _ (TyNominal _ rep polyknd tn) args) = do
   let pol = polarityRepToPol rep
