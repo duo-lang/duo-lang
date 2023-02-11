@@ -232,6 +232,8 @@ test-suite duo-lang-test
     , Spec.LocallyClosed
     , Spec.OverlapCheck
     , Spec.Prettyprinter
+    , Spec.ParseTest
+    , Spec.TypecheckTest
     , Paths_duo_lang
   hs-source-dirs:
       test

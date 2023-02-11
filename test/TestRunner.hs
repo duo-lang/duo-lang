@@ -2,7 +2,6 @@ module Main where
 
 import Control.Monad.Except (runExcept, runExceptT, forM, forM_)
 import Data.List.NonEmpty (NonEmpty)
-import Data.Either (isRight)
 import Data.List (sort)
 import System.Environment (withArgs)
 import Test.Hspec
@@ -19,6 +18,8 @@ import Spec.TypeInferenceExamples qualified
 import Spec.OverlapCheck qualified
 import Spec.Prettyprinter qualified
 import Spec.Focusing qualified
+import Spec.ParseTest qualified
+import Spec.TypecheckTest qualified
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Names
 import Syntax.TST.Program qualified as TST
@@ -89,15 +90,15 @@ getSymbolTable fp mn = do
 --------
 
 runSpecTest :: Description
-            -> [((FilePath, ModuleName), Either (NonEmpty Error) b0)]
-            -> (((FilePath, ModuleName), Either (NonEmpty Error) b0) -> Spec)
+            -> [(a0, Either (NonEmpty Error) b0)]
+            -> ((a0, Either (NonEmpty Error) b0) -> Spec)
             -> Spec
 runSpecTest description examples spec = do
   describe description $ do
-    forM_ examples $ \((fp, mn), syntaxtree) ->
+    forM_ examples $ \(example, syntaxtree) ->
       case syntaxtree of
-        Left err -> it ("\n could not run the test on " ++ moduleNameToFullPath mn fp ++ ": ") $ expectationFailure (ppPrintString err)
-        Right res -> spec ((fp, mn), Right res)
+        Left _ -> pure ()
+        Right res -> spec (example, Right res)
 
 
 
@@ -129,22 +130,24 @@ main = do
         Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, res)
 
     -- counterexamples 
+    -- for the sake of the type inference test, they contain both the parse and the TST
     typecheckedCounterExamples <- forM parsedCounterExamples $ \(example, parse) -> do
       case parse of
-        Left err -> putStrLn (ppPrintString err) >> pure (example, Left err)
-        Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, Right (parse, res))
+        Left err -> pure (example, Left err)
+        Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, Right (cst, res))
 
 
     withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
     -- Tests before typechecking:
+      runSpecTest "Examples could be successfully parsed" parsedExamples Spec.ParseTest.spec
       runSpecTest "Prettyprinting and parsing again" parsedExamples Spec.Prettyprinter.specParse
-    -- Tests after typechecking
+    -- Tests after typechecking:
+      runSpecTest "Examples could be successfully typechecked" typecheckedExamples Spec.TypecheckTest.spec
       runSpecTest "Examples parse and typecheck after prettyprinting" typecheckedExamples Spec.Prettyprinter.specType
-      runSpecTest "examples are locally closed" typecheckedExamples Spec.LocallyClosed.spec  -- <- here not typechecking examples too?
-      runSpecTest "examples can be focused" typecheckedExamples Spec.Focusing.spec
-
-      describe "TypeInference with check"  $ do
-        forM_ typecheckedCounterExamples $ \(example, Right (parse, tst)) ->
-            Spec.TypeInferenceExamples.spec (example, parse) tst
+      runSpecTest "Examples are locally closed" typecheckedExamples Spec.LocallyClosed.spec  -- <- TODO: Only typechecking is dependent on local closedness
+      runSpecTest "Examples can be focused" typecheckedExamples Spec.Focusing.spec
+      runSpecTest "TypeInference with check" typecheckedCounterExamples Spec.TypeInferenceExamples.spec
+      -- Overlap Check: Not dependent on any parses:
+      Spec.OverlapCheck.spec
 
 
