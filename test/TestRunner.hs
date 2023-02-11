@@ -100,6 +100,15 @@ runSpecTest description examples spec = do
         Left _ -> pure ()
         Right res -> spec (example, Right res)
 
+runSuccessTest :: Description
+              -> [(a0, Either (NonEmpty Error) b0)]
+              -> ((a0, Either (NonEmpty Error) b0) -> Spec)
+              -> Spec
+runSuccessTest description examples spec = do
+  describe description $ do
+    forM_ examples $ \(example, syntaxtree) ->
+      spec (example, syntaxtree)
+
 
 
 
@@ -126,7 +135,7 @@ main = do
     -- Typechecking: 
     typecheckedExamples <- forM parsedExamples $ \(example, parse) -> do
       case parse of
-        Left err -> putStrLn (ppPrintString err) >> pure (example, Left err)
+        Left err -> pure (example, Left err)
         Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, res)
 
     -- counterexamples 
@@ -139,10 +148,10 @@ main = do
 
     withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
     -- Tests before typechecking:
-      runSpecTest "Examples could be successfully parsed" parsedExamples Spec.ParseTest.spec
+      runSuccessTest "Examples could be successfully parsed" parsedExamples Spec.ParseTest.spec
       runSpecTest "Prettyprinting and parsing again" parsedExamples Spec.Prettyprinter.specParse
     -- Tests after typechecking:
-      runSpecTest "Examples could be successfully typechecked" typecheckedExamples Spec.TypecheckTest.spec
+      runSuccessTest "Examples could be successfully typechecked" typecheckedExamples Spec.TypecheckTest.spec
       runSpecTest "Examples parse and typecheck after prettyprinting" typecheckedExamples Spec.Prettyprinter.specType
       runSpecTest "Examples are locally closed" typecheckedExamples Spec.LocallyClosed.spec  -- <- TODO: Only typechecking is dependent on local closedness
       runSpecTest "Examples can be focused" typecheckedExamples Spec.Focusing.spec
