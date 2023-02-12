@@ -17,27 +17,27 @@ import Data.NegationP;
 --
 --------------------------------------------------------------------------------------------
 
-def prd handle1 : forall a b. a ⅋ b -> Notp@(a) -> b := 
+def prd handle1 : forall a b. a ⅋ b -> Notp(a) -> b := 
   \f e => mu x. e >> case { MkNotp(k2) => f >> MkPar(k2,x)}; 
 
-def prd handle2 : forall a b. a ⅋ b -> Notp@(b) -> a := 
+def prd handle2 : forall a b. a ⅋ b -> Notp(b) -> a := 
   \f e => mu x. e >> case { MkNotp(k2) => f >> MkPar(x,k2)}; 
 
 
 
 -- De Morgan Dualities
 
-def prd demorgan1 : forall p q. Notp@(p ⊕ q) -> Notn@(p) & Notn@(q) := \x =>
+def prd demorgan1 : forall p q. Notp(p ⊕ q) -> Notn(p) & Notn(q) := \x =>
    cocase {   Proj1(k) =>  x >> case { MkNotp(k2) => cocase { MkNotn(y) => Left(y)  >> k2 } >> k },
               Proj2(k) =>  x >> case { MkNotp(k2) => cocase { MkNotn(y) => Right(y) >> k2 } >> k }  };
 
-def prd demorgan2 : forall p q. Notn@(p) & Notn@(q) -> Notp@(p ⊕ q) := \x =>
+def prd demorgan2 : forall p q. Notn(p) & Notn(q) -> Notp(p ⊕ q) := \x =>
    MkNotp(case { 
     Left(y)  => x >> Proj1(MkNotn(y)),
     Right(y) => x >> Proj2(MkNotn(y))
     });
 
-def prd demorgan3 : forall p q. Notp@(p) ⊕ Notp@(q) -> Notn@(p & q) := \x =>
+def prd demorgan3 : forall p q. Notp(p) ⊕ Notp(q) -> Notn(p & q) := \x =>
   case x of {
     Left(y)  => cocase { MkNotn(z) => y >> case { MkNotp(k) => z >> Proj1(k)} },
     Right(y) => cocase { MkNotn(z) => y >> case { MkNotp(k) => z >> Proj2(k)} }
@@ -45,21 +45,21 @@ def prd demorgan3 : forall p q. Notp@(p) ⊕ Notp@(q) -> Notn@(p & q) := \x =>
 
 -- this is the duality that does not hold intuitionistically 
 -- this can be seen by the twofold occurence of k
-def prd demorgan4 : forall p q. Notn@(p & q) -> Notp@(p) ⊕ Notp@(q) := cocase { Ap(x,k) => 
+def prd demorgan4 : forall p q. Notn(p & q) -> Notp(p) ⊕ Notp(q) := cocase { Ap(x,k) => 
   x >> MkNotn(cocase { Proj1(k2) => Left( MkNotp(k2)) >> k,
                        Proj2(k2) => Right(MkNotp(k2)) >> k})
 };
 
-def cns codemorgan1 : forall p q. Notn@(p & q) -<  Notp@(p) ⊕ Notp@(q)  := \cox =< case {
+def cns codemorgan1 : forall p q. Notn(p & q) -<  Notp(p) ⊕ Notp(q)  := \cox =< case {
    Left(x1)  => cocase { MkNotn(x2) => x1 >> case { MkNotp(k1) => x2 >> Proj1( k1 )}}  >> cox,
    Right(x3) => cocase { MkNotn(x4) => x3 >> case { MkNotp(k2) => x4 >> Proj2( k2 )}}  >> cox };
 
 -- todo: codemorgan 2-4
 
-def prd demorgan5 : forall p q. Notn@(p ⅋ q) -> Notp@(p) ⊗ Notp@(q) := cocase { Ap(x,k) =>
+def prd demorgan5 : forall p q. Notn(p ⅋ q) -> Notp(p) ⊗ Notp(q) := cocase { Ap(x,k) =>
  x >> MkNotn(cocase { MkPar(kpc,kqc) => MkTensor(MkNotp(kpc),MkNotp(kqc)) >> k }) };
 
-def cns codemorgan5 : forall p q.  Notp@( p ⊗ q  ) -<  Notn@( p ) ⅋  Notn@( q )  := case {
+def cns codemorgan5 : forall p q.  Notp( p ⊗ q  ) -<  Notn( p ) ⅋  Notn( q )  := case {
    CoAp(k1,x1) =>  (MkNotp( case {MkTensor(x2,x3) => x1 >> MkPar(MkNotn(x2),MkNotn(x3))})) >> k1}; 
 
 --def prd demorgan6 : forall p q. Notp(p) ⊗ Notp(q) -> Notn(p ⅋ q) := ...
@@ -68,9 +68,9 @@ def cns codemorgan5 : forall p q.  Notp@( p ⊗ q  ) -<  Notn@( p ) ⅋  Notn@( 
 
 -- todo : codemorgan 6-8  
 
-def prd doublenegelim : forall p. Notp@(Notp@(p)) -> p := 
+def prd doublenegelim : forall p. Notp(Notp(p)) -> p := 
   cocase { Ap(x,k) => x >> case { MkNotp(ka) => MkNotp(k) >> ka }} ;
 
-def cns codoublenegelim : forall p.  Notn@( Notn@( p ) ) -< p  := 
+def cns codoublenegelim : forall p.  Notn( Notn( p ) ) -< p  := 
   case { CoAp(k1,x1) => cocase {MkNotn(x2) => x2 >> MkNotn( x1 )} >> k1};
 
