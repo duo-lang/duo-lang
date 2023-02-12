@@ -28,11 +28,11 @@ def rec prd append :=
     };
 
 --  Reverse order of a list.
---def rec prd reverse :=
---    \xs => case xs of {
---        Nil => Nil,
---        Cons(y, ys) => append (reverse ys) Cons(y, Nil)
---    };
+def rec prd reverse :=
+    \xs => case xs of {
+        Nil => Nil,
+        Cons(y, ys) => append (reverse ys) Cons(y, Nil)
+    };
 
 --  Maps a function over all elements of a list.
 --def rec prd map :=
