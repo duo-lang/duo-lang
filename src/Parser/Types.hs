@@ -243,11 +243,9 @@ typAtomP = do
 tyArgsP :: Parser (NonEmpty Typ, SourcePos)
 tyArgsP = do 
   symbolP SymAtSign
-  sc
   symbolP SymParenLeft 
   sc
   args <- typP `sepBy1` (symbolP SymComma >> sc)
-  sc
   symbolP SymParenRight
   sc
   endPos <- getSourcePos
