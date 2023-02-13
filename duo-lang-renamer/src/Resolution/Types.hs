@@ -7,12 +7,12 @@ module Resolution.Types
 
 import Control.Monad.Except (throwError)
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NE
 
-import Errors
-import Pretty.Pretty
+import Errors.Renamer
 import Resolution.Definition
 import Resolution.SymbolTable
 import Syntax.RST.Types qualified as RST
@@ -33,7 +33,7 @@ resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
     monotype <- resolveTyp rep ts_monotype
     if RST.freeTVars monotype `S.isSubsetOf` S.fromList (map fst ts_vars)
     then pure (RST.TypeScheme ts_loc ts_vars monotype)
-        else throwError (ErrResolution (MissingVarsInTypeScheme ts_loc) :| [])
+        else throwError (MissingVarsInTypeScheme ts_loc)
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyUniVar loc v) =
@@ -52,7 +52,7 @@ resolveTyp rep (TyXData loc Data sigs) = do
 -- Refinement Data
 resolveTyp rep (TyXRefined loc Data tn mrv sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-    if not (null (kindArgs pknd)) then throwOtherError loc ["Type " <> ppPrint tn <> " was not fully applied"] 
+    if not (null (kindArgs pknd)) then throwError (UnknownResolutionError loc ("Type " <> T.pack (show tn) <> " was not fully applied"))
     else do
       case mrv of 
         Nothing -> do
@@ -79,7 +79,7 @@ resolveTyp rep (TyNominal loc name) = do
       typ' <- resolveTyp rep typ
       pure $ RST.TySyn loc rep name' typ'
     NominalResult rtn _ CST.Refined _ -> 
-      throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
+      throwError (UnknownResolutionError loc ("Refined type " <> T.pack (show rtn) <> " cannot be used as a nominal type constructor."))
     NominalResult name' _ CST.NotRefined polyknd -> 
       pure $ RST.TyNominal loc rep polyknd name'
 
@@ -87,8 +87,8 @@ resolveTyp rep (TyNominal loc name) = do
 resolveTyp rep (TyApp loc ty@(TyNominal _loc tyn) args) = do 
   res <- lookupTypeConstructor loc tyn
   case res of 
-    SynonymResult _ _ -> throwOtherError loc ["Type synonmys cannot be applied to arguments (yet)"]
-    NominalResult rtn _ CST.Refined _ -> throwOtherError loc ["Refined type "<>ppPrint rtn <> " cannot be used as a nominal type constructor"]
+    SynonymResult _ _ -> throwError (UnknownResolutionError loc "Type synonmys cannot be applied to arguments (yet)")
+    NominalResult rtn _ CST.Refined _ -> throwError (UnknownResolutionError loc ("Refined type " <> T.pack (show rtn) <> " cannot be used as a nominal type constructor"))
     NominalResult _tyn' _ CST.NotRefined polyknd -> do 
       ty' <- resolveTyp rep ty
       args' <- resolveTypeArgs loc rep tyn polyknd (NE.toList args)
@@ -100,7 +100,7 @@ resolveTyp rep (TyApp loc (TySkolemVar loc' sk) args) = do
   recVars <- asks rr_ref_recVars
   let rv = skolemToRecRVar sk
   case M.lookup rv recVars of 
-    Nothing -> throwOtherError loc' ["Types can't be applied to Skolem Variables"]
+    Nothing -> throwError (UnknownResolutionError loc' "Types can't be applied to Skolem Variables")
     Just (tn,pknd) -> do 
       args'<- resolveTypeArgs loc rep tn pknd (NE.toList args)
       let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst :| rst
@@ -144,7 +144,7 @@ resolveTyp rep (TyApp loc (TyKindAnnot mk ty) args) = do
 
 resolveTyp rep (TyApp loc (TyParens _ ty) args) = resolveTyp rep (TyApp loc ty args)
 
-resolveTyp _ (TyApp loc ty _) = throwOtherError loc ["Types can only be applied to nominal and refinement types, was applied to ", ppPrint ty]
+resolveTyp _ (TyApp loc ty _) = throwError (UnknownResolutionError loc ("Types can only be applied to nominal and refinement types, was applied to\n" <> T.pack (show ty)))
 
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v
@@ -152,13 +152,13 @@ resolveTyp rep (TyRec loc v typ) = do
 
 -- Lattice types    
 resolveTyp PosRep (TyTop loc) =
-    throwError (ErrResolution (TopInPosPolarity loc) :| [])
+    throwError (TopInPosPolarity loc)
 resolveTyp NegRep (TyTop loc) =
     pure $ RST.TyTop loc
 resolveTyp PosRep (TyBot loc) =
     pure $ RST.TyBot loc
 resolveTyp NegRep (TyBot loc) =
-    throwError (ErrResolution (BotInNegPolarity loc) :| [])
+    throwError (BotInNegPolarity loc)
 resolveTyp rep (TyBinOpChain fst rest) =
     resolveBinOpChain rep fst rest
 resolveTyp rep (TyBinOp loc fst op snd) =
@@ -180,14 +180,14 @@ resolveTyp rep (TyString loc) =
 resolveTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> PolyKind -> [Typ] -> ResolverM [RST.VariantType pol]
 resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do
     if length args /= length kindArgs  then
-        throwOtherError loc ["Type constructor " <> unTypeName tn <> " must be fully applied"]
+        throwError (UnknownResolutionError loc ("Type constructor " <> unTypeName tn <> " must be fully applied"))
     else do
         let
             f :: ((Variance, SkolemTVar, MonoKind), Typ) -> ResolverM (RST.VariantType pol)
             f ((Covariant,_,_),ty) = RST.CovariantType <$> resolveTyp rep ty
             f ((Contravariant,_,_),ty) = RST.ContravariantType <$> resolveTyp (flipPolarityRep rep) ty
         sequence (f <$> zip kindArgs args)
-resolveTypeArgs loc _ _ (KindVar _) _ = throwOtherError loc ["Kind Variables should not be in the program at this point"]
+resolveTypeArgs loc _ _ (KindVar _) _ = throwError (UnknownResolutionError loc "Kind Variables should not be in the program at this point")
 
 
 resolveXTorSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.XtorSig pol]
@@ -224,13 +224,13 @@ desugaring loc PosRep UnionDesugaring tl tr = do
     tr <- resolveTyp PosRep tr
     pure $ RST.TyUnion loc tl tr
 desugaring loc NegRep UnionDesugaring _ _ =
-    throwError (ErrResolution (UnionInNegPolarity loc) :| [])
+    throwError (UnionInNegPolarity loc)
 desugaring loc NegRep InterDesugaring tl tr = do
     tl <- resolveTyp NegRep tl
     tr <- resolveTyp NegRep tr
     pure $ RST.TyInter loc tl tr
 desugaring loc PosRep InterDesugaring _ _ =
-    throwError (ErrResolution (IntersectionInPosPolarity loc) :| [])
+    throwError (IntersectionInPosPolarity loc)
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
     resolveTyp rep (TyApp loc (TyNominal loc tyname) (tl:|[tr]))
 
@@ -264,7 +264,7 @@ associateOps lhs ((loc1, s1, rhs1) :| next@(loc2, s2, _rhs2) : rest) = do
     then do
         associateOps (TyBinOp loc1 lhs s1 rhs1) (next :| rest)
     else
-        throwOtherError defaultLoc ["Unhandled case reached. This is a bug the operator precedence parser"]
+        throwError (UnknownResolutionError defaultLoc "Unhandled case reached. This is a bug the operator precedence parser")
 
 resolveBinOp :: Loc -> PolarityRep pol -> Typ -> BinOp -> Typ -> ResolverM (RST.Typ pol)
 resolveBinOp loc rep lhs s rhs = do

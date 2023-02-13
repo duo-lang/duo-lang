@@ -46,6 +46,7 @@ import Data.Text qualified as T
 
 import Driver.Environment
 import Errors
+import Errors.Renamer
 import Lookup
 import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST

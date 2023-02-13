@@ -53,3 +53,9 @@ cradle:
     
     - path: "./duo-lang-parser/src"
       component: "duo-lang-parser:lib"
+    
+    - path: "./duo-lang-renamer/src"
+      component: "duo-lang-renamer:lib"
+
+    - path: "./duo-lang-desugaring/src"
+      component: "duo-lang-desugaring:lib"

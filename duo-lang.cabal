@@ -27,6 +27,8 @@ common shared-build-depends
     , diagnose
     , directory
     , duo-lang-parser
+    , duo-lang-renamer
+    , duo-lang-desugaring
     , filepath
     , fgl >=5.7 && <6
     , graphviz >=2999.20 && < 3000
@@ -123,28 +125,11 @@ library
       Pretty.Program
       Pretty.Errors
       Pretty.TypeAutomata
-      Resolution.Definition
-      Resolution.Pattern
-      Resolution.Program
-      Resolution.SymbolTable
-      Resolution.Terms
-      Resolution.Types
-      Resolution.Unresolve
       Dualize.Dualize
-      Sugar.Desugar
-      Sugar.Core
       Sugar.TST
-      Syntax.LocallyNameless
-      Syntax.NMap
       Syntax.TST.Program
       Syntax.TST.Terms
       Syntax.TST.Types
-      Syntax.Core.Annot
-      Syntax.Core.Terms
-      Syntax.Core.Program
-      Syntax.RST.Program
-      Syntax.RST.Terms
-      Syntax.RST.Types
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition
       TypeAutomata.Utils
@@ -219,6 +204,8 @@ test-suite duo-lang-test
     , Spec.LocallyClosed
     , Spec.OverlapCheck
     , Spec.Prettyprinter
+    , Spec.ParseTest
+    , Spec.TypecheckTest
     , Paths_duo_lang
   hs-source-dirs:
       test
