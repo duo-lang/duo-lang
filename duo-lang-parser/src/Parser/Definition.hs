@@ -39,6 +39,7 @@ dbg txt (Parser p) = Parser $ Text.Megaparsec.Debug.dbg txt p
 
 parseTst :: Show a => Parser a -> Text -> IO ()
 parseTst (Parser p) = Text.Megaparsec.parseTest p
+
 -------------------------------------------------------------------------------------------
 -- Translating a Parse Error to an Error
 -------------------------------------------------------------------------------------------
@@ -65,18 +66,20 @@ translateError ParseErrorBundle { bundlePosState, bundleErrors } =
 -- Running a parser
 -------------------------------------------------------------------------------------------
 
-runFileParser :: forall m a. MonadError (NonEmpty ParserError) m
+runFileParser :: forall m a e. MonadError (NonEmpty e) m
               => FilePath -- ^ The Filepath used in Error Messages and Source Locations
               -> Parser a
               -> Text -- ^ The text to be parsed
+              -> (ParserError -> e) -- ^ The function used to embed the error.
               -> m a
-runFileParser fp p input = case runParser (unParser p) fp input of
-  Left err -> throwError (translateError err)
+runFileParser fp p input f = case runParser (unParser p) fp input of
+  Left err -> throwError (f <$> (translateError err))
   Right x -> pure x
 
-runInteractiveParser :: forall m a.  MonadError (NonEmpty ParserError) m
+runInteractiveParser :: forall m a e.  MonadError (NonEmpty e) m
                      => Parser a
                      -> Text -- The text to be parsed
+                     -> (ParserError -> e)
                      -> m a
-runInteractiveParser = runFileParser "<interactive>"
+runInteractiveParser p input f = runFileParser "<interactive>" p input f
 

@@ -6,6 +6,7 @@ module Driver.Driver
   , inferProgramIO
   , inferDecl
   , runCompilationModule
+  , adjustModulePath
   ) where
 
 
@@ -13,6 +14,8 @@ import Control.Monad.State
 import Control.Monad.Except
 import Data.List.NonEmpty ( NonEmpty ((:|)) )
 import Data.List.NonEmpty qualified as NE
+import System.FilePath (joinPath, splitDirectories, dropExtension)
+import Data.List ( isPrefixOf, stripPrefix )
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
@@ -42,7 +45,7 @@ import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints)
-import Loc ( Loc, AttachLoc(attachLoc) )
+import Loc ( Loc, AttachLoc(attachLoc), defaultLoc)
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program (prdCnsToPol)
@@ -351,6 +354,31 @@ inferProgram Core.MkModule { mod_name, mod_libpath, mod_decls } = do
                     }
 
 
+-- when only given a filepath, parsing the file will result in the libpath of a module overlapping with the module name, e.g.
+-- module Codata.Function in std/Codata/Function.duo will have libpath `std/Codata`.
+-- Thus we have to adjust the libpath (to `std/` in the example above).
+-- Moreover, we need to check whether the new path and the original filepath are compatible.
+adjustModulePath :: CST.Module -> FilePath -> Either (NE.NonEmpty Error) CST.Module
+adjustModulePath mod fp =
+  let fp'  = fpToList fp
+      mlp  = CST.mod_libpath mod
+      mFp  = fpToList mlp
+      mn   = CST.mod_name mod
+      mp   = T.unpack <$> mn_path mn ++ [mn_base mn]
+  in do
+    prefix <- reverse <$> dropModulePart (reverse mp) (reverse mFp)
+    if prefix `isPrefixOf` fp'
+    then pure mod { CST.mod_libpath = joinPath prefix } 
+    else throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString mlp) <> " is not compatible with given filepath " <> T.pack fp ]
+  where
+    fpToList :: FilePath -> [String]
+    fpToList = splitDirectories . dropExtension
+
+    dropModulePart :: [String] -> [String] -> Either (NE.NonEmpty Error) [String]
+    dropModulePart mp mFp =
+      case stripPrefix mp mFp of
+        Just mFp' -> pure mFp'
+        Nothing   -> throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString (CST.mod_name mod)) <> " is not a suffix of path " <> T.pack (CST.mod_libpath mod)  ]
 
 
 ---------------------------------------------------------------------------------

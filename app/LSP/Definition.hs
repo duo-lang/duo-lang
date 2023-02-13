@@ -15,8 +15,8 @@ import Language.LSP.Types qualified as LSP
 import Language.LSP.VFS ( virtualFileText )
 
 import Driver.Definition ( defaultDriverState )
-import Driver.Driver ( inferProgramIO )
-import Errors ( Warning, Error )
+import Driver.Driver ( inferProgramIO, adjustModulePath)
+import Errors ( Warning, Error(..) )
 import Loc ( getLoc )
 import LSP.MegaparsecToLSP ( locToRange )
 import Parser.Definition (runFileParser)
@@ -57,8 +57,8 @@ sendError msg = LSP.sendNotification LSP.SWindowShowMessage (LSP.ShowMessagePara
 
 getModuleFromFilePath :: FilePath -> T.Text -> Either (NE.NonEmpty Error) CST.Module
 getModuleFromFilePath fp file = do
-  mod <- runExcept (runFileParser fp (moduleP fp) file)
-  CST.adjustModulePath mod fp
+  mod <- runExcept (runFileParser fp (moduleP fp) file ErrParser)
+  adjustModulePath mod fp
 
 ---------------------------------------------------------------------------------------------
 -- Publishing Diagnostics
