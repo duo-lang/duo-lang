@@ -19,7 +19,7 @@ import Utils (moduleNameToFullPath)
 type Reason = String
 
 pendingFiles :: [(ModuleName, Reason)]
-pendingFiles = [(  MkModuleName [] "ListRefinement" ,"Type Applications to Refinement Types aren't fully implemented yet"), (MkModuleName [] "Refinements", "Type Applications to Refinement Types aren't fully implemented yet")]
+pendingFiles = []
 
 getProducers :: TST.Module -> [(FreeVarName, Term Prd)]
 getProducers TST.MkModule { mod_decls } = go mod_decls []
