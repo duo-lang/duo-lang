@@ -56,3 +56,6 @@ cradle:
     
     - path: "./duo-lang-renamer/src"
       component: "duo-lang-renamer:lib"
+
+    - path: "./duo-lang-desugaring/src"
+      component: "duo-lang-desugaring:lib"

@@ -4,6 +4,7 @@ packages:
 - .
 - ./duo-lang-parser
 - ./duo-lang-renamer
+- ./duo-lang-desugaring
 
 extra-deps:
 - diagnose-2.2.0

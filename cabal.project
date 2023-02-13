@@ -1,4 +1,5 @@
 packages:
    ./duo-lang.cabal
+   ./duo-lang-desugarer/duo-lang-desugaring.cabal
    ./duo-lang-parser/duo-lang-parser.cabal
    ./duo-lang-renamer/duo-lang-renamer.cabal
