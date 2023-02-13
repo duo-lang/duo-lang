@@ -8,7 +8,6 @@ module Driver.Driver
   , runCompilationModule
   ) where
 
-
 import Control.Monad.State
 import Control.Monad.Except
 import Data.List.NonEmpty ( NonEmpty ((:|)) )
@@ -281,8 +280,11 @@ inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
   let loc = RST.data_loc decl
   env <- gets drvEnv
+  let xtorNames = map RST.sig_name (fst (RST.data_xtors decl))
+  let retKnd = returnKind $ RST.data_kind decl  
+  let kndList = zip xtorNames (repeat retKnd) 
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
-  let f env = env { declEnv = (loc, decl') : declEnv env }
+  let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = M.fromList (kndList ++ M.toList (kindEnv env)) }
   modifyEnvironment mn f
   pure (TST.DataDecl decl')
 
@@ -293,8 +295,7 @@ inferDecl _mn (Core.XtorDecl decl) = do
   -- check constructor kinds
   let retKnd = RST.strxtordecl_evalOrder decl
   let xtornm = RST.strxtordecl_name decl
-  let argKnds = map snd (RST.strxtordecl_arity decl)
-  let f env = env { kindEnv = M.insert xtornm (retKnd, argKnds) (kindEnv env)}
+  let f env = env { kindEnv = M.insert xtornm retKnd (kindEnv env), xtorEnv = M.insert xtornm decl (xtorEnv env)}
   modifyEnvironment _mn f
   pure (TST.XtorDecl decl)
 --

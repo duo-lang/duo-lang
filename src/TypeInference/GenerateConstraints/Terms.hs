@@ -17,6 +17,7 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
+import Syntax.RST.Program qualified as RST
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Translate.EmbedTST (EmbedTST(..))
@@ -177,8 +178,8 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     inferredCases <- forM cases (\Core.MkCmdCase{ cmdcase_pat = Core.XtorPat loc xt args, cmdcase_loc, cmdcase_cmd} -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
-                        xtorKnd <- lookupXtorKind xt
-                        let argKnds = snd xtorKnd
+                        xtor <- lookupStructuralXtor xt
+                        let argKnds = map snd (RST.strxtordecl_arity xtor)
                         let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, monoToAnyKind z))) args argKnds
                         (uvarsPos, uvarsNeg) <- freshTVars tVarArgs
                         -- Check the command in the context extended with the positive unification variables

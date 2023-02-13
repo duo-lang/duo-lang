@@ -9,6 +9,7 @@ module Lookup
   , lookupXtorSigLower
   , lookupXtorSigUpper
   , lookupXtorKind
+  , lookupStructuralXtor
   , lookupClassDecl
   , lookupMethodType
   , withTerm
@@ -181,10 +182,17 @@ lookupMethodType loc mn RST.MkClassDeclaration { classdecl_name, classdecl_metho
     Just msig -> pure $ RST.msig_args msig
 
 lookupXtorKind :: EnvReader a m
-             => XtorName -> m (EvaluationOrder,[MonoKind])
+             => XtorName -> m EvaluationOrder
 lookupXtorKind xtorn = do
   let err = ErrOther $ SomeOtherError defaultLoc ("No Kinds for XTor " <> ppPrint xtorn)
   let f env = M.lookup xtorn (kindEnv env)
+  snd <$> findFirstM f err
+
+lookupStructuralXtor :: EnvReader a m
+                => XtorName -> m RST.StructuralXtorDeclaration
+lookupStructuralXtor xtorn = do 
+  let err = ErrOther $ SomeOtherError defaultLoc ("Xtor " <> ppPrint xtorn <> " not found in program")
+  let f env = M.lookup xtorn (xtorEnv env)
   snd <$> findFirstM f err
 
 
