@@ -2,7 +2,6 @@ module Main where
 
 import Control.Monad.Except (runExcept, runExceptT, forM, forM_)
 import Data.List.NonEmpty (NonEmpty((:|)))
-import Data.Either (isRight)
 import Data.List (sort)
 import System.Environment (withArgs)
 import Test.Hspec

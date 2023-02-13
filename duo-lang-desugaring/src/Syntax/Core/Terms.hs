@@ -16,7 +16,7 @@ import Data.Maybe (fromJust, isJust)
 import Data.Text qualified as T
 import Syntax.Core.Annot
 import Loc
-import Errors
+import Errors.Desugarer
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
@@ -249,29 +249,29 @@ instance LocallyNameless Substitution [(PrdCns, FreeVarName)] (Term pc) where
 -- Check for locally closedness
 ---------------------------------------------------------------------------------
 
-checkIfBound :: [[(PrdCns,a)]] -> PrdCnsRep pc -> Index -> Either Error ()
-checkIfBound env rep  (i, j) | i >= length env = Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show (i,j)) <> " is not bound (Outer index)"
+checkIfBound :: [[(PrdCns,a)]] -> PrdCnsRep pc -> Index -> Either DesugaringError ()
+checkIfBound env rep  (i, j) | i >= length env = Left $ UnknownDesugaringError defaultLoc $ "Variable " <> T.pack (show (i,j)) <> " is not bound (Outer index)"
                              | otherwise = checkIfBoundInner (env !! i) rep (i,j)
 
-checkIfBoundInner :: [(PrdCns,a)] -> PrdCnsRep pc -> Index -> Either Error ()
+checkIfBoundInner :: [(PrdCns,a)] -> PrdCnsRep pc -> Index -> Either DesugaringError ()
 checkIfBoundInner vars PrdRep idx@(_,j) =
   if j < length vars
     then case vars !! j of
       (Prd,_) -> return ()
-      (Cns,_) -> Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Producer"
-    else Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+      (Cns,_) -> Left $ UnknownDesugaringError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Producer"
+    else Left $ UnknownDesugaringError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
 checkIfBoundInner vars CnsRep idx@(_,j) =
   if j < length vars
     then case vars !! j of
       (Cns,_) -> return ()
-      (Prd,_) -> Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Consumer"
-    else Left $ ErrOther $ SomeOtherError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
+      (Prd,_) -> Left $ UnknownDesugaringError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound to Consumer"
+    else Left $ UnknownDesugaringError defaultLoc $ "Variable " <> T.pack (show idx) <> " is not bound (Inner index)"
 
-pctermLocallyClosedRec :: [[(PrdCns, ())]] -> PrdCnsTerm -> Either Error ()
+pctermLocallyClosedRec :: [[(PrdCns, ())]] -> PrdCnsTerm -> Either DesugaringError ()
 pctermLocallyClosedRec env (PrdTerm tm) = termLocallyClosedRec env tm
 pctermLocallyClosedRec env (CnsTerm tm) = termLocallyClosedRec env tm
 
-termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either Error ()
+termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either DesugaringError ()
 termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
 termLocallyClosedRec _ FreeVar{} = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
@@ -285,7 +285,7 @@ termLocallyClosedRec _ (PrimLitF64 _ _) = Right ()
 termLocallyClosedRec _ (PrimLitChar _ _) = Right ()
 termLocallyClosedRec _ (PrimLitString _ _) = Right ()
 
-commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either Error ()
+commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either DesugaringError ()
 commandLocallyClosedRec _ (ExitSuccess _) = Right ()
 commandLocallyClosedRec _ (ExitFailure _) = Right ()
 commandLocallyClosedRec _ (Jump _ _) = Right ()
@@ -295,7 +295,7 @@ commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
 commandLocallyClosedRec env (PrimOp _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> unSubstitution subst
 
-termLocallyClosed :: Term pc -> Either Error ()
+termLocallyClosed :: Term pc -> Either DesugaringError ()
 termLocallyClosed = termLocallyClosedRec []
 
 ---------------------------------------------------------------------------------
