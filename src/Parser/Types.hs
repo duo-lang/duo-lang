@@ -13,6 +13,7 @@ module Parser.Types
   , combineXtors
   ) where
 
+
 import Text.Megaparsec hiding (State)
 import Data.List.NonEmpty (NonEmpty((:|)))
 
@@ -68,24 +69,16 @@ combineXtors = fmap combineXtor
 -- Nominal Types
 ---------------------------------------------------------------------------------
 
-nominalTypeArgsP :: SourcePos -> Parser ([Typ], SourcePos)
-nominalTypeArgsP endPos =
-  parensP ((fst <$> typP) `sepBy` (symbolP SymComma >> sc)) <|> pure ([], endPos)
-
-
 -- | Parse a nominal type.
 -- E.g. "Nat", or "List(Nat)"
 nominalTypeP :: Parser (Typ, SourcePos)
 nominalTypeP = do
   startPos <- getSourcePos
   (name, endPos) <- typeNameP
-  (args, endPos') <- nominalTypeArgsP endPos
   sc
-  let loc = Loc startPos endPos'
-  case args of 
-    [] -> pure (TyNominal loc name, endPos')
-    (fst:rst) -> pure (TyApp loc (TyNominal loc name) (fst:|rst), endPos')
-
+  let loc = Loc startPos endPos
+  pure (TyNominal loc name, endPos)
+ 
 ---------------------------------------------------------------------------------
 -- Structural Types and Refinement Types
 ---------------------------------------------------------------------------------
@@ -149,7 +142,6 @@ recTypeP = do
   sc
   (ty, endPos) <- typP
   pure (TyRec (Loc startPos endPos) rv ty, endPos)
-
 
 
 ---------------------------------------------------------------------------------
@@ -227,19 +219,38 @@ tyBotP = do
 
 -- | Parse atomic types (i,e, without tyop chains)
 typAtomP :: Parser (Typ, SourcePos)
-typAtomP = tyParensP
-  <|> nominalTypeP
-  <|> xdataOrRefinementP Data
-  <|> xdataOrRefinementP Codata
-  <|> recTypeP
-  <|> tyTopP
-  <|> tyBotP
-  <|> tyI64P
-  <|> tyF64P
-  <|> tyCharP
-  <|> tyStringP
-  <|> typeVariableP
+typAtomP = do 
+  startPos <- getSourcePos
+  (fstTy, _) <- 
+    tyParensP
+    <|> nominalTypeP
+    <|> xdataOrRefinementP Data
+    <|> xdataOrRefinementP Codata
+    <|> recTypeP
+    <|> tyTopP
+    <|> tyBotP
+    <|> tyI64P
+    <|> tyF64P
+    <|> tyCharP
+    <|> tyStringP
+    <|> typeVariableP
+  args <- optional tyArgsP
+  endPos <- getSourcePos
+  case args of
+    Nothing -> pure (fstTy, endPos)
+    Just (args',endPos) -> pure (TyApp (Loc startPos endPos) fstTy args',endPos)
 
+tyArgsP :: Parser (NonEmpty Typ, SourcePos)
+tyArgsP = do 
+  symbolP SymParenLeft 
+  sc
+  args <- typP `sepBy1` (symbolP SymComma >> sc)
+  symbolP SymParenRight
+  endPos <- getSourcePos
+  sc
+  case args of 
+    [] -> error "Unreachable: sepBy1 parses at least one element."
+    ((ty1,_):argRst) -> pure (ty1:|map fst argRst,endPos)
 
 tyOpChainP :: Parser (NonEmpty (Loc, BinOp, Typ), SourcePos)
 tyOpChainP = do

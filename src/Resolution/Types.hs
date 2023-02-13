@@ -7,6 +7,7 @@ module Resolution.Types
 
 import Control.Monad.Except (throwError)
 import Data.Set qualified as S
+import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NE
 
@@ -51,9 +52,16 @@ resolveTyp rep (TyXData loc Data sigs) = do
 -- Refinement Data
 resolveTyp rep (TyXRefined loc Data tn mrv sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-    sigs <- resolveXTorSigs rep sigs
-    let rv = skolemToRecRVar <$> mrv
-    pure $ RST.TyDataRefined loc rep pknd tn' rv sigs
+    if not (null (kindArgs pknd)) then throwOtherError loc ["Type " <> ppPrint tn <> " was not fully applied"] 
+    else do
+      case mrv of 
+        Nothing -> do
+          sigs <- resolveXTorSigs rep sigs
+          pure $ RST.TyDataRefined loc rep pknd tn' Nothing sigs
+        Just sk -> do
+          let rv = skolemToRecRVar sk
+          sigs <- local (\r -> r { rr_recVars = S.insert rv $ rr_recVars r  } ) $ resolveXTorSigs rep sigs
+          return $ RST.TyDataRefined loc rep pknd tn' (Just rv) sigs 
 -- Nominal Codata
 resolveTyp rep (TyXData loc Codata sigs) = do
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
@@ -74,6 +82,8 @@ resolveTyp rep (TyNominal loc name) = do
       throwOtherError loc ["Refined type " <> ppPrint rtn <> " cannot be used as a nominal type constructor."]
     NominalResult name' _ CST.NotRefined polyknd -> 
       pure $ RST.TyNominal loc rep polyknd name'
+
+--applied types 
 resolveTyp rep (TyApp loc ty@(TyNominal _loc tyn) args) = do 
   res <- lookupTypeConstructor loc tyn
   case res of 
@@ -85,10 +95,57 @@ resolveTyp rep (TyApp loc ty@(TyNominal _loc tyn) args) = do
       case args' of 
         [] -> pure ty'
         (fst:rst) -> pure $ RST.TyApp loc rep ty' (fst:|rst)
+
+resolveTyp rep (TyApp loc (TySkolemVar loc' sk) args) = do
+  recVars <- asks rr_ref_recVars
+  let rv = skolemToRecRVar sk
+  case M.lookup rv recVars of 
+    Nothing -> throwOtherError loc' ["Types can't be applied to Skolem Variables"]
+    Just (tn,pknd) -> do 
+      args'<- resolveTypeArgs loc rep tn pknd (NE.toList args)
+      let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst :| rst
+      pure $ RST.TyApp loc rep (RST.TyRecVar loc' rep rv) args''
+
+resolveTyp rep (TyApp loc (TyXRefined loc' Data tn mrv sigs) args) = do 
+    NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
+    case mrv of 
+      Nothing -> do
+        sigs <- resolveXTorSigs rep sigs
+        args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
+        let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
+        pure $ RST.TyApp loc rep (RST.TyDataRefined loc' rep pknd tn' Nothing sigs) args''
+      Just sk -> do 
+        let rv = skolemToRecRVar sk
+        sigs <- local (\r -> r { rr_ref_recVars = M.insert rv (tn,pknd) $ rr_ref_recVars r  } ) $ resolveXTorSigs rep sigs
+        args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
+        let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
+        return $ RST.TyApp loc rep (RST.TyDataRefined loc' rep pknd tn' (Just rv) sigs) args''
+
+resolveTyp rep (TyApp loc (TyXRefined loc' Codata tn mrv sigs) args) = do 
+    NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
+    case mrv of 
+      Nothing -> do
+        sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
+        args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
+        let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
+        pure $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' Nothing sigs) args''
+      Just sk -> do 
+        let rv = skolemToRecRVar sk
+        sigs <- local (\r -> r { rr_ref_recVars = M.insert rv (tn,pknd) $ rr_ref_recVars r  } ) $ resolveXTorSigs (flipPolarityRep rep) sigs
+        args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
+        let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
+        return $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' (Just rv) sigs) args''
+
+
+  
 resolveTyp rep (TyApp loc (TyKindAnnot mk ty) args) = do 
   resolved <-  resolveTyp rep (TyApp loc ty args)
   pure $ RST.TyKindAnnot mk resolved
-resolveTyp _ (TyApp loc ty _) = throwOtherError loc ["Types can only be applied to nominal types, was applied to ", ppPrint ty]
+
+resolveTyp rep (TyApp loc (TyParens _ ty) args) = resolveTyp rep (TyApp loc ty args)
+
+resolveTyp _ (TyApp loc ty _) = throwOtherError loc ["Types can only be applied to nominal and refinement types, was applied to ", ppPrint ty]
+
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v
         local (\r -> r { rr_recVars = S.insert vr $ rr_recVars r  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ

@@ -544,13 +544,33 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       let argKnds' = case argKnds of (fst:rst) -> fst:|rst; _ -> error "cannnot happen"
       mapM_ (\(varty,mk) -> addConstraint $ KindEq KindConstraint (getKind varty) (monoToAnyKind mk)) (NE.zip vartys' argKnds')
       return (TST.TyApp loc pol (TST.TyNominal loc pol polyknd tyn) vartys')
+  annotateKind (RST.TyApp loc pol tyr@RST.TyRecVar{} vartys) = do
+    vartys' <- mapM annotateKind vartys
+    let varknds = NE.map TST.getKind vartys'
+    tyr' <- annotateKind tyr
+    let knd = TST.getKind tyr'
+    checkVarKnds loc knd varknds
+    return (TST.TyApp loc pol tyr' vartys')
+    where 
+      checkVarKnds :: Loc -> AnyKind -> NonEmpty AnyKind -> GenM ()
+      checkVarKnds loc (MkPknd (MkPolyKind args _)) varknds = do 
+        if length args /= length varknds then 
+          throwOtherError loc ["Number of applied arguments doesn't match number of declaration arguments"]
+        else do
+          let argknds = map (\(_,_,mk) -> mk) args
+          let argknds' = case argknds of (fst:rst) -> fst:|rst; _ -> error "cannot happen"
+          let zipped = NE.zip argknds' varknds
+          mapM_ (\(mk,knd) -> addConstraint $ KindEq KindConstraint knd (monoToAnyKind mk)) zipped
+      checkVarKnds _ (MkPknd (KindVar _)) _ = return ()
+      checkVarKnds loc primk _ = throwOtherError loc ["Recursive Variable can't have primitive kind " <> ppPrint primk]
+    
+  annotateKind (RST.TyApp loc _ ty _ ) = throwOtherError loc ["Types can only be applied to nominal types, was applied to ", ppPrint ty]
 
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
     case kindArgs polyknd of 
       [] -> do 
         return $ TST.TyNominal loc pol polyknd tyn
       _ -> throwOtherError loc ["Nominal Type " <> ppPrint tyn <> " was not fully applied"]
-  annotateKind (RST.TyApp loc _ ty _ ) = throwOtherError loc ["Types can only be applied to nominal types, was applied to ", ppPrint ty]
              
   annotateKind (RST.TySyn loc pol tn ty) = do 
     ty' <- annotateKind ty 

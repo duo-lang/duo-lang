@@ -25,7 +25,7 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (KVar, PolyKind(..),AnyKind(..))
+import Syntax.CST.Kinds (KVar, PolyKind(..),AnyKind(..),anyToMonoKind)
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
@@ -282,7 +282,12 @@ inferDecl mn (Core.DataDecl decl) = do
   let loc = RST.data_loc decl
   env <- gets drvEnv
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
-  let f env = env { declEnv = (loc, decl') : declEnv env}
+  let xtorArgs = map TST.sig_args (fst $ TST.data_xtors decl')
+  let xtorNames = map TST.sig_name (fst $ TST.data_xtors decl')
+  let xtorKnds = map (map (anyToMonoKind . TST.getKind)) xtorArgs
+  let retKnd = returnKind $ TST.data_kind decl'
+  let newKindEnv = zip xtorNames (zip (repeat retKnd) xtorKnds)
+  let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = M.fromList (newKindEnv ++ M.toList (kindEnv env))}
   modifyEnvironment mn f
   pure (TST.DataDecl decl')
 
@@ -382,7 +387,7 @@ runCompilationPlan compilationOrder = do
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
-      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveModule decls))
+      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty mempty) (resolveModule decls))
       -- 4. Desugar the program
       let desugaredProg = desugar resolvedDecls
       -- 5. Infer the declarations
