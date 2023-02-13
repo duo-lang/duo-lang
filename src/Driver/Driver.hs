@@ -127,6 +127,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   tmInferred <- liftEitherErrLoc pcdecl_loc (insertInstance instances tmInferred)
   -- 5. Read of the type and generate the resulting type
   let typ = TST.zonk TST.UniRep bisubst (TST.getTypeTerm tmInferred)
+  let tmZonked = TST.zonk TST.UniRep bisubst tmInferred
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
   -- 6. Simplify
   typSimplified <- if infOptsSimplify infopts then (do
@@ -139,7 +140,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 7. Insert into environment
   case pcdecl_pc of
     PrdRep -> do
-      let f env = env { prdEnv  = M.insert pcdecl_name (tmInferred ,pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) (prdEnv env) }
+      let f env = env { prdEnv  = M.insert pcdecl_name (tmZonked ,pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) (prdEnv env) }
       modifyEnvironment mn f
       pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                                    , pcdecl_doc = pcdecl_doc
@@ -147,10 +148,10 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                                    , pcdecl_isRec = pcdecl_isRec
                                    , pcdecl_name = pcdecl_name
                                    , pcdecl_annot = ty
-                                   , pcdecl_term = tmInferred
+                                   , pcdecl_term = tmZonked
                                    }
     CnsRep -> do
-      let f env = env { cnsEnv  = M.insert pcdecl_name (tmInferred, pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) (cnsEnv env) }
+      let f env = env { cnsEnv  = M.insert pcdecl_name (tmZonked, pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) (cnsEnv env) }
       modifyEnvironment mn f
       pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
                                    , pcdecl_doc = pcdecl_doc
@@ -158,7 +159,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
                                    , pcdecl_isRec = pcdecl_isRec
                                    , pcdecl_name = pcdecl_name
                                    , pcdecl_annot = ty
-                                   , pcdecl_term = tmInferred
+                                   , pcdecl_term = tmZonked
                                    }
 
 
