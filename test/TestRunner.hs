@@ -7,6 +7,8 @@ import System.Environment (withArgs)
 import Test.Hspec
 import Test.Hspec.Runner
 import Test.Hspec.Formatters
+import GHC.IO.Encoding (setLocaleEncoding)
+import System.IO (utf8)
 
 import Driver.Definition (defaultDriverState, parseAndCheckModule)
 import Driver.Driver (inferProgramIO)
@@ -24,8 +26,6 @@ import Syntax.CST.Names
 import Syntax.TST.Program qualified as TST
 import Options.Applicative
 import Utils (listRecursiveDuoFiles, filePathToModuleName, moduleNameToFullPath)
-import GHC.IO.Encoding (setLocaleEncoding)
-import System.IO (utf8)
 
 type Description = String
 
