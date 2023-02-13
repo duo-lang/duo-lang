@@ -24,9 +24,6 @@ import Syntax.CST.Names
 import Loc (Loc(..), defaultLoc)
 import Control.Monad.Reader (asks, MonadReader (local))
 
-
-import Debug.Trace
-
 ---------------------------------------------------------------------------------
 -- Lowering & Polarization (CST -> RST)
 ---------------------------------------------------------------------------------
@@ -55,7 +52,8 @@ resolveTyp rep (TyXData loc Data sigs) = do
 -- Refinement Data
 resolveTyp rep (TyXRefined loc Data tn mrv sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-    if not (null (kindArgs pknd)) then throwOtherError loc ["Type " <> ppPrint tn <> " was not fully applied"] else do
+    if not (null (kindArgs pknd)) then throwOtherError loc ["Type " <> ppPrint tn <> " was not fully applied"] 
+    else do
       case mrv of 
         Nothing -> do
           sigs <- resolveXTorSigs rep sigs
@@ -64,9 +62,6 @@ resolveTyp rep (TyXRefined loc Data tn mrv sigs) = do
           let rv = skolemToRecRVar sk
           sigs <- local (\r -> r { rr_recVars = S.insert rv $ rr_recVars r  } ) $ resolveXTorSigs rep sigs
           return $ RST.TyDataRefined loc rep pknd tn' (Just rv) sigs 
-    sigs <- resolveXTorSigs rep sigs
-    let rv = skolemToRecRVar <$> mrv
-    pure $ RST.TyDataRefined loc rep pknd tn' rv sigs
 -- Nominal Codata
 resolveTyp rep (TyXData loc Codata sigs) = do
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
