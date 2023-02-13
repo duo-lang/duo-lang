@@ -11,7 +11,6 @@ import Test.Hspec.Formatters
 import Driver.Definition (defaultDriverState, parseAndCheckModule)
 import Driver.Driver (inferProgramIO)
 import Errors
-import Pretty.Pretty ( ppPrintString )
 import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified

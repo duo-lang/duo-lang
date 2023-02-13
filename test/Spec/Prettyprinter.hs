@@ -1,6 +1,5 @@
 module Spec.Prettyprinter (specParse, specType) where
 
-import Control.Monad (forM_)
 import Data.Either (isRight)
 import Data.List.NonEmpty ( NonEmpty )
 import Test.Hspec

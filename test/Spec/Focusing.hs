@@ -1,6 +1,5 @@
 module Spec.Focusing (spec) where
 
-import Control.Monad
 import Data.List.NonEmpty ( NonEmpty )
 import Test.Hspec hiding (focus)
 import Pretty.Pretty
