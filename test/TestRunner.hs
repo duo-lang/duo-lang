@@ -1,7 +1,7 @@
 module Main where
 
 import Control.Monad.Except (runExcept, runExceptT, forM)
-import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Either (isRight)
 import Data.List (sort)
 import System.Environment (withArgs)
@@ -77,7 +77,9 @@ getSymbolTable :: FilePath -> ModuleName -> IO (Either (NonEmpty Error) SymbolTa
 getSymbolTable fp mn = do
   decls <- getParsedDeclarations fp mn
   case decls of
-    Right decls -> pure (runExcept (createSymbolTable decls))
+    Right decls -> case (runExcept (createSymbolTable decls)) of
+      Left err -> pure (Left (ErrResolution err :| []))
+      Right res -> pure (pure res)
     Left err -> return (Left err)
 
 

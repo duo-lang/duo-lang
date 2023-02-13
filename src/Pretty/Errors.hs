@@ -5,6 +5,7 @@ module Pretty.Errors
 import Control.Monad.IO.Class ( MonadIO(..) )
 import Data.Text (Text)
 import Errors.Parser
+import Errors.Renamer
 import Error.Diagnose
     ( stdout,
       addReport,
@@ -18,8 +19,11 @@ import Prettyprinter
 
 
 import Errors
+
 import Pretty.Constraints ()
 import Pretty.Terms ()
+import Pretty.Common ()
+import Pretty.Types
 import Pretty.Pretty ( PrettyAnn(..), ppPrint )
 import Loc (Loc (Loc), HasLoc (getLoc))
 import Text.Megaparsec (SourcePos(..), unPos)
@@ -52,9 +56,9 @@ instance PrettyAnn ResolutionError where
     vsep [ prettyAnn loc
          , "Cannot use `\\/` in negative polarity"
          ]
-  prettyAnn (UnknownOperator loc op) =
+  prettyAnn (TypeOperatorNotFound loc op) =
     vsep [ prettyAnn loc
-         , "Undefined type operator `" <> pretty op <> "`"
+         , "Undefined type operator `" <> prettyAnn op <> "`"
          ]
   prettyAnn (XtorArityMismatch loc xt ar1 ar2) =
     vsep [ prettyAnn loc
@@ -220,7 +224,7 @@ instance ToReport ResolutionError where
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(UnionInNegPolarity loc) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(UnknownOperator loc _op) =
+  toReport e@(TypeOperatorNotFound loc _op) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
   toReport e@(XtorArityMismatch loc _ _ _) =
     err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
