@@ -29,20 +29,18 @@ isValueTerm :: PrdCnsRep pc -> Term pc -> Maybe (Term pc)
 -- Free Variables:
 isValueTerm PrdRep fv@(FreeVar _ _ ty _) = do
   let knd = getKind ty
-  case knd of
+  case anyToMonoKind knd of
     CBox CBV -> Nothing
     CBox CBN -> Just fv
-    KindVar kv -> error ("Found unresolved KindVar " <> show kv <> "during focusing")
     I64Rep -> Just fv
     F64Rep -> Just fv
     CharRep -> Just fv
     StringRep -> Just fv
 isValueTerm CnsRep fv@(FreeVar _ _ ty _) = do
   let knd = getKind ty
-  case knd of
+  case anyToMonoKind knd of
     CBox CBV -> Just fv
     CBox CBN -> Nothing
-    KindVar kv -> error ("Found unresolved KindVar " <> show kv <> "during focusing")
     I64Rep -> Just fv
     F64Rep -> Just fv
     CharRep -> Just fv
@@ -50,13 +48,12 @@ isValueTerm CnsRep fv@(FreeVar _ _ ty _) = do
 -- Mu-Abstractions:
 isValueTerm PrdRep (MuAbs loc annot pc ty v cmd) = do
   let knd = getKind ty
-  case knd of
+  case anyToMonoKind knd of
     CBox CBV -> Nothing -- CBV, so a Mu-Abstraction is never a value.
     CBox CBN -> do
       -- CBN, so we have to check whether the command is focused.
       cmd' <- isFocused cmd
       pure (MuAbs loc annot pc ty v cmd')
-    KindVar kv -> error ("Found unresolved KindVar " <> show kv <> "during focusing")
     I64Rep -> error "Found Mu-Abstraction of kind I64Rep"
     F64Rep -> error "Found Mu-Abstraction of kind F64Rep"
     CharRep -> error "Found Mu-Abstraction of kind CharRep"
@@ -64,13 +61,12 @@ isValueTerm PrdRep (MuAbs loc annot pc ty v cmd) = do
 -- ~Mu-Abstractions:
 isValueTerm CnsRep (MuAbs loc annot pc ty v cmd) = do
   let knd = getKind ty
-  case knd of
+  case anyToMonoKind knd of
     CBox CBN -> Nothing -- CBN, so a ~Mu-Abstraction is never a value.
     CBox CBV -> do
       -- CBV, so we have to check whether the command is focused.
       cmd' <- isFocused cmd
       pure (MuAbs loc annot pc ty v cmd')
-    KindVar kv -> error ("Found unresolved KindVar " <> show kv <> "during focusing")
     I64Rep -> Just (MuAbs loc annot pc ty v cmd)
     F64Rep -> Just (MuAbs loc annot pc ty v cmd)
     CharRep -> Just (MuAbs loc annot pc ty v cmd)
@@ -215,9 +211,9 @@ focusXtor CnsRep ty ns xt subst =
 
 
 focusXtor' :: PrdCnsRep pc -> Typ (PrdCnsToPol pc) ->  CST.NominalStructural -> XtorName -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
-focusXtor' CnsRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (getKind ty) (FreeVar defaultLoc PrdRep (TyFlipPol PosRep ty) alphaVar)
+focusXtor' CnsRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (anyToMonoKind (getKind ty)) (FreeVar defaultLoc PrdRep (TyFlipPol PosRep ty) alphaVar)
                                                                            (Xtor defaultLoc XtorAnnotOrig CnsRep ty ns xt (MkSubstitution $ reverse pcterms'))
-focusXtor' PrdRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (getKind ty) (Xtor defaultLoc XtorAnnotOrig PrdRep ty ns xt (MkSubstitution $ reverse pcterms'))
+focusXtor' PrdRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (anyToMonoKind (getKind ty)) (Xtor defaultLoc XtorAnnotOrig PrdRep ty ns xt (MkSubstitution $ reverse pcterms'))
                                                                            (FreeVar defaultLoc CnsRep (TyFlipPol NegRep ty) alphaVar)
 focusXtor' pc     ty ns xt (PrdTerm (isValueTerm PrdRep -> Just prd):pcterms) pcterms' = focusXtor' pc ty ns xt pcterms (PrdTerm prd : pcterms')
 focusXtor' pc     ty ns xt (PrdTerm                                 prd:pcterms) pcterms' =
@@ -226,14 +222,14 @@ focusXtor' pc     ty ns xt (PrdTerm                                 prd:pcterms)
                                                                   tprd = getTypeTerm prd
                                                                   cmd = LN.close [(Prd,var)]  (LN.shift ShiftUp (focusXtor' pc ty ns xt pcterms (PrdTerm (FreeVar defaultLoc PrdRep tprd var) : pcterms')))
                                                               in
-                                                                  Apply defaultLoc ApplyAnnotOrig (getKind tprd) (focus prd) (MuAbs defaultLoc MuAnnotOrig CnsRep (TyFlipPol NegRep tprd) Nothing cmd)
+                                                                  Apply defaultLoc ApplyAnnotOrig (anyToMonoKind (getKind tprd)) (focus prd) (MuAbs defaultLoc MuAnnotOrig CnsRep (TyFlipPol NegRep tprd) Nothing cmd)
 focusXtor' pc     ty ns xt (CnsTerm (isValueTerm CnsRep -> Just cns):pcterms) pcterms' = focusXtor' pc ty ns xt pcterms (CnsTerm cns : pcterms')
 focusXtor' pc     ty ns xt (CnsTerm                                 cns:pcterms) pcterms' =
                                                               let
                                                                   var = betaVar (length pcterms') -- OK?
                                                                   tcns = getTypeTerm cns
                                                                   cmd = LN.close [(Cns,var)] (LN.shift ShiftUp (focusXtor' pc ty ns xt pcterms (CnsTerm (FreeVar defaultLoc CnsRep tcns var) : pcterms')))
-                                                              in Apply defaultLoc ApplyAnnotOrig  (getKind tcns) (MuAbs defaultLoc MuAnnotOrig PrdRep (TyFlipPol PosRep tcns) Nothing cmd) (focus cns)
+                                                              in Apply defaultLoc ApplyAnnotOrig  (anyToMonoKind (getKind tcns)) (MuAbs defaultLoc MuAnnotOrig PrdRep (TyFlipPol PosRep tcns) Nothing cmd) (focus cns)
 
 
 
@@ -271,14 +267,14 @@ focusPrimOp op (PrdTerm prd:pcterms) pcterms' =
         var = betaVar (length pcterms')
         cmd = LN.close [(Prd,var)]  (LN.shift ShiftUp (focusPrimOp op pcterms (PrdTerm (FreeVar defaultLoc PrdRep (getTypeTerm prd) var) : pcterms')))
     in
-        Apply defaultLoc ApplyAnnotOrig (getKind (getTypeTerm prd)) (focus prd) (MuAbs defaultLoc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing cmd)
+        Apply defaultLoc ApplyAnnotOrig (anyToMonoKind (getKind (getTypeTerm prd))) (focus prd) (MuAbs defaultLoc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing cmd)
 focusPrimOp op (CnsTerm (isValueTerm CnsRep -> Just cns):pcterms) pcterms' = focusPrimOp op pcterms (CnsTerm cns : pcterms')
 focusPrimOp op (CnsTerm cns:pcterms) pcterms' =
     let
         var = betaVar (length pcterms')
         cmd = LN.close [(Cns,var)] (LN.shift ShiftUp (focusPrimOp op pcterms (CnsTerm (FreeVar defaultLoc CnsRep (getTypeTerm cns) var) : pcterms')))
     in
-        Apply defaultLoc ApplyAnnotOrig (getKind (getTypeTerm cns)) (MuAbs defaultLoc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing cmd) (focus cns)
+        Apply defaultLoc ApplyAnnotOrig (anyToMonoKind (getKind (getTypeTerm cns))) (MuAbs defaultLoc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing cmd) (focus cns)
 
 -- | Invariant:
 -- The output should have the property `isFocusedCmd cmd`.
@@ -296,7 +292,7 @@ instance Focus Command where
     let
       knd = getKind (getTypeTerm prd)
     in
-      Apply loc ApplyAnnotOrig knd (focus prd)
+      Apply loc ApplyAnnotOrig (anyToMonoKind knd) (focus prd)
                   (MuAbs loc MuAnnotOrig CnsRep (TyFlipPol NegRep (getTypeTerm prd)) Nothing (Print loc (BoundVar loc PrdRep (getTypeTerm prd) (0,0)) (focus cmd)))
   -- Read
   focus (Read loc (isValueTerm CnsRep -> Just cns)) =
@@ -305,7 +301,7 @@ instance Focus Command where
     let
       knd = getKind (getTypeTerm cns)
     in
-      Apply loc ApplyAnnotOrig knd (MuAbs loc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing (Read loc (BoundVar loc CnsRep (getTypeTerm cns) (0,0)))) (focus cns)
+      Apply loc ApplyAnnotOrig (anyToMonoKind knd) (MuAbs loc MuAnnotOrig PrdRep (TyFlipPol PosRep (getTypeTerm cns)) Nothing (Read loc (BoundVar loc CnsRep (getTypeTerm cns) (0,0)))) (focus cns)
   focus (PrimOp _ op subst) = focusPrimOp op (unSubstitution subst) []
 
   isFocused :: Command -> Maybe Command
