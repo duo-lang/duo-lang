@@ -50,3 +50,6 @@ cradle:
 
     - path: "./bench/BenchRunner.hs"
       component: "duo-lang:bench:duo-lang-bench"
+    
+    - path: "./duo-lang-parser/src"
+      component: "duo-lang-parser:lib"
