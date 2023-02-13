@@ -9,7 +9,6 @@ import Control.Monad.Except (throwError)
 import Data.Set qualified as S
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NE
-import Data.Text qualified as T
 
 import Errors
 import Pretty.Pretty
@@ -50,19 +49,21 @@ resolveTyp rep (TyXData loc Data sigs) = do
     sigs <- resolveXTorSigs rep sigs
     pure $ RST.TyData loc rep sigs
 -- Refinement Data
-resolveTyp rep (TyXRefined loc Data tn sigs) = do
-    NominalResult tn' _ _ _ <- lookupTypeConstructor loc tn
+resolveTyp rep (TyXRefined loc Data tn mrv sigs) = do
+    NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs rep sigs
-    pure $ RST.TyDataRefined loc rep tn' sigs
+    let rv = skolemToRecRVar <$> mrv
+    pure $ RST.TyDataRefined loc rep pknd tn' rv sigs
 -- Nominal Codata
 resolveTyp rep (TyXData loc Codata sigs) = do
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
     pure $ RST.TyCodata loc rep sigs
 -- Refinement Codata
-resolveTyp rep (TyXRefined loc Codata tn sigs) = do
-    NominalResult tn' _ _ _ <- lookupTypeConstructor loc tn
+resolveTyp rep (TyXRefined loc Codata tn mrv sigs) = do
+    NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
-    pure $ RST.TyCodataRefined loc rep tn' sigs
+    let rv = skolemToRecRVar <$> mrv
+    pure $ RST.TyCodataRefined loc rep pknd tn' rv sigs
 resolveTyp rep (TyNominal loc name) = do
   res <- lookupTypeConstructor loc name
   case res of 
@@ -129,6 +130,7 @@ resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do
             f ((Covariant,_,_),ty) = RST.CovariantType <$> resolveTyp rep ty
             f ((Contravariant,_,_),ty) = RST.ContravariantType <$> resolveTyp (flipPolarityRep rep) ty
         sequence (f <$> zip kindArgs args)
+resolveTypeArgs loc _ _ (KindVar _) _ = throwOtherError loc ["Kind Variables should not be in the program at this point"]
 
 
 resolveXTorSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.XtorSig pol]

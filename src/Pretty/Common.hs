@@ -24,7 +24,7 @@ import Syntax.CST.Names
       XtorName(MkXtorName) )
 import Syntax.CST.Types (Arity, PrdCns(..))      
 import Syntax.CST.Kinds
-    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), KindedSkolem, MaybeKindedSkolem)
+    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), KindedSkolem, MaybeKindedSkolem, AnyKind(..))
 import Loc ( Loc(..) )
 import Data.Foldable (fold)
 import Data.List (intersperse)
@@ -131,7 +131,6 @@ instance PrettyAnn MonoKind where
   prettyAnn I64Rep = "I64Rep"
   prettyAnn CharRep = "CharRep"
   prettyAnn StringRep = "StringRep"
-  prettyAnn (KindVar kv) = prettyAnn kv
 
 instance PrettyAnn KVar where
   prettyAnn (MkKVar kv) = prettyAnn kv
@@ -147,6 +146,15 @@ instance PrettyAnn PolyKind where
     parens' comma (prettyTParam <$> kindArgs) <+>
     annSymbol "->" <+>
     prettyAnn returnKind
+  prettyAnn (KindVar kv) = prettyAnn kv
+
+instance PrettyAnn AnyKind where 
+  prettyAnn (MkPknd pk) = prettyAnn pk
+  prettyAnn MkI64 = prettyAnn I64Rep
+  prettyAnn MkF64 = prettyAnn F64Rep
+  prettyAnn MkChar = prettyAnn CharRep
+  prettyAnn MkString = prettyAnn StringRep
+
 
 prettyTParam :: (Variance, SkolemTVar, MonoKind) -> Doc Annotation
 prettyTParam (v, tv, k) = prettyAnn v <> prettyAnn tv <+> annSymbol ":" <+> prettyAnn k

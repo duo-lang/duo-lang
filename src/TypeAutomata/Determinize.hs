@@ -17,6 +17,7 @@ import Data.Foldable (foldl')
 import TypeAutomata.Definition
 import Utils (intersections)
 import Syntax.RST.Types ( Polarity(Neg, Pos) )
+import Syntax.CST.Kinds (PolyKind(..))
 
 ---------------------------------------------------------------------------------------
 -- First step of determinization:
@@ -80,21 +81,23 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
   case rs_merged of
     pr@MkPrimitiveNodeLabel{} -> error ("Tried to combine primitive type" <> show pr <> " and algebraic type " <> show fstLabel)
     combLabel@MkNodeLabel{} ->
-      if nl_kind combLabel == knd then 
+      if returnKind (nl_kind combLabel) == returnKind knd then 
         if nl_pol combLabel == pol then
           MkNodeLabel {
             nl_pol = pol,
             nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ _ <- [fstLabel,combLabel]],
             nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ _ <- [fstLabel,combLabel]],
             nl_nominal = S.unions [tn | MkNodeLabel _ _ _ tn _ _ _ <- [fstLabel, combLabel]],
-            nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ _ <- [fstLabel, combLabel]],
-            nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ <- [fstLabel, combLabel]],
-            nl_kind = knd
+            nl_ref_data = (mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ _ <- [fstLabel, combLabel]], 
+                           mrgRecVars (snd $ nl_ref_data fstLabel, snd $ nl_ref_data combLabel)),
+            nl_ref_codata = (mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ <- [fstLabel, combLabel]],
+                            mrgRecVars (snd $ nl_ref_codata fstLabel, snd $ nl_ref_codata combLabel)),
+            nl_kind = MkPolyKind (mrgKindArgs (kindArgs $ nl_kind combLabel) (kindArgs knd))  (returnKind knd)
           }
         else
           error "Tried to combine node labels of different polarity!"
     else 
-      error "Tried to combine node labels of different kind"
+      error ("Tried to combine node labels of different kind" <> show (nl_kind combLabel) <> " and " <> show knd)
   where
     pol = nl_pol fstLabel
     knd = nl_kind fstLabel
@@ -103,12 +106,18 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
     mrgRefDat refs = case pol of
-      Pos -> M.unionsWith S.union refs
-      Neg -> M.unionsWith S.intersection refs
+      Pos -> M.unionsWith S.union (map fst refs)
+      Neg -> M.unionsWith S.intersection (map fst refs)
     mrgRefCodat refs = case pol of
-      Pos -> M.unionsWith S.intersection refs
-      Neg -> M.unionsWith S.union refs
+      Pos -> M.unionsWith S.intersection (map fst refs)
+      Neg -> M.unionsWith S.union (map fst refs)
     rs_merged = combineNodeLabels rs
+    mrgRecVars (Nothing,Nothing) = Nothing
+    mrgRecVars (Just r1,_) = Just r1
+    mrgRecVars (_,Just r2) = Just r2
+    mrgKindArgs [] knds = knds
+    mrgKindArgs knds [] = knds
+    mrgKindArgs (knd1:knds1) knds2 = if knd1 `elem` knds2 then mrgKindArgs knds1 knds2 else knd1:mrgKindArgs knds1 knds2
 combineNodeLabels [fstLabel@MkPrimitiveNodeLabel{}] = fstLabel
 combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) =
   case rs_merged of

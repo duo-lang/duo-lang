@@ -61,17 +61,16 @@ def rec prd merge : forall a. (a -> a -> Ordering) -> List(a) -> List(a) -> List
         }
     };
 
--- spilt Halves doesn't work, so sort can't either
---def rec prd sort : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
---    \f xs => case xs of {
---        Nil => Nil,
---        Cons(y, ys) => case ys of {
---            Nil => Cons(y, Nil),
---            Cons(y2, ys2) => case splitHalves xs of {
---                MkTensor(left, right) => merge f (sort f left) (sort f right)
---            }
---        }
---    };
+def rec prd sort : forall a. (a -> a -> Ordering) -> List(a) -> List(a) :=
+    \f xs => case xs of {
+        Nil => Nil,
+        Cons(y, ys) => case ys of {
+            Nil => Cons(y, Nil),
+            Cons(y2, ys2) => case splitHalves xs of {
+                MkTensor(left, right) => merge f (sort f left) (sort f right)
+            }
+        }
+    };
 
 def rec prd compare : Nat -> Nat -> Ordering :=
     \x y => case x of {
@@ -89,5 +88,4 @@ def rec prd compare : Nat -> Nat -> Ordering :=
 
 def prd testlist := Cons(5, Cons(2, Cons(8, Cons(1, Cons(4, Cons(7, Cons(3, Cons(6, Cons(10, Cons(9, Nil))))))))));
 
--- sort doensn't work
---def cmd main := #Print(sort compare testlist, #ExitSuccess);
+def cmd main := #Print(sort compare testlist, #ExitSuccess);

@@ -25,7 +25,7 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind(CBox,KindVar))
+import Syntax.CST.Kinds (KVar, PolyKind(..),AnyKind(..))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
@@ -53,7 +53,13 @@ import Pretty.Common (Header(..))
 import Pretty.Program ()
 import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
+import TypeAutomata.Intersection (intersectIsEmpty)
 
+getAnnotKind :: TST.Typ pol -> Maybe (TST.TypeScheme pol) -> Maybe (KVar, AnyKind)
+getAnnotKind tyInf maybeAnnot = 
+  case (TST.getKind tyInf,maybeAnnot) of 
+    (MkPknd (KindVar kv),Just annot) -> Just (kv,TST.getKind (TST.ts_monotype annot))
+    _ -> Nothing
 
 checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
 checkKindAnnot Nothing _ = return Nothing
@@ -108,7 +114,8 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
     ppPrintIO constraintSet
   -- 2. Solve the constraints.
   tyAnnotChecked <- checkKindAnnot pcdecl_annot pcdecl_loc
-  let annotKind = case ((TST.getKind $ TST.getTypeTerm tmInferred),tyAnnotChecked) of (KindVar kv,Just annot) -> Just (kv,TST.getKind $ TST.ts_monotype annot); _ -> Nothing
+  let tyInf = TST.getTypeTerm tmInferred
+  let annotKind = getAnnotKind tyInf tyAnnotChecked 
   solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet annotKind env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
@@ -206,6 +213,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
     ppPrintIO solverResult
   -- Insert instance into environment to allow recursive method definitions
   let (typ, tyn) = TST.instancedecl_typ instanceInferred
+  checkOverlappingInstances instancedecl_loc instancedecl_class (typ, tyn)
   let iname = TST.instancedecl_name instanceInferred
   let f env = env { instanceEnv = M.adjust (S.insert (iname, typ, tyn)) instancedecl_class (instanceEnv env) }
   modifyEnvironment mn f
@@ -221,7 +229,24 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   let f env = env { instanceDeclEnv = M.insert instancedecl_name instanceInferred (instanceDeclEnv env)}
   modifyEnvironment mn f
   pure instanceInferred
-  
+
+-- | For each instance of the same class in the environment, check whether it is a sub- or supertype of the declared instance type.
+checkOverlappingInstances :: Loc -> ClassName -> (TST.Typ RST.Pos, TST.Typ RST.Neg) -> DriverM ()
+checkOverlappingInstances loc cn (typ, tyn) = do
+  env <- gets drvEnv
+  let instances = M.unions . fmap instanceEnv . M.elems $ env
+  case M.lookup cn instances of
+    Nothing -> pure () -- No overlapping instances
+    Just insts -> mapM_ (checkOverlap loc (typ, tyn)) (S.toList insts)
+  where checkOverlap :: Loc -> (TST.Typ RST.Pos, TST.Typ RST.Neg) -> (FreeVarName, TST.Typ RST.Pos, TST.Typ RST.Neg) -> DriverM ()
+        checkOverlap loc (typ, tyn) (inst, typ', tyn') = do
+          printGraphs <- gets (infOptsPrintGraphs . drvOpts)
+          let err = ErrOther $ SomeOtherError loc $ T.unlines [ "The instance declared is overlapping and violates type class coherence."
+                                                              , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ'
+                                                              ]
+          emptyIntersectionPos <- intersectIsEmpty printGraphs (TST.generalize typ) (TST.generalize typ')
+          emptyIntersectionNeg <- intersectIsEmpty printGraphs (TST.generalize tyn) (TST.generalize tyn')
+          unless (emptyIntersectionPos && emptyIntersectionNeg) (throwError (err NE.:| []))
 
 inferClassDeclaration :: ModuleName
                       -> RST.ClassDeclaration
@@ -267,7 +292,7 @@ inferDecl mn (Core.DataDecl decl) = do
 --
 inferDecl _mn (Core.XtorDecl decl) = do
   -- check constructor kinds
-  let retKnd = CBox $ RST.strxtordecl_evalOrder decl
+  let retKnd = RST.strxtordecl_evalOrder decl
   let xtornm = RST.strxtordecl_name decl
   let argKnds = map snd (RST.strxtordecl_arity decl)
   let f env = env { kindEnv = M.insert xtornm (retKnd, argKnds) (kindEnv env)}

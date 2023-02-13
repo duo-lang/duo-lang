@@ -11,7 +11,7 @@ import Syntax.TST.Types ( TypeScheme, Typ )
 import Syntax.TST.Program ( DataDecl, InstanceDeclaration )
 import Syntax.RST.Types (Polarity(..))
 import Syntax.CST.Types( PrdCns(..) )
-import Syntax.CST.Kinds (MonoKind)
+import Syntax.CST.Kinds (MonoKind,EvaluationOrder)
 import Loc ( Loc )
 
 ---------------------------------------------------------------------------------
@@ -26,7 +26,7 @@ data Environment = MkEnvironment
   , instanceDeclEnv :: Map FreeVarName InstanceDeclaration
   , instanceEnv :: Map ClassName (Set (FreeVarName, Typ Pos, Typ Neg))
   , declEnv :: [(Loc,DataDecl)]
-  , kindEnv :: Map XtorName (MonoKind, [MonoKind]) -- for each structural constructor a return kind and list of argument kinds
+  , kindEnv :: Map XtorName (EvaluationOrder, [MonoKind]) -- for each structural constructor a return kind and list of argument kinds
   }
 
 emptyEnvironment :: Environment

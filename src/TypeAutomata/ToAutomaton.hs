@@ -58,7 +58,7 @@ createNodes :: [KindedSkolem] -> [(SkolemTVar, (Node, NodeLabel), (Node, NodeLab
 createNodes tvars = createNode <$> createPairs tvars
   where
     createNode :: (KindedSkolem, Node, Node) -> (SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode ((tv, mk), posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos mk), (negNode, emptyNodeLabel Neg mk), (negNode, posNode))
+    createNode ((tv, mk), posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos (MkPknd mk)), (negNode, emptyNodeLabel Neg (MkPknd mk)), (negNode, posNode))
 
     createPairs :: [KindedSkolem] -> [(KindedSkolem, Node,Node)]
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
@@ -177,10 +177,10 @@ lookupTRecVar NegRep tv = do
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 
-insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> EvaluationOrder -> [XtorSig pol] -> TTA Node
-insertXtors dc pol mtn mk xtors = do
+insertXtors :: CST.DataCodata -> Polarity -> Maybe (RnTypeName, Maybe RecTVar) -> PolyKind -> [XtorSig pol] -> TTA Node
+insertXtors dc pol mtn pk xtors = do
   newNode <- newNodeM
-  insertNode newNode (singleNodeLabel pol dc mtn (S.fromList (sigToLabel <$> xtors)) mk)
+  insertNode newNode (singleNodeLabelXtor pol dc mtn (S.fromList (sigToLabel <$> xtors)) pk)
   forM_ xtors $ \(MkXtorSig xt ctxt) -> do
     forM_ (enumerate ctxt) $ \(i, pcType) -> do
       node <- insertPCType pcType
@@ -237,19 +237,15 @@ insertType (TyRec _ rep rv ty) = do
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData _  polrep (CBox mk) xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing mk xtors
-insertType (TyData _ _ mk _) = throwAutomatonError defaultLoc ["Tried to insert TyData into automaton with incorrect kind " <> ppPrint mk]
-insertType (TyCodata _ polrep (CBox mk)  xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing mk xtors
-insertType (TyCodata _ _ mk _) = throwAutomatonError defaultLoc ["Tried to insert TyCodata into automaton with incorrect kind " <> ppPrint mk]
-insertType (TyDataRefined _ polrep (CBox mk) mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) mk xtors
-insertType (TyDataRefined _ _ mk _ _) = throwAutomatonError defaultLoc ["Tried to insert TyDataRefined into automaton with incorrect kind " <> ppPrint mk]
-insertType (TyCodataRefined _ polrep (CBox mk) mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) mk xtors
-insertType (TyCodataRefined _ _ mk _ _) = throwAutomatonError defaultLoc ["Tried to insert TyCodataRefined into automaton with incorrect kind " <> ppPrint mk]
+insertType (TyData _  polrep eo xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
+insertType (TyCodata _ polrep eo  xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
+insertType (TyDataRefined _ polrep pk mtn rv xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just (mtn,rv)) pk xtors
+insertType (TyCodataRefined _ polrep pk mtn rv xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just (mtn,rv)) pk xtors
 insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyApp _ _ (TyNominal _ rep polyknd tn) args) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabel pol (CBox $ returnKind polyknd)) { nl_nominal = S.singleton (tn, NE.toList $ toVariance <$> args) })
+  insertNode newNode (singleNodeLabelNominal pol (tn, NE.toList $ toVariance <$> args) polyknd)
   argNodes <- forM args insertVariantType
   insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate (NE.toList argNodes))
   return newNode
@@ -258,7 +254,7 @@ insertType (TyNominal _ rep polyknd tn) = do
     [] -> do
       let pol = polarityRepToPol rep 
       newNode <- newNodeM
-      insertNode newNode ((emptyNodeLabel pol (CBox $ returnKind polyknd)) {nl_nominal = S.singleton (tn,[]) })
+      insertNode newNode (singleNodeLabelNominal pol (tn,[]) polyknd )
       return newNode
     _ -> throwAutomatonError defaultLoc ["Nominal type "<> ppPrint tn <> "was not fully applied"]
 insertType TyApp{} = throwAutomatonError defaultLoc ["Types can only be applied to nominal types"]
