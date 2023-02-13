@@ -2,7 +2,7 @@ module Typecheck where
 
 import Options (DebugFlags(..))
 import Syntax.CST.Names
-import Driver.Driver (runCompilationModule, defaultInferenceOptions)
+import Driver.Driver (runCompilationModule, defaultInferenceOptions, adjustModulePath)
 import Driver.Definition (defaultDriverState, execDriverM, DriverState(..), setPrintGraphOpts, setDebugOpts, addModule)
 import Pretty.Errors (printLocatedReport)
 import Data.Text qualified as T
@@ -12,9 +12,10 @@ import Data.Foldable (fold)
 import Data.Text.IO qualified as T
 import Control.Monad.IO.Class (liftIO)
 import Parser.Definition (runFileParser)
-import Syntax.CST.Program (adjustModulePath, Module (..))
+import Syntax.CST.Program ( Module (..))
 import Parser.Program (moduleP)
 import Control.Monad.Except (throwError)
+import Errors
 
 runTypecheck :: DebugFlags -> Either FilePath ModuleName -> IO ()
 runTypecheck DebugFlags { df_debug, df_printGraphs } modId = do
@@ -22,7 +23,7 @@ runTypecheck DebugFlags { df_debug, df_printGraphs } modId = do
             Left fp -> do
               file <- liftIO $ T.readFile fp
               execDriverM driverState $ do
-                mod <- runFileParser fp (moduleP fp) file
+                mod <- runFileParser fp (moduleP fp) file ErrParser
                 case adjustModulePath mod fp of
                   Right mod -> do
                       let mn = mod_name mod

@@ -4,6 +4,7 @@ module Pretty.Errors
 
 import Control.Monad.IO.Class ( MonadIO(..) )
 import Data.Text (Text)
+import Errors.Parser
 import Error.Diagnose
     ( stdout,
       addReport,

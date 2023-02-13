@@ -5,6 +5,7 @@ import Data.List.NonEmpty ( NonEmpty )
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
+import Errors.Parser ( ParserError )
 
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
@@ -188,23 +189,6 @@ instance HasLoc EvalError where
 instance AttachLoc EvalError where
   attachLoc loc (SomeEvalError _ msg) =
     SomeEvalError loc msg
-
-----------------------------------------------------------------------------------
--- Errors emitted during parsing
-----------------------------------------------------------------------------------
-
-data ParserError where
-  SomeParserError :: Loc -> Text -> ParserError
-
-deriving instance Show ParserError
-
-instance HasLoc ParserError where
-  getLoc (SomeParserError loc _) =
-    loc
-
-instance AttachLoc ParserError where
-  attachLoc loc (SomeParserError _ msg) =
-    SomeParserError loc msg
 
 ----------------------------------------------------------------------------------
 -- Various other errors
