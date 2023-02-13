@@ -7,7 +7,7 @@ import qualified Data.List.NonEmpty as NE
 import Errors
 import qualified Data.Map as M
 import Pretty.Pretty (ppPrint)
-import Pretty.Common
+import Pretty.Common ()
 
 
 class InsertInstance a where
