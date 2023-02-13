@@ -28,6 +28,7 @@ common shared-build-depends
     , directory
     , duo-lang-parser
     , duo-lang-renamer
+    , duo-lang-desugaring
     , filepath
     , fgl >=5.7 && <6
     , graphviz >=2999.20 && < 3000
@@ -125,15 +126,10 @@ library
       Pretty.Errors
       Pretty.TypeAutomata
       Dualize.Dualize
-      Sugar.Desugar
-      Sugar.Core
       Sugar.TST
       Syntax.TST.Program
       Syntax.TST.Terms
       Syntax.TST.Types
-      Syntax.Core.Annot
-      Syntax.Core.Terms
-      Syntax.Core.Program
       TypeAutomata.BicliqueDecomp
       TypeAutomata.Definition
       TypeAutomata.Utils
