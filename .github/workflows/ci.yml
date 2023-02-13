@@ -34,11 +34,11 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         stack-version: ${{ matrix.stack }}
 
+    # stack-cache-action does not seem to work correctly for windows, so we do it manually
     - if: ${{ matrix.os }} != "windows-latest"
       uses: freckle/stack-cache-action@v2.0.8
       with:
         prefix: ${{ runner.os }}-${{ matrix.ghc }}
-
     - if: ${{ matrix.os }} == "windows-latest"
       name: Use cache (manually) 📦 # See https://github.com/freckle/stack-cache-action/issues/5
       uses: actions/cache@v2.1.3
