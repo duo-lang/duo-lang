@@ -3,6 +3,7 @@ resolver: lts-20.7
 packages:
 - .
 - ./duo-lang-parser
+- ./duo-lang-renamer
 
 extra-deps:
 - diagnose-2.2.0
