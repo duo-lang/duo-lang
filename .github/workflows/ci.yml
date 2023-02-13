@@ -46,8 +46,8 @@ jobs:
       uses: actions/cache@v3
       with:
         path: |
-          $env:APPDATA\stack
-          $env:LOCALAPPDATA\Programs\stack
+          ~\AppData\Roaming\stack
+          ~\AppData\Local\Programs\stack
         key: ${{ runner.os }}-${{ matrix.ghc }}
 
     - name: Build
