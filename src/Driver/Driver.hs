@@ -23,6 +23,7 @@ import Driver.Definition
 import Driver.Environment
 import Driver.DepGraph
 import Errors
+import Errors.Renamer
 import Pretty.Pretty ( ppPrint, ppPrintIO, ppPrintString )
 import Resolution.Program (resolveModule)
 import Resolution.Definition
@@ -57,6 +58,7 @@ import Pretty.Program ()
 import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
 import TypeAutomata.Intersection (intersectIsEmpty)
+import Data.Bifunctor (Bifunctor(first))
 
 getAnnotKind :: TST.Typ pol -> Maybe (TST.TypeScheme pol) -> Maybe (KVar, AnyKind)
 getAnnotKind tyInf maybeAnnot = 
@@ -415,7 +417,9 @@ runCompilationPlan compilationOrder = do
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
-      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty mempty) (resolveModule decls))
+      let helper :: (a -> a') -> (Either a b, c) -> (Either a' b, c)
+          helper f (x,y) = (first f x, y)
+      resolvedDecls <- liftEitherErr(helper (\err -> ErrResolution err :| []) (runResolverM (ResolveReader sts mempty mempty) (resolveModule decls)))
       -- 4. Desugar the program
       let desugaredProg = desugar resolvedDecls
       -- 5. Infer the declarations

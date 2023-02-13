@@ -8,16 +8,12 @@ module Resolution.SymbolTable
   ) where
 
 import Control.Monad.Except
-import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Set (Set)
 import Data.Map qualified as M
 import Data.Set qualified as S
 
-import Errors
-import Pretty.Pretty
-import Pretty.Common ()
-import Pretty.Types ()
+import Errors.Renamer
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.CST.Program
@@ -87,49 +83,49 @@ instance Show SymbolTable where
 -- Creating a SymbolTable
 ---------------------------------------------------------------------------------
 
-checkFreshTypeName :: MonadError (NonEmpty Error) m
+checkFreshTypeName :: MonadError ResolutionError m
                    => Loc
                    -> TypeName
                    -> SymbolTable
                    -> m ()
 checkFreshTypeName loc tn st =
   if tn `elem` M.keys (typeNameMap st)
-  then throwOtherError loc ["TypeName is already used: " <> ppPrint tn]
+  then throwError (TypeNameAlreadyUsed loc tn)
   else pure ()
 
-checkFreshXtorName :: MonadError (NonEmpty Error) m
+checkFreshXtorName :: MonadError ResolutionError m
                    => Loc
                    -> XtorName
                    -> SymbolTable
                    -> m ()
 checkFreshXtorName loc xt st =
   if xt `elem` M.keys (xtorNameMap st)
-  then throwOtherError loc ["XtorName is already used: " <> ppPrint xt]
+  then throwError (XtorNameAlreadyUsed loc xt)
   else pure ()
 
-checkFreshFreeVarName :: MonadError (NonEmpty Error) m
+checkFreshFreeVarName :: MonadError ResolutionError m
                    => Loc
                    -> FreeVarName
                    -> SymbolTable
                    -> m ()
 checkFreshFreeVarName loc fv st =
   if fv `elem` M.keys (freeVarMap st)
-  then throwOtherError loc ["FreeVarName is already used: " <> ppPrint fv]
+  then throwError (FreeVarNameAlreadyUsed loc fv)
   else pure ()
 
-checkFreshTyOpName :: MonadError (NonEmpty Error) m
+checkFreshTyOpName :: MonadError ResolutionError m
                    => Loc
                    -> TyOpName
                    -> SymbolTable
                    -> m ()
 checkFreshTyOpName loc op st =
   if op `elem` M.keys (tyOps st)
-  then throwOtherError loc ["TyOp is already used: " <> ppPrint op]
+  then throwError (TyOpAlreadyUsed loc op)
   else pure ()
 
 -- | Creating a symbol table for a program.
 -- Throws errors if multiple declarations declare the same name.
-createSymbolTable :: MonadError (NonEmpty Error) m
+createSymbolTable :: MonadError ResolutionError m
                   => Module
                   -> m SymbolTable
 createSymbolTable MkModule { mod_name, mod_libpath, mod_decls } = createSymbolTableAcc mod_decls emptySymbolTable
@@ -139,7 +135,7 @@ createSymbolTable MkModule { mod_name, mod_libpath, mod_decls } = createSymbolTa
       acc' <- createSymbolTable' mod_libpath mod_name x acc
       createSymbolTableAcc xs acc'
 
-createSymbolTable' :: MonadError (NonEmpty Error) m
+createSymbolTable' :: MonadError ResolutionError m
                    => FilePath
                    -> ModuleName
                       -- ^ FilePath and ModuleName of the module for which the symbol table is created
@@ -208,8 +204,7 @@ createSymbolTable' _ _ (ClassDecl MkClassDeclaration {classdecl_loc, classdecl_n
 createSymbolTable' _ _ (InstanceDecl (MkInstanceDeclaration { instancedecl_loc, instancedecl_name, instancedecl_class, instancedecl_typ })) st =
   if isPermittedInstance instancedecl_class instancedecl_typ st
     then pure st
-    else throwOtherError instancedecl_loc [ "Found orphan instance: " <> ppPrint instancedecl_name <> " : " <> ppPrint instancedecl_class <> " " <> ppPrint instancedecl_typ
-                                          , "Define this instance in the same module as the class or type declaration." ]
+    else throwError (OrphanInstance instancedecl_loc instancedecl_name instancedecl_class instancedecl_typ)
 createSymbolTable' _ _ ParseErrorDecl st = pure st
 
   -- | Check whether the instance declaration would be an orphan instance (neccessary to ensure type class coherence)
