@@ -24,7 +24,6 @@ import Syntax.CST.Names
 import Loc (Loc(..), defaultLoc)
 import Control.Monad.Reader (asks, MonadReader (local))
 
-
 ---------------------------------------------------------------------------------
 -- Lowering & Polarization (CST -> RST)
 ---------------------------------------------------------------------------------
@@ -53,7 +52,8 @@ resolveTyp rep (TyXData loc Data sigs) = do
 -- Refinement Data
 resolveTyp rep (TyXRefined loc Data tn mrv sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-    if not (null (kindArgs pknd)) then throwOtherError loc ["Type " <> ppPrint tn <> " was not fully applied"] else do
+    if not (null (kindArgs pknd)) then throwOtherError loc ["Type " <> ppPrint tn <> " was not fully applied"] 
+    else do
       case mrv of 
         Nothing -> do
           sigs <- resolveXTorSigs rep sigs
@@ -141,8 +141,10 @@ resolveTyp rep (TyApp loc (TyXRefined loc' Codata tn mrv sigs) args) = do
         sigs <- local (\r -> r { rr_ref_recVars = M.insert rv (tn,pknd) $ rr_ref_recVars r  } ) $ resolveXTorSigs (flipPolarityRep rep) sigs
         args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
         let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
-        return $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' (Just rv) sigs) args'' 
+        return $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' (Just rv) sigs) args''
 
+
+  
 resolveTyp rep (TyApp loc (TyKindAnnot mk ty) args) = do 
   resolved <-  resolveTyp rep (TyApp loc ty args)
   pure $ RST.TyKindAnnot mk resolved

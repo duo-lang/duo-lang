@@ -8,15 +8,15 @@ class ToBool (+a : CBV){
     ToBool(a, return <Bool | True,False>)
 };
 
-instance toBoolTrue : ToBool (<Bool | True>) {
+instance toBoolTrue : ToBool <Bool | True> {
     ToBool(x, k) => True >> k
 };
 
-instance toBoolFalse : ToBool (<Bool | False>) {
+instance toBoolFalse : ToBool <Bool | False> {
     ToBool(x, k) => False >> k
 };
 
 -- incoherent instance (conflicts with both above)
-instance toBoolBool : ToBool (<Bool | True, False>) {
+instance toBoolBool : ToBool <Bool | True, False> {
     ToBool(x, k) => not x >> k
 };

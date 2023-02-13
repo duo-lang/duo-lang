@@ -246,7 +246,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- bound in the pattern.
                         xtor <- lookupXtorSig loc xt RST.PosRep
                         let argKnds = map TST.getKind (TST.sig_args xtor)
-                        let tVarArgs = zipWith (curry (\ ((x,y),z) -> (x,y,z))) args argKnds
+                        let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, z))) args argKnds
                         (uvarsPos, uvarsNeg) <- freshTVars tVarArgs
                         -- Check the command in the context extended with the positive unification variables
                         cmdInferred <- withContext uvarsPos (genConstraints cmdcase_cmd)

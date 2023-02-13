@@ -6,12 +6,16 @@ import Data.Peano;
 
 refinement data List : (+a : CBV) -> CBV {
     Nil,
-    Cons(a, List@(a))
+    Cons(a, List(a))
 };
 
-def prd x : forall a. <List|Nil>@(a) := Nil;
-def prd x2 : forall a. <List | r | Nil>@(a) := Nil;
+def prd x : forall a. <List|Nil>(a) := Nil;
+def prd x2 : forall a. <List | r | Nil>(a) := Nil;
 def prd y := Nil; 
+--doesn't typecheck because what type is applied is unclear
+--def prd y : <List|Nil>(Z) := Nil; 
+--def prd z : <List|Nil>(Z) := Cons(MkZ, Nil);
+
 
 --  Computes the length of a list.
 def rec prd length :=
@@ -94,3 +98,4 @@ def rec prd reverse :=
 --        Nil => Nil,
 --        Cons(y,ys) => scanl f (f acc y) ys
 --    });
+
