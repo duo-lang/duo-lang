@@ -34,7 +34,8 @@ jobs:
         ghc-version: ${{ matrix.ghc }}
         stack-version: ${{ matrix.stack }}
 
-    # stack-cache-action does not seem to work correctly for windows, so we do it manually
+    # stack-cache-action does not seem to work correctly for windows, so we do it manually, cf.
+    # https://github.com/commercialhaskell/stack/commit/98e368946a5bcff75284f27f366cf12b04172877
     - name: "Cache dependencies on *nix"
       if: startsWith(runner.os, 'Linux') || startsWith(runner.os, 'macOS')
       uses: freckle/stack-cache-action@v2.0.8
