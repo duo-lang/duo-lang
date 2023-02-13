@@ -2,10 +2,10 @@ module Spec.Focusing (spec) where
 
 import Data.List.NonEmpty ( NonEmpty )
 import Test.Hspec hiding (focus)
+
 import Pretty.Pretty
 import Pretty.Program ()
 import Utils (moduleNameToFullPath)
-
 import Driver.Definition
 import Driver.Driver (inferProgramIO)
 import Sugar.Desugar (Desugar(..))
