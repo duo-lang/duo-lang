@@ -4,6 +4,7 @@ module TypeInference.GenerateConstraints.Kinds
   , resolveDataDecl
   ) where
 
+
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
@@ -58,6 +59,9 @@ getKindDecl decl = do
 checkXtorKind :: EvaluationOrder -> TST.XtorSig pol -> GenM () 
 checkXtorKind eo xtor = do 
   xtorKnd <- lookupXtorKind (TST.sig_name xtor)
+  let sigKnds = map TST.getKind (TST.sig_args xtor)
+  let constrs = map (KindEq KindConstraint (MkPknd (MkPolyKind [] xtorKnd))) sigKnds
+  mapM_ addConstraint constrs
   addConstraint $ KindEq KindConstraint (MkPknd $ MkPolyKind [] xtorKnd) (MkPknd $ MkPolyKind [] eo)
   return ()
 
