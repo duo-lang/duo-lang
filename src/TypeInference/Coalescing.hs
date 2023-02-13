@@ -12,7 +12,7 @@ import Data.Text qualified as T
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..),Polarity(..))
 import Syntax.CST.Names
-import Syntax.CST.Kinds(MonoKind(..), PolyKind(..))
+import Syntax.CST.Kinds (AnyKind(..))
 import TypeInference.Constraints
 import Loc ( defaultLoc )
 
@@ -88,71 +88,68 @@ coalesce result@MkSolverResult { tvarSolution, kvarSolution } = MkBisubstitution
     where
         res = M.keys tvarSolution
         kinds = map (\x -> vst_kind (fromMaybe  (error "UniVar not found in SolverResult (should never happen)") (M.lookup x tvarSolution))) res
-        f (tvar,mk) = do 
-          x <- coalesceType $ TyUniVar defaultLoc PosRep mk tvar
-          y <- coalesceType $ TyUniVar defaultLoc NegRep mk tvar
+        f (tvar,pk) = do 
+          x <- coalesceType $ TyUniVar defaultLoc PosRep pk tvar
+          y <- coalesceType $ TyUniVar defaultLoc NegRep pk tvar
           return (x, y)
         xs = zip res $ runCoalesceM result $ mapM f (zip res kinds)
 
 coalesceType :: Typ pol -> CoalesceM (Typ pol)
-coalesceType (TySkolemVar loc rep mk tv) =  do
-  return (TySkolemVar loc rep mk tv)
+coalesceType (TySkolemVar loc rep pk tv) =  do
+  return (TySkolemVar loc rep pk tv)
 coalesceType (TyRecVar loc rep pk tv) = do 
   return (TyRecVar loc rep pk tv)
-coalesceType (TyUniVar _ PosRep mk tv) = do
+coalesceType (TyUniVar _ PosRep pk tv) = do
   isInProcess <- inProcess (tv, Pos)
-  if isInProcess then
-    case mk of 
-      CBox eo -> do
-        recVar <- getOrElseUpdateRecVar (tv, Pos)
-        return (TyRecVar defaultLoc PosRep (MkPolyKind [] eo) recVar)
-      mk -> error ("Recurvive variable can only have kind CBV or CBN not " <> show mk)
+  if isInProcess then do
+    recVar <- getOrElseUpdateRecVar (tv, Pos)
+    case pk of 
+      MkPknd pk' -> return (TyRecVar defaultLoc PosRep pk' recVar)
+      primk -> error ("Recursive Variable " <> show recVar <> " can't have primitive kind " <> show primk)
   else do
     VariableState { vst_lowerbounds } <- getVariableState tv
     let f r = r { r_inProcess =  S.insert (tv, Pos) (r_inProcess r) }
     lbs' <- local f $ mapM coalesceType vst_lowerbounds
     recVarMap <- gets s_recursive
-    case M.lookup (tv, Pos) recVarMap of
-      Nothing     -> do
+    case (pk, M.lookup (tv, Pos) recVarMap) of
+      (MkPknd pk', Nothing)     -> do
         newName <- getSkolemVar tv
-        return $ mkUnion defaultLoc mk (TySkolemVar defaultLoc PosRep mk newName : lbs')
-      Just recVar -> do
-        case mk of 
-          CBox eo -> return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc mk (TyRecVar defaultLoc PosRep (MkPolyKind [] eo) recVar  : lbs'))
-          mk -> error ("Recursive variable can only have kind CBV or CBN, not "<>show mk)
-coalesceType (TyUniVar _ NegRep mk tv) = do
+        return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk' newName : lbs')
+      (MkPknd pk', Just recVar) ->  
+        return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk' recVar  : lbs'))
+      (primk, _) -> error ("Type Variable can't have primitive kind " <> show primk)
+
+coalesceType (TyUniVar _ NegRep pk tv) = do
   isInProcess <- inProcess (tv, Neg)
-  if isInProcess then 
-    case mk of 
-      CBox eo -> do
-        recVar <- getOrElseUpdateRecVar (tv, Neg)
-        return (TyRecVar defaultLoc NegRep (MkPolyKind [] eo) recVar)
-      mk -> error ("Recursive variable can only have kind CBV or CBN, not "<>show mk)
-    else do
+  if isInProcess then do
+    recVar <- getOrElseUpdateRecVar (tv, Neg)
+    case pk of 
+      MkPknd pk' -> return (TyRecVar defaultLoc NegRep pk' recVar)
+      primk -> error ("Recursive Variable " <> show recVar <> " can't have primitive kind " <> show primk)
+  else do
       VariableState { vst_upperbounds } <- getVariableState tv
       let f r = r { r_inProcess =  S.insert (tv, Neg) (r_inProcess r) }
       ubs' <- local f $ mapM coalesceType vst_upperbounds 
       recVarMap <- gets s_recursive
-      case M.lookup (tv, Neg) recVarMap of
-        Nothing -> do
+      case (pk, M.lookup (tv, Neg) recVarMap) of
+        (MkPknd pk', Nothing) -> do
           newName <- getSkolemVar tv
-          return $ mkInter defaultLoc mk (TySkolemVar defaultLoc NegRep mk newName : ubs')
-        Just recVar -> case mk of 
-          CBox eo -> return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc mk (TyRecVar defaultLoc NegRep (MkPolyKind [] eo) recVar  : ubs'))
-          mk -> error ("Recursive variable can only have kind CBV or CBN, not "<>show mk)
-
+          return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep pk' newName : ubs')
+        (MkPknd pk', Just recVar) -> 
+          return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk' recVar  : ubs')) 
+        (primk, _) -> error ("Type Variable can't have primitive kind " <> show primk)
 coalesceType (TyData loc rep mk xtors) = do
     xtors' <- mapM coalesceXtor xtors
     return (TyData loc rep mk xtors')
 coalesceType (TyCodata loc rep mk xtors) = do
     xtors' <- mapM coalesceXtor xtors
     return (TyCodata loc rep mk xtors')
-coalesceType (TyDataRefined loc rep mk tn xtors) = do
+coalesceType (TyDataRefined loc rep mk tn rv xtors) = do
     xtors' <- mapM coalesceXtor xtors
-    return (TyDataRefined loc rep mk tn xtors')
-coalesceType (TyCodataRefined loc rep mk tn xtors) = do
+    return (TyDataRefined loc rep mk tn rv xtors')
+coalesceType (TyCodataRefined loc rep mk tn rv xtors) = do
     xtors' <- mapM coalesceXtor xtors
-    return (TyCodataRefined loc rep mk tn xtors')
+    return (TyCodataRefined loc rep mk tn rv xtors')
 coalesceType (TyNominal loc rep mk tn) = do
     return $ TyNominal loc rep mk tn 
 coalesceType (TyApp loc rep ty args) = do 
@@ -160,18 +157,18 @@ coalesceType (TyApp loc rep ty args) = do
     ty' <- coalesceType ty
     return $ TyApp loc rep ty' args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
-coalesceType (TyTop loc mk) = do 
-    pure (TyTop loc mk)
-coalesceType (TyBot loc mk) = do
-    pure (TyBot loc mk)
-coalesceType (TyUnion loc mk ty1 ty2) = do
+coalesceType (TyTop loc pk) = do 
+    pure (TyTop loc pk)
+coalesceType (TyBot loc pk) = do
+    pure (TyBot loc pk)
+coalesceType (TyUnion loc pk ty1 ty2) = do
   ty1' <- coalesceType ty1
   ty2' <- coalesceType ty2
-  pure (TyUnion loc mk ty1' ty2')
-coalesceType (TyInter loc mk ty1 ty2) = do
+  pure (TyUnion loc pk ty1' ty2')
+coalesceType (TyInter loc pk ty1 ty2) = do
   ty1' <- coalesceType ty1
   ty2' <- coalesceType ty2
-  pure (TyInter loc mk ty1' ty2')
+  pure (TyInter loc pk ty1' ty2')
 coalesceType (TyRec loc PosRep tv ty) = do
     return $ TyRec loc PosRep tv ty
 coalesceType (TyRec loc NegRep tv ty) = do

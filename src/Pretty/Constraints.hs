@@ -58,7 +58,7 @@ instance (PrettyAnn a) => PrettyAnn (Constraint a) where
   prettyAnn (TypeClass ann cn typ) =
     prettyAnn cn <+> prettyAnn typ <+> prettyAnn ann
 
-printUVar :: (UniTVar, UVarProvenance, MonoKind) -> Doc Annotation
+printUVar :: (UniTVar, UVarProvenance, AnyKind) -> Doc Annotation
 printUVar (tv,prov,kv) = prettyAnn tv <> ":" <> prettyAnn kv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
@@ -170,7 +170,7 @@ prettySkolBisubst (v, (typ,tyn)) = nest 3 $ line <> vsep [ prettyAnn v <+> "+ â¤
                                                          , prettyAnn v <+> "- â¤‡" <+> prettyAnn tyn
                                                          ]
 
-prettyKindSubst :: (KVar, MonoKind) -> Doc Annotation
+prettyKindSubst :: (KVar, AnyKind) -> Doc Annotation
 prettyKindSubst (kv, kind) = nest 3 $ vsep ["Kind Variable:" <+> prettyAnn kv <+> "->" <+> prettyAnn kind ]
 
 instance PrettyAnn (TST.Bisubstitution TST.UniVT) where

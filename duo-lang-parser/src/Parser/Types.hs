@@ -13,6 +13,7 @@ module Parser.Types
   , combineXtors
   ) where
 
+
 import Text.Megaparsec hiding (State)
 import Data.List.NonEmpty (NonEmpty((:|)))
 
@@ -65,13 +66,8 @@ combineXtors :: [(XtorName, [(PrdCns, Typ)])] -> [XtorSig]
 combineXtors = fmap combineXtor
 
 ---------------------------------------------------------------------------------
--- Nominal and Structural Types
+-- Nominal Types
 ---------------------------------------------------------------------------------
-
-nominalTypeArgsP :: SourcePos -> Parser ([Typ], SourcePos)
-nominalTypeArgsP endPos =
-  parensP ((fst <$> typP) `sepBy` (symbolP SymComma >> sc)) <|> pure ([], endPos)
-
 
 -- | Parse a nominal type.
 -- E.g. "Nat", or "List(Nat)"
@@ -79,28 +75,49 @@ nominalTypeP :: Parser (Typ, SourcePos)
 nominalTypeP = do
   startPos <- getSourcePos
   (name, endPos) <- typeNameP
-  (args, endPos') <- nominalTypeArgsP endPos
   sc
-  let loc = Loc startPos endPos'
-  case args of 
-    [] -> pure (TyNominal loc name, endPos')
-    (fst:rst) -> pure (TyApp loc (TyNominal loc name) (fst:|rst), endPos')
+  let loc = Loc startPos endPos
+  pure (TyNominal loc name, endPos)
+ 
+---------------------------------------------------------------------------------
+-- Structural Types and Refinement Types
+---------------------------------------------------------------------------------
 
--- | Parse a data or codata type. E.g.:
--- - "< ctor1 | ctor2 | ctor3 >"
--- - "{ dtor1 , dtor2 , dtor3 }"
-xdataTypeP :: DataCodata -> Parser (Typ, SourcePos)
-xdataTypeP Data = do
-  startPos <- getSourcePos
-  (xtorSigs, endPos) <- anglesP (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
+refinementArgsP :: Parser (Maybe (TypeName, Maybe SkolemTVar))
+refinementArgsP = optional $ try $ do
+  (tn,_) <- typeNameP
   sc
-  pure (TyXData (Loc startPos endPos) Data xtorSigs, endPos)
-xdataTypeP Codata = do
-  startPos <- getSourcePos
-  (xtorSigs, endPos) <- bracesP (xtorSignatureP `sepBy` (symbolP SymComma >> sc))
+  symbolP SymPipe
   sc
-  pure (TyXData (Loc startPos endPos) Codata xtorSigs, endPos)
+  rv <- optional $ tvarP <* (sc >> symbolP SymPipe >> sc)
+  pure (tn,fst <$> rv)
 
+
+xdataOrRefinementP :: DataCodata -> Parser (Typ, SourcePos)
+xdataOrRefinementP Data = do
+  startPos <- getSourcePos
+  symbolP SymAngleLeft
+  sc
+  refinementargs <- refinementArgsP
+  ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
+  symbolP SymAngleRight
+  endPos <- getSourcePos
+  sc
+  case refinementargs of
+    Nothing -> pure (TyXData (Loc startPos endPos) Data ctors, endPos)
+    Just (tn, rv) ->  pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
+xdataOrRefinementP Codata = do
+  startPos <- getSourcePos
+  symbolP SymBraceLeft
+  sc
+  refinementargs <- refinementArgsP
+  dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
+  symbolP SymBraceRight
+  endPos <- getSourcePos
+  sc
+  case refinementargs of
+    Nothing -> pure (TyXData (Loc startPos endPos) Codata dtors, endPos)
+    Just (tn, rv) -> pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
 
 
 ---------------------------------------------------------------------------------
@@ -126,33 +143,6 @@ recTypeP = do
   (ty, endPos) <- typP
   pure (TyRec (Loc startPos endPos) rv ty, endPos)
 
----------------------------------------------------------------------------------
--- Refinement types
----------------------------------------------------------------------------------
-
-refinementTypeP :: DataCodata -> Parser (Typ, SourcePos)
-refinementTypeP Data = do
-  startPos <- getSourcePos
-  ((tn, ctors), endPos) <- anglesP (do
-    (tn,_) <- typeNameP
-    sc
-    symbolP SymPipe
-    sc
-    ctors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
-    pure (tn, ctors))
-  sc
-  pure (TyXRefined (Loc startPos endPos) Data tn ctors, endPos)
-refinementTypeP Codata = do
-  startPos <- getSourcePos
-  ((tn, dtors), endPos) <- bracesP (do
-    (tn,_) <- typeNameP
-    sc
-    symbolP SymPipe
-    sc
-    dtors <- xtorSignatureP `sepBy` (symbolP SymComma >> sc)
-    pure (tn, dtors))
-  sc
-  pure (TyXRefined (Loc startPos endPos) Codata tn dtors, endPos)
 
 ---------------------------------------------------------------------------------
 -- Primitive types
@@ -229,21 +219,38 @@ tyBotP = do
 
 -- | Parse atomic types (i,e, without tyop chains)
 typAtomP :: Parser (Typ, SourcePos)
-typAtomP = tyParensP
-  <|> nominalTypeP
-  <|> try (refinementTypeP Data)
-  <|> try (refinementTypeP Codata)
-  <|> xdataTypeP Data
-  <|> xdataTypeP Codata
-  <|> recTypeP
-  <|> tyTopP
-  <|> tyBotP
-  <|> tyI64P
-  <|> tyF64P
-  <|> tyCharP
-  <|> tyStringP
-  <|> typeVariableP
+typAtomP = do 
+  startPos <- getSourcePos
+  (fstTy, _) <- 
+    tyParensP
+    <|> nominalTypeP
+    <|> xdataOrRefinementP Data
+    <|> xdataOrRefinementP Codata
+    <|> recTypeP
+    <|> tyTopP
+    <|> tyBotP
+    <|> tyI64P
+    <|> tyF64P
+    <|> tyCharP
+    <|> tyStringP
+    <|> typeVariableP
+  args <- optional tyArgsP
+  endPos <- getSourcePos
+  case args of
+    Nothing -> pure (fstTy, endPos)
+    Just (args',endPos) -> pure (TyApp (Loc startPos endPos) fstTy args',endPos)
 
+tyArgsP :: Parser (NonEmpty Typ, SourcePos)
+tyArgsP = do 
+  symbolP SymParenLeft 
+  sc
+  args <- typP `sepBy1` (symbolP SymComma >> sc)
+  symbolP SymParenRight
+  endPos <- getSourcePos
+  sc
+  case args of 
+    [] -> error "Unreachable: sepBy1 parses at least one element."
+    ((ty1,_):argRst) -> pure (ty1:|map fst argRst,endPos)
 
 tyOpChainP :: Parser (NonEmpty (Loc, BinOp, Typ), SourcePos)
 tyOpChainP = do

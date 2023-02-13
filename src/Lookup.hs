@@ -34,7 +34,7 @@ import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))
 import Syntax.CST.Types (PrdCnsRep(..))
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind)
+import Syntax.CST.Kinds (MonoKind,EvaluationOrder)
 import Loc ( Loc, defaultLoc )
 
 ---------------------------------------------------------------------------------
@@ -181,7 +181,7 @@ lookupMethodType loc mn RST.MkClassDeclaration { classdecl_name, classdecl_metho
     Just msig -> pure $ RST.msig_args msig
 
 lookupXtorKind :: EnvReader a m
-             => XtorName -> m (MonoKind,[MonoKind])
+             => XtorName -> m (EvaluationOrder,[MonoKind])
 lookupXtorKind xtorn = do
   let err = ErrOther $ SomeOtherError defaultLoc ("No Kinds for XTor " <> ppPrint xtorn)
   let f env = M.lookup xtorn (kindEnv env)

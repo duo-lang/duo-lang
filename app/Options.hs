@@ -8,7 +8,7 @@ import Data.Foldable (fold)
 import Options.Applicative
 
 data Options where
-    OptLSP :: Maybe FilePath -> Options
+    OptLSP :: Options
     OptRun :: FilePath -> DebugFlags -> Options
     OptTypecheck :: FilePath -> DebugFlags -> Options
     OptDeps :: FilePath -> Options
@@ -34,18 +34,8 @@ debugFlagParser = DebugFlags <$> switch modsDebug <*> switch modsGraph
 -- Commandline options for starting a LSP session
 ---------------------------------------------------------------------------------
 
-lspParser :: Parser Options
-lspParser = OptLSP <$> optional (strOption mods)
-  where
-    mods = fold [ long "logfile"
-                , short 'l'
-                , metavar "FILE"
-                , help "Specify the FILE that the LSP server will use for printing logs. If a logfile is not specified, output is directed to stderr."
-                ]
-
-
 lspParserInfo :: ParserInfo Options
-lspParserInfo = info (helper <*> lspParser) mods
+lspParserInfo = info (helper <*> pure OptLSP) mods
   where
     mods = fold [ fullDesc
                 , header "duo lsp - Start a LSP session"

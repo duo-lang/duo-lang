@@ -6,6 +6,7 @@ module Driver.Driver
   , inferProgramIO
   , inferDecl
   , runCompilationModule
+  , adjustModulePath
   ) where
 
 
@@ -13,6 +14,8 @@ import Control.Monad.State
 import Control.Monad.Except
 import Data.List.NonEmpty ( NonEmpty ((:|)) )
 import Data.List.NonEmpty qualified as NE
+import System.FilePath (joinPath, splitDirectories, dropExtension)
+import Data.List ( isPrefixOf, stripPrefix )
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
@@ -25,7 +28,7 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (MonoKind(CBox,KindVar))
+import Syntax.CST.Kinds (KVar, PolyKind(..),AnyKind(..),anyToMonoKind)
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST
@@ -42,7 +45,7 @@ import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints)
-import Loc ( Loc, AttachLoc(attachLoc) )
+import Loc ( Loc, AttachLoc(attachLoc), defaultLoc)
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program (prdCnsToPol)
@@ -55,6 +58,11 @@ import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
 import TypeAutomata.Intersection (intersectIsEmpty)
 
+getAnnotKind :: TST.Typ pol -> Maybe (TST.TypeScheme pol) -> Maybe (KVar, AnyKind)
+getAnnotKind tyInf maybeAnnot = 
+  case (TST.getKind tyInf,maybeAnnot) of 
+    (MkPknd (KindVar kv),Just annot) -> Just (kv,TST.getKind (TST.ts_monotype annot))
+    _ -> Nothing
 
 checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
 checkKindAnnot Nothing _ = return Nothing
@@ -109,7 +117,8 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
     ppPrintIO constraintSet
   -- 2. Solve the constraints.
   tyAnnotChecked <- checkKindAnnot pcdecl_annot pcdecl_loc
-  let annotKind = case ((TST.getKind $ TST.getTypeTerm tmInferred),tyAnnotChecked) of (KindVar kv,Just annot) -> Just (kv,TST.getKind $ TST.ts_monotype annot); _ -> Nothing
+  let tyInf = TST.getTypeTerm tmInferred
+  let annotKind = getAnnotKind tyInf tyAnnotChecked 
   solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet annotKind env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
@@ -276,7 +285,12 @@ inferDecl mn (Core.DataDecl decl) = do
   let loc = RST.data_loc decl
   env <- gets drvEnv
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
-  let f env = env { declEnv = (loc, decl') : declEnv env}
+  let xtorArgs = map TST.sig_args (fst $ TST.data_xtors decl')
+  let xtorNames = map TST.sig_name (fst $ TST.data_xtors decl')
+  let xtorKnds = map (map (anyToMonoKind . TST.getKind)) xtorArgs
+  let retKnd = returnKind $ TST.data_kind decl'
+  let newKindEnv = zip xtorNames (zip (repeat retKnd) xtorKnds)
+  let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = M.fromList (newKindEnv ++ M.toList (kindEnv env))}
   modifyEnvironment mn f
   pure (TST.DataDecl decl')
 
@@ -285,7 +299,7 @@ inferDecl mn (Core.DataDecl decl) = do
 --
 inferDecl _mn (Core.XtorDecl decl) = do
   -- check constructor kinds
-  let retKnd = CBox $ RST.strxtordecl_evalOrder decl
+  let retKnd = RST.strxtordecl_evalOrder decl
   let xtornm = RST.strxtordecl_name decl
   let argKnds = map snd (RST.strxtordecl_arity decl)
   let f env = env { kindEnv = M.insert xtornm (retKnd, argKnds) (kindEnv env)}
@@ -340,6 +354,31 @@ inferProgram Core.MkModule { mod_name, mod_libpath, mod_decls } = do
                     }
 
 
+-- when only given a filepath, parsing the file will result in the libpath of a module overlapping with the module name, e.g.
+-- module Codata.Function in std/Codata/Function.duo will have libpath `std/Codata`.
+-- Thus we have to adjust the libpath (to `std/` in the example above).
+-- Moreover, we need to check whether the new path and the original filepath are compatible.
+adjustModulePath :: CST.Module -> FilePath -> Either (NE.NonEmpty Error) CST.Module
+adjustModulePath mod fp =
+  let fp'  = fpToList fp
+      mlp  = CST.mod_libpath mod
+      mFp  = fpToList mlp
+      mn   = CST.mod_name mod
+      mp   = T.unpack <$> mn_path mn ++ [mn_base mn]
+  in do
+    prefix <- reverse <$> dropModulePart (reverse mp) (reverse mFp)
+    if prefix `isPrefixOf` fp'
+    then pure mod { CST.mod_libpath = joinPath prefix } 
+    else throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString mlp) <> " is not compatible with given filepath " <> T.pack fp ]
+  where
+    fpToList :: FilePath -> [String]
+    fpToList = splitDirectories . dropExtension
+
+    dropModulePart :: [String] -> [String] -> Either (NE.NonEmpty Error) [String]
+    dropModulePart mp mFp =
+      case stripPrefix mp mFp of
+        Just mFp' -> pure mFp'
+        Nothing   -> throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString (CST.mod_name mod)) <> " is not a suffix of path " <> T.pack (CST.mod_libpath mod)  ]
 
 
 ---------------------------------------------------------------------------------
@@ -376,7 +415,7 @@ runCompilationPlan compilationOrder = do
       addSymboltable mn st
       -- 3. Resolve the declarations.
       sts <- getSymbolTables
-      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty) (resolveModule decls))
+      resolvedDecls <- liftEitherErr (runResolverM (ResolveReader sts mempty mempty) (resolveModule decls))
       -- 4. Desugar the program
       let desugaredProg = desugar resolvedDecls
       -- 5. Infer the declarations

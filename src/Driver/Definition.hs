@@ -158,7 +158,7 @@ checkModuleName mn CST.MkModule { mod_name } =
 parseAndCheckModule :: (MonadError (NonEmpty Error) m, MonadIO m) => FilePath -> ModuleName -> FilePath -> m CST.Module
 parseAndCheckModule fullFp mn fp = do
   file <- liftIO $ T.readFile fullFp
-  mod <- runFileParser fullFp (moduleP fp) file
+  mod <- runFileParser fullFp (moduleP fp) file ErrParser
   checkModuleName mn mod
   pure mod
 

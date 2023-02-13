@@ -14,6 +14,7 @@ import Pretty.Common ()
 import Pretty.Types ()
 import Resolution.SymbolTable
 import Syntax.CST.Names
+import Syntax.CST.Kinds (PolyKind)
 import Loc
 import Errors
 import Control.Monad.Writer
@@ -23,7 +24,7 @@ import qualified Data.Set as S
 -- Resolver Monad
 ------------------------------------------------------------------------------
 
-data ResolveReader = ResolveReader { rr_modules :: Map ModuleName SymbolTable, rr_recVars :: S.Set RecTVar }
+data ResolveReader = ResolveReader { rr_modules :: Map ModuleName SymbolTable, rr_recVars :: S.Set RecTVar , rr_ref_recVars :: Map RecTVar (TypeName, PolyKind)}
 
 type WarningWriter = Writer [Warning]
 

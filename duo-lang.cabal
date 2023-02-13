@@ -26,6 +26,7 @@ common shared-build-depends
     , data-default
     , diagnose
     , directory
+    , duo-lang-parser
     , filepath
     , fgl >=5.7 && <6
     , graphviz >=2999.20 && < 3000
@@ -114,15 +115,6 @@ library
       Eval.Eval
       Eval.Primitives
       Lookup
-      Loc
-      Parser.Common
-      Parser.Definition
-      Parser.Kinds
-      Parser.Lexer
-      Parser.Parser
-      Parser.Program
-      Parser.Terms
-      Parser.Types
       Pretty.Pretty
       Pretty.Common
       Pretty.Constraints
@@ -150,11 +142,6 @@ library
       Syntax.Core.Annot
       Syntax.Core.Terms
       Syntax.Core.Program
-      Syntax.CST.Kinds
-      Syntax.CST.Names
-      Syntax.CST.Program
-      Syntax.CST.Terms
-      Syntax.CST.Types
       Syntax.RST.Program
       Syntax.RST.Terms
       Syntax.RST.Types

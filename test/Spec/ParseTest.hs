@@ -12,12 +12,19 @@ import Utils (moduleNameToFullPath)
 import Syntax.CST.Names (ModuleName)
 
 
+type Reason = String
+
+pendingFiles :: [(ModuleName, Reason)]
+pendingFiles = []
 
 spec :: ((FilePath, ModuleName), Either (NonEmpty Error) CST.Module) -> Spec
 spec ((example, mn), prog) = do
   let fullName = moduleNameToFullPath mn example
-  describe ("The example " ++ fullName ++ " was parsed successfully") $ do
-        it "Was parsed." $
-          case prog of
-            Left err -> expectationFailure (ppPrintString err)
-            Right _ -> prog `shouldSatisfy` isRight
+  case mn `lookup` pendingFiles of
+    Just reason -> it "" $ pendingWith $ "Could check local closure of file " ++ fullName ++ "\nReason: " ++ reason
+    Nothing -> 
+      describe ("The example " ++ fullName ++ " was parsed successfully") $ do
+            it "Was parsed." $
+              case prog of
+                Left err -> expectationFailure (ppPrintString err)
+                Right _ -> prog `shouldSatisfy` isRight

@@ -12,20 +12,12 @@ import Syntax.CST.Names
       FreeVarName,
       ModuleName (..),
       Precedence,
-      SkolemTVar,
       TyOpName,
       TypeName,
       XtorName )
 import Syntax.CST.Kinds
-    ( EvaluationOrder, MonoKind, PolyKind, Variance )
-import Loc ( HasLoc(..), Loc, defaultLoc )
-import Errors (Error, throwOtherError)
-import qualified Data.List.NonEmpty as NE
-import qualified Data.Text as T
-import Data.List
-import System.FilePath (joinPath, splitDirectories, dropExtension)
-import Pretty.Pretty (ppPrintString)
-import Pretty.Common ()
+    ( EvaluationOrder, MonoKind, PolyKind, )
+import Loc ( HasLoc(..), Loc )
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer Declaration
@@ -231,7 +223,7 @@ data ClassDeclaration = MkClassDeclaration
     -- ^ The documentation string of the declaration.
   , classdecl_name :: ClassName
     -- ^ The name of the type class that is being introduced.
-  , classdecl_kinds :: [(Variance, SkolemTVar, MonoKind)]
+  , classdecl_kinds :: PolyKind
     -- ^ The kind of the type class variables.
   , classdecl_methods :: [XtorSig]
     -- ^ The type class methods and their types.
@@ -307,29 +299,3 @@ data Module = MkModule
   }
 
 deriving instance Show Module
-
--- when only given a filepath, parsing the file will result in the libpath of a module overlapping with the module name, e.g.
--- module Codata.Function in std/Codata/Function.duo will have libpath `std/Codata`.
--- Thus we have to adjust the libpath (to `std/` in the example above).
--- Moreover, we need to check whether the new path and the original filepath are compatible.
-adjustModulePath :: Module -> FilePath -> Either (NE.NonEmpty Error) Module
-adjustModulePath mod fp =
-  let fp'  = fpToList fp
-      mlp  = mod_libpath mod
-      mFp  = fpToList mlp
-      mn   = mod_name mod
-      mp   = T.unpack <$> mn_path mn ++ [mn_base mn]
-  in do
-    prefix <- reverse <$> dropModulePart (reverse mp) (reverse mFp)
-    if prefix `isPrefixOf` fp'
-    then pure mod { mod_libpath = joinPath prefix } 
-    else throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString mlp) <> " is not compatible with given filepath " <> T.pack fp ]
-  where
-    fpToList :: FilePath -> [String]
-    fpToList = splitDirectories . dropExtension
-
-    dropModulePart :: [String] -> [String] -> Either (NE.NonEmpty Error) [String]
-    dropModulePart mp mFp =
-      case stripPrefix mp mFp of
-        Just mFp' -> pure mFp'
-        Nothing   -> throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString (mod_name mod)) <> " is not a suffix of path " <> T.pack (mod_libpath mod)  ]

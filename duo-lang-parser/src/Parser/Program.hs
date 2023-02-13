@@ -21,6 +21,7 @@ import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CST.Names
+import Syntax.CST.Kinds (EvaluationOrder(..),PolyKind(..))
 import Loc
 
 
@@ -290,7 +291,7 @@ classDeclarationP doc = do
     symbolP SymSemi
     endPos <- getSourcePos
     sc
-    let decl = MkClassDeclaration (Loc startPos endPos) doc className typeVars xtors
+    let decl = MkClassDeclaration (Loc startPos endPos) doc className (MkPolyKind typeVars CBV) xtors
     pure (ClassDecl decl)
 
 
