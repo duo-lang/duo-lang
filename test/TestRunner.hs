@@ -1,8 +1,10 @@
 module Main where
 
 import Control.Monad.Except (runExcept, runExceptT, forM, forM_)
+import Control.Monad
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List (sort)
+import Data.Either (isLeft, isRight)
 import System.Environment (withArgs)
 import Test.Hspec
 import Test.Hspec.Runner
@@ -113,7 +115,14 @@ runSuccessTest description examples spec = do
       spec (example, syntaxtree)
 
 
-
+runner :: Description
+            -> [a]
+            -> (a -> Bool)
+            -> (a -> Spec)
+            -> Spec
+runner descr exs p spec = do
+  describe descr $ do
+    forM_ exs $ \a -> Control.Monad.when (p a) $ spec a
 
 
 
@@ -152,7 +161,7 @@ main = do
     withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
     -- Tests before typechecking:
       runSuccessTest "Examples could be successfully parsed" parsedExamples Spec.ParseTest.spec
-      runSpecTest "Prettyprinting and parsing again" parsedExamples Spec.Prettyprinter.specParse
+      runner "Prettyprinting and parsing again" parsedExamples (isRight . snd) Spec.Prettyprinter.specParse
     -- Tests after typechecking:
       runSuccessTest "Examples could be successfully typechecked" typecheckedExamples Spec.TypecheckTest.spec
       runSpecTest "Examples parse and typecheck after prettyprinting" typecheckedExamples Spec.Prettyprinter.specType
