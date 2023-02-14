@@ -101,6 +101,8 @@ runSpecTest description examples spec = do
         Left _ -> pure ()
         Right res -> spec (example, Right res)
 
+-- As the successtest checks whether the syntaxtree was parsed successfully or not, 
+-- runSpecTest can't be used
 runSuccessTest :: Description
               -> [(a0, Either (NonEmpty Error) b0)]
               -> ((a0, Either (NonEmpty Error) b0) -> Spec)
