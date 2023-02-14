@@ -14,7 +14,6 @@ import Syntax.CST.Kinds
 import Syntax.CST.Names 
 import Pretty.Pretty
 import Pretty.Types()
-import Lookup
 import Errors
 import Loc
 import TypeInference.Constraints

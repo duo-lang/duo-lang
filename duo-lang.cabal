@@ -116,7 +116,6 @@ library
       Eval.Definition
       Eval.Eval
       Eval.Primitives
-      Lookup
       Pretty.Pretty
       Pretty.Common
       Pretty.Constraints
