@@ -1,10 +1,10 @@
 module Main where
 
 import Control.Monad.Except (runExcept, runExceptT, forM, forM_)
-import Control.Monad
+import Control.Monad (when)
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List (sort)
-import Data.Either (isLeft, isRight)
+import Data.Either (isRight)
 import System.Environment (withArgs)
 import Test.Hspec
 import Test.Hspec.Runner
@@ -114,7 +114,7 @@ runSuccessTest description examples spec = do
     forM_ examples $ \(example, syntaxtree) ->
       spec (example, syntaxtree)
 
-
+-- Run Tests: A description, set of testvalues, a predicate (conditions for testing) and a spec test are needed
 runner :: Description
             -> [a]
             -> (a -> Bool)
@@ -124,7 +124,15 @@ runner descr exs p spec = do
   describe descr $ do
     forM_ exs $ \a -> Control.Monad.when (p a) $ spec a
 
-
+{-
+-- Overloading runner? Geht das so?
+runner :: Description
+            -> [a]
+            -> (a -> Spec)
+            -> Spec
+runner descr exs spec = 
+  runner descr exs (Const True) spec
+-}
 
 main :: IO ()
 main = do
@@ -160,14 +168,14 @@ main = do
 
     withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
     -- Tests before typechecking:
-      runSuccessTest "Examples could be successfully parsed" parsedExamples Spec.ParseTest.spec
+      runner "Examples could be successfully parsed" parsedExamples (const True) Spec.ParseTest.spec
       runner "Prettyprinting and parsing again" parsedExamples (isRight . snd) Spec.Prettyprinter.specParse
     -- Tests after typechecking:
-      runSuccessTest "Examples could be successfully typechecked" typecheckedExamples Spec.TypecheckTest.spec
-      runSpecTest "Examples parse and typecheck after prettyprinting" typecheckedExamples Spec.Prettyprinter.specType
-      runSpecTest "Examples are locally closed" typecheckedExamples Spec.LocallyClosed.spec  -- <- TODO: Only typechecking is dependent on local closedness
-      runSpecTest "Examples can be focused" typecheckedExamples Spec.Focusing.spec
-      runSpecTest "TypeInference with check" typecheckedCounterExamples Spec.TypeInferenceExamples.spec
+      runner "Examples could be successfully typechecked" typecheckedExamples (const True) Spec.TypecheckTest.spec
+      runner "Examples parse and typecheck after prettyprinting" typecheckedExamples (isRight . snd) Spec.Prettyprinter.specType
+      runner "Examples are locally closed" typecheckedExamples (isRight . snd) Spec.LocallyClosed.spec  -- <- TODO: Only typechecking is dependent on local closedness
+      runner "Examples can be focused" typecheckedExamples (isRight . snd) Spec.Focusing.spec
+      runner "TypeInference with check" typecheckedCounterExamples (isRight . snd) Spec.TypeInferenceExamples.spec
       -- Overlap Check: Not dependent on any parses:
       Spec.OverlapCheck.spec
 
