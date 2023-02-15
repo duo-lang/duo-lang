@@ -5,18 +5,13 @@ import Control.Monad.Reader
 import Data.Bifunctor (second)
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.List.NonEmpty (NonEmpty)
-import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 
-import Pretty.Pretty
-import Pretty.Common ()
-import Pretty.Types ()
 import Resolution.SymbolTable
 import Syntax.CST.Names
 import Syntax.CST.Kinds (PolyKind)
 import Loc
-import Errors
+import Errors.Renamer
 import Control.Monad.Writer
 import qualified Data.Set as S
 
@@ -28,13 +23,13 @@ data ResolveReader = ResolveReader { rr_modules :: Map ModuleName SymbolTable, r
 
 type WarningWriter = Writer [Warning]
 
-newtype ResolverM a = MkResolverM { unResolverM :: (ReaderT ResolveReader (ExceptT (NonEmpty Error) WarningWriter)) a }
-  deriving newtype (Functor, Applicative, Monad, MonadError (NonEmpty Error), MonadReader ResolveReader, MonadWriter [Warning])
+newtype ResolverM a = MkResolverM { unResolverM :: (ReaderT ResolveReader (ExceptT ResolutionError WarningWriter)) a }
+  deriving newtype (Functor, Applicative, Monad, MonadError ResolutionError, MonadReader ResolveReader, MonadWriter [Warning])
 
 instance MonadFail ResolverM where
-  fail str = throwOtherError defaultLoc [T.pack str]
+  fail str = throwError (UnknownResolutionError defaultLoc (T.pack str))
 
-runResolverM :: ResolveReader -> ResolverM a -> (Either (NonEmpty Error) a,[Warning])
+runResolverM :: ResolveReader -> ResolverM a -> (Either ResolutionError a,[Warning])
 runResolverM reader action = runWriter $ runExceptT (runReaderT  (unResolverM action) reader)
 
 ------------------------------------------------------------------------------
@@ -57,9 +52,9 @@ lookupXtor loc xtor = do
   let results :: [(ModuleName, Maybe XtorNameResolve)]
       results = second (M.lookup xtor . xtorNameMap) <$> symbolTables
   case filterJusts results of
-    []    -> throwOtherError loc ["Constructor/Destructor not in symbol table: " <> ppPrint xtor]
+    []    -> throwError (XtorNotFound loc xtor)
     [res] -> pure res
-    _     -> throwOtherError loc ["Constructor/Destructor found in multiple modules: " <> ppPrint xtor]
+    _     -> throwError (XtorAmbiguous loc xtor)
 
 
 -- | Find the Arity of a given typename
@@ -74,9 +69,9 @@ lookupTypeConstructor loc tn = do
     let results :: [(ModuleName, Maybe TypeNameResolve)]
         results = second (M.lookup tn . typeNameMap) <$> symbolTables
     case filterJusts results of
-      []         -> throwOtherError loc ["Type name " <> unTypeName tn <> " not found in symbol table."]
+      []         -> throwError (TypeNameNotFound loc tn)
       [(_,res)]  -> pure res
-      xs         -> throwOtherError loc ["Type name " <> unTypeName tn <> " found in multiple imports.\nModules: " <> T.pack (show(fst <$> xs))]
+      _          -> throwError (TypeNameAmbiguous loc tn)
 
 -- | Type operator for the union type
 unionTyOp :: BinOpDescr
@@ -104,7 +99,7 @@ lookupTyOp loc (CustomOp sym) = do
   let results :: [(ModuleName, Maybe BinOpDescr)]
       results = second (M.lookup sym . tyOps) <$> symbolTables
   case filterJusts results of
-    []    -> throwError (ErrResolution (UnknownOperator loc (ppPrint sym)) NE.:| [])
+    []    -> throwError (TypeOperatorNotFound loc sym)
     [res] -> pure res
-    _     -> throwOtherError loc ["Type operator " <> ppPrint sym <> " found in multiple imports."]
+    _     -> throwError (TypeOperatorAmbiguous loc sym)
 

@@ -1,12 +1,11 @@
 module Spec.Focusing (spec) where
 
-import Control.Monad
 import Data.List.NonEmpty ( NonEmpty )
 import Test.Hspec hiding (focus)
+
 import Pretty.Pretty
 import Pretty.Program ()
 import Utils (moduleNameToFullPath)
-
 import Driver.Definition
 import Driver.Driver (inferProgramIO)
 import Sugar.Desugar (Desugar(..))
@@ -54,9 +53,8 @@ testHelper ((example, mn),decls) cbx = describe (show cbx ++ " Focusing the prog
               it "Could not load examples" $ expectationFailure msg
             (Right _env,_) -> it ("Focused " ++ fullName ++ " succesfully") $ () `shouldBe` ()
 
-spec :: [((FilePath, ModuleName),Either (NonEmpty Error) TST.Module)] -> Spec
-spec examples = do
+spec :: ((FilePath, ModuleName),Either (NonEmpty Error) TST.Module) -> Spec
+spec example = do
     describe "Focusing an entire program still typechecks" $ do
-      forM_ examples $ \example -> do
-        testHelper example CBV
-        testHelper example CBN
+      testHelper example CBV
+      testHelper example CBN

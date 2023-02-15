@@ -246,10 +246,10 @@ tyArgsP = do
   sc
   args <- typP `sepBy1` (symbolP SymComma >> sc)
   symbolP SymParenRight
-  sc
   endPos <- getSourcePos
+  sc
   case args of 
-    [] -> error ""
+    [] -> error "Unreachable: sepBy1 parses at least one element."
     ((ty1,_):argRst) -> pure (ty1:|map fst argRst,endPos)
 
 tyOpChainP :: Parser (NonEmpty (Loc, BinOp, Typ), SourcePos)

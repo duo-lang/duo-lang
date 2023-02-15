@@ -11,6 +11,7 @@ import System.Directory ( makeAbsolute )
 
 import Driver.Environment ( Environment, emptyEnvironment )
 import Errors
+import Errors.Renamer
 import Pretty.Pretty
 import Pretty.Errors ( printLocatedReport )
 import Resolution.SymbolTable
@@ -133,7 +134,9 @@ getSymbolTable mod = do
   sts <- getSymbolTables
   case M.lookup (CST.mod_name mod) sts of
     Nothing -> do
-      st <- createSymbolTable mod
+      st <- case createSymbolTable mod of
+        Left err -> throwError (ErrResolution err :| [])
+        Right res -> pure res
       addSymboltable (CST.mod_name mod) st
       return st
     Just st -> return st
@@ -158,7 +161,7 @@ checkModuleName mn CST.MkModule { mod_name } =
 parseAndCheckModule :: (MonadError (NonEmpty Error) m, MonadIO m) => FilePath -> ModuleName -> FilePath -> m CST.Module
 parseAndCheckModule fullFp mn fp = do
   file <- liftIO $ T.readFile fullFp
-  mod <- runFileParser fullFp (moduleP fp) file
+  mod <- runFileParser fullFp (moduleP fp) file ErrParser
   checkModuleName mn mod
   pure mod
 

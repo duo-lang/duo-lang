@@ -4,6 +4,8 @@ module Pretty.Errors
 
 import Control.Monad.IO.Class ( MonadIO(..) )
 import Data.Text (Text)
+import Errors.Parser
+import Errors.Renamer
 import Error.Diagnose
     ( stdout,
       addReport,
@@ -17,8 +19,11 @@ import Prettyprinter
 
 
 import Errors
+
 import Pretty.Constraints ()
 import Pretty.Terms ()
+import Pretty.Common ()
+import Pretty.Types ()
 import Pretty.Pretty ( PrettyAnn(..), ppPrint )
 import Loc (Loc (Loc), HasLoc (getLoc))
 import Text.Megaparsec (SourcePos(..), unPos)
@@ -51,9 +56,9 @@ instance PrettyAnn ResolutionError where
     vsep [ prettyAnn loc
          , "Cannot use `\\/` in negative polarity"
          ]
-  prettyAnn (UnknownOperator loc op) =
+  prettyAnn (TypeOperatorNotFound loc op) =
     vsep [ prettyAnn loc
-         , "Undefined type operator `" <> pretty op <> "`"
+         , "Undefined type operator `" <> prettyAnn op <> "`"
          ]
   prettyAnn (XtorArityMismatch loc xt ar1 ar2) =
     vsep [ prettyAnn loc
@@ -82,6 +87,50 @@ instance PrettyAnn ResolutionError where
   prettyAnn (InvalidStar loc t) =
     vsep [ prettyAnn loc
          , "Invalid Star: " <+> pretty t
+         ]
+  prettyAnn (TypeNameAlreadyUsed loc tn) =
+    vsep [ prettyAnn loc
+         , "TypeName is already used:" <+> prettyAnn tn
+         ]
+  prettyAnn (XtorNameAlreadyUsed loc xt) =
+    vsep [ prettyAnn loc
+         , "XtorName is already used:" <+> prettyAnn xt
+         ]
+  prettyAnn (FreeVarNameAlreadyUsed loc fv) =
+    vsep [ prettyAnn loc
+         , "FreeVarName is already used:" <+> prettyAnn fv
+         ]
+  prettyAnn (TyOpAlreadyUsed loc op) =
+    vsep [ prettyAnn loc
+         , "TyOp is already used:" <+> prettyAnn op]
+  prettyAnn (UnknownResolutionError loc msg) =
+    vsep [ prettyAnn loc
+         , pretty msg
+         ]
+  prettyAnn (XtorNotFound loc xt) =
+    vsep [ prettyAnn loc
+         , "Constructor/Destructor not in symbol table:" <+> prettyAnn xt
+         ]
+  prettyAnn (XtorAmbiguous loc xt) =
+    vsep [ prettyAnn loc
+         , "Constructor/Destructor found in multiple modules:" <+> prettyAnn xt
+          ]
+  prettyAnn (TypeNameNotFound loc tn) =
+    vsep [ prettyAnn loc
+         , "TypeName not in symbol table:" <+> prettyAnn tn
+         ]
+  prettyAnn (TypeNameAmbiguous loc tn) =
+    vsep [ prettyAnn loc
+         , "TypeName found in multiple modules:" <+> prettyAnn tn
+          ]
+  prettyAnn (TypeOperatorAmbiguous loc op) =
+    vsep [ prettyAnn loc
+         , "TypeOperator found in multiple modules:" <+> prettyAnn op
+         ]
+  prettyAnn (OrphanInstance loc isn cn ty) =
+    vsep [ prettyAnn loc
+         , "Found orphan instance:" <+> prettyAnn isn <+> ":" <+> prettyAnn cn <+>prettyAnn ty
+         , "Define this instance in the same module as the class or type declaration."
          ]
 
 instance PrettyAnn ConstraintGenerationError where
@@ -209,57 +258,14 @@ toDiagnosePosition (Loc (SourcePos fp p1 p2) (SourcePos _ p3 p4)) =
            }
 
 instance ToReport ResolutionError where
-  toReport e@(MissingVarsInTypeScheme loc) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(TopInPosPolarity loc) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(BotInNegPolarity loc) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(IntersectionInPosPolarity loc) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(UnionInNegPolarity loc) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(UnknownOperator loc _op) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(XtorArityMismatch loc _ _ _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(MethodArityMismatch loc _ _ _ _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(PrimOpArityMismatch loc _ _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(CmdExpected loc _) = 
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(InvalidStar loc _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
+  toReport :: ResolutionError -> Report Text
+  toReport e = err (Just "E-000") (ppPrint e) [(toDiagnosePosition (getLoc e), This "Location of the error")] []
+
 
 instance ToReport ConstraintGenerationError where
-  toReport e@(BoundVariableOutOfBounds loc _ _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(BoundVariableWrongMode loc _ _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(PatternMatchMissingXtor loc _ _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(PatternMatchAdditional loc _ _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(InstanceImplementationMissing loc _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(InstanceImplementationAdditional loc _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(EmptyNominalMatch loc) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(EmptyRefinementMatch loc) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(LinearContextsUnequalLength loc _ _ _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(LinearContextIncompatibleTypeMode loc _ _) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(NoParamTypeClass loc) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(MultiParamTypeClass loc) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-  toReport e@(InstanceResolution loc _errs) =
-    err (Just "E-000") (ppPrint e) [(toDiagnosePosition loc, This "Location of the error")] []
-
+  toReport :: ConstraintGenerationError -> Report Text
+  toReport e = err (Just "E-000") (ppPrint e) [(toDiagnosePosition (getLoc e), This "Location of the error")] []
+  
 instance ToReport ConstraintSolverError where
   toReport (SomeConstraintSolverError loc msg) =
     err (Just "E-000") msg [(toDiagnosePosition loc, This "Location of the error")] []

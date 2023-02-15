@@ -18,7 +18,8 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.List (partition)
 
-import Driver.Environment (Environment (..))
+import Driver.Environment
+    ( Environment(instanceEnv), lookupDataDecl )
 import Errors
 import Syntax.TST.Types
 import Syntax.TST.Program
@@ -32,7 +33,6 @@ import Syntax.CST.Names
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.CST.Kinds
 import Data.Either (isRight)
-import Lookup
 
 ------------------------------------------------------------------------------
 -- Constraint solver monad

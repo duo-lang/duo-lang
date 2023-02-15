@@ -5,6 +5,8 @@ import Data.List.NonEmpty ( NonEmpty )
 import Data.List.NonEmpty qualified as NE
 import Data.Text (Text)
 import Data.Text qualified as T
+import Errors.Parser ( ParserError )
+import Errors.Renamer
 
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
@@ -12,66 +14,6 @@ import Syntax.CST.Types (PrdCns)
 import Syntax.RST.Types
 import Loc
 import TypeInference.Constraints (ConstraintInfo)
-
-----------------------------------------------------------------------------------
--- Errors emitted during the resolution phase
-----------------------------------------------------------------------------------
-
-data ResolutionError where
-  -- Type scheme violations
-  MissingVarsInTypeScheme :: Loc -> ResolutionError
-  -- Polarity violations
-  TopInPosPolarity :: Loc -> ResolutionError
-  BotInNegPolarity :: Loc -> ResolutionError
-  IntersectionInPosPolarity :: Loc -> ResolutionError
-  UnionInNegPolarity :: Loc -> ResolutionError
-  -- Operator errors
-  UnknownOperator :: Loc -> Text -> ResolutionError
-  MethodArityMismatch :: Loc
-                      -> MethodName
-                      -> ClassName
-                      -> Int
-                      -> Int
-                      -> ResolutionError
-  XtorArityMismatch :: Loc
-                    -> XtorName
-                    -> Int
-                    -> Int
-                    -> ResolutionError
-  PrimOpArityMismatch :: Loc
-                      -> PrimName
-                      -> Int
-                      -> ResolutionError
-  CmdExpected :: Loc -> Text -> ResolutionError
-  InvalidStar  :: Loc -> Text -> ResolutionError
-
-deriving instance Show ResolutionError
-
-instance HasLoc ResolutionError where
-  getLoc (MissingVarsInTypeScheme loc) = loc
-  getLoc (TopInPosPolarity loc) = loc
-  getLoc (BotInNegPolarity loc) = loc
-  getLoc (IntersectionInPosPolarity loc) = loc
-  getLoc (UnionInNegPolarity loc) = loc
-  getLoc (UnknownOperator loc _) = loc
-  getLoc (MethodArityMismatch loc _ _ _ _) = loc
-  getLoc (XtorArityMismatch loc _ _ _) = loc
-  getLoc (PrimOpArityMismatch loc _ _) = loc
-  getLoc (CmdExpected loc _) = loc
-  getLoc (InvalidStar loc _) = loc
-
-instance AttachLoc ResolutionError where
-  attachLoc loc (MissingVarsInTypeScheme _) = MissingVarsInTypeScheme loc
-  attachLoc loc (TopInPosPolarity _) = TopInPosPolarity loc
-  attachLoc loc (BotInNegPolarity _) = BotInNegPolarity loc
-  attachLoc loc (IntersectionInPosPolarity _) = IntersectionInPosPolarity loc
-  attachLoc loc (UnionInNegPolarity _) = UnionInNegPolarity loc
-  attachLoc loc (UnknownOperator _ op) = UnknownOperator loc op
-  attachLoc loc (XtorArityMismatch _ xt i1 i2) = XtorArityMismatch loc xt i1 i2
-  attachLoc loc (MethodArityMismatch _ mt ct i1 i2) = MethodArityMismatch loc mt ct i1 i2
-  attachLoc loc (PrimOpArityMismatch _ po i) = PrimOpArityMismatch loc po i
-  attachLoc loc (CmdExpected _ t) = CmdExpected loc t
-  attachLoc loc (InvalidStar _ t) = InvalidStar loc t
 
 ----------------------------------------------------------------------------------
 -- Errors emitted during the constraint generation phase
@@ -190,23 +132,6 @@ instance AttachLoc EvalError where
     SomeEvalError loc msg
 
 ----------------------------------------------------------------------------------
--- Errors emitted during parsing
-----------------------------------------------------------------------------------
-
-data ParserError where
-  SomeParserError :: Loc -> Text -> ParserError
-
-deriving instance Show ParserError
-
-instance HasLoc ParserError where
-  getLoc (SomeParserError loc _) =
-    loc
-
-instance AttachLoc ParserError where
-  attachLoc loc (SomeParserError _ msg) =
-    SomeParserError loc msg
-
-----------------------------------------------------------------------------------
 -- Various other errors
 ----------------------------------------------------------------------------------
 
@@ -283,24 +208,3 @@ throwOtherError :: MonadError (NonEmpty Error) m
                 => Loc -> [Text] -> m a
 throwOtherError loc =
   throwError . (NE.:| []) . (ErrOther . SomeOtherError loc) . T.unlines
-
-
----------------------------------------------------------------------------------------------
--- Warnings
----------------------------------------------------------------------------------------------
-
-data Warning where
-  -- | Warning for producer that starts with the letter "k".
-  MisnamedProducerVar :: Loc -> Text -> Warning
-  -- | Warning for consumer that doesn't start with the letter "k".
-  MisnamedConsumerVar :: Loc -> Text -> Warning
-
-deriving instance Show Warning
-
-instance HasLoc Warning where
-  getLoc (MisnamedProducerVar loc _) = loc
-  getLoc (MisnamedConsumerVar loc _) = loc
-
-instance AttachLoc Warning where
-  attachLoc loc (MisnamedProducerVar _ msg) = MisnamedProducerVar loc msg
-  attachLoc loc (MisnamedConsumerVar _ msg) = MisnamedConsumerVar loc msg

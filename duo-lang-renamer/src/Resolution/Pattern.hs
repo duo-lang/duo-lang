@@ -7,14 +7,9 @@ module Resolution.Pattern
 import Control.Monad ( unless, when, zipWithM )
 import Control.Monad.Except ( MonadError(throwError) )
 import Control.Monad.Writer ( MonadWriter(tell) )
-import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.Text qualified as T
 
-import Errors
-    ( throwOtherError,
-      ResolutionError(XtorArityMismatch),
-      Warning(MisnamedConsumerVar, MisnamedProducerVar),
-      Error(ErrResolution) )
+import Errors.Renamer
 import Resolution.Definition ( ResolverM, lookupXtor )
 import Resolution.SymbolTable ( XtorNameResolve(..) )
 import Syntax.CST.Terms qualified as CST
@@ -35,7 +30,7 @@ findAtMostOneRight args = case break isRight args of
   (left_pats, (starpat: right_pats)) ->
     case break isRight right_pats of
       (right_pats, []) -> pure $ Right (fromLeft undefined <$> left_pats,fromRight undefined starpat,fromLeft undefined <$> right_pats)
-      (_, _:_) -> throwOtherError (getLoc (fromRight undefined starpat)) ["Found more than one star in pattern"]
+      (_, _:_) -> throwError (UnknownResolutionError (getLoc (fromRight undefined starpat)) "Found more than one star in pattern")
       
     
 
@@ -47,14 +42,14 @@ resolvePattern pc (CST.PatXtor loc xt pats) = do
   (_,res) <- lookupXtor loc xt
   case res of
     (MethodNameResult _cn _) -> do
-      throwOtherError loc ["Expected a constructor or destructor, but found a typeclas method."]
+      throwError (UnknownResolutionError loc "Expected a constructor or destructor, but found a typeclas method.")
     (XtorNameResult dc ns arity) -> do
       when (length arity /= length pats) $
-        throwError (ErrResolution (XtorArityMismatch loc xt (length arity) (length pats)) :| [])
+        throwError (XtorArityMismatch loc xt (length arity) (length pats))
       -- Check whether the Xtor is a Constructor/Destructor as expected.
       case (pc,dc) of
-        (Cns, CST.Data  ) -> throwOtherError loc ["Expected a destructor but found a constructor"]
-        (Prd, CST.Codata) -> throwOtherError loc ["Expected a constructor but found a destructor"]
+        (Cns, CST.Data  ) -> throwError (UnknownResolutionError loc "Expected a destructor but found a constructor")
+        (Prd, CST.Codata) -> throwError (UnknownResolutionError loc "Expected a constructor but found a destructor")
         (Prd, CST.Data  ) -> pure ()
         (Cns, CST.Codata) -> pure ()
       pats' <- zipWithM resolvePattern arity pats
@@ -82,17 +77,17 @@ resolvePattern pc (CST.PatWildcard loc) = do
 fromVar :: RST.PatternNew -> ResolverM (Loc, PrdCns, FreeVarName)
 fromVar (RST.PatVar loc pc var) = pure (loc, pc, var)
 fromVar (RST.PatWildcard loc pc) = pure (loc, pc, MkFreeVarName "_")
-fromVar pat = throwOtherError (getLoc pat) ["Called function \"fromVar\" on pattern which is not a variable."]
+fromVar pat = throwError (UnknownResolutionError (getLoc pat) "Called function \"fromVar\" on pattern which is not a variable.")
 
 analyzeInstancePattern :: CST.Pattern -> ResolverM (Loc, XtorName, [(Loc, PrdCns, FreeVarName)])
 analyzeInstancePattern (CST.PatXtor loc xt pats) = do
   (_,res) <- lookupXtor loc xt
   case res of
     XtorNameResult {} -> do
-      throwOtherError loc ["Expected typeclass method but found xtor" <> T.pack (show xt)]
+      throwError (UnknownResolutionError loc ("Expected typeclass method but found xtor" <> T.pack (show xt)))
     MethodNameResult _cn arity -> do
       when (length arity /= length pats) $
-        throwError (ErrResolution (XtorArityMismatch loc xt (length arity) (length pats)) :| [])
+        throwError (XtorArityMismatch loc xt (length arity) (length pats))
       pats' <- zipWithM resolvePattern arity pats
       foo <- findAtMostOneRight pats'
       case foo of
@@ -100,7 +95,7 @@ analyzeInstancePattern (CST.PatXtor loc xt pats) = do
           args <- mapM fromVar pats2
           pure (loc, xt, args)
         Right _ ->
-          throwOtherError loc ["Found star in instance method"]
+          throwError (UnknownResolutionError loc "Found star in instance method")
 analyzeInstancePattern pat =
-  throwOtherError (getLoc pat) ["Expected typeclass method but found pattern" <> T.pack (show pat)]
+  throwError (UnknownResolutionError (getLoc pat) ("Expected typeclass method but found pattern" <> T.pack (show pat)))
 

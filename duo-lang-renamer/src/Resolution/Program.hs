@@ -1,14 +1,15 @@
 module Resolution.Program (resolveModule, resolveDecl) where
 
 import Control.Monad.Reader
+import Control.Monad.Except
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NE
 import Data.Map (Map)
 import Data.Map qualified as M
+import Data.Text qualified as T
 
 
-import Errors
-import Pretty.Pretty ( ppPrint )
+import Errors.Renamer
 import Resolution.Definition
 import Resolution.SymbolTable
 import Resolution.Terms (resolveTerm, resolveCommand, resolveInstanceCase)
@@ -39,17 +40,17 @@ resolveXtors sigs = do
 
 checkVarianceTyp :: Loc -> Variance -> PolyKind -> CST.Typ -> ResolverM ()
 checkVarianceTyp _ _ tv(CST.TyUniVar loc _) =
-  throwOtherError loc ["The Unification Variable " <> ppPrint tv <> " should not appear in the program at this point"]
+  throwError (UnknownResolutionError loc ("The Unification Variable " <> T.pack (show tv) <> " should not appear in the program at this point"))
 checkVarianceTyp _ var polyKind (CST.TySkolemVar loc tVar) =
   case lookupPolyKindVariance tVar polyKind of
     -- The following line does not work correctly if the data declaration contains recursive types in the arguments of an xtor.
-    Nothing   -> throwOtherError loc ["Type variable not bound by declaration: " <> ppPrint tVar]
+    Nothing   -> throwError (UnknownResolutionError loc ("Type variable not bound by declaration: " <> T.pack (show tVar)))
     Just var' -> if var == var'
                  then return ()
-                 else throwOtherError loc ["Variance mismatch for variable " <> ppPrint tVar <> ":"
-                                          , "Found: " <> ppPrint var
-                                          , "Required: " <> ppPrint var'
-                                          ]
+                 else throwError (UnknownResolutionError loc ("Variance mismatch for variable " <> T.pack (show tVar) <> ":\n"
+                                          <> "Found: " <> T.pack (show var) <> "\n"
+                                          <> "Required: " <> T.pack (show var')
+                 ))
 checkVarianceTyp loc var polyKind (CST.TyXData _loc' dataCodata  xtorSigs) = do
   let var' = var <> case dataCodata of
                       CST.Data   -> Covariant
@@ -70,17 +71,17 @@ checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) tys)
     go (v:vs) (t:ts)  = do
       checkVarianceTyp loc (v <> var) polyKind t
       go vs ts
-    go [] (_:_)       = throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too many arguments"]
-    go (_:_) []       = throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too few arguments"]
+    go [] (_:_)       = throwError (UnknownResolutionError loc ("Type Constructor " <> T.pack (show tyName) <> " is applied to too many arguments"))
+    go (_:_) []       = throwError (UnknownResolutionError loc ("Type Constructor " <> T.pack (show tyName) <> " is applied to too few arguments"))
 checkVarianceTyp loc _ _ (CST.TyNominal _loc' tyName) = do
   NominalResult _ _ _ polyKnd' <- lookupTypeConstructor loc tyName
   case kindArgs polyKnd' of 
     [] -> return () 
-    _ -> throwOtherError loc ["Type Constructor " <> ppPrint tyName <> " is applied to too few arguments"]
+    _ -> throwError (UnknownResolutionError loc ("Type Constructor " <> T.pack (show tyName) <> " is applied to too few arguments"))
 checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyParens _ ty) args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty args)
 checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyKindAnnot _ ty) args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty args)
 checkVarianceTyp loc _ _ CST.TyApp{} = 
-  throwOtherError loc ["Types can only be applied to nominal types"]
+  throwError (UnknownResolutionError loc "Types can only be applied to nominal types")
 checkVarianceTyp loc var polyKind (CST.TyRec _loc' _tVar ty) =
   checkVarianceTyp loc var polyKind ty
 checkVarianceTyp _loc _var _polyKind (CST.TyTop _loc') = return ()
@@ -345,7 +346,7 @@ resolveDecl (CST.InstanceDecl decl) = do
   decl' <- resolveInstanceDeclaration decl
   pure (RST.InstanceDecl decl')
 resolveDecl CST.ParseErrorDecl =
-  throwOtherError defaultLoc ["Unreachable: ParseErrorDecl cannot be parsed"]
+  throwError (UnknownResolutionError defaultLoc "Unreachable: ParseErrorDecl cannot be parsed")
 
 resolveModule :: CST.Module -> ResolverM RST.Module
 resolveModule CST.MkModule { mod_name, mod_libpath, mod_decls } = do
