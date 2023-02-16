@@ -59,8 +59,7 @@ parseErrorToDiag posState err = SomeParserError (Loc pos pos) msg
 
 
 translateError :: MyParseError -> NonEmpty ParserError
-translateError ParseErrorBundle { bundlePosState, bundleErrors } =
-  parseErrorToDiag bundlePosState <$> bundleErrors
+translateError err = parseErrorToDiag err.bundlePosState <$> err.bundleErrors
 
 -------------------------------------------------------------------------------------------
 -- Running a parser
