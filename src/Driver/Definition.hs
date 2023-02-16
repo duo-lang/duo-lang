@@ -142,12 +142,12 @@ getSymbolTable mod = do
     Just st -> return st
 
 getImports :: ModuleName -> DriverM (Maybe [ModuleName])
-getImports mn = gets $ fmap (fmap fst . imports) . M.lookup mn . drvSymbols
+getImports mn = gets $ fmap (fmap fst . (\x -> x.imports)) . M.lookup mn . drvSymbols
 
 getDependencies :: DriverState -> ModuleName -> [ModuleName]
 getDependencies ds mn = nub $ directDeps ++ concatMap (getDependencies ds) directDeps
   where
-    directDeps = maybe [] (fmap fst . imports) . M.lookup mn . drvSymbols $ ds
+    directDeps = maybe [] (fmap fst . (\x -> x.imports)) . M.lookup mn . drvSymbols $ ds
 
 
 -- Modules and declarations

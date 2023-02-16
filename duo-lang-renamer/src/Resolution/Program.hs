@@ -156,10 +156,10 @@ resolveDataDecl decl = do
           g (NominalResult tn dc _ polykind) = NominalResult tn dc CST.NotRefined polykind
 
           f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
-          f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g decl.data_name (typeNameMap st) })) (M.toList x))
+          f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g decl.data_name st.typeNameMap })) (M.toList x))
 
           h :: ResolveReader -> ResolveReader
-          h r = r { rr_modules = f $ rr_modules r }
+          h r = r { rr_modules = f r.rr_modules }
       (xtorsPos, xtorsNeg) <- local h (resolveXtors decl.data_xtors)
       pure RST.RefinementDecl { data_loc = decl.data_loc
                               , data_doc = decl.data_doc

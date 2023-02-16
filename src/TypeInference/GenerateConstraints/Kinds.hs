@@ -38,11 +38,11 @@ import Syntax.RST.Types (Polarity(..), PolarityRep (..))
 getXtorKinds :: Loc -> [RST.XtorSig pol] -> GenM EvaluationOrder
 getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
 getXtorKinds _ [xtor] = do
-  let nm = RST.sig_name xtor
+  let nm = xtor.sig_name
   (mk, _) <- lookupXtorKind nm 
   return mk
 getXtorKinds loc (xtor:xtors) = do 
-  let nm = RST.sig_name xtor 
+  let nm = xtor.sig_name
   (mk, _) <- lookupXtorKind nm
   mk' <- getXtorKinds loc xtors
   -- all constructors of a structural type need to have the same return kind
@@ -94,7 +94,7 @@ runDataDeclM m env initSt = runExcept (runStateT (runReaderT m (env,())) initSt)
 
 resolveDataDecl :: RST.DataDecl -> M.Map ModuleName Environment ->  Either (NonEmpty Error) TST.DataDecl
 resolveDataDecl decl env = do
-  (decl', _) <- runDataDeclM (annotateDataDecl decl) env (createDataDeclState (RST.data_kind decl) (RST.data_name decl))
+  (decl', _) <- runDataDeclM (annotateDataDecl decl) env (createDataDeclState decl.data_kind decl.data_name)
   return decl' 
 
 
@@ -156,7 +156,7 @@ annotTy (RST.TyRecVar loc pol tv) = do
     Nothing -> throwOtherError loc ["Unbound RecVar " <> ppPrint tv <> " in data declaration"]
     Just pk -> return $ TST.TyRecVar loc pol pk tv
 annotTy (RST.TyData loc pol xtors) = do 
-  let xtnms = map RST.sig_name xtors
+  let xtnms = map (\x -> x.sig_name) xtors
   xtorKinds <- mapM lookupXtorKind xtnms
   let allEq = compXtorKinds (map fst xtorKinds)
   case allEq of 
@@ -170,7 +170,7 @@ annotTy (RST.TyData loc pol xtors) = do
     compXtorKinds [eo] = Just eo
     compXtorKinds (xtor1:xtor2:rst) = if xtor1==xtor2 then compXtorKinds (xtor2:rst) else Nothing
 annotTy (RST.TyCodata loc pol xtors) = do 
-  let xtnms = map RST.sig_name xtors
+  let xtnms = map (\x -> x.sig_name) xtors
   xtorKinds <- mapM lookupXtorKind xtnms
   let allEq = compXtorKinds (map fst xtorKinds)
   case allEq of 
@@ -186,7 +186,7 @@ annotTy (RST.TyCodata loc pol xtors) = do
 annotTy (RST.TyDataRefined loc pol pknd tyn rv xtors) =  do 
   tyn' <- gets declTyName
   if tyn == tyn' then do
-    let xtorNames = map RST.sig_name xtors
+    let xtorNames = map (\x -> x.sig_name) xtors
     xtors' <- getXtors pol xtorNames
     return $ TST.TyDataRefined loc pol pknd tyn rv xtors' 
   else do 
@@ -196,7 +196,7 @@ annotTy (RST.TyDataRefined loc pol pknd tyn rv xtors) =  do
 annotTy (RST.TyCodataRefined loc pol pknd tyn rv xtors) = do 
   tyn' <- gets declTyName
   if tyn == tyn' then do 
-    let xtorNames = map RST.sig_name xtors
+    let xtorNames = map (\x -> x.sig_name) xtors
     xtors' <- getXtors (RST.flipPolarityRep pol) xtorNames
     return $ TST.TyCodataRefined loc pol pknd tyn rv xtors'
   else do
@@ -449,7 +449,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       Just pk -> return (TST.TyRecVar loc pol pk rv)
 
   annotateKind (RST.TyData loc pol xtors) = do 
-    let xtorNames = map RST.sig_name xtors
+    let xtorNames = map (\x -> x.sig_name) xtors
     xtorKnds <- mapM lookupXtorKind xtorNames
     eo <- getXtorKinds loc xtors
     xtors' <- mapM annotateKind xtors
@@ -475,7 +475,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkRetKnd loc primk eo = throwOtherError loc ["Kinds " <> ppPrint primk <> " and " <> ppPrint eo <> " are not compatible"]
 
   annotateKind (RST.TyCodata loc pol xtors) = do 
-    let xtorNames = map RST.sig_name xtors
+    let xtorNames = map (\x -> x.sig_name) xtors
     xtorKnds <- mapM lookupXtorKind xtorNames
     eo <- getXtorKinds loc xtors
     xtors' <- mapM annotateKind xtors

@@ -27,7 +27,7 @@ newtype UnresolveM a =
     deriving newtype (Functor, Applicative,Monad, MonadState ([FreeVarName],[FreeVarName]))
 
 runUnresolveM :: UnresolveM a -> a
-runUnresolveM m = evalState (unUnresolveM m) names
+runUnresolveM m = evalState m.unUnresolveM names
   where
     names :: ([FreeVarName], [FreeVarName])
     names =  ((\y -> MkFreeVarName ("x" <> T.pack (show y))) <$> [(1 :: Int)..]

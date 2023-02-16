@@ -89,7 +89,7 @@ checkFreshTypeName :: MonadError ResolutionError m
                    -> SymbolTable
                    -> m ()
 checkFreshTypeName loc tn st =
-  if tn `elem` M.keys (typeNameMap st)
+  if tn `elem` M.keys st.typeNameMap
   then throwError (TypeNameAlreadyUsed loc tn)
   else pure ()
 
@@ -99,7 +99,7 @@ checkFreshXtorName :: MonadError ResolutionError m
                    -> SymbolTable
                    -> m ()
 checkFreshXtorName loc xt st =
-  if xt `elem` M.keys (xtorNameMap st)
+  if xt `elem` M.keys st.xtorNameMap
   then throwError (XtorNameAlreadyUsed loc xt)
   else pure ()
 
@@ -109,7 +109,7 @@ checkFreshFreeVarName :: MonadError ResolutionError m
                    -> SymbolTable
                    -> m ()
 checkFreshFreeVarName loc fv st =
-  if fv `elem` M.keys (freeVarMap st)
+  if fv `elem` M.keys st.freeVarMap
   then throwError (FreeVarNameAlreadyUsed loc fv)
   else pure ()
 
@@ -119,7 +119,7 @@ checkFreshTyOpName :: MonadError ResolutionError m
                    -> SymbolTable
                    -> m ()
 checkFreshTyOpName loc op st =
-  if op `elem` M.keys (tyOps st)
+  if op `elem` M.keys st.tyOps
   then throwError (TyOpAlreadyUsed loc op)
   else pure ()
 
@@ -146,7 +146,7 @@ createSymbolTable' _ _ (XtorDecl decl) st = do
   -- Check whether the xtor name is already declared in this module
   checkFreshXtorName decl.strxtordecl_loc decl.strxtordecl_name st
   let xtorResolve = XtorNameResult decl.strxtordecl_xdata Structural (fst <$> decl.strxtordecl_arity)
-  pure $ st { xtorNameMap = M.insert decl.strxtordecl_name xtorResolve (xtorNameMap st)}
+  pure $ st { xtorNameMap = M.insert decl.strxtordecl_name xtorResolve st.xtorNameMap }
 createSymbolTable' fp mn  (DataDecl decl) st = do
   -- Check whether the TypeName, and the XtorNames, are already declared in this module
   checkFreshTypeName decl.data_loc decl.data_name st
@@ -166,17 +166,17 @@ createSymbolTable' fp mn  (DataDecl decl) st = do
                                 , rnTnName = decl.data_name
                                 }
   let nominalResult = NominalResult rnTypeName decl.data_polarity decl.data_refined polyKind
-  pure $ st { xtorNameMap = M.union xtors (xtorNameMap st)
-            , typeNameMap = M.insert decl.data_name nominalResult (typeNameMap st)}
+  pure $ st { xtorNameMap = M.union xtors st.xtorNameMap
+            , typeNameMap = M.insert decl.data_name nominalResult st.typeNameMap }
 createSymbolTable' _ _ (TyOpDecl decl) st = do
   checkFreshTyOpName decl.tyopdecl_loc decl.tyopdecl_sym st
   let descr = MkBinOpDescr { prec = decl.tyopdecl_prec
                            , assoc = decl.tyopdecl_assoc
                            , desugar = NominalDesugaring decl.tyopdecl_res
                            }
-  pure $ st { tyOps = M.insert decl.tyopdecl_sym descr (tyOps st) }
+  pure $ st { tyOps = M.insert decl.tyopdecl_sym descr st.tyOps }
 createSymbolTable' _ _ (ImportDecl decl) st =
-  pure $ st { imports = (decl.imprtdecl_module,decl.imprtdecl_loc):imports st }
+  pure $ st { imports = (decl.imprtdecl_module,decl.imprtdecl_loc): st.imports }
 createSymbolTable' fp mn (TySynDecl decl) st = do
   -- Check whether the TypeName is already declared in this module
   checkFreshTypeName decl.tysyndecl_loc decl.tysyndecl_name st
@@ -187,20 +187,20 @@ createSymbolTable' fp mn (TySynDecl decl) st = do
                                 , rnTnName = decl.tysyndecl_name
                                 }
   let synonymResult = SynonymResult rnTypeName decl.tysyndecl_res
-  pure $ st { typeNameMap = M.insert decl.tysyndecl_name synonymResult (typeNameMap st) }
+  pure $ st { typeNameMap = M.insert decl.tysyndecl_name synonymResult st.typeNameMap }
 createSymbolTable' _ _ (PrdCnsDecl decl) st = do
   -- Check if the FreeVarName is already declared in this module
   checkFreshFreeVarName decl.pcdecl_loc decl.pcdecl_name st
-  pure $ st { freeVarMap = M.insert decl.pcdecl_name FreeVarResult (freeVarMap st) }
+  pure $ st { freeVarMap = M.insert decl.pcdecl_name FreeVarResult st.freeVarMap }
 createSymbolTable' _ _ (CmdDecl decl) st = do
   checkFreshFreeVarName decl.cmddecl_loc decl.cmddecl_name st
-  pure $ st { freeVarMap = M.insert decl.cmddecl_name FreeVarResult (freeVarMap st) }
+  pure $ st { freeVarMap = M.insert decl.cmddecl_name FreeVarResult st.freeVarMap }
 createSymbolTable' _ _ (SetDecl _) st = pure st
 createSymbolTable' _ _ (ClassDecl decl)  st = do
   let xtor_names = (\x -> x.sig_name) <$> decl.classdecl_methods
   mapM_ (flip (checkFreshXtorName decl.classdecl_loc) st) xtor_names
-  pure $ st { xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult decl.classdecl_name . linearContextToArity . (\x -> x.sig_args) <$> decl.classdecl_methods)) (xtorNameMap st)
-            , classDecls = S.insert decl.classdecl_name (classDecls st) }
+  pure $ st { xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult decl.classdecl_name . linearContextToArity . (\x -> x.sig_args) <$> decl.classdecl_methods)) st.xtorNameMap
+            , classDecls = S.insert decl.classdecl_name st.classDecls }
 createSymbolTable' _ _ (InstanceDecl decl) st =
   if isPermittedInstance decl.instancedecl_class decl.instancedecl_typ st
     then pure st
@@ -210,7 +210,7 @@ createSymbolTable' _ _ ParseErrorDecl st = pure st
   -- | Check whether the instance declaration would be an orphan instance (neccessary to ensure type class coherence)
   -- Only nominal types and refinement types are allowed.
 isPermittedInstance :: ClassName -> Typ -> SymbolTable -> Bool
-isPermittedInstance cn ty st = S.member cn (classDecls st) || maybe False (`M.member` typeNameMap st) (getTypeName ty)
+isPermittedInstance cn ty st = S.member cn st.classDecls || maybe False (`M.member` st.typeNameMap) (getTypeName ty)
   where getTypeName :: Typ -> Maybe TypeName
         getTypeName (TyNominal _ typeName) = Just typeName
         getTypeName (TyXRefined _ _ typeName _ _) = Just typeName
