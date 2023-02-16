@@ -22,8 +22,8 @@ source-repository head
 library
   default-language:    Haskell2010
   default-extensions:
-                     RecordWildCards,
-                     NamedFieldPuns,
+                     OverloadedRecordDot,
+                     DuplicateRecordFields,
                      FlexibleContexts,
                      FlexibleInstances,
                      ScopedTypeVariables,
