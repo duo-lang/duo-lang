@@ -61,20 +61,20 @@ starPatternToPrdCns (RST.PatStar _ pc) = case pc of Prd -> Cns; Cns -> Prd
 starPatternToPrdCns (RST.PatXtorStar _ _ _ _ ((_, sp,_))) = starPatternToPrdCns sp
 
 isExplicitCase :: SomeIntermediateCase -> Bool
-isExplicitCase MkIntermediateCase {icase_pat} = isLeft icase_pat
+isExplicitCase icase = isLeft icase.icase_pat
 
 isImplicitCase :: PrdCns -> SomeIntermediateCase -> Bool
-isImplicitCase pc MkIntermediateCase { icase_pat } =
-  case icase_pat of
+isImplicitCase pc icase =
+  case icase.icase_pat of
     Left _ -> False
     Right pat -> pc == starPatternToPrdCns pat
 
 fromExplicitCase :: SomeIntermediateCase -> IntermediateCase RST.PatternNew
-fromExplicitCase cs@MkIntermediateCase { icase_pat} = cs { icase_pat = fromLeft undefined icase_pat }
+fromExplicitCase cs = cs { icase_pat = fromLeft undefined cs.icase_pat }
 
 fromImplicitCase :: SomeIntermediateCase -> IntermediateCase RST.StarPattern
-fromImplicitCase cs@MkIntermediateCase { icase_pat } =
-  case icase_pat of
+fromImplicitCase cs =
+  case cs.icase_pat of
     Left _ -> undefined
     Right pat -> cs { icase_pat = pat}
 
@@ -85,11 +85,11 @@ analyzeCase :: CST.DataCodata
             -- ^ Whether a constructor (Data) or destructor (Codata) is expected in this case
             -> CST.TermCase
             -> ResolverM SomeIntermediateCase
-analyzeCase dc CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
-  analyzedPattern <- resolvePattern (case dc of CST.Data -> Prd ; CST.Codata -> Cns) tmcase_pat
-  pure $ MkIntermediateCase { icase_loc = tmcase_loc
+analyzeCase dc tmcase = do
+  analyzedPattern <- resolvePattern (case dc of CST.Data -> Prd ; CST.Codata -> Cns) tmcase.tmcase_pat
+  pure $ MkIntermediateCase { icase_loc = tmcase.tmcase_loc
                             , icase_pat = analyzedPattern
-                            , icase_term = tmcase_term
+                            , icase_term = tmcase.tmcase_term
                             }
 
 analyzeCases :: CST.DataCodata
@@ -114,18 +114,18 @@ newPatToPat (RST.PatXtor loc _pc _ns xt pats) = do
 newPatToPat pat = throwError (UnknownResolutionError (getLoc pat) "This pattern is not supported yet")
 
 resolveCommandCase :: IntermediateCase RST.PatternNew-> ResolverM RST.CmdCase
-resolveCommandCase MkIntermediateCase { icase_loc , icase_pat, icase_term } = do
-  cmd' <- resolveCommand icase_term
-  (pat, args) <- newPatToPat icase_pat
-  pure RST.MkCmdCase { cmdcase_loc = icase_loc
+resolveCommandCase icase = do
+  cmd' <- resolveCommand icase.icase_term
+  (pat, args) <- newPatToPat icase.icase_pat
+  pure RST.MkCmdCase { cmdcase_loc = icase.icase_loc
                      , cmdcase_pat = pat
                      , cmdcase_cmd = LN.close args cmd'
                      }
 resolveTermCase :: PrdCnsRep pc -> IntermediateCase RST.PatternNew -> ResolverM (RST.TermCase pc)
-resolveTermCase rep MkIntermediateCase { icase_loc, icase_pat, icase_term } = do
-  tm' <- resolveTerm rep icase_term
-  (pat, args) <- newPatToPat icase_pat
-  pure RST.MkTermCase { tmcase_loc  = icase_loc
+resolveTermCase rep icase = do
+  tm' <- resolveTerm rep icase.icase_term
+  (pat, args) <- newPatToPat icase.icase_pat
+  pure RST.MkTermCase { tmcase_loc  = icase.icase_loc
                       , tmcase_pat = pat
                       , tmcase_term = LN.close args tm'
                       }
@@ -140,10 +140,10 @@ starPatToPatternI (RST.PatXtorStar loc pc _ns xt (patl,RST.PatStar _ Cns,patr)) 
 starPatToPatternI pat = throwError (UnknownResolutionError (getLoc pat) "This star pattern is not supported yet.")
 
 resolveTermCaseI :: PrdCnsRep pc -> IntermediateCase RST.StarPattern -> ResolverM (RST.TermCaseI pc)
-resolveTermCaseI rep MkIntermediateCase { icase_loc, icase_pat, icase_term } = do
-  tm' <- resolveTerm rep icase_term
-  (pat, args) <- starPatToPatternI icase_pat
-  pure RST.MkTermCaseI { tmcasei_loc = icase_loc
+resolveTermCaseI rep icase = do
+  tm' <- resolveTerm rep icase.icase_term
+  (pat, args) <- starPatToPatternI icase.icase_pat
+  pure RST.MkTermCaseI { tmcasei_loc = icase.icase_loc
                        , tmcasei_pat = pat
                        , tmcasei_term = LN.close args tm'
                        }
@@ -153,12 +153,12 @@ resolveTermCaseI rep MkIntermediateCase { icase_loc, icase_pat, icase_term } = d
 ---------------------------------------------------------------------------------
 
 resolveInstanceCase :: CST.TermCase -> ResolverM RST.InstanceCase
-resolveInstanceCase CST.MkTermCase { tmcase_loc, tmcase_pat, tmcase_term } = do
-  (_,xt,pat) <- analyzeInstancePattern tmcase_pat
+resolveInstanceCase tmcase = do
+  (_,xt,pat) <- analyzeInstancePattern tmcase.tmcase_pat
   let pat' = adjustPat <$> pat
-  cmd' <- resolveCommand tmcase_term
-  pure RST.MkInstanceCase { instancecase_loc = tmcase_loc
-                          , instancecase_pat = RST.XtorPat tmcase_loc xt (second Just <$> pat')
+  cmd' <- resolveCommand tmcase.tmcase_term
+  pure RST.MkInstanceCase { instancecase_loc = tmcase.tmcase_loc
+                          , instancecase_pat = RST.XtorPat tmcase.tmcase_loc xt (second Just <$> pat')
                           , instancecase_cmd = LN.close pat' cmd'
                           }
 
@@ -297,11 +297,14 @@ resolveCommand (CST.CoLambda loc _ _) =
 
 casesToNS :: [CST.TermCase] -> ResolverM CST.NominalStructural
 casesToNS [] = pure CST.Structural
-casesToNS (CST.MkTermCase { tmcase_loc, tmcase_pat = CST.PatXtor _ tmcase_name _ }:_) = do
-  (_, XtorNameResult _ ns _) <- lookupXtor tmcase_loc tmcase_name
-  pure ns
-casesToNS _ =
-  throwError (UnknownResolutionError defaultLoc "casesToNS called with invalid argument")
+casesToNS (tmcase:_) = 
+  case tmcase.tmcase_pat of
+    CST.PatXtor _ tmcase_name _ -> do
+      (_, XtorNameResult _ ns _) <- lookupXtor tmcase.tmcase_loc tmcase_name
+      pure ns
+    _ -> 
+      throwError (UnknownResolutionError defaultLoc "casesToNS called with invalid argument")
+  
 
 -- | Lower a natural number literal.
 resolveNatLit :: Loc -> CST.NominalStructural -> Int -> ResolverM (RST.Term Prd)

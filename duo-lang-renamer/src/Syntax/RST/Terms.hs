@@ -397,7 +397,7 @@ termOpeningRec _ _ fv@FreeVar {}= fv
 termOpeningRec k args (Xtor loc rep ns xt subst) =
   Xtor loc rep ns xt (pctermOpeningRec k args <¢> subst)
 termOpeningRec k args (XCase loc rep ns cases) =
-  XCase loc rep ns $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cases
+  XCase loc rep ns $ map (\pmcase -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args pmcase.cmdcase_cmd }) cases
 termOpeningRec k args (MuAbs loc rep fv cmd) =
   MuAbs loc rep fv (commandOpeningRec (k+1) args cmd)
 -- Syntactic sugar
@@ -414,13 +414,13 @@ termOpeningRec k args (Dtor loc rep ns xt t (MkSubstitutionI (args1,pcrep,args2)
   in
     Dtor loc rep ns xt (termOpeningRec k args t) (MkSubstitutionI (args1', pcrep, args2'))
 termOpeningRec k args (CaseOf loc rep ns t cases) =
-  CaseOf loc rep ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> cases)
+  CaseOf loc rep ns (termOpeningRec k args t) ((\pmcase -> pmcase { tmcase_term = termOpeningRec (k + 1) args pmcase.tmcase_term }) <$> cases)
 termOpeningRec k args (CocaseOf loc rep ns t tmcases) = 
-  CocaseOf loc rep ns (termOpeningRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termOpeningRec (k + 1) args tmcase_term }) <$> tmcases)
+  CocaseOf loc rep ns (termOpeningRec k args t) ((\pmcase -> pmcase { tmcase_term = termOpeningRec (k + 1) args pmcase.tmcase_term }) <$> tmcases)
 termOpeningRec k args (CaseI loc pcrep ns tmcasesI) =
-  CaseI loc pcrep ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> tmcasesI)
+  CaseI loc pcrep ns ((\pmcase -> pmcase { tmcasei_term = termOpeningRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI)
 termOpeningRec k args (CocaseI loc pcrep ns cocases) =
-  CocaseI loc pcrep ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> cocases)
+  CocaseI loc pcrep ns ((\pmcase -> pmcase { tmcasei_term = termOpeningRec (k + 1) args pmcase.tmcasei_term }) <$> cocases)
 termOpeningRec k args (Lambda loc pcrep ns tm) = 
   Lambda loc pcrep ns (termOpeningRec (k+1) args tm)  
 -- Primitive constructs
@@ -448,13 +448,13 @@ commandOpeningRec k args (Apply loc t1 t2) =
 commandOpeningRec k args (PrimOp loc op subst) =
   PrimOp loc op (pctermOpeningRec k args <¢> subst)
 commandOpeningRec k args (CaseOfCmd loc ns t cmdcases) =
-  CaseOfCmd loc ns  (termOpeningRec k args t) $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cmdcases
+  CaseOfCmd loc ns  (termOpeningRec k args t) $ map (\pmcase -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args pmcase.cmdcase_cmd }) cmdcases
 commandOpeningRec k args (CaseOfI loc pcrep ns t tmcasesI) =
-  CaseOfI loc pcrep ns (termOpeningRec k args t) ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
+  CaseOfI loc pcrep ns (termOpeningRec k args t) ((\pmcase -> pmcase { tmcasei_term = termOpeningRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI) 
 commandOpeningRec k args (CocaseOfCmd loc ns t cmdcases) =
-  CocaseOfCmd loc ns (termOpeningRec k args t) $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args cmdcase_cmd }) cmdcases
+  CocaseOfCmd loc ns (termOpeningRec k args t) $ map (\pmcase -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args pmcase.cmdcase_cmd }) cmdcases
 commandOpeningRec k args (CocaseOfI loc pcrep ns t tmcasesI) =
-  CocaseOfI loc pcrep ns (termOpeningRec k args t) ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termOpeningRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
+  CocaseOfI loc pcrep ns (termOpeningRec k args t) ((\pmcase -> pmcase { tmcasei_term = termOpeningRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI) 
 
 
 ---------------------------------------------------------------------------------
@@ -477,7 +477,7 @@ termClosingRec k vars (FreeVar loc CnsRep v) = case (Cns,v) `elemIndex` vars of
 termClosingRec k vars (Xtor loc pc ns xt subst) =
   Xtor loc pc ns xt (pctermClosingRec k vars <¢> subst)
 termClosingRec k vars (XCase loc pc sn cases) =
-  XCase loc pc sn $ map (\pmcase@MkCmdCase { cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars cmdcase_cmd }) cases
+  XCase loc pc sn $ map (\pmcase -> pmcase { cmdcase_cmd = commandClosingRec (k+1) vars pmcase.cmdcase_cmd }) cases
 termClosingRec k vars (MuAbs loc pc fv cmd) =
   MuAbs loc pc fv (commandClosingRec (k+1) vars cmd)
 -- Syntactic sugar
@@ -494,13 +494,13 @@ termClosingRec k args (Dtor loc pc ns xt t (MkSubstitutionI (args1,pcrep,args2))
   in
     Dtor loc pc ns xt (termClosingRec k args t) (MkSubstitutionI (args1', pcrep, args2'))
 termClosingRec k args (CaseOf loc rep ns t cases) =
-  CaseOf loc rep ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> cases)
+  CaseOf loc rep ns (termClosingRec k args t) ((\pmcase -> pmcase { tmcase_term = termClosingRec (k + 1) args pmcase.tmcase_term }) <$> cases)
 termClosingRec k args (CocaseOf loc rep ns t tmcases) = 
-  CocaseOf loc rep ns (termClosingRec k args t) ((\pmcase@MkTermCase { tmcase_term } -> pmcase { tmcase_term = termClosingRec (k + 1) args tmcase_term }) <$> tmcases) 
+  CocaseOf loc rep ns (termClosingRec k args t) ((\pmcase -> pmcase { tmcase_term = termClosingRec (k + 1) args pmcase.tmcase_term }) <$> tmcases) 
 termClosingRec k args (CaseI loc pcrep ns tmcasesI) = 
-  CaseI loc pcrep ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
+  CaseI loc pcrep ns ((\pmcase -> pmcase { tmcasei_term = termClosingRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI) 
 termClosingRec k args (CocaseI loc pcrep ns cocases) =
-  CocaseI loc pcrep ns ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> cocases)
+  CocaseI loc pcrep ns ((\pmcase -> pmcase { tmcasei_term = termClosingRec (k + 1) args pmcase.tmcasei_term }) <$> cocases)
 termClosingRec k args (Lambda loc pcrep fv tm) = 
   Lambda loc pcrep fv (termClosingRec (k+1) args tm)  
 -- Primitive constructs
@@ -528,13 +528,13 @@ commandClosingRec k args (Apply ext t1 t2) =
 commandClosingRec k args (PrimOp ext op subst) =
   PrimOp ext op (pctermClosingRec k args <¢> subst)
 commandClosingRec k args (CaseOfCmd loc ns t cmdcases) =
-  CaseOfCmd loc ns  (termClosingRec k args t) $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) args cmdcase_cmd }) cmdcases
+  CaseOfCmd loc ns  (termClosingRec k args t) $ map (\pmcase -> pmcase { cmdcase_cmd = commandClosingRec (k+1) args pmcase.cmdcase_cmd }) cmdcases
 commandClosingRec k args (CaseOfI loc pcrep ns t tmcasesI) =
-  CaseOfI loc pcrep ns (termClosingRec k args t) ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
+  CaseOfI loc pcrep ns (termClosingRec k args t) ((\pmcase -> pmcase { tmcasei_term = termClosingRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI) 
 commandClosingRec k args (CocaseOfCmd loc ns t cmdcases) =
-  CocaseOfCmd loc ns (termClosingRec k args t) $ map (\pmcase@MkCmdCase{ cmdcase_cmd } -> pmcase { cmdcase_cmd = commandClosingRec (k+1) args cmdcase_cmd }) cmdcases
+  CocaseOfCmd loc ns (termClosingRec k args t) $ map (\pmcase -> pmcase { cmdcase_cmd = commandClosingRec (k+1) args pmcase.cmdcase_cmd }) cmdcases
 commandClosingRec k args (CocaseOfI loc pcrep ns t tmcasesI) =
-  CocaseOfI loc pcrep ns (termClosingRec k args t) ((\pmcase@MkTermCaseI { tmcasei_term } -> pmcase { tmcasei_term = termClosingRec (k + 1) args tmcasei_term }) <$> tmcasesI) 
+  CocaseOfI loc pcrep ns (termClosingRec k args t) ((\pmcase -> pmcase { tmcasei_term = termClosingRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI) 
 
 instance LocallyNameless Substitution [(PrdCns, FreeVarName)] Command where
   openRec  = commandOpeningRec

@@ -29,11 +29,11 @@ import Control.Monad.Reader (asks, MonadReader (local))
 ---------------------------------------------------------------------------------
 
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
-resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
-    monotype <- resolveTyp rep ts_monotype
-    if RST.freeTVars monotype `S.isSubsetOf` S.fromList (map fst ts_vars)
-    then pure (RST.TypeScheme ts_loc ts_vars monotype)
-        else throwError (MissingVarsInTypeScheme ts_loc)
+resolveTypeScheme rep ts = do
+    monotype <- resolveTyp rep ts.ts_monotype
+    if RST.freeTVars monotype `S.isSubsetOf` S.fromList (map fst ts.ts_vars)
+    then pure (RST.TypeScheme ts.ts_loc ts.ts_vars monotype)
+        else throwError (MissingVarsInTypeScheme ts.ts_loc)
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyUniVar loc v) =
@@ -185,15 +185,15 @@ resolveTyp rep (TyString loc) =
     pure $ RST.TyString loc rep
 
 resolveTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> PolyKind -> [Typ] -> ResolverM [RST.VariantType pol]
-resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do
-    if length args /= length kindArgs  then
+resolveTypeArgs loc rep tn pk@MkPolyKind{} args = do
+    if length args /= length pk.kindArgs  then
         throwError (UnknownResolutionError loc ("Type constructor " <> unTypeName tn <> " must be fully applied"))
     else do
         let
             f :: ((Variance, SkolemTVar, MonoKind), Typ) -> ResolverM (RST.VariantType pol)
             f ((Covariant,_,_),ty) = RST.CovariantType <$> resolveTyp rep ty
             f ((Contravariant,_,_),ty) = RST.ContravariantType <$> resolveTyp (flipPolarityRep rep) ty
-        sequence (f <$> zip kindArgs args)
+        sequence (f <$> zip pk.kindArgs args)
 resolveTypeArgs loc _ _ (KindVar _) _ = throwError (UnknownResolutionError loc "Kind Variables should not be in the program at this point")
 
 
