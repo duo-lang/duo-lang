@@ -35,7 +35,7 @@ newtype EvalM m a = EvalM { unEvalM :: ReaderT EvalEnv (ExceptT (NonEmpty Error)
   deriving newtype (Functor, Applicative, Monad, MonadWriter w, MonadState s, MonadError (NonEmpty Error), MonadReader EvalEnv, MonadIO)
 
 runEval :: EvalM m a -> EvalEnv -> m (Either (NonEmpty Error) a)
-runEval e env = runExceptT (runReaderT (unEvalM e) env)
+runEval e env = runExceptT (runReaderT e.unEvalM env)
 
 ---------------------------------------------------------------------------------
 -- Helper functions
@@ -107,7 +107,7 @@ lookupInstanceDecl loc iname = do
 -- | Find the class declaration for a classname.
 lookupMethodDefinition :: Monad m => Loc -> MethodName -> FreeVarName -> EvalM m (Command, Pattern)
 lookupMethodDefinition loc (MkMethodName name) iname = do
-  methods <- instancedecl_cases <$> lookupInstanceDecl loc iname
-  case find ((\(XtorPat _ (MkXtorName name') _) -> name == name') . instancecase_pat) methods of
+  methods <- (\x -> x.instancedecl_cases) <$> lookupInstanceDecl loc iname
+  case find ((\(XtorPat _ (MkXtorName name') _) -> name == name') . (\x -> x.instancecase_pat)) methods of
     Nothing -> throwOtherError loc ["Type class method " <> ppPrint (MkMethodName name) <> " is not contained in environment."]
-    Just icase -> pure (instancecase_cmd icase, instancecase_pat icase)
+    Just icase -> pure (icase.instancecase_cmd, icase.instancecase_pat)

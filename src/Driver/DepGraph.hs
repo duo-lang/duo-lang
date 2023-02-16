@@ -59,10 +59,10 @@ createDepGraph :: ModuleName -> DriverM DepGraph
 createDepGraph mn = createDepGraph' [mn] defaultDepGraph
 
 lookupOrInsert :: DepGraph -> ModuleName -> (Node, DepGraph)
-lookupOrInsert depGraph@MkDepGraph {..} mn = case M.lookup mn name_map of
-  Nothing -> (node_supply, depGraph { graph = insNode (node_supply, mn) graph
-                                    , node_supply = node_supply + 1
-                                    , name_map = M.insert mn node_supply name_map })
+lookupOrInsert depGraph mn = case M.lookup mn depGraph.name_map of
+  Nothing -> (depGraph.node_supply, depGraph { graph = insNode (depGraph.node_supply, mn) depGraph.graph
+                                    , node_supply = depGraph.node_supply + 1
+                                    , name_map = M.insert mn depGraph.node_supply depGraph.name_map })
   Just nd -> (nd, depGraph)
 
 lookupOrInserts :: DepGraph -> [ModuleName] -> ([Node], DepGraph)
@@ -77,7 +77,7 @@ lookupOrInserts depGraph (mn:mns) =
 
 createDepGraph' :: [ModuleName] -> DepGraph -> DriverM DepGraph
 createDepGraph' [] depGraph = pure depGraph
-createDepGraph' (mn:mns) depGraph | mn `elem` visited depGraph = createDepGraph' mns depGraph
+createDepGraph' (mn:mns) depGraph | mn `elem` depGraph.visited = createDepGraph' mns depGraph
                                   | otherwise = do
                                       -- We have to insert the current modulename
                                       let (this, depGraph') = lookupOrInsert depGraph mn
@@ -88,7 +88,7 @@ createDepGraph' (mn:mns) depGraph | mn `elem` visited depGraph = createDepGraph'
                                       let (nodes, depGraph'') = lookupOrInserts depGraph' importedModules
                                       -- We have to insert the edges
                                       let newEdges :: [(Node, Node, ())] = [(this, imported, ()) | imported <- nodes]
-                                      let depGraph''' = depGraph'' { graph = insEdges newEdges (graph depGraph''), visited = mn : visited depGraph''}
+                                      let depGraph''' = depGraph'' { graph = insEdges newEdges depGraph''.graph, visited = mn : depGraph''.visited}
                                       createDepGraph' (importedModules ++ mns) depGraph'''
 
 
@@ -107,7 +107,7 @@ hasLoop gr = map (\(_,_,e) -> e) (filter (\(x,y,_) -> x == y) (labEdges gr))
 
 -- | Throws an error if the dependency graph contains a cycle of imports.
 checkRecursiveImports :: DepGraph -> DriverM ()
-checkRecursiveImports depgraph = case hasLoop (tc (graph depgraph)) of
+checkRecursiveImports depgraph = case hasLoop (tc depgraph.graph) of
     (x:_) -> throwOtherError defaultLoc [explainRecursiveLoop depgraph x]
     [] -> pure ()
 
@@ -115,14 +115,14 @@ explainRecursiveLoop :: DepGraph -> [Node] -> Text
 explainRecursiveLoop gr nodes = "Recursive module imports are not allowed. Involved Modules: " <> T.concat (intersperse "," (ppPrint <$> lnodes))
   where
     lnodes :: [ModuleName]
-    lnodes = fromJust <$> (lab (graph gr) <$> nodes)
+    lnodes = fromJust <$> (lab gr.graph <$> nodes)
 
 -- | Return a compilation order for a given dependency graph.
 -- Throws an error if the dependency graph is not acyclical.
 topologicalSort :: DepGraph -> DriverM CompilationOrder
 topologicalSort depGraph = do
     checkRecursiveImports depGraph
-    pure $ reverse $ topsort' (graph depGraph)
+    pure $ reverse $ topsort' depGraph.graph
 
 
 ---------------------------------------------------------------------------------
@@ -130,7 +130,7 @@ topologicalSort depGraph = do
 ---------------------------------------------------------------------------------
 
 depGraphToDot :: DepGraph -> DotGraph Node
-depGraphToDot depgraph = graphToDot depGraphParams (graph depgraph)
+depGraphToDot depgraph = graphToDot depGraphParams depgraph.graph
 
 depGraphParams :: GraphvizParams Node ModuleName () () ModuleName
 depGraphParams = defaultParams

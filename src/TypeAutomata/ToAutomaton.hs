@@ -93,7 +93,7 @@ runTypeAutTvars tvars m = do
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> TTA ()
 modifyGraph f = modify go
   where
-    go aut@TypeAutCore { ta_gr } = aut { ta_gr = f ta_gr }
+    go aut = aut { ta_gr = f aut.ta_gr }
 
 insertNode :: Node -> NodeLabel -> TTA ()
 insertNode node nodelabel = modifyGraph (G.insNode (node, nodelabel))
@@ -103,12 +103,12 @@ insertEdges edges = modifyGraph (G.insEdges edges)
 
 newNodeM :: TTA Node
 newNodeM = do
-  graph <- gets ta_gr
+  graph <- gets (\x -> x.ta_gr)
   pure $ (head . G.newNodes 1) graph
 
 lookupTVar :: PolarityRep pol -> SkolemTVar -> TTA Node
 lookupTVar PosRep tv = do
-  tSkolemVarEnv <- asks tSkolemVarEnv
+  tSkolemVarEnv <- asks (\x -> x.tSkolemVarEnv)
   case M.lookup tv tSkolemVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The type variable:"
@@ -123,7 +123,7 @@ lookupTVar PosRep tv = do
     --                                                   ]
     Just (pos,_) -> return pos
 lookupTVar NegRep tv = do
-  tSkolemVarEnv <- asks tSkolemVarEnv
+  tSkolemVarEnv <- asks (\x -> x.tSkolemVarEnv)
   case M.lookup tv tSkolemVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The type variable:"
@@ -140,7 +140,7 @@ lookupTVar NegRep tv = do
 
 lookupTRecVar :: PolarityRep pol -> RecTVar -> TTA Node
 lookupTRecVar PosRep tv = do
-  tRecVarEnv <- asks tRecVarEnv
+  tRecVarEnv <- asks (\x -> x.tRecVarEnv)
   case M.lookup tv tRecVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The Recursive Variable:"
@@ -154,7 +154,7 @@ lookupTRecVar PosRep tv = do
                                                        ]
     Just (Just pos,_) -> return pos
 lookupTRecVar NegRep tv = do
-  tRecVarEnv <- asks tRecVarEnv
+  tRecVarEnv <- asks (\x -> x.tRecVarEnv)
   case M.lookup tv tRecVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The Recursive Variable:"
@@ -296,9 +296,9 @@ insertType (TyFlipPol _ _) =
 
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either (NonEmpty Error) (TypeAutEps pol)
-typeToAut TypeScheme { ts_vars, ts_monotype } = do
-  (start, aut) <- runTypeAutTvars ts_vars (insertType ts_monotype)
-  return TypeAut { ta_pol = getPolarity ts_monotype
+typeToAut ts = do
+  (start, aut) <- runTypeAutTvars ts.ts_vars (insertType ts.ts_monotype)
+  return TypeAut { ta_pol = getPolarity ts.ts_monotype
                  , ta_starts = [start]
                  , ta_core = aut
                  }

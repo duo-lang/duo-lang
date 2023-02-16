@@ -22,7 +22,7 @@ pendingFiles :: [(ModuleName, Reason)]
 pendingFiles = [(  MkModuleName [] "ListRefinement" ,"Type Applications to Refinement Types aren't fully implemented yet"), (MkModuleName [] "Refinements", "Type Applications to Refinement Types aren't fully implemented yet")]
 
 getProducers :: TST.Module -> [(FreeVarName, Term Prd)]
-getProducers TST.MkModule { mod_decls } = go mod_decls []
+getProducers mod = go mod.mod_decls []
   where
     go :: [TST.Declaration] -> [(FreeVarName, Term Prd)] -> [(FreeVarName, Term Prd)]
     go [] acc = acc
@@ -30,7 +30,7 @@ getProducers TST.MkModule { mod_decls } = go mod_decls []
     go (_:rest) acc = go rest acc
 
 getInstanceCases :: TST.Module -> [InstanceCase]
-getInstanceCases TST.MkModule { mod_decls } = go mod_decls []
+getInstanceCases mod = go mod.mod_decls []
   where
     go :: [TST.Declaration] -> [InstanceCase] -> [InstanceCase]
     go [] acc = acc
@@ -50,7 +50,7 @@ spec ((fp, mn), tst) = do
               it (T.unpack name.unFreeVarName ++ " does not contain dangling deBruijn indizes") $
                 termLocallyClosed term `shouldSatisfy` isRight
             forM_ (getInstanceCases env) $ \instance_case -> do
-              it (T.unpack ((\x -> x.unXtorName) $ (\(XtorPat _ xt _) -> xt) $ instancecase_pat instance_case) ++ " does not contain dangling deBruijn indizes") $
+              it (T.unpack ((\x -> x.unXtorName) $ (\(XtorPat _ xt _) -> xt) instance_case.instancecase_pat) ++ " does not contain dangling deBruijn indizes") $
                 instanceCaseLocallyClosed instance_case `shouldSatisfy` isRight
 
 

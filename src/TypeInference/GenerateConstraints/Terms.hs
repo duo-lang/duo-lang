@@ -46,7 +46,7 @@ instance GenConstraints Core.Substitution TST.Substitution where
 
 genConstraintsCtxts :: TST.LinearContext Pos -> TST.LinearContext Neg -> ConstraintInfo -> GenM ()
 genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = do
-  loc <- asks (location . snd)
+  loc <- asks ((\x -> x.location) . snd)
   throwGenError (LinearContextsUnequalLength loc info ctx1 ctx2)
 genConstraintsCtxts [] [] _ = return ()
 genConstraintsCtxts ((TST.PrdCnsType PrdRep ty1) : rest1) (TST.PrdCnsType PrdRep ty2 : rest2) info = do
@@ -58,16 +58,16 @@ genConstraintsCtxts ((TST.PrdCnsType CnsRep ty1) : rest1) (TST.PrdCnsType CnsRep
   addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2)
   genConstraintsCtxts rest1 rest2 info
 genConstraintsCtxts (TST.PrdCnsType PrdRep _:_) (TST.PrdCnsType CnsRep _:_) info = do
-  loc <- asks (location . snd)
+  loc <- asks ((\x -> x.location) . snd)
   throwGenError (LinearContextIncompatibleTypeMode loc Prd info)
 genConstraintsCtxts (TST.PrdCnsType CnsRep _:_) (TST.PrdCnsType PrdRep _:_) info = do
-  loc <- asks (location . snd)
+  loc <- asks ((\x -> x.location) . snd)
   throwGenError (LinearContextIncompatibleTypeMode loc Cns info)
 genConstraintsCtxts ctx1@[] ctx2@(_:_) info = do
-  loc <- asks (location . snd)
+  loc <- asks ((\x -> x.location) . snd)
   throwGenError (LinearContextsUnequalLength loc info ctx1 ctx2)
 genConstraintsCtxts ctx1@(_:_) ctx2@[] info = do
-  loc <- asks (location . snd)
+  loc <- asks ((\x -> x.location) . snd)
   throwGenError (LinearContextsUnequalLength loc info ctx1 ctx2)
 
 ---------------------------------------------------------------------------------------------
@@ -125,11 +125,11 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- Generate fresh unification variables for type parameters
     (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
     -- Substitute these for the type parameters in the constructor signature
-    let sig_args' = TST.zonk TST.SkolemRep tyParamsMap (TST.sig_args xtorSig)
+    let sig_args' = TST.zonk TST.SkolemRep tyParamsMap xtorSig.sig_args
     -- Then we generate constraints between the inferred types of the substitution
     -- and the types we looked up, i.e. the types declared in the XtorSig.
     genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
-    let nomTy rep = TST.TyNominal defaultLoc rep (TST.data_kind decl) (TST.data_name decl)
+    let nomTy rep = TST.TyNominal defaultLoc rep decl.data_kind decl.data_name
     let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep (nomTy rep) (fst:|rst)
     case rep of
       PrdRep -> return (TST.Xtor loc annot rep (ty PosRep) CST.Nominal xt substInferred)
@@ -147,15 +147,15 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     xtorSigUpper <- lookupXtorSigUpper loc xt
     -- Then we generate constraints between the inferred types of the substitution
     -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
-    genConstraintsCtxts substTypes (TST.sig_args xtorSigUpper) (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
+    genConstraintsCtxts substTypes xtorSigUpper.sig_args (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
     case rep of
-      PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep (TST.data_kind decl) (TST.data_name decl) Nothing [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
-      CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep (TST.data_kind decl) (TST.data_name decl) Nothing [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
+      PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep decl.data_kind decl.data_name Nothing [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
+      CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep decl.data_kind decl.data_name Nothing [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
   --
   -- Structural pattern and copattern matches:
   --
   genConstraints (Core.XCase loc annot rep CST.Structural cases) = do
-    inferredCases <- forM cases (\Core.MkCmdCase{ cmdcase_pat = Core.XtorPat loc xt args, cmdcase_loc, cmdcase_cmd} -> do
+    inferredCases <- forM cases (\(Core.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdcase_cmd) -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
                         xtorKnd <- lookupXtorKind xt
@@ -194,10 +194,10 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- Generate fresh unification variables for type parameters
     (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
 
-    inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc' xt args, cmdcase_cmd} -> do
+    inferredCases <- forM cases (\(Core.MkCmdCase cmdcase_loc (Core.XtorPat loc' xt args) cmdcase_cmd) -> do
                     -- We lookup the types belonging to the xtor in the type declaration.
-                    posTypes <- TST.sig_args <$> lookupXtorSig loc xt PosRep
-                    negTypes <- TST.sig_args <$> lookupXtorSig loc xt NegRep
+                    posTypes <- (\x -> x.sig_args) <$> lookupXtorSig loc xt PosRep
+                    negTypes <- (\x -> x.sig_args) <$> lookupXtorSig loc xt NegRep
                     -- Substitute fresh unification variables for type parameters
                     let posTypes' = TST.zonk TST.SkolemRep tyParamsMap posTypes
                     let negTypes' = TST.zonk TST.SkolemRep tyParamsMap negTypes
@@ -205,7 +205,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                     -- with the types from the signature.
                     cmdInferred <- withContext posTypes' (genConstraints cmdcase_cmd)
                     return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc' xt args) cmdInferred, TST.MkXtorSig xt negTypes'))
-    let nomTy rep = TST.TyNominal defaultLoc rep (TST.data_kind decl) (TST.data_name decl)
+    let nomTy rep = TST.TyNominal defaultLoc rep decl.data_kind decl.data_name
     let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep (nomTy rep) (fst:|rst)
     case rep of
       PrdRep -> return $ TST.XCase loc annot rep (ty PosRep) CST.Nominal (fst <$> inferredCases)
@@ -222,11 +222,11 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     decl <- lookupDataDecl loc (case pmcase.cmdcase_pat of (Core.XtorPat _ xt _) -> xt)
     -- We check that all cases in the pattern match belong to the type declaration.
     checkCorrectness loc ((\cs -> case cs.cmdcase_pat of Core.XtorPat _ xt _ -> xt) <$> cases) decl
-    inferredCases <- forM cases (\Core.MkCmdCase {cmdcase_loc, cmdcase_pat = Core.XtorPat loc xt args , cmdcase_cmd} -> do
+    inferredCases <- forM cases (\(Core.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdcase_cmd) -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
                         xtor <- lookupXtorSig loc xt RST.PosRep
-                        let argKnds = map TST.getKind (TST.sig_args xtor)
+                        let argKnds = map TST.getKind xtor.sig_args
                         let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, z))) args argKnds
                         (uvarsPos, uvarsNeg) <- freshTVars tVarArgs
                         -- Check the command in the context extended with the positive unification variables
@@ -236,16 +236,16 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- to the least and greatest type translation.
                         xtorLower <- lookupXtorSigLower loc xt
                         xtorUpper <- lookupXtorSigUpper loc xt 
-                        let lowerBound' = TST.sig_args xtorLower
-                        let upperBound' = TST.sig_args xtorUpper
+                        let lowerBound' = xtorLower.sig_args
+                        let upperBound' = xtorUpper.sig_args
                         genConstraintsCtxts lowerBound' uvarsNeg (PatternMatchConstraint loc)
                         genConstraintsCtxts uvarsPos upperBound' (PatternMatchConstraint loc)
                         -- For the type, we return the unification variables which are now bounded by the least
                         -- and greatest type translation.
                         return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
     case rep of
-      PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep (TST.data_kind decl) (TST.data_name decl) Nothing (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
-      CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep (TST.data_kind decl) (TST.data_name decl) Nothing (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
+      PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep decl.data_kind decl.data_name Nothing (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
+      CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep decl.data_kind decl.data_name Nothing (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
   --
   -- Mu and TildeMu abstractions:
   --
@@ -321,7 +321,7 @@ instance GenConstraints Core.Command TST.Command where
   genConstraints (Core.Read loc cns) = do
     cns' <- genConstraints cns
     peanoDecl <- lookupTypeName loc peanoNm
-    let peanoKnd = TST.data_kind peanoDecl
+    let peanoKnd = peanoDecl.data_kind
     let cnsTy = TST.getTypeTerm cns'
     addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm) cnsTy)
     addConstraint $ KindEq KindConstraint (MkPknd peanoKnd) (TST.getKind cnsTy)
@@ -345,20 +345,20 @@ instance GenConstraints Core.Command TST.Command where
   
 instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
   genConstraints :: Core.InstanceDeclaration -> GenM TST.InstanceDeclaration
-  genConstraints Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } = do
+  genConstraints idecl = do
     -- We lookup the class declaration  of the instance.
-    decl <- lookupClassDecl instancedecl_loc instancedecl_class
-    insertSkolemsClass decl
+    cdecl <- lookupClassDecl idecl.instancedecl_loc idecl.instancedecl_class
+    insertSkolemsClass cdecl
     -- We check that all implementations belong to the same type class.
-    checkInstanceCoverage instancedecl_loc decl ((\(Core.XtorPat _ xt _) -> MkMethodName xt.unXtorName) . (\x -> x.instancecase_pat) <$> instancedecl_cases) 
+    checkInstanceCoverage idecl.instancedecl_loc cdecl ((\(Core.XtorPat _ xt _) -> MkMethodName xt.unXtorName) . (\x -> x.instancecase_pat) <$> idecl.instancedecl_cases) 
     -- Generate fresh unification variables for type parameters
-    instancety <- annotateKind instancedecl_typ
-    let tyParamsMap = paramsMap decl.classdecl_kinds.kindArgs [instancety] 
-    inferredCases <- forM instancedecl_cases (\Core.MkInstanceCase { instancecase_loc, instancecase_pat = Core.XtorPat loc xt args, instancecase_cmd } -> do
+    instancety <- annotateKind idecl.instancedecl_typ
+    let tyParamsMap = paramsMap cdecl.classdecl_kinds.kindArgs [instancety] 
+    inferredCases <- forM idecl.instancedecl_cases (\(Core.MkInstanceCase instancecase_loc (Core.XtorPat loc xt args) instancecase_cmd) -> do
                     let mn :: MethodName = MkMethodName xt.unXtorName
                     -- We lookup the types belonging to the xtor in the type declaration.
-                    posTypes <- lookupMethodType instancecase_loc mn decl PosRep
-                    negTypes <- lookupMethodType instancecase_loc mn decl NegRep  
+                    posTypes <- lookupMethodType instancecase_loc mn cdecl PosRep
+                    negTypes <- lookupMethodType instancecase_loc mn cdecl NegRep  
                     ctxtPos <- annotateKind posTypes
                     ctxtNeg <- annotateKind negTypes
                     -- Substitute fresh unification variables for type parameters
@@ -372,10 +372,10 @@ instance GenConstraints Core.InstanceDeclaration TST.InstanceDeclaration where
                                             , instancecase_pat = Core.XtorPat loc xt args
                                             , instancecase_cmd = cmdInferred
                                             })
-    pure TST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
-                                   , instancedecl_doc = instancedecl_doc
-                                   , instancedecl_name = instancedecl_name
-                                   , instancedecl_class = instancedecl_class
+    pure TST.MkInstanceDeclaration { instancedecl_loc = idecl.instancedecl_loc
+                                   , instancedecl_doc = idecl.instancedecl_doc
+                                   , instancedecl_name = idecl.instancedecl_name
+                                   , instancedecl_class = idecl.instancedecl_class
                                    , instancedecl_typ = instancety
                                    , instancedecl_cases = inferredCases
                                    }

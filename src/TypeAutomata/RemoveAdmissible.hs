@@ -72,8 +72,8 @@ instance Applicative AdmissableM where
   pure = AdmissableM . pure . pure
   ff <*> fa = AdmissableM $ do
     s <- get
-    let (mf, s') = runState (runAdmissable ff) s
-    let (ma, s'') = runState (runAdmissable fa) s'
+    let (mf, s') = runState ff.runAdmissable s
+    let (ma, s'') = runState fa.runAdmissable s'
     put s''
     return $ mf <*> ma
 
@@ -81,11 +81,11 @@ instance Monad AdmissableM where
   return = pure
   ma >>= f = AdmissableM $ do
     s <- get
-    let (ma', s') = runState (runAdmissable ma) s
+    let (ma', s') = runState ma.runAdmissable s
     case ma' of
       Nothing -> put s' >> return Nothing
       (Just a) -> do
-        let (mb, s'') = runState (runAdmissable (f a)) s'
+        let (mb, s'') = runState (f a).runAdmissable s'
         put s''
         return mb
 
@@ -110,7 +110,7 @@ instance MonadFail AdmissableM where
   fail _s = liftAM Nothing
 
 execAdmissable :: AdmissableM a -> (a, AdmissableS)
-execAdmissable = first (fromMaybe (error "should not happen")) . flip runState AdmissableS { memo = S.empty, blacklist = S.empty } . runAdmissable
+execAdmissable = first (fromMaybe (error "should not happen")) . flip runState AdmissableS { memo = S.empty, blacklist = S.empty } . (\x -> x.runAdmissable)
 
 liftAM :: Maybe a -> AdmissableM a
 liftAM = AdmissableM . pure
@@ -119,59 +119,59 @@ sucWith :: TypeGr -> Node -> EdgeLabelNormal -> AdmissableM Node
 sucWith gr i el = liftAM $ lookup el (map swap (lsuc gr i))
 
 modifyMemo :: (S.Set FlowEdge -> S.Set FlowEdge) -> AdmissableM ()
-modifyMemo f = modify $ \s -> s { memo = f $ memo s }
+modifyMemo f = modify $ \s -> s { memo = f s.memo }
 
 insertFE :: FlowEdge -> AdmissableM ()
 insertFE = modifyMemo . S.insert
 
 blacklistFE :: FlowEdge -> AdmissableM ()
 blacklistFE fe =
-  modify $ \s -> s { memo = fe `S.delete` memo s, blacklist = fe `S.insert` blacklist s }
+  modify $ \s -> s { memo = fe `S.delete` s.memo, blacklist = fe `S.insert` s.blacklist }
 
 isMemoised :: FlowEdge -> AdmissableM ()
 isMemoised fe = do
-  m <- gets memo
+  m <- gets (\x -> x.memo)
   guard $ fe `S.member` m
 
 isBlacklisted :: FlowEdge -> AdmissableM ()
 isBlacklisted fe = do
-  b <- gets blacklist
+  b <- gets (\x -> x.blacklist)
   guard $ fe `S.member` b
 
 subtypeData :: TypeAutCore EdgeLabelNormal -> FlowEdge -> AdmissableM ()
-subtypeData aut@TypeAutCore{ ta_gr } (i,j) = do
-  (MkNodeLabel Neg (Just dat1) _ _ _ _ _) <- liftAM $ lab ta_gr i
-  (MkNodeLabel Pos (Just dat2) _ _ _ _ _) <- liftAM $ lab ta_gr j
+subtypeData aut (i,j) = do
+  (MkNodeLabel Neg (Just dat1) _ _ _ _ _) <- liftAM $ lab aut.ta_gr i
+  (MkNodeLabel Pos (Just dat2) _ _ _ _ _) <- liftAM $ lab aut.ta_gr j
   -- Check that all constructors in dat1 are also in dat2.
   forM_ (S.toList dat1) $ \xt -> guard (xt `S.member` dat2)
   -- Check arguments of each constructor of dat1.
-  forM_ (labelName <$> S.toList dat1) $ \xt -> do
-    forM_ [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
-      m <- sucWith ta_gr j el
+  forM_ ((\x -> x.labelName) <$> S.toList dat1) $ \xt -> do
+    forM_ [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc aut.ta_gr i, xt == xt'] $ \(n,el) -> do
+      m <- sucWith aut.ta_gr j el
       admissableM aut (n,m)
-    forM_ [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
-      m <- sucWith ta_gr j el
+    forM_ [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc aut.ta_gr i, xt == xt'] $ \(n,el) -> do
+      m <- sucWith aut.ta_gr j el
       admissableM aut (m,n)
 
 subtypeCodata :: TypeAutCore EdgeLabelNormal -> FlowEdge -> AdmissableM ()
-subtypeCodata aut@TypeAutCore{ ta_gr } (i,j) = do
-  (MkNodeLabel Neg _ (Just codat1) _ _ _ _) <- liftAM $ lab ta_gr i
-  (MkNodeLabel Pos _ (Just codat2) _ _ _ _) <- liftAM $ lab ta_gr j
+subtypeCodata aut (i,j) = do
+  (MkNodeLabel Neg _ (Just codat1) _ _ _ _) <- liftAM $ lab aut.ta_gr i
+  (MkNodeLabel Pos _ (Just codat2) _ _ _ _) <- liftAM $ lab aut.ta_gr j
   -- Check that all destructors of codat2 are also in codat1.
   forM_ (S.toList codat2) $ \xt -> guard (xt `S.member` codat1)
   -- Check arguments of all destructors of codat2.
-  forM_ (labelName <$> S.toList codat2) $ \xt -> do
-    forM_ [(n,el) | (n, el@(EdgeSymbol Codata xt' Prd _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
-      m <- sucWith ta_gr j el
+  forM_ ((\x -> x.labelName) <$> S.toList codat2) $ \xt -> do
+    forM_ [(n,el) | (n, el@(EdgeSymbol Codata xt' Prd _)) <- lsuc aut.ta_gr i, xt == xt'] $ \(n,el) -> do
+      m <- sucWith aut.ta_gr j el
       admissableM aut (m,n)
-    forM_ [(n,el) | (n, el@(EdgeSymbol Codata xt' Cns _)) <- lsuc ta_gr i, xt == xt'] $ \(n,el) -> do
-      m <- sucWith ta_gr j el
+    forM_ [(n,el) | (n, el@(EdgeSymbol Codata xt' Cns _)) <- lsuc aut.ta_gr i, xt == xt'] $ \(n,el) -> do
+      m <- sucWith aut.ta_gr j el
       admissableM aut (n,m)
 
 subtypeNominal :: TypeAutCore EdgeLabelNormal -> FlowEdge -> AdmissableM ()
-subtypeNominal TypeAutCore{ ta_gr } (i,j) = do
-  (MkNodeLabel Neg _ _ nominal1 _  _ _) <- liftAM $ lab ta_gr i
-  (MkNodeLabel Pos _ _ nominal2 _  _ _) <- liftAM $ lab ta_gr j
+subtypeNominal aut (i,j) = do
+  (MkNodeLabel Neg _ _ nominal1 _  _ _) <- liftAM $ lab aut.ta_gr i
+  (MkNodeLabel Pos _ _ nominal2 _  _ _) <- liftAM $ lab aut.ta_gr j
   guard $ not . S.null $ S.intersection nominal1 nominal2
 
 admissableM :: TypeAutCore EdgeLabelNormal -> FlowEdge -> AdmissableM ()
@@ -185,11 +185,11 @@ admissableM aut@TypeAutCore{} e =
           blacklistFE e
 
 removeAdmissableFlowEdges :: TypeAutDet pol -> TypeAutDet pol
-removeAdmissableFlowEdges aut@TypeAut{ ta_core = tac@TypeAutCore {..}} =
-  aut { ta_core = tac { ta_flowEdges = ta_flowEdges_filtered }}
+removeAdmissableFlowEdges aut =
+  aut { ta_core = aut.ta_core { ta_flowEdges = ta_flowEdges_filtered }}
     where
       ta_flowEdges_filtered :: [FlowEdge]
-      ta_flowEdges_filtered = filter (not . flip S.member admissable) ta_flowEdges
+      ta_flowEdges_filtered = filter (not . flip S.member admissable) aut.ta_core.ta_flowEdges
 
       admissable :: S.Set FlowEdge
-      admissable = memo $ snd $ execAdmissable $ mapM (admissableM tac) ta_flowEdges
+      admissable = (\x -> x.memo) $ snd $ execAdmissable $ mapM (admissableM aut.ta_core) aut.ta_core.ta_flowEdges

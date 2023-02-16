@@ -18,7 +18,7 @@ import Control.Monad.Except (throwError)
 import Errors
 
 runTypecheck :: DebugFlags -> Either FilePath ModuleName -> IO ()
-runTypecheck DebugFlags { df_debug, df_printGraphs } modId = do
+runTypecheck flags modId = do
   (res ,warnings) <- case modId of
             Left fp -> do
               file <- liftIO $ T.readFile fp
@@ -42,5 +42,5 @@ runTypecheck DebugFlags { df_debug, df_printGraphs } modId = do
   return ()
     where
       driverState = defaultDriverState { drvOpts = infOpts }
-      infOpts = (if df_printGraphs then setPrintGraphOpts else id) infOpts'
-      infOpts' = (if df_debug then setDebugOpts else id) defaultInferenceOptions
+      infOpts = (if flags.df_printGraphs then setPrintGraphOpts else id) infOpts'
+      infOpts' = (if flags.df_debug then setDebugOpts else id) defaultInferenceOptions

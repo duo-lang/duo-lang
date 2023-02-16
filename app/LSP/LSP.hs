@@ -61,7 +61,7 @@ definition = do
     , onConfigurationChange = \config _ -> pure config
     , doInitialize = \env _req -> pure $ Right env
     , staticHandlers = handlers
-    , interpretHandler = \env -> LSP.Iso { forward = LSP.runLspT env . unLSPMonad, backward = liftIO }
+    , interpretHandler = \env -> LSP.Iso { forward = LSP.runLspT env . (\x -> x.unLSPMonad), backward = liftIO }
     , options = serverOptions
     }
 
