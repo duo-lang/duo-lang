@@ -274,7 +274,7 @@ dualCmdDeclaration decl = do
                                 }
 
 dualDataDecl :: TST.DataDecl -> TST.DataDecl
-dualDataDecl decl =
+dualDataDecl decl@TST.NominalDecl{} =
     TST.NominalDecl { data_loc = decl.data_loc
                     , data_doc = decl.data_doc
                     , data_name = dualRnTypeName decl.data_name

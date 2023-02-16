@@ -27,8 +27,8 @@ import Syntax.TST.Terms
               PrimOp),
       Term(PrimLitString, BoundVar, FreeVar, PrimLitI64, PrimLitF64,
            PrimLitChar),
-      InstanceCase(MkInstanceCase, instancecase_cmd),
-      CmdCase(MkCmdCase, cmdcase_cmd),
+      InstanceCase(instancecase_cmd),
+      CmdCase(cmdcase_cmd),
       Substitution(unSubstitution),
       PrdCnsTerm(..) )
 import Syntax.TST.Terms qualified as TST

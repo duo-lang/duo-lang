@@ -45,7 +45,7 @@ sucWith :: (DynGraph gr, Eq b) => gr a b -> Node -> b -> Maybe Node
 sucWith gr i el = lookup el (map swap (lsuc gr i))
 
 isEmptyLabel :: NodeLabel -> Bool
-isEmptyLabel nl
+isEmptyLabel nl@MkNodeLabel{}
              = nothingOrEmpty nl.nl_data && nothingOrEmpty nl.nl_codata && S.null nl.nl_nominal && mapNull (fst nl.nl_ref_data) && mapNull (fst nl.nl_ref_codata) && isNothing (snd nl.nl_ref_data) && isNothing (snd nl.nl_ref_codata)
   where nothingOrEmpty Nothing = True
         nothingOrEmpty (Just s) = S.null s

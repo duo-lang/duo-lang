@@ -17,7 +17,7 @@ import Syntax.CST.Names
       PrimName(..),
       Precedence(..),
       RecTVar(MkRecTVar),
-      RnTypeName(MkRnTypeName, rnTnName),
+      RnTypeName(rnTnName),
       SkolemTVar(MkSkolemTVar),
       TypeName(MkTypeName),
       UniTVar(MkUniTVar),
