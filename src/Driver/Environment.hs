@@ -182,11 +182,11 @@ lookupMethodType :: EnvReader a m
 lookupMethodType loc mn MkClassDeclaration { classdecl_name, classdecl_methods } PosRep =
   case find ( \MkMethodSig{..} -> msig_name == mn) (fst classdecl_methods) of
     Nothing -> throwOtherError loc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint classdecl_name]
-    Just msig -> pure $ msig_args msig
+    Just msig -> pure msig.msig_args
 lookupMethodType loc mn MkClassDeclaration { classdecl_name, classdecl_methods } NegRep =
   case find ( \MkMethodSig{..} -> msig_name == mn) (snd classdecl_methods) of
     Nothing -> throwOtherError loc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint classdecl_name]
-    Just msig -> pure $ msig_args msig
+    Just msig -> pure msig.msig_args
 
 lookupXtorKind :: EnvReader a m
              => XtorName -> m EvaluationOrder

@@ -183,8 +183,8 @@ freshTVarsForTypeParams rep decl = do
 
 createMethodSubst :: Loc -> ClassDeclaration -> GenM (TST.Bisubstitution TST.SkolemVT, [UniTVar])
 createMethodSubst loc decl =
-  let pkArgs = (classdecl_kinds decl).kindArgs
-      cn = classdecl_name decl
+  let pkArgs = decl.classdecl_kinds.kindArgs
+      cn = decl.classdecl_name
   in do
     (vars, uvs) <- freshTVars cn pkArgs
     pure (paramsMap pkArgs vars, uvs)
@@ -210,7 +210,7 @@ paramsMap kindArgs freshVars =
 
 insertSkolemsClass :: RST.ClassDeclaration -> GenM()
 insertSkolemsClass decl = do
-  let tyParams = (classdecl_kinds decl).kindArgs
+  let tyParams = decl.classdecl_kinds.kindArgs
   skMap <- gets usedSkolemVars
   let newM = insertSkolems tyParams skMap
   modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM})
@@ -327,7 +327,7 @@ checkInstanceCoverage :: Loc
                       -> [MethodName]         -- ^ The methods implemented in the instance.
                       -> GenM ()
 checkInstanceCoverage loc RST.MkClassDeclaration { classdecl_methods } instanceMethods = do
-  let classMethods = RST.msig_name <$> fst classdecl_methods
+  let classMethods = (\x -> x.msig_name) <$> fst classdecl_methods
   forM_ classMethods $ \m -> unless (m `elem` instanceMethods)
     (throwGenError (InstanceImplementationMissing loc m))
   forM_ instanceMethods $ \m -> unless (m `elem` classMethods)

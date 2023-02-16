@@ -58,8 +58,8 @@ newtype Substitution =
 deriving instance Show Substitution
 
 instance NMap Substitution PrdCnsTerm where
-  nmap f = MkSubstitution . fmap f . unSubstitution
-  nmapM f = fmap MkSubstitution . mapM f . unSubstitution
+  nmap f = MkSubstitution . fmap f . (\x -> x.unSubstitution)
+  nmapM f = fmap MkSubstitution . mapM f . (\x -> x.unSubstitution)
 
 -- | A SubstitutionI is like a substitution where one of the arguments has been
 -- replaced by an implicit argument. The following convention for the use of the
@@ -388,7 +388,7 @@ pctermOpeningRec k subst (CnsTerm tm) = CnsTerm $ termOpeningRec k subst tm
 
 termOpeningRec :: Int -> Substitution -> Term pc -> Term pc
 -- Core constructs
-termOpeningRec k subst bv@(BoundVar _ pcrep (i,j)) | i == k    = case (pcrep, unSubstitution subst !! j) of
+termOpeningRec k subst bv@(BoundVar _ pcrep (i,j)) | i == k    = case (pcrep, subst.unSubstitution !! j) of
                                                                       (PrdRep, PrdTerm tm) -> tm
                                                                       (CnsRep, CnsTerm tm) -> tm
                                                                       t                    -> error $ "termOpeningRec BOOM: " ++ show t

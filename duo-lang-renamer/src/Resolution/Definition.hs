@@ -30,7 +30,7 @@ instance MonadFail ResolverM where
   fail str = throwError (UnknownResolutionError defaultLoc (T.pack str))
 
 runResolverM :: ResolveReader -> ResolverM a -> (Either ResolutionError a,[Warning])
-runResolverM reader action = runWriter $ runExceptT (runReaderT  (unResolverM action) reader)
+runResolverM reader action = runWriter $ runExceptT (runReaderT  action.unResolverM reader)
 
 ------------------------------------------------------------------------------
 -- Helper Functions
@@ -48,9 +48,9 @@ lookupXtor :: Loc
            -> ResolverM (ModuleName, XtorNameResolve)
            -- ^ The module where the xtor comes from, its sort and arity.
 lookupXtor loc xtor = do
-  symbolTables <- asks (M.toList . rr_modules)
+  symbolTables <- asks (M.toList . (\x -> x.rr_modules))
   let results :: [(ModuleName, Maybe XtorNameResolve)]
-      results = second (M.lookup xtor . xtorNameMap) <$> symbolTables
+      results = second (M.lookup xtor . (\x -> x.xtorNameMap)) <$> symbolTables
   case filterJusts results of
     []    -> throwError (XtorNotFound loc xtor)
     [res] -> pure res
@@ -65,9 +65,9 @@ lookupTypeConstructor :: Loc
                       -> ResolverM TypeNameResolve
                       -- ^ The resolved typename, and the relevant info.
 lookupTypeConstructor loc tn = do
-    symbolTables <- asks (M.toList . rr_modules)
+    symbolTables <- asks (M.toList . (\x -> x.rr_modules))
     let results :: [(ModuleName, Maybe TypeNameResolve)]
-        results = second (M.lookup tn . typeNameMap) <$> symbolTables
+        results = second (M.lookup tn . (\x -> x.typeNameMap)) <$> symbolTables
     case filterJusts results of
       []         -> throwError (TypeNameNotFound loc tn)
       [(_,res)]  -> pure res
@@ -95,9 +95,9 @@ lookupTyOp :: Loc
 lookupTyOp _ UnionOp = pure (MkModuleName [] "<BUILTIN>", unionTyOp)
 lookupTyOp _ InterOp = pure (MkModuleName [] "<BUILTIN>", interTyOp)
 lookupTyOp loc (CustomOp sym) = do
-  symbolTables <- asks $ M.toList . rr_modules
+  symbolTables <- asks $ M.toList . (\x -> x.rr_modules)
   let results :: [(ModuleName, Maybe BinOpDescr)]
-      results = second (M.lookup sym . tyOps) <$> symbolTables
+      results = second (M.lookup sym . (\x -> x.tyOps)) <$> symbolTables
   case filterJusts results of
     []    -> throwError (TypeOperatorNotFound loc sym)
     [res] -> pure res

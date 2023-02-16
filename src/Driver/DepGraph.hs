@@ -83,7 +83,7 @@ createDepGraph' (mn:mns) depGraph | mn `elem` visited depGraph = createDepGraph'
                                       let (this, depGraph') = lookupOrInsert depGraph mn
                                       decls <- getModuleDeclarations mn
                                       symTable <- getSymbolTable decls
-                                      let importedModules :: [ModuleName] = fst <$> imports symTable
+                                      let importedModules :: [ModuleName] = fst <$> symTable.imports
                                       -- We have to insert all the imported module names
                                       let (nodes, depGraph'') = lookupOrInserts depGraph' importedModules
                                       -- We have to insert the edges
