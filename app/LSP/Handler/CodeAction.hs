@@ -34,7 +34,7 @@ import Syntax.CST.Kinds ( EvaluationOrder(..) )
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Types (PrdCnsRep(..))
 import Driver.Definition
-    ( DriverState(MkDriverState, drvEnv),
+    ( DriverState(drvEnv),
       defaultDriverState,
       execDriverM,
       queryTypecheckedModule )
