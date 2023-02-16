@@ -145,9 +145,9 @@ instance GetCodeActions (TST.PrdCnsDeclaration pc) where
   -- If the type is annotated, generate the remaining code actions.
   getCodeActions id _ decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _, pcdecl_term } =
     let
-      desugar  = [ workspaceEditToCodeAction (generateDesugarEdit id decl) ("Desugar " <> unFreeVarName (TST.pcdecl_name decl)) | not (isDesugaredTerm pcdecl_term)]
-      cbvfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBV decl) ("Focus CBV " <> unFreeVarName (TST.pcdecl_name decl)) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBV pcdecl_term)]
-      cbnfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBN decl) ("Focus CBN " <> unFreeVarName (TST.pcdecl_name decl)) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
+      desugar  = [ workspaceEditToCodeAction (generateDesugarEdit id decl) ("Desugar " <> (TST.pcdecl_name decl).unFreeVarName) | not (isDesugaredTerm pcdecl_term)]
+      cbvfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBV decl) ("Focus CBV " <> (TST.pcdecl_name decl).unFreeVarName) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBV pcdecl_term)]
+      cbnfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBN decl) ("Focus CBN " <> (TST.pcdecl_name decl).unFreeVarName) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
       dualize  = [ workspaceEditToCodeAction (generateDualizeEdit id decl) ("Dualize term " <> ppPrint (TST.pcdecl_name decl)) ]
     in
       List (desugar <> cbvfocus <> cbnfocus <> dualize)
@@ -159,9 +159,9 @@ instance GetCodeActions TST.CommandDeclaration where
     List []
   getCodeActions id _ decl@TST.MkCommandDeclaration {cmddecl_cmd } =
     let
-      desugar  = [ workspaceEditToCodeAction (generateCmdDesugarEdit id decl) ("Desugar " <> unFreeVarName (TST.cmddecl_name decl)) | not (isDesugaredCommand cmddecl_cmd)]
-      cbvfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBV decl) ("Focus CBV " <> unFreeVarName (TST.cmddecl_name decl)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBV cmddecl_cmd)]
-      cbnfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBN decl) ("Focus CBN " <> unFreeVarName (TST.cmddecl_name decl)) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
+      desugar  = [ workspaceEditToCodeAction (generateCmdDesugarEdit id decl) ("Desugar " <> (TST.cmddecl_name decl).unFreeVarName) | not (isDesugaredCommand cmddecl_cmd)]
+      cbvfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBV decl) ("Focus CBV " <> (TST.cmddecl_name decl).unFreeVarName) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBV cmddecl_cmd)]
+      cbnfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBN decl) ("Focus CBN " <> (TST.cmddecl_name decl).unFreeVarName) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
       eval     = [ generateCmdEvalCodeAction id decl ]
       dualize  = [ workspaceEditToCodeAction (generateDualizeCommandEdit id decl) ("Dualize command " <> ppPrint (TST.cmddecl_name decl)) ]
     in
@@ -241,7 +241,7 @@ generateDualizeDeclEdit (TextDocumentIdentifier uri) loc decl =
 -- Provide Focus Actions
 ---------------------------------------------------------------------------------
 
-generateFocusEdit :: forall pc.TextDocumentIdentifier -> EvaluationOrder -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
+generateFocusEdit :: forall pc. TextDocumentIdentifier -> EvaluationOrder -> TST.PrdCnsDeclaration pc -> WorkspaceEdit
 generateFocusEdit (TextDocumentIdentifier uri) eo decl =
   let
     newDecl :: TST.Declaration
@@ -310,7 +310,7 @@ generateCmdEvalCodeAction ident decl =
                             , evalArgs_uri = ident
                             , evalArgs_cmd = cmd
                             }
-  in InR $ CodeAction { _title = "Eval " <> unFreeVarName (TST.cmddecl_name decl)
+  in InR $ CodeAction { _title = "Eval " <> (TST.cmddecl_name decl).unFreeVarName
                       , _kind = Just CodeActionQuickFix
                       , _diagnostics = Nothing
                       , _isPreferred = Nothing

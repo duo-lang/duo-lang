@@ -52,7 +52,7 @@ resolveTyp rep (TyXData loc Data sigs) = do
 -- Refinement Data
 resolveTyp rep (TyXRefined loc Data tn mrv sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-    if not (null (kindArgs pknd)) then throwError (UnknownResolutionError loc ("Type " <> T.pack (show tn) <> " was not fully applied"))
+    if not (null pknd.kindArgs) then throwError (UnknownResolutionError loc ("Type " <> T.pack (show tn) <> " was not fully applied"))
     else do
       case mrv of 
         Nothing -> do
@@ -180,7 +180,7 @@ resolveTyp rep (TyString loc) =
 resolveTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> PolyKind -> [Typ] -> ResolverM [RST.VariantType pol]
 resolveTypeArgs loc rep tn pk@MkPolyKind{} args = do
     if length args /= length pk.kindArgs  then
-        throwError (UnknownResolutionError loc ("Type constructor " <> unTypeName tn <> " must be fully applied"))
+        throwError (UnknownResolutionError loc ("Type constructor " <> tn.unTypeName <> " must be fully applied"))
     else do
         let
             f :: ((Variance, SkolemTVar, MonoKind), Typ) -> ResolverM (RST.VariantType pol)
@@ -200,7 +200,7 @@ resolveMethodSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.MethodSig po
 resolveMethodSigs rep sigs = sequence $ resolveMethodSig rep <$> sigs
 
 resolveMethodSig :: PolarityRep pol -> XtorSig -> ResolverM (RST.MethodSig pol)
-resolveMethodSig rep (MkXtorSig name ctx) = RST.MkMethodSig (MkMethodName $ unXtorName name) <$> resolveLinearContext rep ctx
+resolveMethodSig rep (MkXtorSig name ctx) = RST.MkMethodSig (MkMethodName name.unXtorName) <$> resolveLinearContext rep ctx
 
 resolveLinearContext :: PolarityRep pol -> LinearContext -> ResolverM (RST.LinearContext pol)
 resolveLinearContext rep ctx = sequence $ resolvePrdCnsTyp rep <$> ctx

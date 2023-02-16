@@ -184,7 +184,7 @@ freshTVarsForTypeParams rep decl = do
 
 createMethodSubst :: Loc -> ClassDeclaration -> GenM (TST.Bisubstitution TST.SkolemVT, [UniTVar])
 createMethodSubst loc decl =
-  let pkArgs = kindArgs $ classdecl_kinds decl
+  let pkArgs = (classdecl_kinds decl).kindArgs
       cn = classdecl_name decl
   in do
     (vars, uvs) <- freshTVars cn pkArgs
@@ -211,7 +211,7 @@ paramsMap kindArgs freshVars =
 
 insertSkolemsClass :: RST.ClassDeclaration -> GenM()
 insertSkolemsClass decl = do
-  let tyParams = kindArgs $ classdecl_kinds decl
+  let tyParams = (classdecl_kinds decl).kindArgs
   skMap <- gets usedSkolemVars
   let newM = insertSkolems tyParams skMap
   modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM})

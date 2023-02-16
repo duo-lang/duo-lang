@@ -53,8 +53,8 @@ getKindDecl ::  TST.DataDecl -> GenM (MonoKind,[MonoKind])
 getKindDecl decl = do
   -- this can never be a kind var
   let polyknd = TST.data_kind decl
-  let argKnds = map (\(_,_,mk) -> mk) (kindArgs polyknd)
-  return (CBox $ returnKind polyknd, argKnds)
+  let argKnds = map (\(_,_,mk) -> mk) polyknd.kindArgs
+  return (CBox polyknd.returnKind, argKnds)
 
 newKVar :: GenM KVar
 newKVar = do
@@ -137,7 +137,7 @@ annotVarTy (RST.ContravariantType ty) = do
 
 
 getKindSkolem :: PolyKind -> SkolemTVar -> PolyKind
-getKindSkolem polyknd = searchKindArgs (kindArgs polyknd)
+getKindSkolem polyknd = searchKindArgs polyknd.kindArgs
   where 
     searchKindArgs :: [(Variance, SkolemTVar, MonoKind)] -> SkolemTVar -> PolyKind
     searchKindArgs [] _ = error "Skolem Variable not found in argument types of polykind"
@@ -510,7 +510,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkXtors _ [] _ = return ()
       checkXtors loc (fst:rst) decl = do
         -- this can never be a kind var
-        let retKnd = CBox $ returnKind $ TST.data_kind decl
+        let retKnd = CBox (TST.data_kind decl).returnKind
         let retKnds = map getKind (TST.sig_args fst)
         if all (==monoToAnyKind retKnd) retKnds then
           checkXtors loc rst decl 
@@ -527,7 +527,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       checkXtors _ [] _ = return ()
       checkXtors loc (fst:rst) decl = do
         -- this can never be a kind  var 
-        let retKnd = CBox $ returnKind $ TST.data_kind decl
+        let retKnd = CBox (TST.data_kind decl).returnKind
         let retKnds = map getKind (TST.sig_args fst)
         if all (==monoToAnyKind retKnd) retKnds then
           checkXtors loc rst decl 
@@ -536,7 +536,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
 
   annotateKind (RST.TyApp _loc' _pol' (RST.TyNominal loc pol polyknd tyn) vartys) = do 
     vartys' <- mapM annotateKind vartys
-    let argKnds = map (\(_, _, mk) -> mk) (kindArgs polyknd)
+    let argKnds = map (\(_, _, mk) -> mk) polyknd.kindArgs
     if length vartys' /= length argKnds then
       throwOtherError loc ["Wrong number of arguments of type " <> ppPrint tyn] 
     else do
@@ -566,7 +566,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyApp loc _ ty _ ) = throwOtherError loc ["Types can only be applied to nominal types, was applied to ", ppPrint ty]
 
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
-    case kindArgs polyknd of 
+    case polyknd.kindArgs of 
       [] -> do 
         return $ TST.TyNominal loc pol polyknd tyn
       _ -> throwOtherError loc ["Nominal Type " <> ppPrint tyn <> " was not fully applied"]

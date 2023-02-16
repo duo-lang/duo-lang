@@ -24,6 +24,7 @@ library
   default-extensions:
                      OverloadedRecordDot,
                      FlexibleContexts,
+                     NoFieldSelectors,
                      FlexibleInstances,
                      ScopedTypeVariables,
                      ConstraintKinds,

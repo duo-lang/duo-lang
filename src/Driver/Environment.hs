@@ -117,7 +117,7 @@ lookupDataDecl loc xt = do
 lookupTypeName :: EnvReader a m
                => Loc -> RnTypeName -> m DataDecl
 lookupTypeName loc tn = do
-  let err = ErrOther $ SomeOtherError loc ("Type name " <> unTypeName (rnTnName tn) <> " not found in environment")
+  let err = ErrOther $ SomeOtherError loc ("Type name " <> tn.rnTnName.unTypeName <> " not found in environment")
   let findFun NominalDecl{..} = data_name == tn
       findFun RefinementDecl {..} = data_name == tn
   let f env = find findFun (fmap snd (declEnv env))
@@ -130,12 +130,12 @@ lookupXtorSig loc xtn PosRep = do
   decl <- lookupDataDecl loc xtn
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (fst (data_xtors decl)) of
     Just xts -> pure xts
-    Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (data_name decl))]
+    Nothing -> throwOtherError loc ["XtorName " <> xtn.unXtorName <> " not found in declaration of type " <> (data_name decl).rnTnName.unTypeName]
 lookupXtorSig loc xtn NegRep = do
   decl <- lookupDataDecl loc xtn
   case find ( \MkXtorSig{..} -> sig_name == xtn ) (snd (data_xtors decl)) of
     Just xts -> pure xts
-    Nothing -> throwOtherError loc ["XtorName " <> unXtorName xtn <> " not found in declaration of type " <> unTypeName (rnTnName (data_name decl))]
+    Nothing -> throwOtherError loc ["XtorName " <> xtn.unXtorName <> " not found in declaration of type " <> (data_name decl).rnTnName.unTypeName]
 
 
 lookupXtorSigUpper :: EnvReader a m

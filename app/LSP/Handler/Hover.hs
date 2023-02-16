@@ -359,7 +359,7 @@ instance ToHoverMap (TST.Typ pol) where
     let
       msg = T.unlines [ "#### Nominal type"
                       , "- Name: `" <> ppPrint tn <> "`"
-                      , "- Doc: " <> maybe "" ppPrint (rnTnDoc tn)
+                      , "- Doc: " <> maybe "" ppPrint tn.rnTnDoc
                       , "- Polarity: " <> prettyPolRep rep
                       , "- Kind: " <> ppPrint _knd
                       ]
@@ -376,7 +376,7 @@ instance ToHoverMap (TST.Typ pol) where
     let
       msg = T.unlines [ "#### Type synonym"
                       , "- Name: `" <> ppPrint nm <> "`"
-                      , "- Doc: " <> maybe "" ppPrint (rnTnDoc nm)
+                      , "- Doc: " <> maybe "" ppPrint nm.rnTnDoc
                       , "- Definition: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                       , "- Polarity: " <> prettyPolRep rep
                       ]

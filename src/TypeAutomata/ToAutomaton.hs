@@ -112,7 +112,7 @@ lookupTVar PosRep tv = do
   case M.lookup tv tSkolemVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The type variable:"
-                                              , "    " <> unSkolemTVar tv
+                                              , "    " <> tv.unSkolemTVar
                                               , "is not available in the automaton."
                                               ]
     -- Skolem Variables cannot appear with only one polarity anymore
@@ -127,7 +127,7 @@ lookupTVar NegRep tv = do
   case M.lookup tv tSkolemVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The type variable:"
-                                              , "    " <> unSkolemTVar tv
+                                              , "    " <> tv.unSkolemTVar
                                               , "is not available in the automaton."
                                               ]
     -- Skolem Variables cannot appear with only one polarity anymore
@@ -144,12 +144,12 @@ lookupTRecVar PosRep tv = do
   case M.lookup tv tRecVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The Recursive Variable:"
-                                              , "   " <> unRecTVar tv
+                                              , "   " <> tv.unRecTVar
                                               , "is not available in the automaton."
                                               ]
     Just (Nothing,_) -> throwAutomatonError defaultLoc ["Could not insert type into automaton."
                                                        , "The Recursive Variable:"
-                                                       , "   " <> unRecTVar tv
+                                                       , "   " <> tv.unRecTVar
                                                        , "exists only in negative polarity."
                                                        ]
     Just (Just pos,_) -> return pos
@@ -158,12 +158,12 @@ lookupTRecVar NegRep tv = do
   case M.lookup tv tRecVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The Recursive Variable:"
-                                              , "   " <> unRecTVar tv
+                                              , "   " <> tv.unRecTVar
                                               , "is not available in the automaton."
                                               ]
     Just (_,Nothing) -> throwAutomatonError defaultLoc ["Could not insert type into automaton."
                                                        , "The Recursive Variable:"
-                                                       , "   " <> unRecTVar tv
+                                                       , "   " <> tv.unRecTVar
                                                        , "exists only in positive polarity."
                                                        ]
     Just (_,Just neg) -> return neg
@@ -202,7 +202,7 @@ insertType :: Typ pol -> TTA Node
 insertType (TySkolemVar _ rep _ tv) = lookupTVar rep tv
 insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert type into automaton."
                                                             , "The unification variable:"
-                                                            , "    " <> unUniTVar tv
+                                                            , "    " <> tv.unUniTVar
                                                             , "should not appear at this point in the program."
                                                             ]
 insertType (TyRecVar _ rep _ tv) = lookupTRecVar rep tv
@@ -250,7 +250,7 @@ insertType (TyApp _ _ (TyNominal _ rep polyknd tn) args) = do
   insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate (NE.toList argNodes))
   return newNode
 insertType (TyNominal _ rep polyknd tn) = do
-  case kindArgs polyknd of 
+  case polyknd.kindArgs of 
     [] -> do
       let pol = polarityRepToPol rep 
       newNode <- newNodeM

@@ -150,7 +150,7 @@ createSymbolTable' _ _ (XtorDecl decl) st = do
 createSymbolTable' fp mn  (DataDecl decl) st = do
   -- Check whether the TypeName, and the XtorNames, are already declared in this module
   checkFreshTypeName decl.data_loc decl.data_name st
-  forM_ (sig_name <$> decl.data_xtors) $ \xtorName -> checkFreshXtorName decl.data_loc xtorName st
+  forM_ ((\x -> x.sig_name) <$> decl.data_xtors) $ \xtorName -> checkFreshXtorName decl.data_loc xtorName st
   -- Create the default polykind
   let polyKind = case decl.data_kind of
                     Nothing -> MkPolyKind [] (case decl.data_polarity of Data -> CBV; Codata -> CBN)
@@ -158,7 +158,7 @@ createSymbolTable' fp mn  (DataDecl decl) st = do
   let ns = case decl.data_refined of
                Refined -> Refinement
                NotRefined -> Nominal
-  let xtors = M.fromList [(sig_name xt, XtorNameResult decl.data_polarity ns (linearContextToArity (sig_args xt)))| xt <- decl.data_xtors]
+  let xtors = M.fromList [(xt.sig_name, XtorNameResult decl.data_polarity ns (linearContextToArity xt.sig_args))| xt <- decl.data_xtors]
   let rnTypeName = MkRnTypeName { rnTnLoc = decl.data_loc
                                 , rnTnDoc = decl.data_doc
                                 , rnTnFp = Just fp
@@ -197,9 +197,9 @@ createSymbolTable' _ _ (CmdDecl decl) st = do
   pure $ st { freeVarMap = M.insert decl.cmddecl_name FreeVarResult (freeVarMap st) }
 createSymbolTable' _ _ (SetDecl _) st = pure st
 createSymbolTable' _ _ (ClassDecl decl)  st = do
-  let xtor_names = sig_name <$> decl.classdecl_methods
+  let xtor_names = (\x -> x.sig_name) <$> decl.classdecl_methods
   mapM_ (flip (checkFreshXtorName decl.classdecl_loc) st) xtor_names
-  pure $ st { xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult decl.classdecl_name . linearContextToArity . sig_args <$> decl.classdecl_methods)) (xtorNameMap st)
+  pure $ st { xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult decl.classdecl_name . linearContextToArity . (\x -> x.sig_args) <$> decl.classdecl_methods)) (xtorNameMap st)
             , classDecls = S.insert decl.classdecl_name (classDecls st) }
 createSymbolTable' _ _ (InstanceDecl decl) st =
   if isPermittedInstance decl.instancedecl_class decl.instancedecl_typ st

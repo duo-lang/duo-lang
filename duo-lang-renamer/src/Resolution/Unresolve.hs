@@ -490,7 +490,7 @@ instance EmbedRST RST.Command CST.Term where
   embedRST (RST.Method loc mn _cn ty (RST.MkSubstitution subst)) = do
     subst' <- mapM (fmap CST.ToSTerm . embedRST) subst
     ty' <- case ty of Nothing -> return Nothing; Just (typ, _tyn) -> Just <$> unresolve typ
-    pure $ CST.Xtor loc (MkXtorName $ unMethodName mn) ty' (CST.MkSubstitutionI subst')
+    pure $ CST.Xtor loc (MkXtorName $ mn.unMethodName) ty' (CST.MkSubstitutionI subst')
   embedRST (RST.ExitSuccess loc) =
     pure $ CST.PrimTerm loc exitSuccessName (CST.MkSubstitution [])
   embedRST (RST.ExitFailure loc) =
@@ -582,18 +582,18 @@ instance Unresolve (RST.Typ pol) CST.Typ where
   unresolve (RST.TyDataRefined loc _ _ tn mrv xtors) = do
     xtors' <- mapM unresolve xtors
     let rv = fmap embedRecTVar mrv
-    pure $ CST.TyXRefined loc CST.Data (rnTnName tn) rv xtors'
+    pure $ CST.TyXRefined loc CST.Data tn.rnTnName rv xtors'
   unresolve (RST.TyCodataRefined loc _ _ tn mrv xtors) = do
     xtors' <- mapM unresolve xtors
     let rv = fmap embedRecTVar mrv
-    pure $ CST.TyXRefined loc CST.Codata (rnTnName tn) rv xtors'
+    pure $ CST.TyXRefined loc CST.Codata tn.rnTnName rv xtors'
   unresolve (RST.TyApp loc _ ty args) = do 
     ty' <- unresolve ty
     args' <- mapM unresolve args
     pure $ CST.TyApp loc ty' args'
-  unresolve (RST.TyNominal loc _ _ nm) = pure $ CST.TyNominal loc (rnTnName nm)
+  unresolve (RST.TyNominal loc _ _ nm) = pure $ CST.TyNominal loc nm.rnTnName
   unresolve (RST.TySyn loc _ nm _) =
-    pure $ CST.TyNominal loc (rnTnName nm)
+    pure $ CST.TyNominal loc nm.rnTnName
   unresolve (RST.TyTop loc) =
     pure $ CST.TyTop loc
   unresolve (RST.TyBot loc) =
@@ -637,7 +637,7 @@ instance Unresolve (RST.MethodSig pol) CST.XtorSig where
   unresolve :: RST.MethodSig pol -> UnresolveM CST.XtorSig
   unresolve msig = do
     args' <- mapM unresolve msig.msig_args
-    pure CST.MkXtorSig { sig_name = MkXtorName $ unMethodName msig.msig_name
+    pure CST.MkXtorSig { sig_name = MkXtorName $ msig.msig_name.unMethodName
                        , sig_args = args'
                        }
 
@@ -698,7 +698,7 @@ instance Unresolve RST.TyOpDeclaration CST.TyOpDeclaration where
                                , tyopdecl_sym   = decl.tyopdecl_sym
                                , tyopdecl_prec  = decl.tyopdecl_prec
                                , tyopdecl_assoc = decl.tyopdecl_assoc
-                               , tyopdecl_res   = rnTnName decl.tyopdecl_res
+                               , tyopdecl_res   = decl.tyopdecl_res.rnTnName
                                }
 
 instance Unresolve RST.ClassDeclaration CST.ClassDeclaration where
@@ -732,7 +732,7 @@ instance Unresolve RST.DataDecl CST.DataDecl where
     pure $ CST.MkDataDecl { data_loc      = decl.data_loc
                           , data_doc      = decl.data_doc
                           , data_refined  = CST.NotRefined
-                          , data_name     = rnTnName decl.data_name
+                          , data_name     = decl.data_name.rnTnName
                           , data_polarity = decl.data_polarity
                           , data_kind     = Just decl.data_kind
                           , data_xtors    = xtors'
@@ -742,7 +742,7 @@ instance Unresolve RST.DataDecl CST.DataDecl where
     pure $ CST.MkDataDecl { data_loc      = decl.data_loc
                           , data_doc      = decl.data_doc
                           , data_refined  = CST.Refined
-                          , data_name     = rnTnName decl.data_name
+                          , data_name     = decl.data_name.rnTnName
                           , data_polarity = decl.data_polarity
                           , data_kind     = Just decl.data_kind
                           , data_xtors    = xtors'
