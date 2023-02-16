@@ -52,8 +52,8 @@ newtype Substitution = MkSubstitution { unSubstitution :: [PrdCnsTerm] }
   deriving (Show)
 
 instance NMap Substitution PrdCnsTerm where
-  nmap f = MkSubstitution . fmap f . unSubstitution
-  nmapM f = fmap MkSubstitution . mapM f . unSubstitution
+  nmap f = MkSubstitution . fmap f . (\x -> x.unSubstitution)
+  nmapM f = fmap MkSubstitution . mapM f . (\x -> x.unSubstitution)
 
 data Pattern where
   XtorPat :: Loc -> XtorName -> [(PrdCns, Maybe FreeVarName)] -> Pattern
@@ -158,7 +158,7 @@ pctermOpeningRec k subst (PrdTerm tm) = PrdTerm $ termOpeningRec k subst tm
 pctermOpeningRec k subst (CnsTerm tm) = CnsTerm $ termOpeningRec k subst tm
 
 termOpeningRec :: Int -> Substitution -> Term pc -> Term pc
-termOpeningRec k subst bv@(BoundVar _ pcrep(i,j)) | i == k    = case (pcrep, unSubstitution subst !! j) of
+termOpeningRec k subst bv@(BoundVar _ pcrep(i,j)) | i == k    = case (pcrep, subst.unSubstitution !! j) of
                                                                      (PrdRep, PrdTerm tm) -> tm
                                                                      (CnsRep, CnsTerm tm) -> tm
                                                                      _                    -> error "termOpeningRec BOOM"
@@ -275,7 +275,7 @@ termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either DesugaringError ()
 termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
 termLocallyClosedRec _ FreeVar{} = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
-  sequence_ (pctermLocallyClosedRec env <$> unSubstitution subst)
+  sequence_ (pctermLocallyClosedRec env <$> subst.unSubstitution)
 termLocallyClosedRec env (XCase _ _ _ _ cases) = do
   let f cmdcase  = case cmdcase.cmdcase_pat of
                          XtorPat _ _ args -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase.cmdcase_cmd
@@ -291,11 +291,11 @@ commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either DesugaringError 
 commandLocallyClosedRec _ (ExitSuccess _) = Right ()
 commandLocallyClosedRec _ (ExitFailure _) = Right ()
 commandLocallyClosedRec _ (Jump _ _) = Right ()
-commandLocallyClosedRec env (Method _ _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> unSubstitution subst
+commandLocallyClosedRec env (Method _ _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst.unSubstitution
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
-commandLocallyClosedRec env (PrimOp _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> unSubstitution subst
+commandLocallyClosedRec env (PrimOp _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst.unSubstitution
 
 termLocallyClosed :: Term pc -> Either DesugaringError ()
 termLocallyClosed = termLocallyClosedRec []

@@ -135,7 +135,7 @@ newtype SubstitutionI (pc :: PrdCns) = MkSubstitutionI { unSubstitutionI :: ([Co
 
 resugarSubst ::  PrdCnsRep pc -> Int -> Core.Substitution -> SubstitutionI pc
 resugarSubst rep n x = MkSubstitutionI (a, rep, tail b)
-  where (a,b) = splitAt n $ Core.unSubstitution x
+  where (a,b) = splitAt n x.unSubstitution
 
 resVar :: FreeVarName
 resVar = MkFreeVarName "$result"
