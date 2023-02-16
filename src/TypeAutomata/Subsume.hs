@@ -38,9 +38,9 @@ unsafeUnion (TypeAut polrep (Identity starts1) (TypeAutCore gr1 flowEdges1))
 
 -- Constructs the union of two TypeAuts
 typeAutUnion :: TypeAutDet pol -> TypeAutDet pol -> TypeAut pol
-typeAutUnion aut1@TypeAut{..} aut2 = unsafeUnion aut1 (shiftGraph shift aut2)
+typeAutUnion aut1 aut2 = unsafeUnion aut1 (shiftGraph shift aut2)
   where
-    shift = 1 + snd (nodeRange (ta_gr ta_core))
+    shift = 1 + snd (nodeRange aut1.ta_core.ta_gr)
 
 isSubtype :: TypeAutDet pol -> TypeAutDet pol -> Bool
 isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
@@ -48,7 +48,7 @@ isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
   (Neg,Neg) -> fun (typeAutUnion aut1 aut2) `typeAutEqual` aut1
   _         -> error "isSubtype: only defined for types of equal polarity."
   where
-    startPolarity TypeAut{..} = getPolarityNL (fromJust (lab (ta_gr ta_core) (runIdentity ta_starts)))
+    startPolarity aut = getPolarityNL (fromJust (lab aut.ta_core.ta_gr (runIdentity aut.ta_starts)))
     fun = minimize . removeAdmissableFlowEdges . determinize
 
 subsume :: PolarityRep pol -> TypeScheme pol -> TypeScheme pol -> Either (NonEmpty Error) Bool

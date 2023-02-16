@@ -27,18 +27,18 @@ class EmbedTST a b | a -> b where
 
 instance EmbedTST TST.CmdCase Core.CmdCase where
   embedTST :: TST.CmdCase -> Core.CmdCase
-  embedTST TST.MkCmdCase {cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
-      Core.MkCmdCase { cmdcase_loc = cmdcase_loc
-                     , cmdcase_pat = cmdcase_pat
-                     , cmdcase_cmd = embedTST  cmdcase_cmd
+  embedTST cmdcase =
+      Core.MkCmdCase { cmdcase_loc = cmdcase.cmdcase_loc
+                     , cmdcase_pat = cmdcase.cmdcase_pat
+                     , cmdcase_cmd = embedTST  cmdcase.cmdcase_cmd
                      }
 
 instance EmbedTST TST.InstanceCase Core.InstanceCase where
   embedTST :: TST.InstanceCase -> Core.InstanceCase
-  embedTST TST.MkInstanceCase {instancecase_loc, instancecase_pat, instancecase_cmd } =
-      Core.MkInstanceCase { instancecase_loc = instancecase_loc
-                          , instancecase_pat = instancecase_pat
-                          , instancecase_cmd = embedTST  instancecase_cmd
+  embedTST icase =
+      Core.MkInstanceCase { instancecase_loc = icase.instancecase_loc
+                          , instancecase_pat = icase.instancecase_pat
+                          , instancecase_cmd = embedTST  icase.instancecase_cmd
                           }
 
 instance EmbedTST TST.PrdCnsTerm Core.PrdCnsTerm where
@@ -49,7 +49,7 @@ instance EmbedTST TST.PrdCnsTerm Core.PrdCnsTerm where
 
 instance EmbedTST TST.Substitution Core.Substitution where
   embedTST  :: TST.Substitution -> Core.Substitution
-  embedTST  = Core.MkSubstitution . fmap embedTST . TST.unSubstitution
+  embedTST  = Core.MkSubstitution . fmap embedTST . (\x -> x.unSubstitution)
 
 instance EmbedTST (TST.Term pc) (Core.Term pc) where
   embedTST :: TST.Term pc -> Core.Term pc
@@ -124,7 +124,7 @@ instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
 instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST :: TST.Typ pol -> RST.Typ pol
   embedTST (TST.TySkolemVar loc pol pk tv) =
-    RST.TyKindAnnot (CBox $ returnKind pk) $ RST.TySkolemVar loc pol tv
+    RST.TyKindAnnot (CBox pk.returnKind) $ RST.TySkolemVar loc pol tv
   embedTST (TST.TyUniVar loc pol knd tv) = case knd of
     MkPknd (MkPolyKind _ eo) -> RST.TyKindAnnot (CBox eo) $ RST.TyUniVar loc pol tv
     MkPknd (KindVar _) -> RST.TyUniVar loc pol tv
@@ -219,43 +219,45 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
 
 instance EmbedTST (TST.PrdCnsDeclaration pc) (Core.PrdCnsDeclaration pc) where
   embedTST  :: TST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
-  embedTST  TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = TST.Annotated tys, pcdecl_term } =
-      Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
-                               , pcdecl_doc = pcdecl_doc
-                               , pcdecl_pc = pcdecl_pc
-                               , pcdecl_isRec = pcdecl_isRec
-                               , pcdecl_name = pcdecl_name
-                               , pcdecl_annot = Just (embedTST  tys)
-                               , pcdecl_term = embedTST pcdecl_term
-                               }
-  embedTST  TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot = TST.Inferred _, pcdecl_term } =
-      Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
-                               , pcdecl_doc = pcdecl_doc
-                               , pcdecl_pc = pcdecl_pc
-                               , pcdecl_isRec = pcdecl_isRec
-                               , pcdecl_name = pcdecl_name
-                               , pcdecl_annot = Nothing
-                               , pcdecl_term = embedTST pcdecl_term
-                               }
+  embedTST decl =
+    case decl.pcdecl_annot of
+      TST.Annotated tys ->
+        Core.MkPrdCnsDeclaration { pcdecl_loc = decl.pcdecl_loc
+                                 , pcdecl_doc = decl.pcdecl_doc
+                                 , pcdecl_pc = decl.pcdecl_pc
+                                 , pcdecl_isRec = decl.pcdecl_isRec
+                                 , pcdecl_name = decl.pcdecl_name
+                                 , pcdecl_annot = Just (embedTST tys)
+                                 , pcdecl_term = embedTST decl.pcdecl_term
+                                 }
+      TST.Inferred _ ->
+        Core.MkPrdCnsDeclaration { pcdecl_loc = decl.pcdecl_loc
+                                 , pcdecl_doc = decl.pcdecl_doc
+                                 , pcdecl_pc = decl.pcdecl_pc
+                                 , pcdecl_isRec = decl.pcdecl_isRec
+                                 , pcdecl_name = decl.pcdecl_name
+                                 , pcdecl_annot = Nothing
+                                 , pcdecl_term = embedTST decl.pcdecl_term
+                                 }
 
 instance EmbedTST TST.CommandDeclaration Core.CommandDeclaration where
   embedTST  :: TST.CommandDeclaration -> Core.CommandDeclaration
-  embedTST  TST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
-      Core.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
-                                , cmddecl_doc = cmddecl_doc
-                                , cmddecl_name = cmddecl_name
-                                , cmddecl_cmd = embedTST cmddecl_cmd
+  embedTST  decl =
+      Core.MkCommandDeclaration { cmddecl_loc = decl.cmddecl_loc
+                                , cmddecl_doc = decl.cmddecl_doc
+                                , cmddecl_name = decl.cmddecl_name
+                                , cmddecl_cmd = embedTST decl.cmddecl_cmd
                                 }
 
 instance EmbedTST TST.InstanceDeclaration Core.InstanceDeclaration where
   embedTST  :: TST.InstanceDeclaration -> Core.InstanceDeclaration
-  embedTST  TST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } =
-      Core.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
-                                 , instancedecl_doc = instancedecl_doc
-                                 , instancedecl_name = instancedecl_name
-                                 , instancedecl_class = instancedecl_class
-                                 , instancedecl_typ = BF.bimap embedTST embedTST instancedecl_typ
-                                 , instancedecl_cases = embedTST <$> instancedecl_cases
+  embedTST decl =
+      Core.MkInstanceDeclaration { instancedecl_loc = decl.instancedecl_loc
+                                 , instancedecl_doc = decl.instancedecl_doc
+                                 , instancedecl_name = decl.instancedecl_name
+                                 , instancedecl_class = decl.instancedecl_class
+                                 , instancedecl_typ = BF.bimap embedTST embedTST decl.instancedecl_typ
+                                 , instancedecl_cases = embedTST <$> decl.instancedecl_cases
                                  }
 
 instance EmbedTST TST.DataDecl RST.DataDecl where
@@ -318,8 +320,8 @@ instance EmbedTST TST.Declaration Core.Declaration where
 
 instance EmbedTST TST.Module Core.Module where
   embedTST :: TST.Module -> Core.Module
-  embedTST TST.MkModule { mod_name, mod_libpath, mod_decls } =
-      Core.MkModule { mod_name = mod_name
-                    , mod_libpath = mod_libpath
-                    , mod_decls = embedTST  <$> mod_decls
+  embedTST mod =
+      Core.MkModule { mod_name = mod.mod_name
+                    , mod_libpath = mod.mod_libpath
+                    , mod_decls = embedTST  <$> mod.mod_decls
                     }

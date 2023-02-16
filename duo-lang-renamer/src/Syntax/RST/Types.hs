@@ -258,8 +258,8 @@ instance ReplaceNominal (Typ pol) where
 
 instance ReplaceNominal (XtorSig pol) where
   replaceNominal :: forall pol. Typ Pos -> Typ Neg -> RnTypeName -> XtorSig pol -> XtorSig pol
-  replaceNominal p n t MkXtorSig { sig_name, sig_args } =
-    MkXtorSig { sig_name = sig_name, sig_args = replaceNominal p n t <$> sig_args }
+  replaceNominal p n t sig =
+    MkXtorSig { sig_name = sig.sig_name, sig_args = replaceNominal p n t <$> sig.sig_args }
 
 instance ReplaceNominal (PrdCnsType pol) where
   replaceNominal :: forall pol. Typ Pos -> Typ Neg -> RnTypeName -> PrdCnsType pol -> PrdCnsType pol
@@ -334,7 +334,7 @@ instance FreeTVars (LinearContext pol) where
   freeTVars ctxt = S.unions (freeTVars <$> ctxt)
 
 instance FreeTVars (XtorSig pol) where
-  freeTVars MkXtorSig { sig_args } = freeTVars sig_args
+  freeTVars sig = freeTVars sig.sig_args
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol

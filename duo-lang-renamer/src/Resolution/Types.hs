@@ -29,17 +29,17 @@ import Control.Monad.Reader (asks, MonadReader (local))
 ---------------------------------------------------------------------------------
 
 resolveTypeScheme :: PolarityRep pol -> TypeScheme -> ResolverM (RST.TypeScheme pol)
-resolveTypeScheme rep TypeScheme { ts_loc, ts_vars, ts_monotype } = do
-    monotype <- resolveTyp rep ts_monotype
-    if RST.freeTVars monotype `S.isSubsetOf` S.fromList (map fst ts_vars)
-    then pure (RST.TypeScheme ts_loc ts_vars monotype)
-        else throwError (MissingVarsInTypeScheme ts_loc)
+resolveTypeScheme rep ts = do
+    monotype <- resolveTyp rep ts.ts_monotype
+    if RST.freeTVars monotype `S.isSubsetOf` S.fromList (map fst ts.ts_vars)
+    then pure (RST.TypeScheme ts.ts_loc ts.ts_vars monotype)
+        else throwError (MissingVarsInTypeScheme ts.ts_loc)
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TyUniVar loc v) =
     pure $ RST.TyUniVar loc rep v
 resolveTyp rep (TySkolemVar loc v) = do
-    recVars <- asks rr_recVars
+    recVars <- asks (\x -> x.rr_recVars)
     let vr = skolemToRecRVar v
     if vr `S.member` recVars
       then pure $ RST.TyRecVar loc rep vr
@@ -52,7 +52,7 @@ resolveTyp rep (TyXData loc Data sigs) = do
 -- Refinement Data
 resolveTyp rep (TyXRefined loc Data tn mrv sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-    if not (null (kindArgs pknd)) then throwError (UnknownResolutionError loc ("Type " <> T.pack (show tn) <> " was not fully applied"))
+    if not (null pknd.kindArgs) then throwError (UnknownResolutionError loc ("Type " <> T.pack (show tn) <> " was not fully applied"))
     else do
       case mrv of 
         Nothing -> do
@@ -60,7 +60,7 @@ resolveTyp rep (TyXRefined loc Data tn mrv sigs) = do
           pure $ RST.TyDataRefined loc rep pknd tn' Nothing sigs
         Just sk -> do
           let rv = skolemToRecRVar sk
-          sigs <- local (\r -> r { rr_recVars = S.insert rv $ rr_recVars r  } ) $ resolveXTorSigs rep sigs
+          sigs <- local (\r -> r { rr_recVars = S.insert rv r.rr_recVars } ) $ resolveXTorSigs rep sigs
           return $ RST.TyDataRefined loc rep pknd tn' (Just rv) sigs 
 -- Nominal Codata
 resolveTyp rep (TyXData loc Codata sigs) = do
@@ -97,7 +97,7 @@ resolveTyp rep (TyApp loc ty@(TyNominal _loc tyn) args) = do
         (fst:rst) -> pure $ RST.TyApp loc rep ty' (fst:|rst)
 
 resolveTyp rep (TyApp loc (TySkolemVar loc' sk) args) = do
-  recVars <- asks rr_ref_recVars
+  recVars <- asks (\x -> x.rr_ref_recVars)
   let rv = skolemToRecRVar sk
   case M.lookup rv recVars of 
     Nothing -> throwError (UnknownResolutionError loc' "Types can't be applied to Skolem Variables")
@@ -116,7 +116,7 @@ resolveTyp rep (TyApp loc (TyXRefined loc' Data tn mrv sigs) args) = do
         pure $ RST.TyApp loc rep (RST.TyDataRefined loc' rep pknd tn' Nothing sigs) args''
       Just sk -> do 
         let rv = skolemToRecRVar sk
-        sigs <- local (\r -> r { rr_ref_recVars = M.insert rv (tn,pknd) $ rr_ref_recVars r  } ) $ resolveXTorSigs rep sigs
+        sigs <- local (\r -> r { rr_ref_recVars = M.insert rv (tn,pknd) r.rr_ref_recVars  } ) $ resolveXTorSigs rep sigs
         args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
         let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
         return $ RST.TyApp loc rep (RST.TyDataRefined loc' rep pknd tn' (Just rv) sigs) args''
@@ -131,7 +131,7 @@ resolveTyp rep (TyApp loc (TyXRefined loc' Codata tn mrv sigs) args) = do
         pure $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' Nothing sigs) args''
       Just sk -> do 
         let rv = skolemToRecRVar sk
-        sigs <- local (\r -> r { rr_ref_recVars = M.insert rv (tn,pknd) $ rr_ref_recVars r  } ) $ resolveXTorSigs (flipPolarityRep rep) sigs
+        sigs <- local (\r -> r { rr_ref_recVars = M.insert rv (tn,pknd) r.rr_ref_recVars } ) $ resolveXTorSigs (flipPolarityRep rep) sigs
         args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
         let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
         return $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' (Just rv) sigs) args''
@@ -148,7 +148,7 @@ resolveTyp _ (TyApp loc ty _) = throwError (UnknownResolutionError loc ("Types c
 
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v
-        local (\r -> r { rr_recVars = S.insert vr $ rr_recVars r  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
+        local (\r -> r { rr_recVars = S.insert vr $ r.rr_recVars  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
 
 -- Lattice types    
 resolveTyp PosRep (TyTop loc) =
@@ -178,15 +178,15 @@ resolveTyp rep (TyString loc) =
     pure $ RST.TyString loc rep
 
 resolveTypeArgs :: forall pol. Loc -> PolarityRep pol -> TypeName -> PolyKind -> [Typ] -> ResolverM [RST.VariantType pol]
-resolveTypeArgs loc rep tn MkPolyKind{ kindArgs } args = do
-    if length args /= length kindArgs  then
-        throwError (UnknownResolutionError loc ("Type constructor " <> unTypeName tn <> " must be fully applied"))
+resolveTypeArgs loc rep tn pk@MkPolyKind{} args = do
+    if length args /= length pk.kindArgs  then
+        throwError (UnknownResolutionError loc ("Type constructor " <> tn.unTypeName <> " must be fully applied"))
     else do
         let
             f :: ((Variance, SkolemTVar, MonoKind), Typ) -> ResolverM (RST.VariantType pol)
             f ((Covariant,_,_),ty) = RST.CovariantType <$> resolveTyp rep ty
             f ((Contravariant,_,_),ty) = RST.ContravariantType <$> resolveTyp (flipPolarityRep rep) ty
-        sequence (f <$> zip kindArgs args)
+        sequence (f <$> zip pk.kindArgs args)
 resolveTypeArgs loc _ _ (KindVar _) _ = throwError (UnknownResolutionError loc "Kind Variables should not be in the program at this point")
 
 
@@ -200,7 +200,7 @@ resolveMethodSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.MethodSig po
 resolveMethodSigs rep sigs = sequence $ resolveMethodSig rep <$> sigs
 
 resolveMethodSig :: PolarityRep pol -> XtorSig -> ResolverM (RST.MethodSig pol)
-resolveMethodSig rep (MkXtorSig name ctx) = RST.MkMethodSig (MkMethodName $ unXtorName name) <$> resolveLinearContext rep ctx
+resolveMethodSig rep (MkXtorSig name ctx) = RST.MkMethodSig (MkMethodName name.unXtorName) <$> resolveLinearContext rep ctx
 
 resolveLinearContext :: PolarityRep pol -> LinearContext -> ResolverM (RST.LinearContext pol)
 resolveLinearContext rep ctx = sequence $ resolvePrdCnsTyp rep <$> ctx
@@ -256,11 +256,11 @@ associateOps lhs ((loc, s, rhs) :| []) = pure $ TyBinOp loc lhs s rhs
 associateOps lhs ((loc1, s1, rhs1) :| next@(loc2, s2, _rhs2) : rest) = do
     (_,op1) <- lookupTyOp loc1 s1
     (_,op2) <- lookupTyOp loc2 s2
-    if prec op2 > prec op1 || (assoc op1 == RightAssoc)
+    if op2.prec > op1.prec || (op1.assoc == RightAssoc)
     then do
         rhs <- associateOps rhs1 (next :| rest)
         pure $ TyBinOp loc1 lhs s1 rhs
-    else if assoc op1 == LeftAssoc
+    else if op1.assoc == LeftAssoc
     then do
         associateOps (TyBinOp loc1 lhs s1 rhs1) (next :| rest)
     else
@@ -269,4 +269,4 @@ associateOps lhs ((loc1, s1, rhs1) :| next@(loc2, s2, _rhs2) : rest) = do
 resolveBinOp :: Loc -> PolarityRep pol -> Typ -> BinOp -> Typ -> ResolverM (RST.Typ pol)
 resolveBinOp loc rep lhs s rhs = do
     (_,op) <- lookupTyOp loc s
-    desugaring loc rep (desugar op) lhs rhs
+    desugaring loc rep op.desugar lhs rhs

@@ -45,17 +45,17 @@ instance Desugar RST.PatternI Core.PatternI where
 
 instance Desugar RST.CmdCase Core.CmdCase where
   desugar :: RST.CmdCase -> Core.CmdCase
-  desugar (RST.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd }) =
-    Core.MkCmdCase { cmdcase_loc = cmdcase_loc
-                   , cmdcase_pat = desugar cmdcase_pat
-                   , cmdcase_cmd = desugar cmdcase_cmd
+  desugar cmdcase =
+    Core.MkCmdCase { cmdcase_loc = cmdcase.cmdcase_loc
+                   , cmdcase_pat = desugar cmdcase.cmdcase_pat
+                   , cmdcase_cmd = desugar cmdcase.cmdcase_cmd
                    }
 
   embedCore :: Core.CmdCase -> RST.CmdCase
-  embedCore Core.MkCmdCase { cmdcase_loc, cmdcase_pat, cmdcase_cmd } =
-    RST.MkCmdCase { cmdcase_loc = cmdcase_loc
-                  , cmdcase_pat = embedCore cmdcase_pat
-                  , cmdcase_cmd = embedCore cmdcase_cmd
+  embedCore cmdcase =
+    RST.MkCmdCase { cmdcase_loc = cmdcase.cmdcase_loc
+                  , cmdcase_pat = embedCore cmdcase.cmdcase_pat
+                  , cmdcase_cmd = embedCore cmdcase.cmdcase_cmd
                   }
 
 instance Desugar (RST.TermCase pc) (Core.TermCase pc) where
@@ -80,17 +80,17 @@ instance Desugar (RST.TermCaseI pc) (Core.TermCaseI pc) where
 
 instance Desugar RST.InstanceCase Core.InstanceCase where
   desugar :: RST.InstanceCase -> Core.InstanceCase
-  desugar RST.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } =
-    Core.MkInstanceCase { instancecase_loc = instancecase_loc
-                        , instancecase_pat = desugar instancecase_pat
-                        , instancecase_cmd = desugar instancecase_cmd
+  desugar icase =
+    Core.MkInstanceCase { instancecase_loc = icase.instancecase_loc
+                        , instancecase_pat = desugar icase.instancecase_pat
+                        , instancecase_cmd = desugar icase.instancecase_cmd
                         }
 
   embedCore :: Core.InstanceCase -> RST.InstanceCase
-  embedCore Core.MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd } =
-    RST.MkInstanceCase { instancecase_loc = instancecase_loc
-                       , instancecase_pat = embedCore instancecase_pat
-                       , instancecase_cmd = embedCore instancecase_cmd
+  embedCore icase =
+    RST.MkInstanceCase { instancecase_loc = icase.instancecase_loc
+                       , instancecase_pat = embedCore icase.instancecase_pat
+                       , instancecase_cmd = embedCore icase.instancecase_cmd
                        }
 
 
@@ -277,63 +277,63 @@ instance Desugar RST.Command Core.Command where
 
 instance Desugar (RST.PrdCnsDeclaration pc) (Core.PrdCnsDeclaration pc) where
   desugar :: RST.PrdCnsDeclaration pc -> Core.PrdCnsDeclaration pc
-  desugar RST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term} =
-    Core.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
-                             , pcdecl_doc = pcdecl_doc
-                             , pcdecl_pc = pcdecl_pc
-                             , pcdecl_isRec = pcdecl_isRec
-                             , pcdecl_name = pcdecl_name
-                             , pcdecl_annot = pcdecl_annot
-                             , pcdecl_term = desugar pcdecl_term
+  desugar decl =
+    Core.MkPrdCnsDeclaration { pcdecl_loc = decl.pcdecl_loc
+                             , pcdecl_doc = decl.pcdecl_doc
+                             , pcdecl_pc = decl.pcdecl_pc
+                             , pcdecl_isRec = decl.pcdecl_isRec
+                             , pcdecl_name = decl.pcdecl_name
+                             , pcdecl_annot = decl.pcdecl_annot
+                             , pcdecl_term = desugar decl.pcdecl_term
                              }
 
   embedCore :: Core.PrdCnsDeclaration pc -> RST.PrdCnsDeclaration pc
-  embedCore Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } =
-    RST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
-                            , pcdecl_doc = pcdecl_doc
-                            , pcdecl_pc = pcdecl_pc
-                            , pcdecl_isRec = pcdecl_isRec
-                            , pcdecl_name = pcdecl_name
-                            , pcdecl_annot = pcdecl_annot
-                            , pcdecl_term = embedCore pcdecl_term
+  embedCore decl =
+    RST.MkPrdCnsDeclaration { pcdecl_loc = decl.pcdecl_loc
+                            , pcdecl_doc = decl.pcdecl_doc
+                            , pcdecl_pc = decl.pcdecl_pc
+                            , pcdecl_isRec = decl.pcdecl_isRec
+                            , pcdecl_name = decl.pcdecl_name
+                            , pcdecl_annot = decl.pcdecl_annot
+                            , pcdecl_term = embedCore decl.pcdecl_term
                             }
 
 instance Desugar RST.CommandDeclaration Core.CommandDeclaration where
   desugar :: RST.CommandDeclaration -> Core.CommandDeclaration
-  desugar RST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
-    Core.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
-                              , cmddecl_doc = cmddecl_doc
-                              , cmddecl_name = cmddecl_name
-                              , cmddecl_cmd = desugar cmddecl_cmd
+  desugar decl =
+    Core.MkCommandDeclaration { cmddecl_loc = decl.cmddecl_loc
+                              , cmddecl_doc = decl.cmddecl_doc
+                              , cmddecl_name = decl.cmddecl_name
+                              , cmddecl_cmd = desugar decl.cmddecl_cmd
                               }
 
   embedCore :: Core.CommandDeclaration -> RST.CommandDeclaration
-  embedCore Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } =
-    RST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
-                             , cmddecl_doc = cmddecl_doc
-                             , cmddecl_name = cmddecl_name
-                             , cmddecl_cmd = embedCore cmddecl_cmd
+  embedCore decl =
+    RST.MkCommandDeclaration { cmddecl_loc = decl.cmddecl_loc
+                             , cmddecl_doc = decl.cmddecl_doc
+                             , cmddecl_name = decl.cmddecl_name
+                             , cmddecl_cmd = embedCore decl.cmddecl_cmd
                              }
 
 instance Desugar RST.InstanceDeclaration Core.InstanceDeclaration where
   desugar :: RST.InstanceDeclaration -> Core.InstanceDeclaration
-  desugar RST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } =
-    Core.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
-                               , instancedecl_doc = instancedecl_doc
-                               , instancedecl_name = instancedecl_name
-                               , instancedecl_class = instancedecl_class
-                               , instancedecl_typ = instancedecl_typ
-                               , instancedecl_cases = desugar <$> instancedecl_cases
+  desugar decl =
+    Core.MkInstanceDeclaration { instancedecl_loc = decl.instancedecl_loc
+                               , instancedecl_doc = decl.instancedecl_doc
+                               , instancedecl_name = decl.instancedecl_name
+                               , instancedecl_class = decl.instancedecl_class
+                               , instancedecl_typ = decl.instancedecl_typ
+                               , instancedecl_cases = desugar <$> decl.instancedecl_cases
                                }
 
   embedCore :: Core.InstanceDeclaration -> RST.InstanceDeclaration
-  embedCore Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } =
-    RST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
-                              , instancedecl_doc = instancedecl_doc
-                              , instancedecl_name = instancedecl_name
-                              , instancedecl_class = instancedecl_class
-                              , instancedecl_typ = instancedecl_typ
-                              , instancedecl_cases = embedCore <$> instancedecl_cases
+  embedCore decl =
+    RST.MkInstanceDeclaration { instancedecl_loc = decl.instancedecl_loc
+                              , instancedecl_doc = decl.instancedecl_doc
+                              , instancedecl_name = decl.instancedecl_name
+                              , instancedecl_class = decl.instancedecl_class
+                              , instancedecl_typ = decl.instancedecl_typ
+                              , instancedecl_cases = embedCore <$> decl.instancedecl_cases
                               }
 
 instance Desugar RST.Declaration Core.Declaration where
@@ -384,15 +384,15 @@ instance Desugar RST.Declaration Core.Declaration where
 
 instance Desugar RST.Module Core.Module where
   desugar :: RST.Module -> Core.Module
-  desugar RST.MkModule { mod_name, mod_libpath, mod_decls } =
-    Core.MkModule { mod_name = mod_name
-                  , mod_libpath = mod_libpath
-                  , mod_decls = desugar <$> mod_decls
+  desugar mod =
+    Core.MkModule { mod_name = mod.mod_name
+                  , mod_libpath = mod.mod_libpath
+                  , mod_decls = desugar <$> mod.mod_decls
                   }
 
   embedCore :: Core.Module -> RST.Module
-  embedCore Core.MkModule { mod_name, mod_libpath, mod_decls } =
-    RST.MkModule { mod_name = mod_name
-                 , mod_libpath = mod_libpath
-                 , mod_decls = embedCore <$> mod_decls
+  embedCore mod =
+    RST.MkModule { mod_name = mod.mod_name
+                 , mod_libpath = mod.mod_libpath
+                 , mod_decls = embedCore <$> mod.mod_decls
                  }

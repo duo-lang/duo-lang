@@ -266,28 +266,28 @@ instance Nubable [] where
 
 
 mapTypeAutCore :: Ord a => (Node -> Node) -> TypeAutCore a -> TypeAutCore a
-mapTypeAutCore f TypeAutCore { ta_gr, ta_flowEdges } = TypeAutCore
-  { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
-            (nub [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
-  , ta_flowEdges = nub (bimap f f <$> ta_flowEdges)
+mapTypeAutCore f aut = TypeAutCore
+  { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes aut.ta_gr])
+            (nub [(f i , f j, b) | (i,j,b) <- labEdges aut.ta_gr])
+  , ta_flowEdges = nub (bimap f f <$> aut.ta_flowEdges)
   }
 
 -- Maps a function on nodes over a type automaton
 mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f pol -> TypeAut' a f pol
-mapTypeAut f TypeAut { ta_pol, ta_starts, ta_core } = TypeAut
-  { ta_pol = ta_pol
-  , ta_starts = nub (f <$> ta_starts)
-  , ta_core = mapTypeAutCore f ta_core
+mapTypeAut f aut = TypeAut
+  { ta_pol = aut.ta_pol
+  , ta_starts = nub (f <$> aut.ta_starts)
+  , ta_core = mapTypeAutCore f aut.ta_core
   }
 
 removeRedundantEdges :: TypeGr -> TypeGr
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
 removeRedundantEdgesCore :: TypeAutCore EdgeLabelNormal -> TypeAutCore EdgeLabelNormal
-removeRedundantEdgesCore aut@TypeAutCore{..} = aut { ta_gr = removeRedundantEdges ta_gr }
+removeRedundantEdgesCore aut = aut { ta_gr = removeRedundantEdges aut.ta_gr }
 
 removeRedundantEdgesAut :: TypeAutDet pol -> TypeAutDet pol
-removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundantEdgesCore ta_core }
+removeRedundantEdgesAut aut = aut { ta_core = removeRedundantEdgesCore aut.ta_core }
 
 delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
 delAllLEdges es gr = foldr delAllLEdge gr es

@@ -116,7 +116,7 @@ newtype SubstitutionI (pc :: PrdCns) = MkSubstitutionI { unSubstitutionI :: ([Pr
 
 resugarSubst ::  PrdCnsRep pc -> Int -> Substitution -> SubstitutionI pc
 resugarSubst rep n x = MkSubstitutionI (a, rep, tail b)
-  where (a,b) = splitAt n $ unSubstitution x
+  where (a,b) = splitAt n x.unSubstitution
 
 -- Semi:
 --   [[Ctor(as,*,bs) ;; e]] = mu k. <  Ctor([[as]],k,[[bs]])  |  [[e]]  >
@@ -226,9 +226,9 @@ isDesugaredTerm Dtor {} = False
 isDesugaredTerm Semi {} = False
 isDesugaredTerm Lambda {} = False
 isDesugaredTerm (RawCase _ _ _ _ cases) =
-  all (\MkCmdCase { cmdcase_cmd } -> isDesugaredCommand cmdcase_cmd ) cases
+  all (\cmdcase -> isDesugaredCommand cmdcase.cmdcase_cmd ) cases
 isDesugaredTerm (RawXtor _ _ _ _ _ subst) =
-  all isDesugaredPCTerm $ unSubstitution subst
+  all isDesugaredPCTerm subst.unSubstitution
 isDesugaredTerm (RawMuAbs _ _ _ _ cmd) = isDesugaredCommand cmd
 isDesugaredTerm _ = True
 
@@ -238,7 +238,7 @@ isDesugaredCommand CaseOfI {} = False
 isDesugaredCommand CocaseOfCmd {} = False
 isDesugaredCommand CaseOfCmd {} = False
 isDesugaredCommand (PrimOp _ _ subst) =
-  all isDesugaredPCTerm $ unSubstitution subst
+  all isDesugaredPCTerm subst.unSubstitution
 isDesugaredCommand (RawApply _ _ prd cns) =
   isDesugaredTerm prd && isDesugaredTerm cns
 isDesugaredCommand (Print _ prd cmd) =

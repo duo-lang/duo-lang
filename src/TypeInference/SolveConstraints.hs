@@ -71,7 +71,7 @@ modifyCache ::( Map (Constraint ()) SubtypeWitness -> Map (Constraint ()) Subtyp
 modifyCache f = modify (\(SolverState gr cache kvars) -> SolverState gr (f cache) kvars)
 
 inCache :: Constraint ConstraintInfo -> SolverM Bool
-inCache cs = gets sst_cache >>= \cache -> pure (void cs `M.member` cache)
+inCache cs = gets (\x -> x.sst_cache) >>= \cache -> pure (void cs `M.member` cache)
 
 modifyBounds :: (VariableState -> VariableState) -> UniTVar -> SolverM ()
 modifyBounds f uv = modify (\(SolverState varMap cache kvars) -> SolverState (M.adjust f uv varMap) cache kvars)
@@ -79,7 +79,7 @@ modifyBounds f uv = modify (\(SolverState varMap cache kvars) -> SolverState (M.
 
 getBounds :: UniTVar -> SolverM VariableState
 getBounds uv = do
-  bounds <- gets sst_bounds
+  bounds <- gets (\x -> x.sst_bounds)
   case M.lookup uv bounds of
     Nothing -> throwSolverError defaultLoc [ "Tried to retrieve bounds for variable:"
                                            , ppPrint uv
@@ -88,7 +88,7 @@ getBounds uv = do
     Just vs -> return vs
 
 getKVars :: SolverM [([KVar],Maybe AnyKind)]
-getKVars = gets sst_kvars
+getKVars = gets (\x -> x.sst_kvars)
 
 
 putKVars :: [([KVar],Maybe AnyKind)] -> SolverM ()
@@ -98,14 +98,14 @@ addUpperBound :: UniTVar -> Typ Neg -> SolverM [Constraint ConstraintInfo]
 addUpperBound uv ty = do
   modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState (ty:ubs) lbs classes kind) uv
   bounds <- getBounds uv
-  let lbs = vst_lowerbounds bounds
+  let lbs = bounds.vst_lowerbounds
   return [SubType UpperBoundConstraint lb ty | lb <- lbs]
 
 addLowerBound :: UniTVar -> Typ Pos -> SolverM [Constraint ConstraintInfo]
 addLowerBound uv ty = do
   modifyBounds (\(VariableState ubs lbs classes kind) -> VariableState ubs (ty:lbs) classes kind) uv
   bounds <- getBounds uv
-  let ubs = vst_upperbounds bounds
+  let ubs = bounds.vst_upperbounds
   return [SubType LowerBoundConstraint ty ub | ub <- ubs]
 
 addTypeClassConstraint :: UniTVar -> ClassName -> SolverM ()
@@ -407,7 +407,7 @@ subConstraints KindEq{} = throwSolverError defaultLoc ["subContraints should not
 -- | Substitute cached witnesses for generated subtyping witness variables.
 substitute :: ReaderT (Set (Constraint ())) SolverM ()
 substitute = do
-    cache <- gets sst_cache
+    cache <- gets (\x -> x.sst_cache)
     forM_ (M.toList cache) $ \(c,w) -> do
       w <- go cache w
       lift $ modifyCache (M.adjust (const w) c)
@@ -442,7 +442,7 @@ substitute = do
 ------------------------------------------------------------------------------
 
 getUniVType :: Bisubstitution 'UniVT -> UniTVar -> Maybe (Typ Pos, Typ Neg)
-getUniVType bisubst uv = M.lookup uv (fst $ bisubst_map bisubst)
+getUniVType bisubst uv = M.lookup uv (fst bisubst.bisubst_map)
 
 -- | Get the inferred type for a unification variable constrained by a type class.
 -- We can assume here that either the positive type or the negative type consists of
@@ -481,7 +481,7 @@ resolveContraClass uv k (i@(_iname, typ, _tyn):instances) sup env = let
 
 -- | Get defined instances for a type class from environment.
 getInstances :: ClassName -> Map ModuleName Environment -> Maybe (Set (FreeVarName, Typ 'Pos, Typ 'Neg))
-getInstances cn env = M.lookup cn (M.unions $ instanceEnv <$> M.elems env)
+getInstances cn env = M.lookup cn (M.unions $ (\x -> x.instanceEnv) <$> M.elems env)
 
 ------------------------------------------------------------------------------
 -- Exported Functions
@@ -499,9 +499,9 @@ zonkVariableState m (VariableState lbs ubs tc k) = do
 solveConstraints :: ConstraintSet -> Maybe (KVar, AnyKind) -> Map ModuleName Environment -> Either (NE.NonEmpty Error) SolverResult
 solveConstraints constraintSet@(ConstraintSet css _ _) annotKind env = do
   (_, solverState) <- runSolverM (solve css >> runReaderT substitute S.empty) env (createInitState constraintSet)
-  kvarSolution <- computeKVarSolution ErrorUnresolved annotKind (sst_kvars solverState)
-  let tvarSol = zonkVariableState kvarSolution <$> sst_bounds solverState
-  return $ MkSolverResult tvarSol kvarSolution (sst_cache solverState)
+  kvarSolution <- computeKVarSolution ErrorUnresolved annotKind solverState.sst_kvars
+  let tvarSol = zonkVariableState kvarSolution <$> solverState.sst_bounds
+  return $ MkSolverResult tvarSol kvarSolution solverState.sst_cache
 
 -- | Check result of instance resolution. There should be exactly one instance resolved.
 checkResult :: PrettyAnn a => a -> ClassName -> [(FreeVarName, Typ Pos, Typ Neg)] -> [(FreeVarName, Typ Pos, Typ Neg)] -> Either (NE.NonEmpty Error) (FreeVarName, Typ Pos, Typ Neg)
@@ -533,7 +533,7 @@ resolveInstanceAnnot pol ty cn env = case getInstances cn env of
 -- | Resolves and returns the correct instance for each type-class-constrained unification variable.
 solveClassConstraints :: SolverResult -> Bisubstitution 'UniVT -> Map ModuleName Environment -> Either (NE.NonEmpty Error) InstanceResult
 solveClassConstraints sr bisubst env = do
-  let uvs = fmap (\(uv, vst) -> (uv, vst_typeclasses vst, vst_kind vst)) $ M.toList $ tvarSolution sr
+  let uvs = fmap (\(uv, vst) -> (uv, vst.vst_typeclasses, vst.vst_kind)) $ M.toList sr.tvarSolution
   res <- forM uvs $ \(uv, cns, k) -> do
     let mTy = getUniVType bisubst uv
     forM cns $ \cn -> ((uv,cn),) <$>

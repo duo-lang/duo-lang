@@ -60,7 +60,7 @@ deriving instance Show TermCase
 deriving instance Eq TermCase
 
 instance HasLoc TermCase where
-  getLoc tc = tmcase_loc tc
+  getLoc tc = tc.tmcase_loc
 
 --------------------------------------------------------------------------------------------
 -- Terms

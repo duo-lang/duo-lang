@@ -122,7 +122,7 @@ dualPattern (XtorPat _ xtor vars) =
   XtorPat defaultLoc (dualXtorName xtor) (map (bimap flipPC (dualFVName <$>)) vars)
 
 dualSubst :: Substitution -> DualizeM Substitution
-dualSubst = fmap MkSubstitution . mapM dualPrdCnsTerm . unSubstitution
+dualSubst = fmap MkSubstitution . mapM dualPrdCnsTerm . (\x -> x.unSubstitution)
 
 dualPrdCnsTerm :: PrdCnsTerm -> DualizeM PrdCnsTerm
 dualPrdCnsTerm (PrdTerm t) = dualTerm t <&> CnsTerm
@@ -261,36 +261,28 @@ dualPrdCnsDeclaration (TST.MkPrdCnsDeclaration loc doc rep isrec fv (TST.Annotat
   case rep of
     PrdRep -> pure (TST.MkPrdCnsDeclaration loc doc CnsRep isrec (dualFVName fv) (TST.Annotated (dualTypeScheme PosRep tys)) tm')
     CnsRep -> pure (TST.MkPrdCnsDeclaration loc doc PrdRep isrec (dualFVName fv) (TST.Annotated (dualTypeScheme NegRep tys)) tm')
-dualPrdCnsDeclaration (TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_annot = TST.Inferred _ }) =
-  throwDualizeError (DualNotAnnotated pcdecl_loc)
+dualPrdCnsDeclaration decl =
+  throwDualizeError (DualNotAnnotated decl.pcdecl_loc)
 
 dualCmdDeclaration :: TST.CommandDeclaration -> DualizeM TST.CommandDeclaration
-dualCmdDeclaration (TST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd }) = do
-  cmd' <- dualCmd cmddecl_cmd
-  pure TST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
-                                , cmddecl_doc = cmddecl_doc
-                                , cmddecl_name = dualFVName cmddecl_name
+dualCmdDeclaration decl = do
+  cmd' <- dualCmd decl.cmddecl_cmd
+  pure TST.MkCommandDeclaration { cmddecl_loc = decl.cmddecl_loc
+                                , cmddecl_doc = decl.cmddecl_doc
+                                , cmddecl_name = dualFVName decl.cmddecl_name
                                 , cmddecl_cmd = cmd'
                                 }
 
 dualDataDecl :: TST.DataDecl -> TST.DataDecl
-dualDataDecl TST.NominalDecl { data_loc, data_doc, data_name, data_polarity, data_kind, data_xtors = (sigsPos,sigsNeg) } =
-    TST.NominalDecl { data_loc = data_loc
-                    , data_doc = data_doc
-                    , data_name = dualRnTypeName data_name
-                    , data_polarity = flipDC data_polarity
-                    , data_kind = dualPolyKind data_kind
-                    , data_xtors = (dualXtorSig PosRep <$> sigsPos,dualXtorSig NegRep <$> sigsNeg )
+dualDataDecl decl@TST.NominalDecl{} =
+    TST.NominalDecl { data_loc = decl.data_loc
+                    , data_doc = decl.data_doc
+                    , data_name = dualRnTypeName decl.data_name
+                    , data_polarity = flipDC decl.data_polarity
+                    , data_kind = dualPolyKind decl.data_kind
+                    , data_xtors = (dualXtorSig PosRep <$> fst decl.data_xtors,dualXtorSig NegRep <$> snd decl.data_xtors )
                     }
-dualDataDecl TST.RefinementDecl { data_loc
-                                , data_doc
-                                , data_name
-                                , data_polarity
-                               , data_refinement_empty = (refinementEmptyPos, refinementEmptyNeg)
-                               , data_refinement_full = (refinementFullPos, refinementFullNeg)
-                                , data_kind
-                                , data_xtors = (sigsPos,sigsNeg)
-                                , data_xtors_refined = (sigsPosRefined, sigsNegRefined) } = do
+dualDataDecl (TST.RefinementDecl data_loc data_doc data_name data_polarity (refinementEmptyPos, refinementEmptyNeg) (refinementFullPos, refinementFullNeg) data_kind (sigsPos,sigsNeg) (sigsPosRefined, sigsNegRefined)) = do
     TST.RefinementDecl { data_loc = data_loc
                        , data_doc = data_doc
                        , data_name = dualRnTypeName data_name

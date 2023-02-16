@@ -76,20 +76,20 @@ instance ToJumpMap (RST.SubstitutionI pc) where
     M.unions ((toJumpMap <$> subst1) ++ (toJumpMap <$> subst2))
 
 instance ToJumpMap RST.CmdCase where
-  toJumpMap RST.MkCmdCase { cmdcase_cmd } =
-    toJumpMap cmdcase_cmd
+  toJumpMap cmdcase =
+    toJumpMap cmdcase.cmdcase_cmd
 
 instance ToJumpMap RST.InstanceCase where
-  toJumpMap RST.MkInstanceCase { instancecase_cmd } =
-    toJumpMap instancecase_cmd
+  toJumpMap icase =
+    toJumpMap icase.instancecase_cmd
 
 instance ToJumpMap (RST.TermCase pc) where
-  toJumpMap RST.MkTermCase { tmcase_term } =
-    toJumpMap tmcase_term
+  toJumpMap tmcase =
+    toJumpMap tmcase.tmcase_term
 
 instance ToJumpMap (RST.TermCaseI pc) where
-  toJumpMap RST.MkTermCaseI { tmcasei_term } =
-    toJumpMap tmcasei_term
+  toJumpMap icase =
+    toJumpMap icase.tmcasei_term
 
 instance ToJumpMap RST.Command where
   toJumpMap (RST.Apply _ prd cns) =
@@ -183,33 +183,33 @@ instance ToJumpMap (RST.XtorSig pol) where
     M.unions (toJumpMap <$> ctx)
 
 instance ToJumpMap (RST.TypeScheme pol) where
-  toJumpMap RST.TypeScheme { ts_monotype } =
-    toJumpMap ts_monotype
+  toJumpMap ts =
+    toJumpMap ts.ts_monotype
 
 ---------------------------------------------------------------------------------
 -- Converting programs to a JumpMap
 ---------------------------------------------------------------------------------
 
 instance ToJumpMap RST.Module where
-  toJumpMap RST.MkModule { mod_decls } = M.unions (toJumpMap <$> mod_decls)
+  toJumpMap mod = M.unions (toJumpMap <$> mod.mod_decls)
 
 instance ToJumpMap (RST.PrdCnsDeclaration pc) where
-  toJumpMap RST.MkPrdCnsDeclaration { pcdecl_term, pcdecl_annot = Nothing } =
-    toJumpMap pcdecl_term
-  toJumpMap RST.MkPrdCnsDeclaration { pcdecl_term, pcdecl_annot = Just tys} =
-    M.union (toJumpMap tys) (toJumpMap pcdecl_term)
+  toJumpMap decl =
+    case decl.pcdecl_annot of
+      Nothing -> toJumpMap decl.pcdecl_term
+      Just tys -> M.union (toJumpMap tys) (toJumpMap decl.pcdecl_term)
 
 instance ToJumpMap RST.CommandDeclaration where
-  toJumpMap RST.MkCommandDeclaration { cmddecl_cmd } =
-    toJumpMap cmddecl_cmd
+  toJumpMap decl=
+    toJumpMap decl.cmddecl_cmd
 
 instance ToJumpMap RST.TyOpDeclaration where
-  toJumpMap RST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_res } =
-    M.fromList [(locToRange tyopdecl_loc, toLocation tyopdecl_res)]
+  toJumpMap decl =
+    M.fromList [(locToRange decl.tyopdecl_loc, toLocation decl.tyopdecl_res)]
 
 instance ToJumpMap RST.InstanceDeclaration where
-  toJumpMap RST.MkInstanceDeclaration { instancedecl_cases } =
-    M.unions $ toJumpMap <$> instancedecl_cases
+  toJumpMap decl =
+    M.unions $ toJumpMap <$> decl.instancedecl_cases
 
 instance ToJumpMap RST.Declaration where
   toJumpMap (RST.PrdCnsDecl _ decl) = toJumpMap decl
@@ -225,8 +225,8 @@ instance ToJumpMap RST.Declaration where
 
 
 instance ToLocation RnTypeName where
-  toLocation MkRnTypeName { rnTnLoc, rnTnFp } =
-    let rng = locToRange rnTnLoc
-    in  Location { _uri = Uri $ maybe "" T.pack rnTnFp
+  toLocation rn =
+    let rng = locToRange rn.rnTnLoc
+    in  Location { _uri = Uri $ maybe "" T.pack rn.rnTnFp
                  , _range = rng
                  }

@@ -64,7 +64,7 @@ checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn _ xtorSi
 checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) tys) = do
 
   NominalResult _ _ _ polyKind' <- lookupTypeConstructor loc tyName
-  go ((\(v,_,_) -> v) <$> kindArgs polyKind') (NE.toList tys)
+  go ((\(v,_,_) -> v) <$> polyKind'.kindArgs) (NE.toList tys)
   where
     go :: [Variance] -> [CST.Typ] -> ResolverM ()
     go [] []          = return ()
@@ -75,7 +75,7 @@ checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) tys)
     go (_:_) []       = throwError (UnknownResolutionError loc ("Type Constructor " <> T.pack (show tyName) <> " is applied to too few arguments"))
 checkVarianceTyp loc _ _ (CST.TyNominal _loc' tyName) = do
   NominalResult _ _ _ polyKnd' <- lookupTypeConstructor loc tyName
-  case kindArgs polyKnd' of 
+  case polyKnd'.kindArgs of 
     [] -> return () 
     _ -> throwError (UnknownResolutionError loc ("Type Constructor " <> T.pack (show tyName) <> " is applied to too few arguments"))
 checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyParens _ ty) args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty args)
@@ -107,7 +107,7 @@ checkVarianceTyp loc var polyKind (CST.TyKindAnnot _ ty) = checkVarianceTyp loc 
 
 checkVarianceXtor :: Loc -> Variance -> PolyKind -> CST.XtorSig -> ResolverM ()
 checkVarianceXtor loc var polyKind xtor = do
-  sequence_ $ f <$> CST.sig_args xtor
+  sequence_ $ f <$> xtor.sig_args
   where
     f :: CST.PrdCnsTyp -> ResolverM ()
     f (CST.PrdType ty) = checkVarianceTyp loc (Covariant     <> var) polyKind ty
@@ -120,23 +120,23 @@ checkVarianceDataDecl loc polyKind pol xtors = do
     CST.Codata -> sequence_ $ checkVarianceXtor loc Contravariant polyKind <$> xtors
 
 resolveDataDecl :: CST.DataDecl -> ResolverM RST.DataDecl
-resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, data_polarity, data_kind, data_xtors } = do
-  case data_refined of
+resolveDataDecl decl = do
+  case decl.data_refined of
     CST.NotRefined -> do
       -------------------------------------------------------------------------
       -- Nominal Data Type
       -------------------------------------------------------------------------
-      NominalResult data_name' _ _ _ <- lookupTypeConstructor data_loc data_name
+      NominalResult data_name' _ _ _ <- lookupTypeConstructor decl.data_loc decl.data_name
       -- Default the kind if none was specified:
-      let polyKind = case data_kind of
-                        Nothing -> MkPolyKind [] (case data_polarity of CST.Data -> CBV; CST.Codata -> CBN)
+      let polyKind = case decl.data_kind of
+                        Nothing -> MkPolyKind [] (case decl.data_polarity of CST.Data -> CBV; CST.Codata -> CBN)
                         Just knd -> knd
-      checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
-      xtors <- resolveXtors data_xtors
-      pure RST.NominalDecl { data_loc = data_loc
-                           , data_doc = data_doc
+      checkVarianceDataDecl decl.data_loc polyKind decl.data_polarity decl.data_xtors
+      xtors <- resolveXtors decl.data_xtors
+      pure RST.NominalDecl { data_loc = decl.data_loc
+                           , data_doc = decl.data_doc
                            , data_name = data_name'
-                           , data_polarity = data_polarity
+                           , data_polarity = decl.data_polarity
                            , data_kind = polyKind
                            , data_xtors = xtors
                            }
@@ -144,10 +144,10 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
       -------------------------------------------------------------------------
       -- Refinement Data Type
       -------------------------------------------------------------------------
-      NominalResult data_name' _ _ _ <- lookupTypeConstructor data_loc data_name
+      NominalResult data_name' _ _ _ <- lookupTypeConstructor decl.data_loc decl.data_name
       -- Default the kind if none was specified:
-      polyKind <- case data_kind of
-                        Nothing -> pure $ MkPolyKind [] (case data_polarity of CST.Data -> CBV; CST.Codata -> CBN)
+      polyKind <- case decl.data_kind of
+                        Nothing -> pure $ MkPolyKind [] (case decl.data_polarity of CST.Data -> CBV; CST.Codata -> CBN)
                         Just knd -> pure knd
       -- checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
       -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
@@ -156,15 +156,15 @@ resolveDataDecl CST.MkDataDecl { data_loc, data_doc, data_refined, data_name, da
           g (NominalResult tn dc _ polykind) = NominalResult tn dc CST.NotRefined polykind
 
           f :: Map ModuleName SymbolTable -> Map ModuleName SymbolTable
-          f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g data_name (typeNameMap st) })) (M.toList x))
+          f x = M.fromList (fmap (\(mn, st) -> (mn, st { typeNameMap = M.adjust g decl.data_name st.typeNameMap })) (M.toList x))
 
           h :: ResolveReader -> ResolveReader
-          h r = r { rr_modules = f $ rr_modules r }
-      (xtorsPos, xtorsNeg) <- local h (resolveXtors data_xtors)
-      pure RST.RefinementDecl { data_loc = data_loc
-                              , data_doc = data_doc
+          h r = r { rr_modules = f r.rr_modules }
+      (xtorsPos, xtorsNeg) <- local h (resolveXtors decl.data_xtors)
+      pure RST.RefinementDecl { data_loc = decl.data_loc
+                              , data_doc = decl.data_doc
                               , data_name = data_name'
-                              , data_polarity = data_polarity
+                              , data_polarity = decl.data_polarity
                               , data_kind = polyKind
                               , data_xtors = (xtorsPos, xtorsNeg)
                               }
@@ -188,14 +188,14 @@ resolveMaybeAnnot pc (Just annot) = Just <$> resolveAnnot pc annot
 resolvePrdCnsDeclaration :: PrdCnsRep pc
                          -> CST.PrdCnsDeclaration
                          -> ResolverM (RST.PrdCnsDeclaration pc)
-resolvePrdCnsDeclaration pcrep CST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term } = do
-  pcdecl_annot' <- resolveMaybeAnnot pcrep pcdecl_annot
-  pcdecl_term' <- resolveTerm pcrep pcdecl_term
-  pure $ RST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
-                                 , pcdecl_doc = pcdecl_doc
+resolvePrdCnsDeclaration pcrep decl = do
+  pcdecl_annot' <- resolveMaybeAnnot pcrep decl.pcdecl_annot
+  pcdecl_term' <- resolveTerm pcrep decl.pcdecl_term
+  pure $ RST.MkPrdCnsDeclaration { pcdecl_loc = decl.pcdecl_loc
+                                 , pcdecl_doc = decl.pcdecl_doc
                                  , pcdecl_pc = pcrep
-                                 , pcdecl_isRec =pcdecl_isRec
-                                 , pcdecl_name = pcdecl_name
+                                 , pcdecl_isRec = decl.pcdecl_isRec
+                                 , pcdecl_name = decl.pcdecl_name
                                  , pcdecl_annot = pcdecl_annot'
                                  , pcdecl_term = pcdecl_term'
                                  }
@@ -206,11 +206,11 @@ resolvePrdCnsDeclaration pcrep CST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc,
 
 resolveCommandDeclaration :: CST.CommandDeclaration
                           -> ResolverM RST.CommandDeclaration
-resolveCommandDeclaration CST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } = do
-  cmddecl_cmd' <- resolveCommand cmddecl_cmd
-  pure $ RST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
-                                  , cmddecl_doc = cmddecl_doc
-                                  , cmddecl_name = cmddecl_name
+resolveCommandDeclaration decl = do
+  cmddecl_cmd' <- resolveCommand decl.cmddecl_cmd
+  pure $ RST.MkCommandDeclaration { cmddecl_loc = decl.cmddecl_loc
+                                  , cmddecl_doc = decl.cmddecl_doc
+                                  , cmddecl_name = decl.cmddecl_name
                                   , cmddecl_cmd= cmddecl_cmd'
                                   }
 
@@ -220,15 +220,15 @@ resolveCommandDeclaration CST.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, c
 
 resolveStructuralXtorDeclaration :: CST.StructuralXtorDeclaration
                                  -> ResolverM RST.StructuralXtorDeclaration
-resolveStructuralXtorDeclaration CST.MkStructuralXtorDeclaration {strxtordecl_loc, strxtordecl_doc, strxtordecl_xdata, strxtordecl_name, strxtordecl_arity, strxtordecl_evalOrder} = do
-  let evalOrder = case strxtordecl_evalOrder of
+resolveStructuralXtorDeclaration decl = do
+  let evalOrder = case decl.strxtordecl_evalOrder of
                   Just eo -> eo
-                  Nothing -> case strxtordecl_xdata of CST.Data -> CBV; CST.Codata -> CBN
-  pure $ RST.MkStructuralXtorDeclaration { strxtordecl_loc = strxtordecl_loc
-                                         , strxtordecl_doc = strxtordecl_doc
-                                         , strxtordecl_xdata = strxtordecl_xdata
-                                         , strxtordecl_name = strxtordecl_name
-                                         , strxtordecl_arity = strxtordecl_arity
+                  Nothing -> case decl.strxtordecl_xdata of CST.Data -> CBV; CST.Codata -> CBN
+  pure $ RST.MkStructuralXtorDeclaration { strxtordecl_loc = decl.strxtordecl_loc
+                                         , strxtordecl_doc = decl.strxtordecl_doc
+                                         , strxtordecl_xdata = decl.strxtordecl_xdata
+                                         , strxtordecl_name = decl.strxtordecl_name
+                                         , strxtordecl_arity = decl.strxtordecl_arity
                                          , strxtordecl_evalOrder = evalOrder
                                          }
 
@@ -238,13 +238,13 @@ resolveStructuralXtorDeclaration CST.MkStructuralXtorDeclaration {strxtordecl_lo
 
 resolveTyOpDeclaration :: CST.TyOpDeclaration
                        -> ResolverM RST.TyOpDeclaration
-resolveTyOpDeclaration CST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopdecl_sym, tyopdecl_prec, tyopdecl_assoc, tyopdecl_res } = do
-  NominalResult tyname' _ _ _ <- lookupTypeConstructor tyopdecl_loc tyopdecl_res
-  pure RST.MkTyOpDeclaration { tyopdecl_loc = tyopdecl_loc
-                             , tyopdecl_doc = tyopdecl_doc
-                             , tyopdecl_sym = tyopdecl_sym
-                             , tyopdecl_prec = tyopdecl_prec
-                             , tyopdecl_assoc = tyopdecl_assoc
+resolveTyOpDeclaration decl= do
+  NominalResult tyname' _ _ _ <- lookupTypeConstructor decl.tyopdecl_loc decl.tyopdecl_res
+  pure RST.MkTyOpDeclaration { tyopdecl_loc = decl.tyopdecl_loc
+                             , tyopdecl_doc = decl.tyopdecl_doc
+                             , tyopdecl_sym = decl.tyopdecl_sym
+                             , tyopdecl_prec = decl.tyopdecl_prec
+                             , tyopdecl_assoc = decl.tyopdecl_assoc
                              , tyopdecl_res = tyname'
                              }
 
@@ -254,12 +254,12 @@ resolveTyOpDeclaration CST.MkTyOpDeclaration { tyopdecl_loc, tyopdecl_doc, tyopd
 
 resolveTySynDeclaration :: CST.TySynDeclaration
                         -> ResolverM RST.TySynDeclaration
-resolveTySynDeclaration CST.MkTySynDeclaration { tysyndecl_loc, tysyndecl_doc, tysyndecl_name, tysyndecl_res } = do
-  typ <- resolveTyp PosRep tysyndecl_res
-  tyn <- resolveTyp NegRep tysyndecl_res
-  pure RST.MkTySynDeclaration { tysyndecl_loc = tysyndecl_loc
-                              , tysyndecl_doc = tysyndecl_doc
-                              , tysyndecl_name = tysyndecl_name
+resolveTySynDeclaration decl = do
+  typ <- resolveTyp PosRep decl.tysyndecl_res
+  tyn <- resolveTyp NegRep decl.tysyndecl_res
+  pure RST.MkTySynDeclaration { tysyndecl_loc = decl.tysyndecl_loc
+                              , tysyndecl_doc = decl.tysyndecl_doc
+                              , tysyndecl_name = decl.tysyndecl_name
                               , tysyndecl_res = (typ, tyn)
                               }
 
@@ -279,13 +279,13 @@ resolveMethods sigs = do
 
 resolveClassDeclaration :: CST.ClassDeclaration
                         -> ResolverM RST.ClassDeclaration
-resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, classdecl_name, classdecl_kinds, classdecl_methods } = do
-  checkVarianceClassDeclaration classdecl_loc classdecl_kinds classdecl_methods
-  methodRes <- resolveMethods classdecl_methods
-  pure RST.MkClassDeclaration { classdecl_loc     = classdecl_loc
-                              , classdecl_doc     = classdecl_doc
-                              , classdecl_name    = classdecl_name
-                              , classdecl_kinds   = classdecl_kinds
+resolveClassDeclaration decl = do
+  checkVarianceClassDeclaration decl.classdecl_loc decl.classdecl_kinds decl.classdecl_methods
+  methodRes <- resolveMethods decl.classdecl_methods
+  pure RST.MkClassDeclaration { classdecl_loc     = decl.classdecl_loc
+                              , classdecl_doc     = decl.classdecl_doc
+                              , classdecl_name    = decl.classdecl_name
+                              , classdecl_kinds   = decl.classdecl_kinds
                               , classdecl_methods = methodRes
                               }
 
@@ -295,14 +295,14 @@ resolveClassDeclaration CST.MkClassDeclaration { classdecl_loc, classdecl_doc, c
 
 resolveInstanceDeclaration :: CST.InstanceDeclaration
                         -> ResolverM RST.InstanceDeclaration
-resolveInstanceDeclaration CST.MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases } = do
-  typ <- resolveTyp PosRep instancedecl_typ
-  tyn <- resolveTyp NegRep instancedecl_typ
-  tc <- mapM resolveInstanceCase instancedecl_cases
-  pure RST.MkInstanceDeclaration { instancedecl_loc = instancedecl_loc
-                                 , instancedecl_doc = instancedecl_doc
-                                 , instancedecl_name = instancedecl_name
-                                 , instancedecl_class = instancedecl_class
+resolveInstanceDeclaration decl = do
+  typ <- resolveTyp PosRep decl.instancedecl_typ
+  tyn <- resolveTyp NegRep decl.instancedecl_typ
+  tc <- mapM resolveInstanceCase decl.instancedecl_cases
+  pure RST.MkInstanceDeclaration { instancedecl_loc = decl.instancedecl_loc
+                                 , instancedecl_doc = decl.instancedecl_doc
+                                 , instancedecl_name = decl.instancedecl_name
+                                 , instancedecl_class = decl.instancedecl_class
                                  , instancedecl_typ = (typ, tyn)
                                  , instancedecl_cases = tc
                                  }
@@ -313,7 +313,7 @@ resolveInstanceDeclaration CST.MkInstanceDeclaration { instancedecl_loc, instanc
 
 resolveDecl :: CST.Declaration -> ResolverM RST.Declaration
 resolveDecl (CST.PrdCnsDecl decl) = do
-  case CST.pcdecl_pc decl of
+  case decl.pcdecl_pc of
     Prd -> do
       decl' <- resolvePrdCnsDeclaration PrdRep decl
       pure (RST.PrdCnsDecl PrdRep decl')
@@ -349,9 +349,9 @@ resolveDecl CST.ParseErrorDecl =
   throwError (UnknownResolutionError defaultLoc "Unreachable: ParseErrorDecl cannot be parsed")
 
 resolveModule :: CST.Module -> ResolverM RST.Module
-resolveModule CST.MkModule { mod_name, mod_libpath, mod_decls } = do
-  decls' <- mapM resolveDecl mod_decls
-  pure RST.MkModule { mod_name = mod_name
-                    , mod_libpath = mod_libpath
+resolveModule mod = do
+  decls' <- mapM resolveDecl mod.mod_decls
+  pure RST.MkModule { mod_name = mod.mod_name
+                    , mod_libpath = mod.mod_libpath
                     , mod_decls = decls'
                     }

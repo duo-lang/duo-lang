@@ -88,12 +88,11 @@ anyToMonoKind MkString = StringRep
 anyToMonoKind _ = error "should never happen"
 
 allTypeVars :: PolyKind -> Set SkolemTVar
-allTypeVars MkPolyKind{ kindArgs } =
-  S.fromList ((\(_,var,_) -> var) <$> kindArgs)
+allTypeVars pk@MkPolyKind{} = S.fromList ((\(_,var,_) -> var) <$> pk.kindArgs)
 allTypeVars (KindVar _) = S.empty
 
 lookupPolyKind :: SkolemTVar -> PolyKind -> Maybe (Variance, SkolemTVar, MonoKind)
-lookupPolyKind tv MkPolyKind{ kindArgs } = go kindArgs
+lookupPolyKind tv pk@MkPolyKind{} = go pk.kindArgs
   where
     go :: [(Variance, SkolemTVar, MonoKind)] -> Maybe (Variance, SkolemTVar, MonoKind)
     go [] = Nothing
