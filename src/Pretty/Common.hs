@@ -17,7 +17,7 @@ import Syntax.CST.Names
       PrimName(..),
       Precedence(..),
       RecTVar(MkRecTVar),
-      RnTypeName(MkRnTypeName, rnTnName),
+      RnTypeName(rnTnName),
       SkolemTVar(MkSkolemTVar),
       TypeName(MkTypeName),
       UniTVar(MkUniTVar),
@@ -84,7 +84,7 @@ instance PrettyAnn TypeName where
   prettyAnn (MkTypeName tn) = annTypeName (pretty tn)
 
 instance PrettyAnn RnTypeName where
-  prettyAnn MkRnTypeName { rnTnName } = prettyAnn rnTnName
+  prettyAnn tn = prettyAnn tn.rnTnName
 
 instance PrettyAnn Precedence where
   prettyAnn (MkPrecedence i) = pretty i
@@ -140,12 +140,12 @@ instance PrettyAnn Variance where
   prettyAnn Contravariant = annSymbol "-"
 
 instance PrettyAnn PolyKind where
-  prettyAnn MkPolyKind { kindArgs = [], returnKind } =
-    prettyAnn returnKind
-  prettyAnn MkPolyKind { kindArgs, returnKind } =
-    parens' comma (prettyTParam <$> kindArgs) <+>
+  prettyAnn pk@MkPolyKind{} | null pk.kindArgs =
+    prettyAnn pk.returnKind
+  prettyAnn pk@MkPolyKind{} =
+    parens' comma (prettyTParam <$> pk.kindArgs) <+>
     annSymbol "->" <+>
-    prettyAnn returnKind
+    prettyAnn pk.returnKind
   prettyAnn (KindVar kv) = prettyAnn kv
 
 instance PrettyAnn AnyKind where 

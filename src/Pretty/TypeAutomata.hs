@@ -21,8 +21,8 @@ import Syntax.RST.Types (Polarity(..))
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn XtorLabel where
-  prettyAnn MkXtorLabel { labelName, labelArity } =
-    prettyAnn labelName <> prettyArity labelArity
+  prettyAnn lbl =
+    prettyAnn lbl.labelName <> prettyArity lbl.labelArity
 
 instance PrettyAnn PrimitiveType where
   prettyAnn I64 = "I64"
@@ -64,9 +64,9 @@ instance PrettyAnn (EdgeLabel a) where
   prettyAnn (TypeArgEdge tn v i) = "TypeArg" <> parens (prettyAnn tn <> " , " <> prettyAnn v <> " , " <> pretty i)
 
 typeAutToDot :: Bool -> TypeAut' (EdgeLabel a) f pol -> DotGraph Node
-typeAutToDot showId TypeAut {ta_core = TypeAutCore{..}} =
+typeAutToDot showId aut =
     let
-      grWithFlow = insEdges [(i,j,EpsilonEdge (error "Never forced")) | (i,j) <- ta_flowEdges] ta_gr
+      grWithFlow = insEdges [(i,j,EpsilonEdge (error "Never forced")) | (i,j) <- aut.ta_core.ta_flowEdges] aut.ta_core.ta_gr
     in
       graphToDot (typeAutParams showId) grWithFlow
 

@@ -62,13 +62,13 @@ import Data.Bifunctor (Bifunctor(first))
 getAnnotKind :: TST.Typ pol -> Maybe (TST.TypeScheme pol) -> Maybe (KVar, AnyKind)
 getAnnotKind tyInf maybeAnnot = 
   case (TST.getKind tyInf,maybeAnnot) of 
-    (MkPknd (KindVar kv),Just annot) -> Just (kv,TST.getKind (TST.ts_monotype annot))
+    (MkPknd (KindVar kv),Just annot) -> Just (kv,TST.getKind annot.ts_monotype)
     _ -> Nothing
 
 checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
 checkKindAnnot Nothing _ = return Nothing
 checkKindAnnot (Just tyAnnotated) loc = do
-  env <- gets drvEnv
+  env <- gets (\x -> x.drvEnv)
   (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
   solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs Nothing env
   let bisubstAnnot = coalesce solverResAnnot
@@ -102,65 +102,65 @@ checkAnnot rep tyInferred (Just tyAnnotated) loc = do
 inferPrdCnsDeclaration :: ModuleName
                        -> Core.PrdCnsDeclaration pc
                        -> DriverM (TST.PrdCnsDeclaration pc)
-inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcdecl_pc, pcdecl_isRec, pcdecl_name, pcdecl_annot, pcdecl_term} = do
-  infopts <- gets drvOpts
-  env <- gets drvEnv
+inferPrdCnsDeclaration mn decl = do
+  infopts <- gets (\x -> x.drvOpts)
+  env <- gets (\x -> x.drvEnv)
   -- 1. Generate the constraints.
-  let genFun = case pcdecl_isRec of
-        CST.Recursive -> genConstraintsTermRecursive mn pcdecl_loc pcdecl_name pcdecl_pc pcdecl_term
-        CST.NonRecursive -> genConstraints pcdecl_term
-  (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
+  let genFun = case decl.pcdecl_isRec of
+        CST.Recursive -> genConstraintsTermRecursive mn decl.pcdecl_loc decl.pcdecl_name decl.pcdecl_pc decl.pcdecl_term
+        CST.NonRecursive -> genConstraints decl.pcdecl_term
+  (tmInferred, constraintSet) <- liftEitherErr (runGenM decl.pcdecl_loc env genFun)
   guardVerbose $ do
-    ppPrintIO (Header pcdecl_name.unFreeVarName)
+    ppPrintIO (Header decl.pcdecl_name.unFreeVarName)
     ppPrintIO ("" :: T.Text)
-    ppPrintIO pcdecl_term
+    ppPrintIO decl.pcdecl_term
     ppPrintIO ("" :: T.Text)
     ppPrintIO constraintSet
   -- 2. Solve the constraints.
-  tyAnnotChecked <- checkKindAnnot pcdecl_annot pcdecl_loc
+  tyAnnotChecked <- checkKindAnnot decl.pcdecl_annot decl.pcdecl_loc
   let tyInf = TST.getTypeTerm tmInferred
   let annotKind = getAnnotKind tyInf tyAnnotChecked 
-  solverResult <- liftEitherErrLoc pcdecl_loc $ solveConstraints constraintSet annotKind env
+  solverResult <- liftEitherErrLoc decl.pcdecl_loc $ solveConstraints constraintSet annotKind env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
   -- 4. Solve the type class constraints.
-  instances <- liftEitherErrLoc pcdecl_loc $ solveClassConstraints solverResult bisubst env
+  instances <- liftEitherErrLoc decl.pcdecl_loc $ solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
-  tmInferred <- liftEitherErrLoc pcdecl_loc (insertInstance instances tmInferred)
+  tmInferred <- liftEitherErrLoc decl.pcdecl_loc (insertInstance instances tmInferred)
   -- 5. Read of the type and generate the resulting type
   let typ = TST.zonk TST.UniRep bisubst (TST.getTypeTerm tmInferred)
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
   -- 6. Simplify
-  typSimplified <- if infOptsSimplify infopts then (do
-                     printGraphs <- gets (infOptsPrintGraphs . drvOpts)
-                     tys <- simplify (TST.generalize typ) printGraphs (T.unpack pcdecl_name.unFreeVarName)
+  typSimplified <- if infopts.infOptsSimplify then (do
+                     printGraphs <- gets (\x -> x.drvOpts.infOptsPrintGraphs)
+                     tys <- simplify (TST.generalize typ) printGraphs (T.unpack decl.pcdecl_name.unFreeVarName)
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
-  ty <- checkAnnot (prdCnsToPol pcdecl_pc) typSimplified tyAnnotChecked pcdecl_loc
+  ty <- checkAnnot (prdCnsToPol decl.pcdecl_pc) typSimplified tyAnnotChecked decl.pcdecl_loc
   -- 7. Insert into environment
-  case pcdecl_pc of
+  case decl.pcdecl_pc of
     PrdRep -> do
-      let f env = env { prdEnv  = M.insert pcdecl_name (tmInferred ,pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) (prdEnv env) }
+      let f env = env { prdEnv  = M.insert decl.pcdecl_name (tmInferred ,decl.pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) env.prdEnv }
       modifyEnvironment mn f
-      pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
-                                   , pcdecl_doc = pcdecl_doc
-                                   , pcdecl_pc = pcdecl_pc
-                                   , pcdecl_isRec = pcdecl_isRec
-                                   , pcdecl_name = pcdecl_name
+      pure TST.MkPrdCnsDeclaration { pcdecl_loc = decl.pcdecl_loc
+                                   , pcdecl_doc = decl.pcdecl_doc
+                                   , pcdecl_pc = decl.pcdecl_pc
+                                   , pcdecl_isRec = decl.pcdecl_isRec
+                                   , pcdecl_name = decl.pcdecl_name
                                    , pcdecl_annot = ty
                                    , pcdecl_term = tmInferred
                                    }
     CnsRep -> do
-      let f env = env { cnsEnv  = M.insert pcdecl_name (tmInferred, pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) (cnsEnv env) }
+      let f env = env { cnsEnv  = M.insert decl.pcdecl_name (tmInferred, decl.pcdecl_loc, case ty of TST.Annotated ty -> ty; TST.Inferred ty -> ty) env.cnsEnv }
       modifyEnvironment mn f
-      pure TST.MkPrdCnsDeclaration { pcdecl_loc = pcdecl_loc
-                                   , pcdecl_doc = pcdecl_doc
-                                   , pcdecl_pc = pcdecl_pc
-                                   , pcdecl_isRec = pcdecl_isRec
-                                   , pcdecl_name = pcdecl_name
+      pure TST.MkPrdCnsDeclaration { pcdecl_loc = decl.pcdecl_loc
+                                   , pcdecl_doc = decl.pcdecl_doc
+                                   , pcdecl_pc = decl.pcdecl_pc
+                                   , pcdecl_isRec = decl.pcdecl_isRec
+                                   , pcdecl_name = decl.pcdecl_name
                                    , pcdecl_annot = ty
                                    , pcdecl_term = tmInferred
                                    }
@@ -169,16 +169,16 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
 inferCommandDeclaration :: ModuleName
                         -> Core.CommandDeclaration
                         -> DriverM TST.CommandDeclaration
-inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc, cmddecl_name, cmddecl_cmd } = do
-  env <- gets drvEnv
+inferCommandDeclaration mn decl = do
+  env <- gets (\x -> x.drvEnv)
   -- Generate the constraints
-  (cmdInferred,constraints) <- liftEitherErr (runGenM cmddecl_loc env (genConstraints cmddecl_cmd))
+  (cmdInferred,constraints) <- liftEitherErr (runGenM decl.cmddecl_loc env (genConstraints decl.cmddecl_cmd))
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints Nothing env
+  solverResult <- liftEitherErrLoc decl.cmddecl_loc $ solveConstraints constraints Nothing env
   guardVerbose $ do
-    ppPrintIO (Header cmddecl_name.unFreeVarName)
+    ppPrintIO (Header decl.cmddecl_name.unFreeVarName)
     ppPrintIO ("" :: T.Text)
-    ppPrintIO cmddecl_cmd
+    ppPrintIO decl.cmddecl_cmd
     ppPrintIO ("" :: T.Text)
     ppPrintIO constraints
     ppPrintIO solverResult
@@ -186,64 +186,64 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
   -- Solve the type class constraints.
-  instances <- liftEitherErrLoc cmddecl_loc $ solveClassConstraints solverResult bisubst env
+  instances <- liftEitherErrLoc decl.cmddecl_loc $ solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
-  cmdInferred <- liftEitherErrLoc cmddecl_loc (insertInstance instances cmdInferred)
+  cmdInferred <- liftEitherErrLoc decl.cmddecl_loc (insertInstance instances cmdInferred)
   -- Insert into environment
-  let f env = env { cmdEnv = M.insert cmddecl_name (cmdInferred, cmddecl_loc) (cmdEnv env)}
+  let f env = env { cmdEnv = M.insert decl.cmddecl_name (cmdInferred, decl.cmddecl_loc) env.cmdEnv }
   modifyEnvironment mn f
-  pure TST.MkCommandDeclaration { cmddecl_loc = cmddecl_loc
-                                , cmddecl_doc = cmddecl_doc
-                                , cmddecl_name = cmddecl_name
+  pure TST.MkCommandDeclaration { cmddecl_loc = decl.cmddecl_loc
+                                , cmddecl_doc = decl.cmddecl_doc
+                                , cmddecl_name = decl.cmddecl_name
                                 , cmddecl_cmd = cmdInferred
                                 }
 
 inferInstanceDeclaration :: ModuleName
                         -> Core.InstanceDeclaration
                         -> DriverM TST.InstanceDeclaration
-inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, instancedecl_class, instancedecl_name, instancedecl_typ } = do
-  env <- gets drvEnv
+inferInstanceDeclaration mn decl= do
+  env <- gets (\x -> x.drvEnv)
   -- Generate the constraints
-  (instanceInferred,constraints) <- liftEitherErr (runGenM instancedecl_loc env (genConstraints decl))
+  (instanceInferred,constraints) <- liftEitherErr (runGenM decl.instancedecl_loc env (genConstraints decl))
   -- Solve the constraints
-  solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints Nothing env
+  solverResult <- liftEitherErrLoc decl.instancedecl_loc $ solveConstraints constraints Nothing env
   guardVerbose $ do
-    ppPrintIO (Header  $ instancedecl_class.unClassName <> " " <> ppPrint (fst instancedecl_typ))
+    ppPrintIO (Header  $ decl.instancedecl_class.unClassName <> " " <> ppPrint (fst decl.instancedecl_typ))
     ppPrintIO ("" :: T.Text)
     ppPrintIO (Core.InstanceDecl decl)
     ppPrintIO ("" :: T.Text)
     ppPrintIO constraints
     ppPrintIO solverResult
   -- Insert instance into environment to allow recursive method definitions
-  let (typ, tyn) = TST.instancedecl_typ instanceInferred
-  checkOverlappingInstances instancedecl_loc instancedecl_class (typ, tyn)
-  let iname = TST.instancedecl_name instanceInferred
-  let f env = env { instanceEnv = M.adjust (S.insert (iname, typ, tyn)) instancedecl_class (instanceEnv env) }
+  let (typ, tyn) = instanceInferred.instancedecl_typ
+  checkOverlappingInstances decl.instancedecl_loc decl.instancedecl_class (typ, tyn)
+  let iname = instanceInferred.instancedecl_name
+  let f env = env { instanceEnv = M.adjust (S.insert (iname, typ, tyn)) decl.instancedecl_class env.instanceEnv }
   modifyEnvironment mn f
   -- Coalesce the result
   let bisubst = coalesce solverResult
   guardVerbose $ ppPrintIO bisubst
   -- Solve the type class constraints.
-  env <- gets drvEnv
-  instances <- liftEitherErrLoc instancedecl_loc $ solveClassConstraints solverResult bisubst env
+  env <- gets (\x -> x.drvEnv)
+  instances <- liftEitherErrLoc decl.instancedecl_loc $ solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
-  instanceInferred <- liftEitherErrLoc instancedecl_loc (insertInstance instances instanceInferred)      
+  instanceInferred <- liftEitherErrLoc decl.instancedecl_loc (insertInstance instances instanceInferred)      
   -- Insert inferred instance into environment   
-  let f env = env { instanceDeclEnv = M.insert instancedecl_name instanceInferred (instanceDeclEnv env)}
+  let f env = env { instanceDeclEnv = M.insert decl.instancedecl_name instanceInferred env.instanceDeclEnv}
   modifyEnvironment mn f
   pure instanceInferred
 
 -- | For each instance of the same class in the environment, check whether it is a sub- or supertype of the declared instance type.
 checkOverlappingInstances :: Loc -> ClassName -> (TST.Typ RST.Pos, TST.Typ RST.Neg) -> DriverM ()
 checkOverlappingInstances loc cn (typ, tyn) = do
-  env <- gets drvEnv
-  let instances = M.unions . fmap instanceEnv . M.elems $ env
+  env <- gets (\x -> x.drvEnv)
+  let instances = M.unions . fmap (\x -> x.instanceEnv) . M.elems $ env
   case M.lookup cn instances of
     Nothing -> pure () -- No overlapping instances
     Just insts -> mapM_ (checkOverlap loc (typ, tyn)) (S.toList insts)
   where checkOverlap :: Loc -> (TST.Typ RST.Pos, TST.Typ RST.Neg) -> (FreeVarName, TST.Typ RST.Pos, TST.Typ RST.Neg) -> DriverM ()
         checkOverlap loc (typ, tyn) (inst, typ', tyn') = do
-          printGraphs <- gets (infOptsPrintGraphs . drvOpts)
+          printGraphs <- gets (\x -> x.drvOpts.infOptsPrintGraphs)
           let err = ErrOther $ SomeOtherError loc $ T.unlines [ "The instance declared is overlapping and violates type class coherence."
                                                               , " Conflicting instance " <> ppPrint inst <> " : " <> ppPrint cn <> " " <> ppPrint typ'
                                                               ]
@@ -254,9 +254,9 @@ checkOverlappingInstances loc cn (typ, tyn) = do
 inferClassDeclaration :: ModuleName
                       -> RST.ClassDeclaration
                       -> DriverM RST.ClassDeclaration
-inferClassDeclaration mn decl@RST.MkClassDeclaration { classdecl_name } = do
-  let f env = env { classEnv = M.insert classdecl_name decl (classEnv env)
-                  , instanceEnv = M.insert classdecl_name S.empty (instanceEnv env) }
+inferClassDeclaration mn decl = do
+  let f env = env { classEnv = M.insert decl.classdecl_name decl env.classEnv
+                  , instanceEnv = M.insert decl.classdecl_name S.empty env.instanceEnv }
   modifyEnvironment mn f
   pure decl
 
@@ -284,12 +284,12 @@ inferDecl mn (Core.CmdDecl decl) = do
 inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
   let loc = decl.data_loc
-  env <- gets drvEnv
+  env <- gets (\x->x.drvEnv)
   let xtorNames = map (\x -> x.sig_name) (fst decl.data_xtors)
   let retKnd = decl.data_kind.returnKind 
   let kndList = zip xtorNames (repeat retKnd) 
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
-  let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = M.fromList (kndList ++ M.toList (kindEnv env)) }
+  let f env = env { declEnv = (loc, decl') : env.declEnv, kindEnv = M.fromList (kndList ++ M.toList env.kindEnv) }
   modifyEnvironment mn f
   pure (TST.DataDecl decl')
 
@@ -300,7 +300,7 @@ inferDecl _mn (Core.XtorDecl decl) = do
   -- check constructor kinds
   let retKnd = decl.strxtordecl_evalOrder
   let xtornm = decl.strxtordecl_name
-  let f env = env { kindEnv = M.insert xtornm retKnd (kindEnv env), xtorEnv = M.insert xtornm decl (xtorEnv env)}
+  let f env = env { kindEnv = M.insert xtornm retKnd env.kindEnv, xtorEnv = M.insert xtornm decl env.xtorEnv}
   modifyEnvironment _mn f
   pure (TST.XtorDecl decl)
 --
@@ -312,8 +312,8 @@ inferDecl _mn (Core.ImportDecl decl) = do
 --
 -- SetDecl
 --
-inferDecl _mn (Core.SetDecl CST.MkSetDeclaration { setdecl_option, setdecl_loc }) =
-  throwOtherError setdecl_loc ["Unknown option: " <> setdecl_option]
+inferDecl _mn (Core.SetDecl decl) =
+  throwOtherError decl.setdecl_loc ["Unknown option: " <> decl.setdecl_option]
 --
 -- TyOpDecl
 --
@@ -342,12 +342,12 @@ inferDecl mn (Core.InstanceDecl decl) = do
   pure (TST.InstanceDecl decl')
 
 inferProgram :: Core.Module -> DriverM TST.Module
-inferProgram Core.MkModule { mod_name, mod_libpath, mod_decls } = do
+inferProgram mod = do
   let inferDecl' :: Core.Declaration -> DriverM (Maybe TST.Declaration)
-      inferDecl' d = catchError (Just <$> inferDecl mod_name d) (addErrorsNonEmpty mod_name Nothing)
-  newDecls <- catMaybes <$> mapM inferDecl' mod_decls
-  pure TST.MkModule { mod_name = mod_name
-                    , mod_libpath = mod_libpath
+      inferDecl' d = catchError (Just <$> inferDecl mod.mod_name d) (addErrorsNonEmpty mod.mod_name Nothing)
+  newDecls <- catMaybes <$> mapM inferDecl' mod.mod_decls
+  pure TST.MkModule { mod_name = mod.mod_name
+                    , mod_libpath = mod.mod_libpath
                     , mod_decls = newDecls
                     }
 
@@ -440,5 +440,5 @@ inferProgramIO state decls = do
   res <- execDriverM state action
   case res of
     (Left err, warnings) -> return (Left err, warnings)
-    (Right (res,x), warnings) -> return (Right (drvEnv x, res), warnings)
+    (Right (res,x), warnings) -> return (Right (x.drvEnv, res), warnings)
 

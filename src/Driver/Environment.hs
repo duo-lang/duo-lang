@@ -75,13 +75,13 @@ lookupTerm :: EnvReader a m => Loc -> PrdCnsRep pc -> FreeVarName -> m (Term pc,
 lookupTerm loc PrdRep fv = do
   env <- asks fst
   let err = ErrOther $ SomeOtherError loc ("Unbound free producer variable " <> ppPrint fv <> " is not contained in environment.\n" <> ppPrint (M.keys env))
-  let f env = case M.lookup fv (prdEnv env) of
+  let f env = case M.lookup fv env.prdEnv of
                        Nothing -> Nothing
                        Just (res1,_,res2) -> Just (res1,res2)
   snd <$> findFirstM f err
 lookupTerm loc CnsRep fv = do
   let err = ErrOther $ SomeOtherError loc ("Unbound free consumer variable " <> ppPrint fv <> " is not contained in environment.")
-  let f env = case M.lookup fv (cnsEnv env) of
+  let f env = case M.lookup fv env.cnsEnv of
                        Nothing -> Nothing
                        Just (res1,_,res2) -> return (res1,res2)
   snd <$> findFirstM f err
@@ -94,7 +94,7 @@ lookupTerm loc CnsRep fv = do
 lookupCommand :: EnvReader a m => Loc -> FreeVarName -> m Command
 lookupCommand loc fv = do
   let err = ErrOther $ SomeOtherError loc ("Unbound free command variable " <> ppPrint fv <> " is not contained in environment.")
-  let f env = case M.lookup fv (cmdEnv env) of
+  let f env = case M.lookup fv env.cmdEnv of
                      Nothing -> Nothing
                      Just (res, _) -> return res
   snd <$> findFirstM f err
@@ -105,14 +105,14 @@ lookupDataDecl :: EnvReader a m
                => Loc -> XtorName -> m DataDecl
 lookupDataDecl loc xt = do
   let containsXtor :: XtorSig Pos -> Bool
-      containsXtor sig = sig_name sig == xt
+      containsXtor sig = sig.sig_name == xt
   let typeContainsXtor :: DataDecl -> Bool
-      typeContainsXtor NominalDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
+      typeContainsXtor decl@NominalDecl {} | or (containsXtor <$> fst decl.data_xtors) = True
                                                       | otherwise = False
-      typeContainsXtor RefinementDecl { data_xtors } | or (containsXtor <$> fst data_xtors) = True
-                                                         | otherwise = False
+      typeContainsXtor decl@RefinementDecl {} | or (containsXtor <$> fst decl.data_xtors) = True
+                                                      | otherwise = False
   let err = ErrOther $ SomeOtherError loc ("Constructor/Destructor " <> ppPrint xt <> " is not contained in program.")
-  let f env = find typeContainsXtor (fmap snd (declEnv env))
+  let f env = find typeContainsXtor (fmap snd env.declEnv)
   snd <$> findFirstM f err
 
 -- | Find the type declaration belonging to a given TypeName.
@@ -120,9 +120,9 @@ lookupTypeName :: EnvReader a m
                => Loc -> RnTypeName -> m DataDecl
 lookupTypeName loc tn = do
   let err = ErrOther $ SomeOtherError loc ("Type name " <> tn.rnTnName.unTypeName <> " not found in environment")
-  let findFun NominalDecl{..} = data_name == tn
-      findFun RefinementDecl {..} = data_name == tn
-  let f env = find findFun (fmap snd (declEnv env))
+  let findFun decl@NominalDecl{} = decl.data_name == tn
+      findFun decl@RefinementDecl {} = decl.data_name == tn
+  let f env = find findFun (fmap snd env.declEnv)
   snd <$> findFirstM f err
 
 -- | Find the XtorSig belonging to a given XtorName.
@@ -130,14 +130,14 @@ lookupXtorSig :: EnvReader a m
               => Loc -> XtorName -> PolarityRep pol -> m (XtorSig pol)
 lookupXtorSig loc xtn PosRep = do
   decl <- lookupDataDecl loc xtn
-  case find ( \MkXtorSig{..} -> sig_name == xtn ) (fst (data_xtors decl)) of
+  case find ( \sig -> sig.sig_name == xtn ) (fst decl.data_xtors) of
     Just xts -> pure xts
-    Nothing -> throwOtherError loc ["XtorName " <> xtn.unXtorName <> " not found in declaration of type " <> (data_name decl).rnTnName.unTypeName]
+    Nothing -> throwOtherError loc ["XtorName " <> xtn.unXtorName <> " not found in declaration of type " <> decl.data_name.rnTnName.unTypeName]
 lookupXtorSig loc xtn NegRep = do
   decl <- lookupDataDecl loc xtn
-  case find ( \MkXtorSig{..} -> sig_name == xtn ) (snd (data_xtors decl)) of
+  case find ( \sig -> sig.sig_name == xtn ) (snd decl.data_xtors) of
     Just xts -> pure xts
-    Nothing -> throwOtherError loc ["XtorName " <> xtn.unXtorName <> " not found in declaration of type " <> (data_name decl).rnTnName.unTypeName]
+    Nothing -> throwOtherError loc ["XtorName " <> xtn.unXtorName <> " not found in declaration of type " <> decl.data_name.rnTnName.unTypeName]
 
 
 lookupXtorSigUpper :: EnvReader a m
@@ -147,8 +147,8 @@ lookupXtorSigUpper loc xt = do
   case decl of
     NominalDecl { } -> do
       throwOtherError loc ["lookupXtorSigUpper: Expected refinement type but found nominal type."]
-    RefinementDecl { data_xtors_refined } -> do
-      case find ( \MkXtorSig{..} -> sig_name == xt ) (snd data_xtors_refined) of
+    decl@RefinementDecl {} -> do
+      case find ( \sig -> sig.sig_name == xt ) (snd decl.data_xtors_refined) of
         Nothing -> throwOtherError loc ["lookupXtorSigUpper: Constructor/Destructor " <> ppPrint xt <> " not found"]
         Just sig -> pure sig
 
@@ -161,8 +161,8 @@ lookupXtorSigLower loc xt = do
   case decl of
     NominalDecl {} -> do
       throwOtherError loc ["lookupXtorSigLower: Expected refinement type but found nominal type."]
-    RefinementDecl { data_xtors_refined } -> do
-      case find ( \MkXtorSig{..} -> sig_name == xt ) (fst data_xtors_refined) of
+    decl@RefinementDecl {} -> do
+      case find ( \sig -> sig.sig_name == xt ) (fst decl.data_xtors_refined) of
         Nothing ->  throwOtherError loc ["lookupXtorSigLower: Constructor/Destructor " <> ppPrint xt <> " not found"]
         Just sig -> pure sig
 
@@ -173,26 +173,26 @@ lookupClassDecl :: EnvReader a m
                => Loc -> ClassName -> m ClassDeclaration
 lookupClassDecl loc cn = do
   let err = ErrOther $ SomeOtherError loc ("Undeclared class " <> ppPrint cn <> " is not contained in environment.")
-  let f env = M.lookup cn (classEnv env)
+  let f env = M.lookup cn env.classEnv
   snd <$> findFirstM f err
 
 -- | Find the type of a method in a given class declaration.
 lookupMethodType :: EnvReader a m
                => Loc -> MethodName -> ClassDeclaration -> PolarityRep pol -> m (LinearContext pol)
-lookupMethodType loc mn MkClassDeclaration { classdecl_name, classdecl_methods } PosRep =
-  case find ( \MkMethodSig{..} -> msig_name == mn) (fst classdecl_methods) of
-    Nothing -> throwOtherError loc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint classdecl_name]
+lookupMethodType loc mn decl PosRep =
+  case find ( \sig -> sig.msig_name == mn) (fst decl.classdecl_methods) of
+    Nothing -> throwOtherError loc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint decl.classdecl_name]
     Just msig -> pure msig.msig_args
-lookupMethodType loc mn MkClassDeclaration { classdecl_name, classdecl_methods } NegRep =
-  case find ( \MkMethodSig{..} -> msig_name == mn) (snd classdecl_methods) of
-    Nothing -> throwOtherError loc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint classdecl_name]
+lookupMethodType loc mn decl NegRep =
+  case find ( \sig-> sig.msig_name == mn) (snd decl.classdecl_methods) of
+    Nothing -> throwOtherError loc ["Method " <> ppPrint mn <> " is not declared in class " <> ppPrint decl.classdecl_name]
     Just msig -> pure msig.msig_args
 
 lookupXtorKind :: EnvReader a m
              => XtorName -> m EvaluationOrder
 lookupXtorKind xtorn = do
   let err = ErrOther $ SomeOtherError defaultLoc ("No Kinds for XTor " <> ppPrint xtorn)
-  let f env = M.lookup xtorn (kindEnv env)
+  let f env = M.lookup xtorn env.kindEnv
   snd <$> findFirstM f err
 
 
@@ -200,7 +200,7 @@ lookupStructuralXtor :: EnvReader a m
                 => XtorName -> m RST.StructuralXtorDeclaration
 lookupStructuralXtor xtorn = do 
   let err = ErrOther $ SomeOtherError defaultLoc ("Xtor " <> ppPrint xtorn <> " not found in program")
-  let f env = M.lookup xtorn (xtorEnv env)
+  let f env = M.lookup xtorn env.xtorEnv
   snd <$> findFirstM f err
 
 ---------------------------------------------------------------------------------
@@ -212,8 +212,8 @@ withTerm :: forall a m b pc. EnvReader a m
          -> (m b -> m b)
 withTerm mn PrdRep fv tm loc tys action = do
   let modifyEnv :: Environment -> Environment
-      modifyEnv env@MkEnvironment { prdEnv } =
-        env { prdEnv = M.insert fv (tm,loc,tys) prdEnv }
+      modifyEnv env =
+        env { prdEnv = M.insert fv (tm,loc,tys) env.prdEnv }
   let modifyEnvMap :: (Map ModuleName Environment, a) -> (Map ModuleName Environment, a)
       modifyEnvMap (map, rest) =
         case M.lookup mn map of
@@ -222,8 +222,8 @@ withTerm mn PrdRep fv tm loc tys action = do
   local modifyEnvMap action
 withTerm mn CnsRep fv tm loc tys action = do
   let modifyEnv :: Environment -> Environment
-      modifyEnv env@MkEnvironment { cnsEnv } =
-        env { cnsEnv = M.insert fv (tm,loc,tys) cnsEnv }
+      modifyEnv env =
+        env { cnsEnv = M.insert fv (tm,loc,tys) env.cnsEnv }
   let modifyEnvMap :: (Map ModuleName Environment, a) -> (Map ModuleName Environment, a)
       modifyEnvMap (map, rest) =
         case M.lookup mn map of

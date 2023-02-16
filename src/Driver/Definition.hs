@@ -92,7 +92,7 @@ instance MonadFail DriverM where
   fail str = throwOtherError defaultLoc [T.pack str]
 
 execDriverM :: DriverState ->  DriverM a -> IO (Either (NonEmpty Error) (a,DriverState),[Warning])
-execDriverM state act = runWriterT $ runExceptT $ runStateT (unDriverM act) state
+execDriverM state act = runWriterT $ runExceptT $ runStateT act.unDriverM state
 
 ---------------------------------------------------------------------------------
 -- Utility functions
@@ -101,19 +101,19 @@ execDriverM state act = runWriterT $ runExceptT $ runStateT (unDriverM act) stat
 -- Error list
 
 getModuleErrors :: DriverState -> ModuleName -> [Error]
-getModuleErrors ds mn = fromMaybe [] $ M.lookup mn $ drvErrs ds
+getModuleErrors ds mn = fromMaybe [] $ M.lookup mn ds.drvErrs
 
 getModuleErrorsTrans :: DriverState -> ModuleName -> [Error]
-getModuleErrorsTrans ds mn = concatMap (fromMaybe [] . flip M.lookup (drvErrs ds)) (mn:mns)
+getModuleErrorsTrans ds mn = concatMap (fromMaybe [] . flip M.lookup ds.drvErrs) (mn:mns)
   where
   mns :: [ModuleName]
   mns = getDependencies ds mn
 
 getErrors :: DriverState -> [Error]
-getErrors ds = concat $ M.elems $ drvErrs ds
+getErrors ds = concat $ M.elems ds.drvErrs
 
 addErrors :: ModuleName -> [Error] -> DriverM ()
-addErrors mn errs = modify (\ds -> ds { drvErrs = mapAppend mn errs $ drvErrs ds } )
+addErrors mn errs = modify (\ds -> ds { drvErrs = mapAppend mn errs ds.drvErrs } )
 
 addErrorsNonEmpty :: ModuleName -> a -> NonEmpty Error -> DriverM a
 addErrorsNonEmpty mn a (e :| es) = addErrors mn (e : es) >> return a
@@ -123,10 +123,10 @@ addErrorsNonEmpty mn a (e :| es) = addErrors mn (e : es) >> return a
 addSymboltable :: ModuleName -> SymbolTable -> DriverM ()
 addSymboltable mn st = modify f
   where
-    f state@MkDriverState { drvSymbols } = state { drvSymbols = M.insert mn st drvSymbols }
+    f state = state { drvSymbols = M.insert mn st state.drvSymbols }
 
 getSymbolTables :: DriverM (Map ModuleName SymbolTable)
-getSymbolTables = gets drvSymbols
+getSymbolTables = gets (\x -> x.drvSymbols)
 
 getSymbolTable  :: CST.Module
                 -> DriverM SymbolTable
@@ -142,21 +142,21 @@ getSymbolTable mod = do
     Just st -> return st
 
 getImports :: ModuleName -> DriverM (Maybe [ModuleName])
-getImports mn = gets $ fmap (fmap fst . (\x -> x.imports)) . M.lookup mn . drvSymbols
+getImports mn = gets $ fmap (fmap fst . (\x -> x.imports)) . M.lookup mn . (\x -> x.drvSymbols)
 
 getDependencies :: DriverState -> ModuleName -> [ModuleName]
 getDependencies ds mn = nub $ directDeps ++ concatMap (getDependencies ds) directDeps
   where
-    directDeps = maybe [] (fmap fst . (\x -> x.imports)) . M.lookup mn . drvSymbols $ ds
+    directDeps = maybe [] (fmap fst . (\x -> x.imports)) . M.lookup mn . (\x -> x.drvSymbols) $ ds
 
 
 -- Modules and declarations
 
 checkModuleName :: MonadError (NonEmpty Error) m => ModuleName -> CST.Module -> m ()
-checkModuleName mn CST.MkModule { mod_name } =
-  if mn == mod_name
+checkModuleName mn mod =
+  if mn == mod.mod_name
     then pure ()
-    else throwOtherError defaultLoc [ "Wrong module declaration: Found declaration " <> T.pack (ppPrintString mod_name) <> " in module " <> T.pack (ppPrintString mn) ]
+    else throwOtherError defaultLoc [ "Wrong module declaration: Found declaration " <> T.pack (ppPrintString mod.mod_name) <> " in module " <> T.pack (ppPrintString mn) ]
 
 parseAndCheckModule :: (MonadError (NonEmpty Error) m, MonadIO m) => FilePath -> ModuleName -> FilePath -> m CST.Module
 parseAndCheckModule fullFp mn fp = do
@@ -167,7 +167,7 @@ parseAndCheckModule fullFp mn fp = do
 
 getModuleDeclarations :: ModuleName -> DriverM CST.Module
 getModuleDeclarations mn = do
-        moduleMap <- gets drvFiles
+        moduleMap <- gets (\x -> x.drvFiles)
         case M.lookup mn moduleMap of
           Just mod -> pure mod
           Nothing -> do
@@ -182,18 +182,18 @@ getModuleDeclarations mn = do
 
 addModule :: CST.Module -> DriverM ()
 addModule mod = do
-  modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mod.mod_name mod drvFiles })
+  modify (\ds-> ds { drvFiles = M.insert mod.mod_name mod ds.drvFiles })
 
 -- AST Cache
 
 addTypecheckedModule :: ModuleName -> TST.Module -> DriverM ()
 addTypecheckedModule mn prog = modify f
   where
-    f state@MkDriverState { drvASTs } = state { drvASTs = M.insert mn prog  drvASTs }
+    f state = state { drvASTs = M.insert mn prog state.drvASTs }
 
 queryTypecheckedModule :: ModuleName -> DriverM TST.Module
 queryTypecheckedModule mn = do
-  cache <- gets drvASTs
+  cache <- gets (\x -> x.drvASTs)
   case M.lookup mn cache of
     Nothing -> throwOtherError defaultLoc [ "AST for module " <> ppPrint mn <> " not in cache."
                                           , "Available ASTs: " <> ppPrint (M.keys cache)
@@ -205,7 +205,7 @@ queryTypecheckedModule mn = do
 
 modifyEnvironment :: ModuleName -> (Environment -> Environment) -> DriverM ()
 modifyEnvironment mn f = do
-  env <- gets drvEnv
+  env <- gets (\x -> x.drvEnv)
   case M.lookup mn env of
     Nothing -> do
       let newEnv = M.insert mn (f emptyEnvironment) env
@@ -218,14 +218,14 @@ modifyEnvironment mn f = do
 guardVerbose :: IO () -> DriverM ()
 guardVerbose action = do
  --liftIO action
-    verbosity <- gets (infOptsVerbosity . drvOpts)
+    verbosity <- gets (\x -> x.drvOpts.infOptsVerbosity)
     when (verbosity == Verbose) (liftIO action)
 
 -- | Given the Library Paths contained in the inference options and a module name,
 -- try to find a filepath which corresponds to the given module name.
 findModule :: ModuleName -> Loc ->  DriverM FilePath
 findModule mn@(MkModuleName _path mod) loc = do
-  libpaths <- gets $ infOptsLibPath . drvOpts
+  libpaths <- gets (\x -> x.drvOpts.infOptsLibPath)
   isDuoFileMask <- liftIO $ mapM (isModuleFile mn) libpaths
   let duoFiles = catMaybes $ zipWith (\b fp -> if b then Just fp else Nothing) isDuoFileMask libpaths
   case duoFiles of

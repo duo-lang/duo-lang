@@ -49,10 +49,11 @@ import Syntax.CST.Names ( FreeVarName(..), ModuleName )
 import Translate.Focusing ( Focus(..) )
 import Loc ( Loc, defaultLoc )
 import Eval.Eval (eval, EvalMWrapper (..))
+import Errors
 import qualified Syntax.TST.Terms as TST
 import Data.List.NonEmpty (NonEmpty ((:|)))
-import Control.Monad.State.Strict (execStateT)
-import Control.Monad.Writer.Strict (execWriter)
+import Control.Monad.State.Strict (execStateT, StateT)
+import Control.Monad.Writer.Strict (execWriter, WriterT)
 import qualified Data.Aeson as J
 import Eval.Definition (EvalEnv)
 import Data.Foldable (fold)
@@ -61,6 +62,7 @@ import qualified Data.Map as M
 import Utils (filePathToModuleName)
 import System.Directory (makeRelativeToCurrentDirectory)
 import Data.IORef (readIORef)
+import Data.Functor.Identity(Identity)
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -125,7 +127,7 @@ class GetCodeActions a where
 
 instance GetCodeActions TST.Module where
   getCodeActions :: TextDocumentIdentifier -> Range -> TST.Module -> List (Command |? CodeAction)
-  getCodeActions id rng TST.MkModule { mod_decls } = mconcat (getCodeActions id rng <$> mod_decls)
+  getCodeActions id rng mod = mconcat (getCodeActions id rng <$> mod.mod_decls)
   
 instance GetCodeActions TST.Declaration where
   getCodeActions :: TextDocumentIdentifier -> Range -> TST.Declaration -> List (Command |? CodeAction)
@@ -137,43 +139,45 @@ instance GetCodeActions TST.Declaration where
 instance GetCodeActions (TST.PrdCnsDeclaration pc) where
   getCodeActions :: TextDocumentIdentifier -> Range -> TST.PrdCnsDeclaration pc -> List (Command |? CodeAction)
   -- If we are not in the correct range, then don't generate code actions.
-  getCodeActions _ Range { _start = start } decl | not (lookupPos start (TST.pcdecl_loc decl)) =
+  getCodeActions _ Range { _start = start } decl | not (lookupPos start decl.pcdecl_loc) =
     List []
   -- If the type is not already annotated, only generate the code action for annotating the type.
-  getCodeActions id _ decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Inferred _ } =
-    List [workspaceEditToCodeAction (generateAnnotEdit id decl) ("Annotate type for " <> ppPrint (TST.pcdecl_name decl))]
-  -- If the type is annotated, generate the remaining code actions.
-  getCodeActions id _ decl@TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated _, pcdecl_term } =
-    let
-      desugar  = [ workspaceEditToCodeAction (generateDesugarEdit id decl) ("Desugar " <> (TST.pcdecl_name decl).unFreeVarName) | not (isDesugaredTerm pcdecl_term)]
-      cbvfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBV decl) ("Focus CBV " <> (TST.pcdecl_name decl).unFreeVarName) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBV pcdecl_term)]
-      cbnfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBN decl) ("Focus CBN " <> (TST.pcdecl_name decl).unFreeVarName) | isDesugaredTerm pcdecl_term, isNothing (isFocused CBN pcdecl_term)]
-      dualize  = [ workspaceEditToCodeAction (generateDualizeEdit id decl) ("Dualize term " <> ppPrint (TST.pcdecl_name decl)) ]
-    in
-      List (desugar <> cbvfocus <> cbnfocus <> dualize)
+  getCodeActions id _ decl =
+    case decl.pcdecl_annot of
+      TST.Inferred _ ->
+        List [workspaceEditToCodeAction (generateAnnotEdit id decl) ("Annotate type for " <> ppPrint decl.pcdecl_name)]
+        -- If the type is annotated, generate the remaining code actions.
+      TST.Annotated _ ->
+        let
+          desugar  = [ workspaceEditToCodeAction (generateDesugarEdit id decl) ("Desugar " <> decl.pcdecl_name.unFreeVarName) | not (isDesugaredTerm decl.pcdecl_term)]
+          cbvfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBV decl) ("Focus CBV " <> decl.pcdecl_name.unFreeVarName) | isDesugaredTerm decl.pcdecl_term, isNothing (isFocused CBV decl.pcdecl_term)]
+          cbnfocus = [ workspaceEditToCodeAction (generateFocusEdit id CBN decl) ("Focus CBN " <> decl.pcdecl_name.unFreeVarName) | isDesugaredTerm decl.pcdecl_term, isNothing (isFocused CBN decl.pcdecl_term)]
+          dualize  = [ workspaceEditToCodeAction (generateDualizeEdit id decl) ("Dualize term " <> ppPrint decl.pcdecl_name) ]
+        in
+          List (desugar <> cbvfocus <> cbnfocus <> dualize)
 
 instance GetCodeActions TST.CommandDeclaration where
   getCodeActions :: TextDocumentIdentifier -> Range -> TST.CommandDeclaration -> List (Command |? CodeAction)
   -- If we are not in the correct range, then don't generate code actions.
-  getCodeActions _ Range { _start = start } decl | not (lookupPos start (TST.cmddecl_loc decl)) =
+  getCodeActions _ Range { _start = start } decl | not (lookupPos start decl.cmddecl_loc) =
     List []
-  getCodeActions id _ decl@TST.MkCommandDeclaration {cmddecl_cmd } =
+  getCodeActions id _ decl=
     let
-      desugar  = [ workspaceEditToCodeAction (generateCmdDesugarEdit id decl) ("Desugar " <> (TST.cmddecl_name decl).unFreeVarName) | not (isDesugaredCommand cmddecl_cmd)]
-      cbvfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBV decl) ("Focus CBV " <> (TST.cmddecl_name decl).unFreeVarName) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBV cmddecl_cmd)]
-      cbnfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBN decl) ("Focus CBN " <> (TST.cmddecl_name decl).unFreeVarName) | isDesugaredCommand cmddecl_cmd, isNothing (isFocused CBN cmddecl_cmd)]
+      desugar  = [ workspaceEditToCodeAction (generateCmdDesugarEdit id decl) ("Desugar " <> decl.cmddecl_name.unFreeVarName) | not (isDesugaredCommand decl.cmddecl_cmd)]
+      cbvfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBV decl) ("Focus CBV " <> decl.cmddecl_name.unFreeVarName) | isDesugaredCommand decl.cmddecl_cmd, isNothing (isFocused CBV decl.cmddecl_cmd)]
+      cbnfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBN decl) ("Focus CBN " <> decl.cmddecl_name.unFreeVarName) | isDesugaredCommand decl.cmddecl_cmd, isNothing (isFocused CBN decl.cmddecl_cmd)]
       eval     = [ generateCmdEvalCodeAction id decl ]
-      dualize  = [ workspaceEditToCodeAction (generateDualizeCommandEdit id decl) ("Dualize command " <> ppPrint (TST.cmddecl_name decl)) ]
+      dualize  = [ workspaceEditToCodeAction (generateDualizeCommandEdit id decl) ("Dualize command " <> ppPrint decl.cmddecl_name) ]
     in
       List (desugar <> cbvfocus <> cbnfocus <> dualize <> eval)
 
 instance GetCodeActions TST.DataDecl where
   getCodeActions :: TextDocumentIdentifier -> Range -> TST.DataDecl -> List (Command |? CodeAction)
   -- If we are not in the correct range, then don't generate code actions.
-  getCodeActions _ Range {_start = start} decl | not (lookupPos start (TST.data_loc decl)) =
+  getCodeActions _ Range {_start = start} decl | not (lookupPos start decl.data_loc) =
     List []
   getCodeActions id _ decl = 
-    List [ workspaceEditToCodeAction (generateDualizeDeclEdit id (TST.data_loc decl) decl) ("Dualize declaration " <> ppPrint (TST.data_name decl)) ]
+    List [ workspaceEditToCodeAction (generateDualizeDeclEdit id decl.data_loc decl) ("Dualize declaration " <> ppPrint decl.data_name) ]
 
 ---------------------------------------------------------------------------------
 -- Provide TypeAnnot Action
@@ -245,9 +249,9 @@ generateFocusEdit :: forall pc. TextDocumentIdentifier -> EvaluationOrder -> TST
 generateFocusEdit (TextDocumentIdentifier uri) eo decl =
   let
     newDecl :: TST.Declaration
-    newDecl = TST.PrdCnsDecl (TST.pcdecl_pc decl) (focus eo decl)
+    newDecl = TST.PrdCnsDecl decl.pcdecl_pc (focus eo decl)
     replacement = ppPrint newDecl
-    edit = TextEdit {_range = locToRange (TST.pcdecl_loc decl), _newText = replacement }
+    edit = TextEdit {_range = locToRange decl.pcdecl_loc, _newText = replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
@@ -259,7 +263,7 @@ generateCmdFocusEdit (TextDocumentIdentifier uri) eo decl =
   let
     newDecl = TST.CmdDecl (focus eo decl)
     replacement = ppPrint newDecl
-    edit = TextEdit {_range= locToRange (TST.cmddecl_loc decl), _newText= replacement }
+    edit = TextEdit {_range= locToRange decl.cmddecl_loc, _newText= replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
@@ -285,9 +289,9 @@ generateDesugarEdit _ TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Inferred _ } 
 generateCmdDesugarEdit :: TextDocumentIdentifier -> TST.CommandDeclaration -> WorkspaceEdit
 generateCmdDesugarEdit (TextDocumentIdentifier uri) decl =
   let
-    newDecl = TST.CmdDecl (TST.MkCommandDeclaration defaultLoc Nothing (TST.cmddecl_name decl) (resetAnnotationCmd (TST.cmddecl_cmd decl)))
+    newDecl = TST.CmdDecl (TST.MkCommandDeclaration defaultLoc Nothing decl.cmddecl_name (resetAnnotationCmd decl.cmddecl_cmd))
     replacement = ppPrint newDecl
-    edit = TextEdit {_range = locToRange (TST.cmddecl_loc decl), _newText = replacement }
+    edit = TextEdit {_range = locToRange decl.cmddecl_loc, _newText = replacement }
   in
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
@@ -305,12 +309,12 @@ deriving anyclass instance J.ToJSON EvalCmdArgs
 
 generateCmdEvalCodeAction ::  TextDocumentIdentifier -> TST.CommandDeclaration -> Command |? CodeAction
 generateCmdEvalCodeAction ident decl =
-  let cmd = TST.cmddecl_name decl
-      args = MkEvalCmdArgs  { evalArgs_loc = locToRange (TST.cmddecl_loc decl)
+  let cmd = decl.cmddecl_name
+      args = MkEvalCmdArgs  { evalArgs_loc = locToRange decl.cmddecl_loc
                             , evalArgs_uri = ident
                             , evalArgs_cmd = cmd
                             }
-  in InR $ CodeAction { _title = "Eval " <> (TST.cmddecl_name decl).unFreeVarName
+  in InR $ CodeAction { _title = "Eval " <> decl.cmddecl_name.unFreeVarName
                       , _kind = Just CodeActionQuickFix
                       , _diagnostics = Nothing
                       , _isPreferred = Nothing
@@ -346,23 +350,25 @@ evalArgsFromJSON emptyFail tooManyFail errFail = maybe emptyFail getJSON
                                           errFail e
                           _xs -> tooManyFail
 
-evalInModule  :: MonadIO m
+evalInModule  :: forall m.
+                 MonadIO m
               => ModuleName
               -> FreeVarName
               -> (String -> m (TST.Module, DriverState))
               -> m [String]
 evalInModule mn cmd stop = do
       (res, _warnings) <- liftIO $ execDriverM defaultDriverState (runCompilationModule mn >> queryTypecheckedModule mn)
-      (_, MkDriverState { drvEnv }) <- case res of
+      (_, state) <- case res of
                   Left errs -> stop $ unlines $ (\(x :| xs) -> x:xs) $ show <$> errs
                   Right drvEnv -> return drvEnv
-      let compiledEnv :: EvalEnv = focus CBV ((\map -> fold $ desugarEnv <$> M.elems map) drvEnv)
-      return $ execWriter $ flip execStateT [] $ unEvalMWrapper $ eval (TST.Jump defaultLoc cmd) compiledEnv
+      let compiledEnv :: EvalEnv = focus CBV ((\map -> fold $ desugarEnv <$> M.elems map) state.drvEnv)
+      let foo :: EvalMWrapper (StateT [Int] (WriterT [String] Identity)) (Either (NonEmpty Errors.Error) TST.Command) = eval (TST.Jump defaultLoc cmd) compiledEnv
+      return $ execWriter $ flip execStateT [] $ (\x -> x.unEvalMWrapper) $ foo
 
 addCommentedAbove :: Foldable t => Range -> Uri -> t String -> ApplyWorkspaceEditParams
 addCommentedAbove range uri content =
       let toComments = unlines . fmap ("-- " ++) . concatMap lines
-          rangeToStartRange Range { _start } = Range {_start = _start, _end = _start}
+          rangeToStartRange Range { _start = _start } = Range {_start = _start, _end = _start}
           tedit = TextEdit { _range = rangeToStartRange range, _newText = T.pack $ toComments content}
           wedit = WorkspaceEdit { _changes = Just (Map.singleton uri (List [tedit]))
                                 , _documentChanges = Nothing
@@ -371,10 +377,10 @@ addCommentedAbove range uri content =
       in  ApplyWorkspaceEditParams { _label = Nothing, _edit = wedit }
 
 evalHandler :: Handlers LSPMonad
-evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params} responder -> do
+evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params = _params} responder -> do
   let source = "lspserver.evalHandler"
   liftIO $ debugM source "Received eval request"
-  let ExecuteCommandParams{_command, _arguments} = _params
+  let ExecuteCommandParams{_command = _command, _arguments = _arguments} = _params
   case _command of
     "duo-inline-eval" -> do
       -- parse arguments back from JSON
@@ -387,20 +393,20 @@ evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params}
 
 
       -- get Module name
-      let uri = _uri $ evalArgs_uri args
+      let uri = _uri args.evalArgs_uri
       mmod <- getCachedModule uri
 
       mn <- case mmod of
               Nothing  -> uriToModuleName uri
-              Just mod -> pure $ TST.mod_name mod
+              Just mod -> pure mod.mod_name
       liftIO $ debugM source $ "Running " <> T.unpack _command <> " with module " <> show mn
 
       -- execute command
-      res <- evalInModule mn (evalArgs_cmd args) (stopHandler responder source)
+      res <- evalInModule mn args.evalArgs_cmd (stopHandler responder source)
       liftIO $ debugM source $ "Running " <> T.unpack _command <> " with result " <> unlines res
 
       -- create edit
-      let weditP = addCommentedAbove (evalArgs_loc args) uri res
+      let weditP = addCommentedAbove args.evalArgs_loc uri res
       let responder' x = case x of
                           Left e  -> responder (Left e)
                           Right _ -> return ()

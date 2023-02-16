@@ -33,14 +33,14 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
 genFlowGraph :: TypeAutCore a -> FlowGraph
-genFlowGraph TypeAutCore{..} = mkGraph [(n,()) | n <- nodes ta_gr] [(i,j,()) | (i,j) <- ta_flowEdges]
+genFlowGraph aut = mkGraph [(n,()) | n <- nodes aut.ta_gr] [(i,j,()) | (i,j) <- aut.ta_flowEdges]
 
 initializeFromAutomaton :: TypeAutDet pol -> AutToTypeState
-initializeFromAutomaton TypeAut{..} =
+initializeFromAutomaton aut =
   let
-    flowAnalysis = computeFlowMap (genFlowGraph ta_core )
+    flowAnalysis = computeFlowMap (genFlowGraph aut.ta_core )
 
-    gr = ta_gr ta_core
+    gr = aut.ta_core.ta_gr
     getTVars :: (Node,Set SkolemTVar) -> [KindedSkolem]
     getTVars (nd,skolems) = do
       let skList = S.toList skolems
@@ -71,28 +71,28 @@ runAutToTypeM m state = runExcept (runReaderT m state)
 
 
 autToType :: TypeAutDet pol -> Either (NonEmpty Error) (TypeScheme pol)
-autToType aut@TypeAut{..} = do
+autToType aut = do
   let startState = initializeFromAutomaton aut
-  monotype <- runAutToTypeM (nodeToType ta_pol (runIdentity ta_starts)) startState
+  monotype <- runAutToTypeM (nodeToType aut.ta_pol (runIdentity aut.ta_starts)) startState
   pure TypeScheme { ts_loc = defaultLoc
                   -- TODO Replace CBV with actual kinds
-                  , ts_vars = tvars startState
+                  , ts_vars = startState.tvars
                   , ts_monotype = monotype
                   }
 
 visitNode :: Node -> AutToTypeState -> AutToTypeState
-visitNode i aut@AutToTypeState { graph, cache } =
-  aut { graph = delEdges [(i,n) | n <- suc graph i, i `elem` dfs [n] graph] graph
-      , cache = S.insert i cache }
+visitNode i aut =
+  aut { graph = delEdges [(i,n) | n <- suc aut.graph i, i `elem` dfs [n] aut.graph] aut.graph
+      , cache = S.insert i aut.cache }
 
 checkCache :: Node -> AutToTypeM Bool
 checkCache i = do
-  cache <- asks cache
+  cache <- asks (\x -> x.cache)
   return (i `S.member` cache)
 
 getNodeKindPk :: Node -> AutToTypeM PolyKind
 getNodeKindPk i = do 
-  gr <- asks graph 
+  gr <- asks (\x -> x.graph)
   case lab gr i of 
     Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
     Just (MkNodeLabel _ _ _ _ _ _ pk) -> return pk
@@ -103,13 +103,13 @@ getNodeKindPk i = do
 
 nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
-  tvMap <- asks tvMap
+  tvMap <- asks (\x -> x.tvMap)
   knd <- getNodeKindPk i
   return (TySkolemVar defaultLoc rep knd <$> S.toList (fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
-  gr <- asks graph
+  gr <- asks (\x -> x.graph)
   let (_,_,_,outs) = context gr i
   return outs
 
@@ -118,10 +118,10 @@ computeArgNodes :: [(EdgeLabelNormal, Node)] -- ^ All the outgoing edges of a no
                 -> CST.DataCodata -- ^ Whether we want to construct a constructor or destructor
                 -> XtorLabel -- ^ The Label of the constructor / destructor
                 -> [(PrdCns,[Node])] -- ^ The nodes which contain the arguments of the constructor / destructor
-computeArgNodes outs dc MkXtorLabel { labelName, labelArity } = args
+computeArgNodes outs dc lbl = args
   where
-    argFun (n,pc) = (pc, [ node | (EdgeSymbol dc' xt pc' pos, node) <- outs, dc' == dc, xt == labelName, pc == pc', pos == n])
-    args = argFun <$> enumerate labelArity
+    argFun (n,pc) = (pc, [ node | (EdgeSymbol dc' xt pc' pos, node) <- outs, dc' == dc, xt == lbl.labelName, pc == pc', pos == n])
+    args = argFun <$> enumerate lbl.labelArity
 
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
@@ -162,7 +162,7 @@ nodeToType rep i = do
 -- | Should only be called if node is not in cache.
 nodeToTypeNoCache :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
 nodeToTypeNoCache rep i  = do
-  gr <- asks graph
+  gr <- asks (\x -> x.graph)
   case fromJust (lab gr i) of
     MkPrimitiveNodeLabel _ tp -> do
       let toPrimType :: PolarityRep pol -> PrimitiveType -> Typ pol
@@ -187,7 +187,7 @@ nodeToTypeNoCache rep i  = do
             sig <- forM xtors $ \xt -> do
               let nodes = computeArgNodes outs CST.Data xt
               argTypes <- argNodesToArgTypes nodes rep
-              return (MkXtorSig (labelName xt) argTypes)
+              return (MkXtorSig xt.labelName argTypes)
             return [TyData defaultLoc rep pk.returnKind sig]
         -- Creating codata types
         codatL <- case maybeCodat of
@@ -196,7 +196,7 @@ nodeToTypeNoCache rep i  = do
             sig <- forM xtors $ \xt -> do
               let nodes = computeArgNodes outs CST.Codata xt
               argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
-              return (MkXtorSig (labelName xt) argTypes)
+              return (MkXtorSig xt.labelName argTypes)
             return [TyCodata defaultLoc rep pk.returnKind sig]
         -- Creating ref data types
         refDatL <- do
@@ -204,7 +204,7 @@ nodeToTypeNoCache rep i  = do
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Data xt
               argTypes <- argNodesToArgTypes nodes rep
-              return (MkXtorSig (labelName xt) argTypes)
+              return (MkXtorSig xt.labelName argTypes)
             return $ TyDataRefined defaultLoc rep pk tn (snd refDat) sig
         -- Creating ref codata types
         refCodatL <- do
@@ -212,7 +212,7 @@ nodeToTypeNoCache rep i  = do
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Codata xt
               argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
-              return (MkXtorSig (labelName xt) argTypes)
+              return (MkXtorSig xt.labelName argTypes)
             return $ TyCodataRefined defaultLoc rep pk tn (snd refCodat) sig
         -- Creating Nominal types
         let adjEdges = lsuc gr i
