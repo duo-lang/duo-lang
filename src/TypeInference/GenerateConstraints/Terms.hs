@@ -24,7 +24,7 @@ import TypeInference.GenerateConstraints.Kinds
 import TypeInference.Constraints
 import TypeInference.SolveConstraints (resolveInstanceAnnot)
 import Loc
-import Lookup
+import Driver.Environment
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 import Syntax.TST.Terms (Substitution(..))
