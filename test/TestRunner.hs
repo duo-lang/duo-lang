@@ -1,8 +1,8 @@
 module Main where
 
-import Control.Monad.Except (runExcept, runExceptT, forM, forM_)
+import Control.Monad.Except (runExceptT, forM, forM_)
 import Control.Monad (when)
-import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List.NonEmpty (NonEmpty(..))
 import Data.List (sort)
 import Data.Either (isRight)
 import System.Environment (withArgs)
@@ -15,7 +15,6 @@ import System.IO (utf8)
 import Driver.Definition (defaultDriverState, parseAndCheckModule)
 import Driver.Driver (inferProgramIO)
 import Errors
-import Resolution.SymbolTable (SymbolTable, createSymbolTable)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified
 import Spec.OverlapCheck qualified
@@ -81,39 +80,6 @@ getTypecheckedDecls cst =
     fmap snd <$> (fst <$> inferProgramIO defaultDriverState cst)
 
 
--- ? ---
-getSymbolTable :: FilePath -> ModuleName -> IO (Either (NonEmpty Error) SymbolTable)
-getSymbolTable fp mn = do
-  decls <- getParsedDeclarations fp mn
-  case decls of
-    Right decls -> case (runExcept (createSymbolTable decls)) of
-      Left err -> pure (Left (ErrResolution err :| []))
-      Right res -> pure (pure res)
-    Left err -> return (Left err)
---------
-
-runSpecTest :: Description
-            -> [(a0, Either (NonEmpty Error) b0)]
-            -> ((a0, Either (NonEmpty Error) b0) -> Spec)
-            -> Spec
-runSpecTest description examples spec = do
-  describe description $ do
-    forM_ examples $ \(example, syntaxtree) ->
-      case syntaxtree of
-        Left _ -> pure ()
-        Right res -> spec (example, Right res)
-
--- As the successtest checks whether the syntaxtree was parsed successfully or not, 
--- runSpecTest can't be used
-runSuccessTest :: Description
-              -> [(a0, Either (NonEmpty Error) b0)]
-              -> ((a0, Either (NonEmpty Error) b0) -> Spec)
-              -> Spec
-runSuccessTest description examples spec = do
-  describe description $ do
-    forM_ examples $ \(example, syntaxtree) ->
-      spec (example, syntaxtree)
-
 -- Run Tests: A description, set of testvalues, a predicate (conditions for testing) and a spec test are needed
 runner :: Description
             -> [a]
@@ -123,16 +89,6 @@ runner :: Description
 runner descr exs p spec = do
   describe descr $ do
     forM_ exs $ \a -> Control.Monad.when (p a) $ spec a
-
-{-
--- Overloading runner? Geht das so?
-runner :: Description
-            -> [a]
-            -> (a -> Spec)
-            -> Spec
-runner descr exs spec = 
-  runner descr exs (Const True) spec
--}
 
 main :: IO ()
 main = do
