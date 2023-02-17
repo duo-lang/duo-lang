@@ -4,7 +4,6 @@ module TypeInference.GenerateConstraints.Kinds
   , resolveDataDecl
   ) where
 
-import Debug.Trace 
 
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
@@ -407,22 +406,6 @@ annotateDataDecl RST.RefinementDecl {
     let xtorsRefinedNeg = RST.replaceNominal fulPos fulNeg tyn <$> snd xtors
     xtorsRefPos <- mapM annotXtor xtorsRefinedPos
     xtorsRefNeg <- mapM annotXtor xtorsRefinedNeg
-    trace ("empty positive " <> ppPrintString emptyPos) $ pure ()
-    trace ("empty negative " <> ppPrintString emptyNeg) $ pure ()
-    trace ("empty positive (annot) " <> ppPrintString emptPos') $ pure ()
-    trace ("empty negative (annot) " <> ppPrintString emptNeg') $ pure ()
-    trace ("full positive " <> ppPrintString fulPos) $ pure ()
-    trace ("full negative " <> ppPrintString fulNeg) $ pure ()
-    trace ("full positive (annot) " <> ppPrintString fulPos') $ pure () 
-    trace ("full negative (annot) " <> ppPrintString fulNeg') $ pure ()
-    trace ("xtors not refined positive " <> ppPrintString (fst xtors)) $ pure ()
-    trace ("xtors not refined negative " <> ppPrintString (snd xtors)) $ pure ()
-    trace ("xtors not refined positive (annot) " <> ppPrintString xtorsPos) $ pure ()
-    trace ("xtors not refined negative (annot) " <> ppPrintString xtorsNeg) $ pure ()
-    trace ("xtors refined positive " <> ppPrintString xtorsRefinedPos) $ pure ()
-    trace ("xtors refined negative " <> ppPrintString xtorsRefinedNeg) $ pure ()
-    trace ("xtors refined positive (annot) " <> ppPrintString xtorsRefPos) $ pure ()
-    trace ("xtors refined negative (annot) " <> ppPrintString xtorsRefNeg) $ pure ()
     return TST.RefinementDecl {
       data_loc = loc,
       data_doc = doc,
