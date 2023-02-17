@@ -63,7 +63,7 @@ import Utils (filePathToModuleName)
 import System.Directory (makeRelativeToCurrentDirectory)
 import Data.IORef (readIORef)
 import Data.Functor.Identity(Identity)
-import qualified Transformation.Transformation as Transformation
+import qualified Xfunc.Xfunc as Xfunc
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -204,9 +204,9 @@ instance GetCodeActions TST.DataDecl where
   getCodeActions id _ decl =
     let 
       dualize = [ workspaceEditToCodeAction (generateDualizeDeclEdit id (TST.data_loc decl) decl) ("Dualize declaration " <> ppPrint (TST.data_name decl)) ]
-      transformation = [workspaceEditToCodeActionWithCommand (generateTransformationDeclEdit id (TST.data_loc decl) decl) ("Transform (co)datatype" <> ppPrint (TST.data_name decl)) ]
+      xfunc = [workspaceEditToCodeActionWithCommand (generateXfuncDeclEdit id (TST.data_loc decl) decl) ("Xfunc (co)datatype" <> ppPrint (TST.data_name decl)) ]
     in
-      List (dualize <> transformation)
+      List (dualize <> xfunc)
 ---------------------------------------------------------------------------------
 -- Provide TypeAnnot Action
 ---------------------------------------------------------------------------------
@@ -270,13 +270,13 @@ generateDualizeDeclEdit (TextDocumentIdentifier uri) loc decl =
 
 
 ---------------------------------------------------------------------------------
--- Provide Re-/Defunctionalize Actions (Transformation)
+-- Provide Re-/Defunctionalize Actions 
 ---------------------------------------------------------------------------------
 
-generateTransformationDeclEdit :: TextDocumentIdentifier -> Loc -> TST.DataDecl -> (WorkspaceEdit |? WorkspaceEdit)
-generateTransformationDeclEdit (TextDocumentIdentifier _) _ decl =
+generateXfuncDeclEdit :: TextDocumentIdentifier -> Loc -> TST.DataDecl -> (WorkspaceEdit |? WorkspaceEdit)
+generateXfuncDeclEdit (TextDocumentIdentifier _) _ decl =
   let
-    transformable = Transformation.transformable decl
+    transformable = Xfunc.transformable decl
   in
     if transformable then
       InR $ WorkspaceEdit{ _changes = Nothing

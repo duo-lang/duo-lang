@@ -150,11 +150,11 @@ library
       TypeInference.GenerateConstraints.Kinds
       TypeInference.SolveConstraints
       TypeInference.Constraints
-      Transformation.Transformation
       Translate.Focusing
       Translate.EmbedTST
       Translate.InsertInstance
       Utils
+      Xfunc.Xfunc
   other-modules:
       Paths_duo_lang
   hs-source-dirs:

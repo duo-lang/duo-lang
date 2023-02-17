@@ -1,4 +1,4 @@
-module Transformation.Transformation where
+module Xfunc.Xfunc where
 
 import Syntax.CST.Kinds
 import Syntax.TST.Program qualified as TST
