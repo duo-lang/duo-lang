@@ -203,8 +203,8 @@ instance GetCodeActions TST.DataDecl where
     List []
   getCodeActions id _ decl =
     let 
-      dualize = [ workspaceEditToCodeAction (generateDualizeDeclEdit id (TST.data_loc decl) decl) ("Dualize declaration " <> ppPrint (TST.data_name decl)) ]
-      xfunc = [workspaceEditToCodeActionWithCommand (generateXfuncDeclEdit id (TST.data_loc decl) decl) ("Xfunc (co)datatype" <> ppPrint (TST.data_name decl)) ]
+      dualize = [ workspaceEditToCodeAction (generateDualizeDeclEdit id decl.data_loc decl) ("Dualize declaration " <> ppPrint decl.data_name) ]
+      xfunc = [workspaceEditToCodeActionWithCommand (generateXfuncDeclEdit id decl.data_loc decl) ("Xfunc (co)datatype" <> ppPrint decl.data_name) ]
     in
       List (dualize <> xfunc)
 ---------------------------------------------------------------------------------
