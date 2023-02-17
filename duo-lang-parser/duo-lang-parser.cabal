@@ -1,0 +1,87 @@
+cabal-version:  2.2
+name:           duo-lang-parser
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/duo-lang/duo-lang#readme>
+homepage:       https://github.com/duo-lang/duo-lang#readme
+bug-reports:    https://github.com/duo-lang/duo-lang/issues
+author:         Justus Springer, David Binder, Ingo Skupin
+maintainer:     example@example.com
+copyright:      2020 Justus Springer, David Binder, Ingo Skupin
+license:        MIT
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+                README.md
+                LICENSE
+
+source-repository head
+  type: git
+  location: https://github.com/duo-lang/duo-lang
+  subdir: duo-lang-parser/
+
+library
+  default-language:    Haskell2010
+  default-extensions:
+                     OverloadedRecordDot,
+                     FlexibleContexts,
+                     NoFieldSelectors,
+                     FlexibleInstances,
+                     ScopedTypeVariables,
+                     ConstraintKinds,
+                     RankNTypes,
+                     DataKinds,
+                     GADTs,
+                     KindSignatures,
+                     StandaloneDeriving,
+                     TypeFamilies,
+                     TypeOperators,
+                     ViewPatterns,
+                     GeneralizedNewtypeDeriving,
+                     LambdaCase,
+                     DeriveFunctor,
+                     DeriveGeneric,
+                     DeriveAnyClass,
+                     DerivingStrategies,
+                     OverloadedStrings,
+                     ImportQualifiedPost,
+                     ViewPatterns,
+                     MultiWayIf,
+                     PatternSynonyms,
+                     InstanceSigs,
+                     MultiParamTypeClasses,
+                     FunctionalDependencies
+  ghc-options:
+    -Wall
+    -Wincomplete-uni-patterns
+    -fwarn-tabs
+    -fno-warn-name-shadowing
+    -fno-warn-orphans
+    -fno-warn-unticked-promoted-constructors
+
+  build-depends:
+      base >=4.7 && <5
+    , containers
+    , megaparsec
+    , mtl
+    , text >= 1.2 && < 1.3
+    , aeson
+  exposed-modules:
+      Errors.Parser
+      Loc
+      Parser.Common
+      Parser.Definition
+      Parser.Kinds
+      Parser.Lexer
+      Parser.Parser
+      Parser.Program
+      Parser.Terms
+      Parser.Types
+      Syntax.CST.Kinds
+      Syntax.CST.Names
+      Syntax.CST.Program
+      Syntax.CST.Terms
+      Syntax.CST.Types
+  other-modules:
+      Paths_duo_lang_parser
+  hs-source-dirs:
+      src

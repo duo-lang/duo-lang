@@ -23,14 +23,14 @@ driverAction mn = do
   queryTypecheckedModule mn
 
 desugarEnv :: Environment -> EvalEnv
-desugarEnv MkEnvironment { prdEnv, cnsEnv, cmdEnv, instanceDeclEnv } = (prd,cns,cmd,instanceDeclEnv)
+desugarEnv env = (prd,cns,cmd,env.instanceDeclEnv)
   where
-    prd = (\(tm,_,_) -> tm) <$> prdEnv
-    cns = (\(tm,_,_) -> tm) <$> cnsEnv
-    cmd = fst <$> cmdEnv
+    prd = (\(tm,_,_) -> tm) <$> env.prdEnv
+    cns = (\(tm,_,_) -> tm) <$> env.cnsEnv
+    cmd = fst <$> env.cmdEnv
 
 runRun :: DebugFlags -> Either FilePath ModuleName -> IO ()
-runRun DebugFlags { df_debug, df_printGraphs } modId = 
+runRun flags modId = 
   case modId of
     Left fp -> putStrLn $ "Please specify module name instead of filepath " ++ fp
     Right mn -> do
@@ -38,15 +38,15 @@ runRun DebugFlags { df_debug, df_printGraphs } modId =
       mapM_ printLocatedReport warnings
       case res of
         Left errs -> mapM_ printLocatedReport errs
-        Right (_, MkDriverState { drvEnv }) -> do
+        Right (_, state) -> do
           -- Run program
-          let compiledEnv :: EvalEnv = focus CBV ((foldMap desugarEnv . M.elems) drvEnv)
+          let compiledEnv :: EvalEnv = focus CBV ((foldMap desugarEnv . M.elems) state.drvEnv)
           evalCmd <- liftIO $ eval (TST.Jump defaultLoc (MkFreeVarName "main")) compiledEnv
           case evalCmd of
               Left errs -> mapM_ printLocatedReport errs
               Right _res -> return ()
     where
       driverState = defaultDriverState { drvOpts = infOpts }
-      infOpts = (if df_printGraphs then setPrintGraphOpts else id) infOpts'
-      infOpts' = (if df_debug then setDebugOpts else id) defaultInferenceOptions
+      infOpts = (if flags.df_printGraphs then setPrintGraphOpts else id) infOpts'
+      infOpts' = (if flags.df_debug then setDebugOpts else id) defaultInferenceOptions
 

@@ -41,7 +41,7 @@ data ConstraintInfo
 
 data Constraint a where
   SubType :: a -> Typ Pos -> Typ Neg -> Constraint a
-  KindEq :: a -> MonoKind -> MonoKind -> Constraint a
+  KindEq :: a -> AnyKind -> AnyKind -> Constraint a
   TypeClass :: a -> ClassName -> UniTVar -> Constraint a
     deriving (Eq, Ord, Functor)
 
@@ -101,7 +101,7 @@ data UVarProvenance
 -- | A ConstraintSet is a set of constraints, together with a list of all the
 -- unification variables occurring in them.
 data ConstraintSet = ConstraintSet { cs_constraints :: [Constraint ConstraintInfo]
-                                   , cs_uvars :: [(UniTVar, UVarProvenance, MonoKind)]
+                                   , cs_uvars :: [(UniTVar, UVarProvenance, AnyKind)]
                                    , cs_kvars :: [KVar]
                                    }
 
@@ -113,16 +113,16 @@ data VariableState = VariableState
   { vst_upperbounds :: [Typ Neg]
   , vst_lowerbounds :: [Typ Pos]
   , vst_typeclasses :: [ClassName]
-  , vst_kind        :: MonoKind
+  , vst_kind        :: AnyKind
   }
 
-emptyVarState :: MonoKind -> VariableState
+emptyVarState :: AnyKind -> VariableState
 emptyVarState = VariableState [] [] []
 
 data SolverResult = MkSolverResult
-  { tvarSolution    :: Map UniTVar VariableState
-  , kvarSolution    :: Map KVar MonoKind
-  , witnessSolution :: Map (Constraint ()) SubtypeWitness
+  { tvarSolution     :: Map UniTVar VariableState
+  , kvarSolution   :: Map KVar AnyKind
+  , witnessSolution  :: Map (Constraint ()) SubtypeWitness
   }
 
 newtype InstanceResult = MkInstanceResult

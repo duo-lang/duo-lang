@@ -11,10 +11,10 @@ import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 import Data.Void
 
-import Syntax.CST.Names ( RnTypeName, XtorName )
+import Syntax.CST.Names ( RnTypeName, XtorName, RecTVar )
 import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..))
 import Syntax.RST.Types ( Polarity, PolarityRep(..))
-import Syntax.CST.Kinds ( Variance, MonoKind(..), PolyKind(..))
+import Syntax.CST.Kinds ( Variance, PolyKind(..),AnyKind(..))
 
 --------------------------------------------------------------------------------
 -- # Type Automata
@@ -164,8 +164,8 @@ data NodeLabel =
     , nl_codata :: Maybe (Set XtorLabel)
     -- Nominal type names with the arities of type parameters
     , nl_nominal :: Set (RnTypeName, [Variance])
-    , nl_ref_data :: Map RnTypeName (Set XtorLabel)
-    , nl_ref_codata :: Map RnTypeName (Set XtorLabel)
+    , nl_ref_data :: (Map RnTypeName (Set XtorLabel), Maybe RecTVar)
+    , nl_ref_codata :: (Map RnTypeName (Set XtorLabel), Maybe RecTVar)
     , nl_kind :: PolyKind 
     }
   |
@@ -174,34 +174,35 @@ data NodeLabel =
     , pl_prim :: PrimitiveType
     } deriving (Eq,Show,Ord)
 
-emptyNodeLabel :: Polarity -> MonoKind -> NodeLabel
-emptyNodeLabel pol (CBox eo) = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty (MkPolyKind [] eo)
-emptyNodeLabel pol I64Rep = MkPrimitiveNodeLabel pol I64
-emptyNodeLabel pol F64Rep = MkPrimitiveNodeLabel pol F64
-emptyNodeLabel pol StringRep = MkPrimitiveNodeLabel pol PString
-emptyNodeLabel pol CharRep = MkPrimitiveNodeLabel pol PChar
-emptyNodeLabel _ (KindVar _) = error "Tried to create empty node label with KindVar Kind"
+emptyNodeLabel :: Polarity -> AnyKind -> NodeLabel
+emptyNodeLabel _ (MkPknd (KindVar _)) = error "at this point no KindVars should be in the program"
+emptyNodeLabel pol (MkPknd pk)  = MkNodeLabel pol Nothing Nothing S.empty (M.empty, Nothing) (M.empty,Nothing) pk
+emptyNodeLabel pol MkI64        = MkPrimitiveNodeLabel pol I64
+emptyNodeLabel pol MkF64        = MkPrimitiveNodeLabel pol F64
+emptyNodeLabel pol MkString     = MkPrimitiveNodeLabel pol PString
+emptyNodeLabel pol MkChar       = MkPrimitiveNodeLabel pol PChar
 
-emptyNodeLabelPk :: Polarity -> PolyKind -> NodeLabel
-emptyNodeLabelPk pol = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty
+singleNodeLabelNominal :: Polarity -> (RnTypeName, [Variance]) ->  PolyKind -> NodeLabel
+singleNodeLabelNominal pol nominal k = MkNodeLabel { nl_pol = pol, nl_data = Nothing, nl_codata = Nothing, nl_nominal = S.singleton nominal, nl_ref_data = (M.empty, Nothing), nl_ref_codata = (M.empty, Nothing), nl_kind = k }
 
-
-singleNodeLabel :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> PolyKind -> NodeLabel
-singleNodeLabel pol Data Nothing xtors   = MkNodeLabel pol (Just xtors) Nothing S.empty M.empty M.empty
-singleNodeLabel pol Codata Nothing xtors = MkNodeLabel pol Nothing (Just xtors) S.empty M.empty M.empty
-singleNodeLabel pol Data (Just tn) xtors   = MkNodeLabel pol Nothing Nothing S.empty (M.singleton tn xtors) M.empty
-singleNodeLabel pol Codata (Just tn) xtors = MkNodeLabel pol Nothing Nothing S.empty M.empty (M.singleton tn xtors)
+singleNodeLabelXtor :: Polarity -> DataCodata -> Maybe (RnTypeName, Maybe RecTVar) -> Set XtorLabel -> PolyKind -> NodeLabel
+singleNodeLabelXtor pol Data   Nothing   xtors k      = MkNodeLabel { nl_pol = pol, nl_data = Just xtors, nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = (M.empty, Nothing),         nl_ref_codata = (M.empty, Nothing),         nl_kind = k }
+singleNodeLabelXtor pol Codata Nothing   xtors k      = MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Just xtors, nl_nominal = S.empty, nl_ref_data = (M.empty, Nothing),         nl_ref_codata = (M.empty, Nothing),         nl_kind = k }
+singleNodeLabelXtor pol Data   (Just (tn,rv)) xtors k = MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = (M.singleton tn xtors, rv), nl_ref_codata = (M.empty, Nothing),         nl_kind = k }
+singleNodeLabelXtor pol Codata (Just (tn,rv)) xtors k = MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = (M.empty, Nothing),         nl_ref_codata = (M.singleton tn xtors, rv), nl_kind = k }
 
 getPolarityNL :: NodeLabel -> Polarity
 getPolarityNL (MkNodeLabel pol _ _ _ _ _ _) = pol
 getPolarityNL (MkPrimitiveNodeLabel pol _) = pol
 
-getKindNL :: NodeLabel -> MonoKind 
-getKindNL (MkNodeLabel _ _ _ _ _ _ mk) = CBox $ returnKind mk
-getKindNL (MkPrimitiveNodeLabel _ I64) = I64Rep
-getKindNL (MkPrimitiveNodeLabel _ F64) = F64Rep
-getKindNL (MkPrimitiveNodeLabel _ PChar) = CharRep
-getKindNL (MkPrimitiveNodeLabel _ PString) = StringRep
+getKindNL :: NodeLabel -> PolyKind 
+getKindNL (MkNodeLabel _ _ _ _ _ _ (KindVar _)) = error "at this point no KindVars should be in the program"
+getKindNL (MkNodeLabel _ _ _ _ _ _ pk) = pk
+getKindNL (MkPrimitiveNodeLabel _ _) = error "can't get polykind of primitive type"
+--getKindNL (MkPrimitiveNodeLabel _ I64) = I64Rep
+--getKindNL (MkPrimitiveNodeLabel _ F64) = F64Rep
+--getKindNL (MkPrimitiveNodeLabel _ PChar) = CharRep
+--getKindNL (MkPrimitiveNodeLabel _ PString) = StringRep
       
 --------------------------------------------------------------------------------
 -- Edge labels for type automata
@@ -265,28 +266,28 @@ instance Nubable [] where
 
 
 mapTypeAutCore :: Ord a => (Node -> Node) -> TypeAutCore a -> TypeAutCore a
-mapTypeAutCore f TypeAutCore { ta_gr, ta_flowEdges } = TypeAutCore
-  { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes ta_gr])
-            (nub [(f i , f j, b) | (i,j,b) <- labEdges ta_gr])
-  , ta_flowEdges = nub (bimap f f <$> ta_flowEdges)
+mapTypeAutCore f aut = TypeAutCore
+  { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes aut.ta_gr])
+            (nub [(f i , f j, b) | (i,j,b) <- labEdges aut.ta_gr])
+  , ta_flowEdges = nub (bimap f f <$> aut.ta_flowEdges)
   }
 
 -- Maps a function on nodes over a type automaton
 mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f pol -> TypeAut' a f pol
-mapTypeAut f TypeAut { ta_pol, ta_starts, ta_core } = TypeAut
-  { ta_pol = ta_pol
-  , ta_starts = nub (f <$> ta_starts)
-  , ta_core = mapTypeAutCore f ta_core
+mapTypeAut f aut = TypeAut
+  { ta_pol = aut.ta_pol
+  , ta_starts = nub (f <$> aut.ta_starts)
+  , ta_core = mapTypeAutCore f aut.ta_core
   }
 
 removeRedundantEdges :: TypeGr -> TypeGr
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
 removeRedundantEdgesCore :: TypeAutCore EdgeLabelNormal -> TypeAutCore EdgeLabelNormal
-removeRedundantEdgesCore aut@TypeAutCore{..} = aut { ta_gr = removeRedundantEdges ta_gr }
+removeRedundantEdgesCore aut = aut { ta_gr = removeRedundantEdges aut.ta_gr }
 
 removeRedundantEdgesAut :: TypeAutDet pol -> TypeAutDet pol
-removeRedundantEdgesAut aut@TypeAut { ta_core } = aut { ta_core = removeRedundantEdgesCore ta_core }
+removeRedundantEdgesAut aut = aut { ta_core = removeRedundantEdgesCore aut.ta_core }
 
 delAllLEdges :: Eq b => [LEdge b] -> Gr NodeLabel b -> Gr NodeLabel b
 delAllLEdges es gr = foldr delAllLEdge gr es

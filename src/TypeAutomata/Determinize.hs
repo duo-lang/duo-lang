@@ -34,7 +34,7 @@ getAlphabetForNodes gr ns = nub $ map (\(_,_,b) -> b) (concatMap (out gr) (S.toL
 
 -- | Get all successor nodes from the given set which are connected by the given edgeLabel.
 succsWith :: Gr NodeLabel EdgeLabelNormal -> Set Node -> EdgeLabelNormal -> Set Node
-succsWith gr ns x = S.fromList $ map fst . filter ((==x).snd) $ concatMap (lsuc gr) (S.toList ns)
+succsWith gr ns x = S.fromList $ map fst . filter ((==x) . snd) $ concatMap (lsuc gr) (S.toList ns)
 
 determinizeState :: [Set Node]
                  -> Gr NodeLabel EdgeLabelNormal
@@ -81,35 +81,40 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
   case rs_merged of
     pr@MkPrimitiveNodeLabel{} -> error ("Tried to combine primitive type" <> show pr <> " and algebraic type " <> show fstLabel)
     combLabel@MkNodeLabel{} ->
-      if returnKind (nl_kind combLabel) == returnKind knd then 
-        if nl_pol combLabel == pol then
+      if combLabel.nl_kind.returnKind == knd.returnKind then 
+        if combLabel.nl_pol  == pol then
           MkNodeLabel {
             nl_pol = pol,
             nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ _ <- [fstLabel,combLabel]],
             nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ _ <- [fstLabel,combLabel]],
             nl_nominal = S.unions [tn | MkNodeLabel _ _ _ tn _ _ _ <- [fstLabel, combLabel]],
-            nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ _ <- [fstLabel, combLabel]],
-            nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ <- [fstLabel, combLabel]],
-            nl_kind = MkPolyKind (mrgKindArgs (kindArgs $ nl_kind combLabel) (kindArgs knd))  (returnKind knd)
+            nl_ref_data = (mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ _ <- [fstLabel, combLabel]], 
+                           mrgRecVars (snd fstLabel.nl_ref_data, snd combLabel.nl_ref_data)),
+            nl_ref_codata = (mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ <- [fstLabel, combLabel]],
+                            mrgRecVars (snd fstLabel.nl_ref_codata, snd combLabel.nl_ref_codata)),
+            nl_kind = MkPolyKind (mrgKindArgs combLabel.nl_kind.kindArgs knd.kindArgs) knd.returnKind
           }
         else
           error "Tried to combine node labels of different polarity!"
     else 
-      error ("Tried to combine node labels of different kind" <> show (nl_kind combLabel) <> " and " <> show knd)
+      error ("Tried to combine node labels of different kind" <> show combLabel.nl_kind <> " and " <> show knd)
   where
-    pol = nl_pol fstLabel
-    knd = nl_kind fstLabel
+    pol = fstLabel.nl_pol
+    knd = fstLabel.nl_kind
     mrgDat [] = Nothing
     mrgDat (xtor:xtors) = Just $ case pol of {Pos -> S.unions (xtor:xtors) ; Neg -> intersections (xtor :| xtors) }
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
     mrgRefDat refs = case pol of
-      Pos -> M.unionsWith S.union refs
-      Neg -> M.unionsWith S.intersection refs
+      Pos -> M.unionsWith S.union (map fst refs)
+      Neg -> M.unionsWith S.intersection (map fst refs)
     mrgRefCodat refs = case pol of
-      Pos -> M.unionsWith S.intersection refs
-      Neg -> M.unionsWith S.union refs
+      Pos -> M.unionsWith S.intersection (map fst refs)
+      Neg -> M.unionsWith S.union (map fst refs)
     rs_merged = combineNodeLabels rs
+    mrgRecVars (Nothing,Nothing) = Nothing
+    mrgRecVars (Just r1,_) = Just r1
+    mrgRecVars (_,Just r2) = Just r2
     mrgKindArgs [] knds = knds
     mrgKindArgs knds [] = knds
     mrgKindArgs (knd1:knds1) knds2 = if knd1 `elem` knds2 then mrgKindArgs knds1 knds2 else knd1:mrgKindArgs knds1 knds2
@@ -118,16 +123,16 @@ combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) =
   case rs_merged of
     nl@MkNodeLabel{} -> error ("Tried to combine primitive type" <> show fstLabel <> " and algebraic type" <> show nl)
     combLabel@MkPrimitiveNodeLabel{} ->
-      if pl_pol combLabel == pol then
-        if pl_prim combLabel == primT then
+      if combLabel.pl_pol == pol then
+        if combLabel.pl_prim == primT then
           MkPrimitiveNodeLabel pol primT
         else
-          error ("Tried to combine " <> primToStr primT <> " and " <> primToStr (pl_prim combLabel))
+          error ("Tried to combine " <> primToStr primT <> " and " <> primToStr combLabel.pl_prim)
       else
         error "Tried to combine node labels of different polarity!"
   where
-    pol = pl_pol fstLabel
-    primT = pl_prim fstLabel
+    pol = fstLabel.pl_pol
+    primT = fstLabel.pl_prim
     rs_merged = combineNodeLabels rs
     primToStr typ = case typ of {I64 -> "I64"; F64 -> "F64" ; PChar -> "Char" ; PString -> "String"}
 
@@ -166,16 +171,16 @@ flowEdges transFun flowedges = nub $ concatMap reindexFlowEdge flowedges
 ------------------------------------------------------------------------------
 
 determinize :: TypeAut pol -> TypeAutDet pol
-determinize TypeAut{ ta_pol, ta_starts, ta_core = TypeAutCore { ta_gr, ta_flowEdges }} =
+determinize aut =
   let
-    starts = S.fromList ta_starts
+    starts = S.fromList aut.ta_starts
     newstart = M.findIndex starts newTransFun
-    newTransFun = transFun ta_gr starts
+    newTransFun = transFun aut.ta_core.ta_gr starts
     newTransFunReind = reIndexTransFun newTransFun
-    newFlowEdges = flowEdges newTransFunReind ta_flowEdges
-    newgr = newTypeGraph newTransFunReind ta_gr
+    newFlowEdges = flowEdges newTransFunReind aut.ta_core.ta_flowEdges
+    newgr = newTypeGraph newTransFunReind aut.ta_core.ta_gr
     newCore = TypeAutCore { ta_gr = newgr, ta_flowEdges = newFlowEdges }
   in
-    TypeAut { ta_pol = ta_pol, ta_starts = Identity newstart, ta_core = newCore }
+    TypeAut { ta_pol = aut.ta_pol, ta_starts = Identity newstart, ta_core = newCore }
 
 

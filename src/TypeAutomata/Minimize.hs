@@ -134,21 +134,21 @@ myGroupBy _ [] = []
 myGroupBy p (x:xs) = let (xs1,xs2) = partition (p x) xs in (x:xs1) : myGroupBy p xs2
 
 flowNeighbors :: TypeAutCore EdgeLabelNormal -> Node -> Set Node
-flowNeighbors TypeAutCore { ta_flowEdges } i =
-  S.fromList $ [n | (j,n) <- ta_flowEdges, i == j] ++ [n | (n,j) <- ta_flowEdges, i == j]
+flowNeighbors aut i =
+  S.fromList $ [n | (j,n) <- aut.ta_flowEdges, i == j] ++ [n | (n,j) <- aut.ta_flowEdges, i == j]
 
 -- nodes are considered equal if they have the same label and the same neighbors along flow edges
 equalNodes :: TypeAutCore EdgeLabelNormal -> Node -> Node -> Bool
-equalNodes aut@TypeAutCore{ ta_gr } i j =
-  (lab ta_gr i == lab ta_gr j) && flowNeighbors aut i == flowNeighbors aut j
+equalNodes aut i j =
+  (lab aut.ta_gr i == lab aut.ta_gr j) && flowNeighbors aut i == flowNeighbors aut j
 
 -- We don't have a direct notion for accepting states, so we unroll the definition of the
 -- minimisation algorithm once
 initialSplit :: TypeAutCore EdgeLabelNormal -> ([EquivalenceClass], [EquivalenceClass])
-initialSplit aut@TypeAutCore { ta_gr } = (rest,catMaybes [posMin,negMin])
+initialSplit aut = (rest,catMaybes [posMin,negMin])
   where
     distGroups :: [EquivalenceClass]
-    distGroups = myGroupBy (equalNodes aut) (nodes ta_gr)
+    distGroups = myGroupBy (equalNodes aut) (nodes aut.ta_gr)
     (posMin,negMin,rest) = getMins $ sort <$> distGroups
   
     getMins :: [EquivalenceClass]
@@ -156,7 +156,7 @@ initialSplit aut@TypeAutCore { ta_gr } = (rest,catMaybes [posMin,negMin])
     getMins []                  = (Nothing, Nothing, [])
     getMins ([]        : _iss)  = error "Minimize: Empty equivalence class should not exist"
     getMins (eq@(nd : _) : iss) =
-      let l = fromJust $ lab ta_gr nd
+      let l = fromJust $ lab aut.ta_gr nd
           pol = getLabelPol l
           (p,n,iss') = getMins iss
           (p',n',iss'')  = case (pol, p, n) of
@@ -173,22 +173,22 @@ initialSplit aut@TypeAutCore { ta_gr } = (rest,catMaybes [posMin,negMin])
       in (p', n', iss'')
 
 getLabelPol :: NodeLabel -> Polarity
-getLabelPol MkNodeLabel {nl_pol} = nl_pol
-getLabelPol MkPrimitiveNodeLabel {pl_pol} = pl_pol
+getLabelPol nl@MkNodeLabel{} = nl.nl_pol
+getLabelPol nl@MkPrimitiveNodeLabel{} = nl.pl_pol
 
 -- generate a function that maps each node to the representative of its respective equivalence class
 genMinimizeFun :: TypeAutCore EdgeLabelNormal -> (Node -> Node)
-genMinimizeFun aut@TypeAutCore { ta_gr } = getNewNode
+genMinimizeFun aut = getNewNode
   where
-    preds        = predsMap ta_gr
-    alph         = getAlphabet ta_gr
+    preds        = predsMap aut.ta_gr
+    alph         = getAlphabet aut.ta_gr
     (ls,ps)      = initialSplit aut
     nodeSets     = minimize' preds alph ls ps
     getNewNode n = head $ head $ filter (n `elem`) nodeSets
 
 minimize :: TypeAutDet pol -> TypeAutDet pol
-minimize aut@TypeAut {ta_core} = aut'
+minimize aut = aut'
   where
-    ta_core' = removeRedundantEdgesCore ta_core
+    ta_core' = removeRedundantEdgesCore aut.ta_core
     fun      = genMinimizeFun ta_core'
     aut'     = mapTypeAut fun aut

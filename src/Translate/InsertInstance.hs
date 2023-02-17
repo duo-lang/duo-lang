@@ -7,6 +7,7 @@ import qualified Data.List.NonEmpty as NE
 import Errors
 import qualified Data.Map as M
 import Pretty.Pretty (ppPrint)
+import Pretty.Common ()
 
 
 class InsertInstance a where
@@ -40,22 +41,22 @@ instance InsertInstance Command where
     insertInstance _inst cmd = pure cmd
 
 instance InsertInstance InstanceDeclaration where
-    insertInstance inst (MkInstanceDeclaration { instancedecl_loc, instancedecl_doc, instancedecl_name, instancedecl_class, instancedecl_typ, instancedecl_cases }) = do
-        insertedCases <- mapM (insertInstance inst) instancedecl_cases
+    insertInstance inst decl = do
+        insertedCases <- mapM (insertInstance inst) decl.instancedecl_cases
         pure MkInstanceDeclaration
-          { instancedecl_loc = instancedecl_loc
-          , instancedecl_doc = instancedecl_doc
-          , instancedecl_name = instancedecl_name
-          , instancedecl_class = instancedecl_class
-          , instancedecl_typ = instancedecl_typ
+          { instancedecl_loc = decl.instancedecl_loc
+          , instancedecl_doc = decl.instancedecl_doc
+          , instancedecl_name = decl.instancedecl_name
+          , instancedecl_class = decl.instancedecl_class
+          , instancedecl_typ = decl.instancedecl_typ
           , instancedecl_cases = insertedCases
           }
 
 instance InsertInstance InstanceCase where
-    insertInstance inst (MkInstanceCase { instancecase_loc, instancecase_pat, instancecase_cmd }) = do
-        insertedCmd <- insertInstance inst instancecase_cmd
+    insertInstance inst icase = do
+        insertedCmd <- insertInstance inst icase.instancecase_cmd
         pure MkInstanceCase 
-          { instancecase_loc = instancecase_loc
-          , instancecase_pat = instancecase_pat
+          { instancecase_loc = icase.instancecase_loc
+          , instancecase_pat = icase.instancecase_pat
           , instancecase_cmd = insertedCmd
           }

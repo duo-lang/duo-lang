@@ -158,10 +158,15 @@ instance PrettyAnn CST.Typ where
   prettyAnn (CST.TyXData _ CST.Codata xtors) =
     braces' commaSym (prettyAnn <$> xtors)
   -- Refinement types
-  prettyAnn (CST.TyXRefined _ CST.Data   tn xtors) =
+  prettyAnn (CST.TyXRefined _ CST.Data   tn Nothing xtors) =
     angles' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
-  prettyAnn (CST.TyXRefined _ CST.Codata tn xtors) =
+  prettyAnn (CST.TyXRefined _ CST.Data   tn (Just rv) xtors) =
+    angles' mempty [prettyAnn tn <+> pipeSym, prettyAnn rv <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))] 
+  prettyAnn (CST.TyXRefined _ CST.Codata tn Nothing xtors) =
     braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+  prettyAnn (CST.TyXRefined _ CST.Codata tn (Just rv) xtors) =
+    braces' mempty [prettyAnn tn <+> pipeSym, prettyAnn rv <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+
   -- Primitive types
   prettyAnn (CST.TyI64 _) = "#I64"
   prettyAnn (CST.TyF64 _) = "#F64"
@@ -181,10 +186,10 @@ instance PrettyAnn (TST.TypeScheme pol) where
   prettyAnn tys = prettyAnn (embedTST tys)
 
 instance PrettyAnn CST.TypeScheme where
-  prettyAnn CST.TypeScheme { ts_vars = [], ts_monotype } =
-    prettyAnn ts_monotype
-  prettyAnn CST.TypeScheme { ts_vars, ts_monotype } =
+  prettyAnn ts | null ts.ts_vars =
+    prettyAnn ts.ts_monotype
+  prettyAnn ts =
     forallSymUnicode <+>
-    sep (prettyAnn <$> ts_vars ) <>
+    sep (prettyAnn <$> ts.ts_vars ) <>
     "." <+>
-    prettyAnn ts_monotype
+    prettyAnn ts.ts_monotype

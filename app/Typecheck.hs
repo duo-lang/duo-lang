@@ -2,7 +2,7 @@ module Typecheck where
 
 import Options (DebugFlags(..))
 import Syntax.CST.Names
-import Driver.Driver (runCompilationModule, defaultInferenceOptions)
+import Driver.Driver (runCompilationModule, defaultInferenceOptions, adjustModulePath)
 import Driver.Definition (defaultDriverState, execDriverM, DriverState(..), setPrintGraphOpts, setDebugOpts, addModule)
 import Pretty.Errors (printLocatedReport)
 import Data.Text qualified as T
@@ -12,20 +12,21 @@ import Data.Foldable (fold)
 import Data.Text.IO qualified as T
 import Control.Monad.IO.Class (liftIO)
 import Parser.Definition (runFileParser)
-import Syntax.CST.Program (adjustModulePath, Module (..))
+import Syntax.CST.Program ( Module (..))
 import Parser.Program (moduleP)
 import Control.Monad.Except (throwError)
+import Errors
 
 runTypecheck :: DebugFlags -> Either FilePath ModuleName -> IO ()
-runTypecheck DebugFlags { df_debug, df_printGraphs } modId = do
+runTypecheck flags modId = do
   (res ,warnings) <- case modId of
             Left fp -> do
               file <- liftIO $ T.readFile fp
               execDriverM driverState $ do
-                mod <- runFileParser fp (moduleP fp) file
+                mod <- runFileParser fp (moduleP fp) file ErrParser
                 case adjustModulePath mod fp of
                   Right mod -> do
-                      let mn = mod_name mod
+                      let mn = mod.mod_name
                       addModule mod
                       res <- runCompilationModule mn
                       pure (mn,res)
@@ -37,9 +38,9 @@ runTypecheck DebugFlags { df_debug, df_printGraphs } modId = do
       mapM_ printLocatedReport errs
       exitWith (ExitFailure 1)
     Right ((mn,_), MkDriverState {}) -> do
-      putStrLn $ "Module " <> T.unpack (fold (intersperse "." (mn_path mn ++  [mn_base mn]))) <> " typechecks"
+      putStrLn $ "Module " <> T.unpack (fold (intersperse "." (mn.mn_path ++  [mn.mn_base]))) <> " typechecks"
   return ()
     where
       driverState = defaultDriverState { drvOpts = infOpts }
-      infOpts = (if df_printGraphs then setPrintGraphOpts else id) infOpts'
-      infOpts' = (if df_debug then setDebugOpts else id) defaultInferenceOptions
+      infOpts = (if flags.df_printGraphs then setPrintGraphOpts else id) infOpts'
+      infOpts' = (if flags.df_debug then setDebugOpts else id) defaultInferenceOptions

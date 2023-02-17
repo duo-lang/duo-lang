@@ -58,7 +58,7 @@ createNodes :: [KindedSkolem] -> [(SkolemTVar, (Node, NodeLabel), (Node, NodeLab
 createNodes tvars = createNode <$> createPairs tvars
   where
     createNode :: (KindedSkolem, Node, Node) -> (SkolemTVar, (Node, NodeLabel), (Node, NodeLabel), FlowEdge)
-    createNode ((tv, mk), posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos mk), (negNode, emptyNodeLabel Neg mk), (negNode, posNode))
+    createNode ((tv, mk), posNode, negNode) = (tv, (posNode, emptyNodeLabel Pos (MkPknd mk)), (negNode, emptyNodeLabel Neg (MkPknd mk)), (negNode, posNode))
 
     createPairs :: [KindedSkolem] -> [(KindedSkolem, Node,Node)]
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
@@ -93,7 +93,7 @@ runTypeAutTvars tvars m = do
 modifyGraph :: (TypeGrEps -> TypeGrEps) -> TTA ()
 modifyGraph f = modify go
   where
-    go aut@TypeAutCore { ta_gr } = aut { ta_gr = f ta_gr }
+    go aut = aut { ta_gr = f aut.ta_gr }
 
 insertNode :: Node -> NodeLabel -> TTA ()
 insertNode node nodelabel = modifyGraph (G.insNode (node, nodelabel))
@@ -103,16 +103,16 @@ insertEdges edges = modifyGraph (G.insEdges edges)
 
 newNodeM :: TTA Node
 newNodeM = do
-  graph <- gets ta_gr
+  graph <- gets (\x -> x.ta_gr)
   pure $ (head . G.newNodes 1) graph
 
 lookupTVar :: PolarityRep pol -> SkolemTVar -> TTA Node
 lookupTVar PosRep tv = do
-  tSkolemVarEnv <- asks tSkolemVarEnv
+  tSkolemVarEnv <- asks (\x -> x.tSkolemVarEnv)
   case M.lookup tv tSkolemVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The type variable:"
-                                              , "    " <> unSkolemTVar tv
+                                              , "    " <> tv.unSkolemTVar
                                               , "is not available in the automaton."
                                               ]
     -- Skolem Variables cannot appear with only one polarity anymore
@@ -123,11 +123,11 @@ lookupTVar PosRep tv = do
     --                                                   ]
     Just (pos,_) -> return pos
 lookupTVar NegRep tv = do
-  tSkolemVarEnv <- asks tSkolemVarEnv
+  tSkolemVarEnv <- asks (\x -> x.tSkolemVarEnv)
   case M.lookup tv tSkolemVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The type variable:"
-                                              , "    " <> unSkolemTVar tv
+                                              , "    " <> tv.unSkolemTVar
                                               , "is not available in the automaton."
                                               ]
     -- Skolem Variables cannot appear with only one polarity anymore
@@ -140,30 +140,30 @@ lookupTVar NegRep tv = do
 
 lookupTRecVar :: PolarityRep pol -> RecTVar -> TTA Node
 lookupTRecVar PosRep tv = do
-  tRecVarEnv <- asks tRecVarEnv
+  tRecVarEnv <- asks (\x -> x.tRecVarEnv)
   case M.lookup tv tRecVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The Recursive Variable:"
-                                              , "   " <> unRecTVar tv
+                                              , "   " <> tv.unRecTVar
                                               , "is not available in the automaton."
                                               ]
     Just (Nothing,_) -> throwAutomatonError defaultLoc ["Could not insert type into automaton."
                                                        , "The Recursive Variable:"
-                                                       , "   " <> unRecTVar tv
+                                                       , "   " <> tv.unRecTVar
                                                        , "exists only in negative polarity."
                                                        ]
     Just (Just pos,_) -> return pos
 lookupTRecVar NegRep tv = do
-  tRecVarEnv <- asks tRecVarEnv
+  tRecVarEnv <- asks (\x -> x.tRecVarEnv)
   case M.lookup tv tRecVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The Recursive Variable:"
-                                              , "   " <> unRecTVar tv
+                                              , "   " <> tv.unRecTVar
                                               , "is not available in the automaton."
                                               ]
     Just (_,Nothing) -> throwAutomatonError defaultLoc ["Could not insert type into automaton."
                                                        , "The Recursive Variable:"
-                                                       , "   " <> unRecTVar tv
+                                                       , "   " <> tv.unRecTVar
                                                        , "exists only in positive polarity."
                                                        ]
     Just (_,Just neg) -> return neg
@@ -177,10 +177,10 @@ lookupTRecVar NegRep tv = do
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 
-insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> PolyKind -> [XtorSig pol] -> TTA Node
+insertXtors :: CST.DataCodata -> Polarity -> Maybe (RnTypeName, Maybe RecTVar) -> PolyKind -> [XtorSig pol] -> TTA Node
 insertXtors dc pol mtn pk xtors = do
   newNode <- newNodeM
-  insertNode newNode (singleNodeLabel pol dc mtn (S.fromList (sigToLabel <$> xtors)) pk)
+  insertNode newNode (singleNodeLabelXtor pol dc mtn (S.fromList (sigToLabel <$> xtors)) pk)
   forM_ xtors $ \(MkXtorSig xt ctxt) -> do
     forM_ (enumerate ctxt) $ \(i, pcType) -> do
       node <- insertPCType pcType
@@ -202,7 +202,7 @@ insertType :: Typ pol -> TTA Node
 insertType (TySkolemVar _ rep _ tv) = lookupTVar rep tv
 insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert type into automaton."
                                                             , "The unification variable:"
-                                                            , "    " <> unUniTVar tv
+                                                            , "    " <> tv.unUniTVar
                                                             , "should not appear at this point in the program."
                                                             ]
 insertType (TyRecVar _ rep _ tv) = lookupTRecVar rep tv
@@ -237,28 +237,34 @@ insertType (TyRec _ rep rv ty) = do
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData _  polrep (CBox eo) xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
-insertType (TyData _ _ mk _) = throwAutomatonError defaultLoc ["Tried to insert TyData into automaton with incorrect kind " <> ppPrint mk]
-insertType (TyCodata _ polrep (CBox eo)  xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
-insertType (TyCodata _ _ mk _) = throwAutomatonError defaultLoc ["Tried to insert TyCodata into automaton with incorrect kind " <> ppPrint mk]
-insertType (TyDataRefined _ polrep pk mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) pk xtors
-insertType (TyCodataRefined _ polrep pk mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) pk xtors
+insertType (TyData _  polrep eo xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
+insertType (TyCodata _ polrep eo  xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
+insertType (TyDataRefined _ polrep pk mtn rv xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just (mtn,rv)) pk xtors
+insertType (TyCodataRefined _ polrep pk mtn rv xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just (mtn,rv)) pk xtors
 insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyApp _ _ (TyNominal _ rep polyknd tn) args) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
-  insertNode newNode ((emptyNodeLabelPk pol polyknd) { nl_nominal = S.singleton (tn, NE.toList $ toVariance <$> args) })
+  insertNode newNode (singleNodeLabelNominal pol (tn, NE.toList $ toVariance <$> args) polyknd)
   argNodes <- forM args insertVariantType
   insertEdges ((\(i, (n, variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate (NE.toList argNodes))
   return newNode
 insertType (TyNominal _ rep polyknd tn) = do
-  case kindArgs polyknd of 
+  case polyknd.kindArgs of 
     [] -> do
       let pol = polarityRepToPol rep 
       newNode <- newNodeM
-      insertNode newNode ((emptyNodeLabelPk pol polyknd) {nl_nominal = S.singleton (tn,[]) })
+      insertNode newNode (singleNodeLabelNominal pol (tn,[]) polyknd )
       return newNode
     _ -> throwAutomatonError defaultLoc ["Nominal type "<> ppPrint tn <> "was not fully applied"]
+insertType (TyApp _ _ (TyRecVar _ rep pknd _) args) = do
+  let pol = polarityRepToPol rep
+  newNode <- newNodeM
+  insertNode newNode (emptyNodeLabel pol (MkPknd pknd))
+  argNodes <- mapM insertVariantType args
+  insertEdges ((\(_, (n, _)) -> (newNode, n, EpsilonEdge ())) <$> enumerate (NE.toList argNodes))
+  return newNode
+
 insertType TyApp{} = throwAutomatonError defaultLoc ["Types can only be applied to nominal types"]
 insertType (TyI64 _ rep) = do
   let pol = polarityRepToPol rep
@@ -290,9 +296,9 @@ insertType (TyFlipPol _ _) =
 
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either (NonEmpty Error) (TypeAutEps pol)
-typeToAut TypeScheme { ts_vars, ts_monotype } = do
-  (start, aut) <- runTypeAutTvars ts_vars (insertType ts_monotype)
-  return TypeAut { ta_pol = getPolarity ts_monotype
+typeToAut ts = do
+  (start, aut) <- runTypeAutTvars ts.ts_vars (insertType ts.ts_monotype)
+  return TypeAut { ta_pol = getPolarity ts.ts_monotype
                  , ta_starts = [start]
                  , ta_core = aut
                  }

@@ -53,7 +53,7 @@ explore :: Graph gr => gr NodeLabel EdgeLabelNormal
                     -> gr NodeLabel EdgeLabelNormal
                     -> ExploreM Bool
 explore gr1 gr2 = do
-  todos <- gets todos
+  todos <- gets (\x -> x.todos)
   case todos of
     [] -> pure True
     (n,m):rest -> do
@@ -68,7 +68,7 @@ explore gr1 gr2 = do
       -- if label is non-empty, fail (non-empty intersection)
       if all isEmptyLabel (fromMaybe (error "intersectLabels returned Nothing") <$> merged)
         then do
-          modify (\(ExploreState { known }) -> ExploreState { known = (n,m):known, todos = nub $ (newNodes \\ known) ++ rest })
+          modify (\es-> ExploreState { known = (n,m) : es.known, todos = nub $ (newNodes \\ es.known) ++ rest })
           explore gr1 gr2
         else pure False
 
@@ -81,8 +81,15 @@ intersectLabels (MkNodeLabel pol  data'  codata  nominal  ref_data  ref_codata  
  | otherwise = Just $ MkNodeLabel pol (S.intersection <$> data' <*> data'')
                                       (S.intersection <$> codata <*> codata')
                                       (S.intersection nominal nominal')
-                                      (M.intersectionWith S.intersection ref_data ref_data')
-                                      (M.intersectionWith S.intersection ref_codata ref_codata') kind
+                                      (M.intersectionWith S.intersection (fst ref_data) (fst ref_data'),
+                                        mrgRecVars (snd ref_data,snd ref_data'))
+                                      (M.intersectionWith S.intersection (fst ref_codata) (fst ref_codata'),
+                                        mrgRecVars (snd ref_data,snd ref_data'))
+                                        kind
+  where 
+    mrgRecVars (Nothing, Nothing) = Nothing
+    mrgRecVars (Just r1,_) = Just r1
+    mrgRecVars (_,Just r2) = Just r2
 intersectLabels (MkPrimitiveNodeLabel pol prim)
                 (MkPrimitiveNodeLabel pol' prim')
  | pol /= pol' = Nothing
@@ -108,8 +115,8 @@ intersectAut :: TypeAutDet pol -> TypeAutDet pol -> TypeAutDet pol
 --  intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges $ intersectAutM aut1 aut2
 intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize $ intersected
   where
-    intersected = runIdentity $ flip evalStateT initState $ runIntersect $ intersectAutM aut1 aut2
-    initState = IS { is_nodes = M.empty, is_nodelabels = M.empty, is_edges = M.empty, is_counter = 0, is_todo = [(runIdentity $ ta_starts aut1, runIdentity $ ta_starts aut2)] }
+    intersected = runIdentity $ flip evalStateT initState (intersectAutM aut1 aut2).runIntersect
+    initState = IS { is_nodes = M.empty, is_nodelabels = M.empty, is_edges = M.empty, is_counter = 0, is_todo = [(runIdentity aut1.ta_starts, runIdentity aut2.ta_starts)] }
 
 data IntersectS
   = IS { is_nodes :: Map (Node,Node) Node
@@ -131,30 +138,30 @@ type IntersectM = IntersectM' Identity
 
 addNode :: (Node,Node) -> IntersectM Node
 addNode (nl,nr) = do
-  c <- gets is_counter
-  modify (\is@IS { is_nodes } -> is { is_nodes = M.insert (nl,nr) c is_nodes, is_counter = c+1 })
+  c <- gets (\x -> x.is_counter)
+  modify (\is-> is { is_nodes = M.insert (nl,nr) c is.is_nodes, is_counter = c+1 })
   return c
 
 intersectAutM :: TypeAutDet pol -> TypeAutDet pol -> IntersectM (TypeAut pol)
 intersectAutM aut1 aut2 = do
-    starts <- gets (head . is_todo)
+    starts <- gets (head . (\x -> x.is_todo))
     go
-    nodes <- gets (M.toList . is_nodelabels)
-    nodeM <- gets is_nodes
-    edges' <- gets (M.toList . is_edges)
+    nodes <- gets (M.toList . (\x -> x.is_nodelabels))
+    nodeM <- gets (\x -> x.is_nodes)
+    edges' <- gets (M.toList . (\x -> x.is_edges))
     let edges = concatMap (\(n,es) -> map (\(n1,n2,l) -> (n, nodeM M.! (n1,n2), l)) es) edges'
     let gr = mkGraph nodes edges
-    start <- gets (flip (M.!) starts . is_nodes)
+    start <- gets (flip (M.!) starts . (\x -> x.is_nodes))
     -- TODO: get flow edges
     let fl = []
-    pure $ TypeAut { ta_core = TypeAutCore { ta_gr = gr, ta_flowEdges = fl }, ta_starts = [start], ta_pol = ta_pol aut1 }
+    pure $ TypeAut { ta_core = TypeAutCore { ta_gr = gr, ta_flowEdges = fl }, ta_starts = [start], ta_pol = aut1.ta_pol }
   where
-    gr1 = ta_gr (ta_core aut1)
-    gr2 = ta_gr (ta_core aut2)
+    gr1 = aut1.ta_core.ta_gr
+    gr2 = aut2.ta_core.ta_gr
     go :: IntersectM ()
     go = do
-      todos <- gets is_todo
-      cache <- gets is_nodes
+      todos <- gets (\x -> x.is_todo)
+      cache <- gets (\x -> x.is_nodes)
       case todos of
         [] -> pure ()
         (todo@(n1,n2):todos') -> flip (>>) go $ if isJust $ todo `M.lookup` cache

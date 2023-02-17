@@ -58,14 +58,14 @@ fromEpsGr = gmap mapfun
     mapfun (ins,i,nl,outs) = (foo ins, i, nl, foo outs)
 
 removeEpsilonEdges :: TypeAutEps pol -> TypeAut pol
-removeEpsilonEdges TypeAut { ta_pol, ta_starts, ta_core = TypeAutCore { ta_flowEdges, ta_gr } } =
+removeEpsilonEdges aut =
   let
-    (gr', starts') = foldr ((.) . removeEpsilonEdgesFromNode) id (nodes ta_gr) (ta_gr, ta_starts)
+    (gr', starts') = foldr ((.) . removeEpsilonEdgesFromNode) id (nodes aut.ta_core.ta_gr) (aut.ta_core.ta_gr, aut.ta_starts)
   in
-   TypeAut { ta_pol = ta_pol
+   TypeAut { ta_pol = aut.ta_pol
            , ta_starts = starts'
            , ta_core = TypeAutCore
              { ta_gr = (removeRedundantEdges . fromEpsGr) gr'
-             , ta_flowEdges = ta_flowEdges
+             , ta_flowEdges = aut.ta_core.ta_flowEdges
              }
            }

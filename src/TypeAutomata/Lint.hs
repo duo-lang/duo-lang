@@ -40,10 +40,10 @@ getNodeLabel gr n = case lab gr n of
 -- 2.) The left node of the flowedge is negative and the right node is positive.
 lintFlowEdges :: MonadError (NonEmpty Error) m
               => TypeAut' a f pol  -> m ()
-lintFlowEdges TypeAut { ta_core = TypeAutCore { ta_gr, ta_flowEdges } } = do
-  forM_ ta_flowEdges $ \(left,right) -> do
-    leftPol <- getPolarityNL <$> getNodeLabel ta_gr left
-    rightPol <- getPolarityNL <$> getNodeLabel ta_gr right
+lintFlowEdges aut = do
+  forM_ aut.ta_core.ta_flowEdges $ \(left,right) -> do
+    leftPol <- getPolarityNL <$> getNodeLabel aut.ta_core.ta_gr left
+    rightPol <- getPolarityNL <$> getNodeLabel aut.ta_core.ta_gr right
     case leftPol of
       Pos -> throwAutomatonError defaultLoc ["TypeAutomata Linter: Left endpoint of flowedge is positive"]
       Neg -> pure ()
@@ -55,11 +55,11 @@ lintFlowEdges TypeAut { ta_core = TypeAutCore { ta_gr, ta_flowEdges } } = do
 -- | Check that epsilon edges connect nodes of the same polarity.
 lintEpsilonEdges :: MonadError (NonEmpty Error) m
                  => TypeAut' (EdgeLabel a) f pol -> m ()
-lintEpsilonEdges TypeAut { ta_core = TypeAutCore { ta_gr }} = do
-  let edges = [(i,j) | (i,j,EpsilonEdge _) <- labEdges ta_gr]
+lintEpsilonEdges aut = do
+  let edges = [(i,j) | (i,j,EpsilonEdge _) <- labEdges aut.ta_core.ta_gr]
   forM_ edges $ \(i,j) -> do
-    iPolarity <- getPolarityNL <$> getNodeLabel ta_gr i
-    jPolarity <- getPolarityNL <$> getNodeLabel ta_gr j
+    iPolarity <- getPolarityNL <$> getNodeLabel aut.ta_core.ta_gr i
+    jPolarity <- getPolarityNL <$> getNodeLabel aut.ta_core.ta_gr j
     if iPolarity /= jPolarity
       then throwAutomatonError defaultLoc ["TypeAutomata Linter: Epsilon Edge connects nodes with different polarity."]
       else pure ()
@@ -67,11 +67,11 @@ lintEpsilonEdges TypeAut { ta_core = TypeAutCore { ta_gr }} = do
 -- | Check that symbol edges connect nodes of the correct polarity.
 lintSymbolEdges :: MonadError (NonEmpty Error) m
                 => TypeAut' (EdgeLabel a) f pol -> m ()
-lintSymbolEdges TypeAut { ta_core = TypeAutCore { ta_gr }} = do
-  let edges = [(i,j,dataCodata,prdCns) | (i,j,EdgeSymbol dataCodata _ prdCns _) <- labEdges ta_gr]
+lintSymbolEdges aut = do
+  let edges = [(i,j,dataCodata,prdCns) | (i,j,EdgeSymbol dataCodata _ prdCns _) <- labEdges aut.ta_core.ta_gr]
   forM_ edges $ \(i,j, dataCodata, prdCns) -> do
-    iPolarity <- getPolarityNL <$> getNodeLabel ta_gr i
-    jPolarity <- getPolarityNL <$> getNodeLabel ta_gr j
+    iPolarity <- getPolarityNL <$> getNodeLabel aut.ta_core.ta_gr i
+    jPolarity <- getPolarityNL <$> getNodeLabel aut.ta_core.ta_gr j
     let err = "TypeAutomata Linter: Incorrect Symbol Edge"
     case (dataCodata, prdCns) of
       (Data, Prd)   -> if iPolarity == jPolarity then pure () else throwAutomatonError defaultLoc [err]
@@ -82,7 +82,7 @@ lintSymbolEdges TypeAut { ta_core = TypeAutCore { ta_gr }} = do
 -- | Check that every structural Xtor has at least one outgoing Symbol Edge for every argument of the Xtor.
 lintStructuralNodes :: MonadError (NonEmpty Error) m
                     => TypeAut' (EdgeLabel a) f pol -> m ()
-lintStructuralNodes TypeAut { ta_core = TypeAutCore { ta_gr }} = forM_ (labNodes ta_gr) (lintStructuralNode ta_gr)
+lintStructuralNodes aut = forM_ (labNodes aut.ta_core.ta_gr) (lintStructuralNode aut.ta_core.ta_gr)
 
 -- | Collect all the xtors labels of a node and check them.
 lintStructuralNode :: MonadError (NonEmpty Error) m
@@ -90,7 +90,7 @@ lintStructuralNode :: MonadError (NonEmpty Error) m
 lintStructuralNode _ (_, MkPrimitiveNodeLabel{}) = pure ()
 lintStructuralNode gr (n, nl) = do
   let toList = maybe [] S.toList
-  let xtors = toList (nl_data nl) ++ toList (nl_codata nl)
+  let xtors = toList nl.nl_data ++ toList nl.nl_codata
   forM_ xtors (lintXtor gr n)
 
 -- | Check whether all fields of the Xtor Label have at least one outgoing edge starting from the node.

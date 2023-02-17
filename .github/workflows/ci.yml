@@ -18,25 +18,41 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        stack: ["2.7.5"]
-        ghc: ["9.0.2"]
+        stack: ["2.9.3"]
+        ghc: ["9.2.5"]
         os: [ubuntu-latest, windows-latest, macOS-latest]
 
     steps:
     - uses: actions/checkout@v2
-    - uses: haskell/actions/setup@v2.0.3
+    - name: Workaround runner image issue
+      # https://github.com/actions/runner-images/issues/7061
+      run: sudo chown -R $USER /usr/local/.ghcup
+      if: matrix.os == 'ubuntu-latest'
+    - uses: haskell/actions/setup@v2
       name: Setup Haskell Stack
       with:
         ghc-version: ${{ matrix.ghc }}
         stack-version: ${{ matrix.stack }}
 
-    - uses: freckle/stack-cache-action@v2.0.8
+    # stack-cache-action does not seem to work correctly for windows, so we do it manually, cf.
+    # https://github.com/commercialhaskell/stack/commit/98e368946a5bcff75284f27f366cf12b04172877
+    - name: "Cache dependencies on *nix"
+      if: startsWith(runner.os, 'Linux') || startsWith(runner.os, 'macOS')
+      uses: freckle/stack-cache-action@v2.0.8
       with:
         prefix: ${{ runner.os }}-${{ matrix.ghc }}
+    - name: Cache dependencies on Windows
+      if: startsWith(runner.os, 'Windows')
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~\AppData\Roaming\stack
+          ~\AppData\Local\Programs\stack
+        key: ${{ runner.os }}-${{ matrix.ghc }}
 
     - name: Build
       run: |
-        stack build --system-ghc --test --bench --no-run-tests --no-run-benchmarks
+        stack build --ghc-options="-Werror" --system-ghc --test --bench --no-run-tests --no-run-benchmarks
 
     - name: Test
       run: |

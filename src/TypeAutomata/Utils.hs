@@ -8,7 +8,7 @@ module TypeAutomata.Utils
 import Data.Map (Map)
 import qualified Data.Map.Strict as M
 import qualified Data.Set as S
-import Data.Maybe (fromJust)
+import Data.Maybe (fromJust,isNothing)
 import Data.Tuple (swap)
 import Data.Graph.Inductive.Graph (Node, lab, lsuc, DynGraph, Graph (..))
 
@@ -45,8 +45,8 @@ sucWith :: (DynGraph gr, Eq b) => gr a b -> Node -> b -> Maybe Node
 sucWith gr i el = lookup el (map swap (lsuc gr i))
 
 isEmptyLabel :: NodeLabel -> Bool
-isEmptyLabel (MkNodeLabel {nl_data, nl_codata, nl_nominal, nl_ref_data, nl_ref_codata})
-             = nothingOrEmpty nl_data && nothingOrEmpty nl_codata && S.null nl_nominal && mapNull nl_ref_data && mapNull nl_ref_codata
+isEmptyLabel nl@MkNodeLabel{}
+             = nothingOrEmpty nl.nl_data && nothingOrEmpty nl.nl_codata && S.null nl.nl_nominal && mapNull (fst nl.nl_ref_data) && mapNull (fst nl.nl_ref_codata) && isNothing (snd nl.nl_ref_data) && isNothing (snd nl.nl_ref_codata)
   where nothingOrEmpty Nothing = True
         nothingOrEmpty (Just s) = S.null s
         mapNull = M.foldr (\x y -> S.null x && y) True

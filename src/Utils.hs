@@ -76,9 +76,9 @@ filePathToModuleName fp =
     in  MkModuleName path name
 
 moduleNameToFilePath :: ModuleName -> FilePath
-moduleNameToFilePath MkModuleName{ mn_path, mn_base } =
-  let filename = T.unpack mn_base <.> "duo"
-  in joinPath $ (T.unpack <$> mn_path) ++ [filename]
+moduleNameToFilePath mn =
+  let filename = T.unpack mn.mn_base <.> "duo"
+  in joinPath $ (T.unpack <$> mn.mn_path) ++ [filename]
 
 moduleNameToFullPath :: ModuleName -> FilePath -> FilePath
 moduleNameToFullPath mn fp =

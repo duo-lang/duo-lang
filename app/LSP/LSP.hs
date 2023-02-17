@@ -8,7 +8,6 @@ import Data.Version (showVersion)
 import Language.LSP.Server qualified as LSP
 import Language.LSP.Types qualified as LSP
 import System.Exit ( exitSuccess, ExitCode (ExitFailure), exitWith )
-import System.Log.Logger ( Priority(DEBUG), debugM )
 
 import LSP.Definition ( LSPConfig(..), LSPMonad(unLSPMonad) )
 import LSP.Handler.Hover ( hoverHandler )
@@ -24,6 +23,7 @@ import LSP.Handler.Various
       didChangeHandler,
       didCloseHandler )
 import Paths_duo_lang (version)
+import System.Log.Logger (debugM)
 
 ---------------------------------------------------------------------------------
 -- Server Options
@@ -61,7 +61,7 @@ definition = do
     , onConfigurationChange = \config _ -> pure config
     , doInitialize = \env _req -> pure $ Right env
     , staticHandlers = handlers
-    , interpretHandler = \env -> LSP.Iso { forward = LSP.runLspT env . unLSPMonad, backward = liftIO }
+    , interpretHandler = \env -> LSP.Iso { forward = LSP.runLspT env . (\x -> x.unLSPMonad), backward = liftIO }
     , options = serverOptions
     }
 
@@ -88,8 +88,8 @@ handlers = mconcat [ initializedHandler
 -- Running the LSP Server
 ---------------------------------------------------------------------------------
 
-runLSP :: Maybe FilePath -> IO ()
-runLSP mLogPath = do
+runLSP :: IO ()
+runLSP = do
   --  LSP.setupLogger mLogPath ["lspserver"] DEBUG
   debugM "lspserver" "Starting LSP Server"
   initialDefinition <- definition
