@@ -132,12 +132,12 @@ getSymbolTable  :: CST.Module
                 -> DriverM SymbolTable
 getSymbolTable mod = do
   sts <- getSymbolTables
-  case M.lookup (CST.mod_name mod) sts of
+  case M.lookup mod.mod_name sts of
     Nothing -> do
       st <- case createSymbolTable mod of
         Left err -> throwError (ErrResolution err :| [])
         Right res -> pure res
-      addSymboltable (CST.mod_name mod) st
+      addSymboltable mod.mod_name st
       return st
     Just st -> return st
 
@@ -182,7 +182,7 @@ getModuleDeclarations mn = do
 
 addModule :: CST.Module -> DriverM ()
 addModule mod = do
-  modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert (CST.mod_name mod) mod drvFiles })
+  modify (\ds@MkDriverState { drvFiles } -> ds { drvFiles = M.insert mod.mod_name mod drvFiles })
 
 -- AST Cache
 

@@ -115,10 +115,10 @@ overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (t
 
     -- | Readable Conversion of Pattern to Text.
     patternToText :: GenericPattern -> Text
-    patternToText (Left  (PatVar       loc prdcns varName))      = pack(show prdcns) <> pack(" Variable Pattern ") <> pack("'") <> (unFreeVarName varName) <> pack("'") <> pack(" in: " ++ (show loc))
+    patternToText (Left  (PatVar       loc prdcns varName))      = pack(show prdcns) <> pack(" Variable Pattern ") <> pack("'") <> varName.unFreeVarName <> pack("'") <> pack(" in: " ++ (show loc))
     patternToText (Left  (PatWildcard  loc prdcns))              = pack(show prdcns) <> pack(" Wildcard Pattern in: ") <> pack(show loc)
-    patternToText (Left  (PatXtor      loc prdcns _ xtorName _)) = pack(show prdcns) <> pack(" Xtor Pattern ") <> pack("'") <> (unXtorName xtorName) <> pack("'") <> pack(" in: " ++ (show loc))
-    patternToText (Right (PatXtorStar  loc prdcns _ xtorName _)) = pack(show prdcns) <> pack(" Xtor Pattern ") <> pack("'") <> (unXtorName xtorName) <> pack("'") <> pack(" in: " ++ (show loc))
+    patternToText (Left  (PatXtor      loc prdcns _ xtorName _)) = pack(show prdcns) <> pack(" Xtor Pattern ") <> pack("'") <> xtorName.unXtorName <> pack("'") <> pack(" in: " ++ (show loc))
+    patternToText (Right (PatXtorStar  loc prdcns _ xtorName _)) = pack(show prdcns) <> pack(" Xtor Pattern ") <> pack("'") <> xtorName.unXtorName <> pack("'") <> pack(" in: " ++ (show loc))
     patternToText (Right (PatStar      loc prdcns))              = pack(show prdcns) <> pack(" Star Pattern in: ") <> pack(show loc)
 
     -- | Determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.

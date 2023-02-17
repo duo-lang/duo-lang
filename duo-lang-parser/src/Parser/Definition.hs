@@ -71,7 +71,7 @@ runFileParser :: forall m a e. MonadError (NonEmpty e) m
               -> Text -- ^ The text to be parsed
               -> (ParserError -> e) -- ^ The function used to embed the error.
               -> m a
-runFileParser fp p input f = case runParser (unParser p) fp input of
+runFileParser fp p input f = case runParser p.unParser fp input of
   Left err -> throwError (f <$> (translateError err))
   Right x -> pure x
 

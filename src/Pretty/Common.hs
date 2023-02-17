@@ -48,7 +48,7 @@ instance PrettyAnn Loc where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn DocComment where
-  prettyAnn doc = pretty (unDocComment doc)
+  prettyAnn doc = pretty doc.unDocComment
 
 ---------------------------------------------------------------------------------
 -- Names

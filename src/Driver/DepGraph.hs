@@ -137,7 +137,7 @@ depGraphParams = defaultParams
   { fmtNode = \(_,mn) ->
     [ style filled
     , fillColor Gray
-    , textLabel ((pack . show) (mn_base mn))]
+    , textLabel ((pack . show) mn.mn_base)]
   }
 
 printDepGraph :: MonadIO m => DepGraph -> m ()

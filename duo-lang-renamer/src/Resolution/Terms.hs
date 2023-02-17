@@ -202,7 +202,7 @@ resolvePrimCommand loc nm (CST.MkSubstitution [tm1,tm2,tm3]) = do
      | nm == stringAppendName -> pure (RST.PrimOp loc RST.StringAppend args)
      | otherwise -> throwError (PrimOpArityMismatch loc nm 3)
 -- More arguments
-resolvePrimCommand loc nm args = throwError (PrimOpArityMismatch loc nm (length $ CST.unSubstitution args))
+resolvePrimCommand loc nm args = throwError (PrimOpArityMismatch loc nm (length args.unSubstitution))
 
 ---------------------------------------------------------------------------------
 -- Resolving Commands
@@ -255,7 +255,7 @@ resolveCommand (CST.Xtor loc xtor ty arity) = do
   case res of
     (XtorNameResult _dc _ns _ar) -> throwError (CmdExpected loc "Method (Command) expected, but found Xtor")
     (MethodNameResult cn ar) -> do
-      let mn = MkMethodName $ unXtorName xtor
+      let mn = MkMethodName xtor.unXtorName
       analyzedSubst <- analyzeMethodSubstitution loc mn cn ar arity
       subst' <- case analyzedSubst of
           ExplicitSubst es -> return (map snd es)
@@ -354,15 +354,15 @@ analyzeSubstitution loc arity (CST.MkSubstitutionI subst) = do
 analyzeXtorSubstitution :: Loc -> XtorName -> Arity -> CST.SubstitutionI -> ResolverM AnalyzedSubstitution
 analyzeXtorSubstitution loc xtor arity subst = do
   -- Check whether the arity corresponds to the length of the substitution
-  when (length arity /= length (CST.unSubstitutionI subst)) $
-    throwError (XtorArityMismatch loc xtor (length arity) (length (CST.unSubstitutionI subst)))
+  when (length arity /= length subst.unSubstitutionI) $
+    throwError (XtorArityMismatch loc xtor (length arity) (length subst.unSubstitutionI))
   analyzeSubstitution loc arity subst
 
 analyzeMethodSubstitution :: Loc -> MethodName -> ClassName -> Arity -> CST.SubstitutionI -> ResolverM AnalyzedSubstitution
 analyzeMethodSubstitution loc mn cn arity subst = do
   -- Check whether the arity corresponds to the length of the substitution
-  when (length arity /= length (CST.unSubstitutionI subst)) $
-    throwError (MethodArityMismatch loc mn cn (length arity) (length (CST.unSubstitutionI subst)))
+  when (length arity /= length subst.unSubstitutionI) $
+    throwError (MethodArityMismatch loc mn cn (length arity) (length subst.unSubstitutionI))
   analyzeSubstitution loc arity subst
 
 resolvePrdCnsTerm :: PrdCns -> CST.Term -> ResolverM RST.PrdCnsTerm
@@ -390,8 +390,8 @@ resolveTerm PrdRep (CST.Xtor loc xtor _ty subst) = do
   (_, res) <- lookupXtor loc xtor
   case res of
     (XtorNameResult dc ns ar) -> do
-      when (length ar /= length (CST.unSubstitutionI subst)) $
-               throwError (XtorArityMismatch loc xtor (length ar) (length (CST.unSubstitutionI subst)))
+      when (length ar /= length subst.unSubstitutionI) $
+               throwError (XtorArityMismatch loc xtor (length ar) (length subst.unSubstitutionI))
       when (dc /= CST.Data) $
                throwError (UnknownResolutionError loc ("The given xtor " <> T.pack (show xtor) <> " is declared as a destructor, not a constructor."))
       analyzedSubst <- analyzeXtorSubstitution loc xtor ar subst
@@ -405,8 +405,8 @@ resolveTerm CnsRep (CST.Xtor loc xtor _ty subst) = do
   (_, res) <- lookupXtor loc xtor
   case res of
     (XtorNameResult dc ns ar) -> do
-      when (length ar /= length (CST.unSubstitutionI subst)) $
-               throwError (XtorArityMismatch loc xtor (length ar) (length (CST.unSubstitutionI subst)))
+      when (length ar /= length subst.unSubstitutionI) $
+               throwError (XtorArityMismatch loc xtor (length ar) (length subst.unSubstitutionI))
       when (dc /= CST.Codata) $
                throwError (UnknownResolutionError loc ("The given xtor " <> T.pack (show xtor) <> " is declared as a constructor, not a destructor."))
       analyzedSubst <- analyzeXtorSubstitution loc xtor ar subst

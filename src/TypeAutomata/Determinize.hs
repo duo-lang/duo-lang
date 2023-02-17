@@ -34,7 +34,7 @@ getAlphabetForNodes gr ns = nub $ map (\(_,_,b) -> b) (concatMap (out gr) (S.toL
 
 -- | Get all successor nodes from the given set which are connected by the given edgeLabel.
 succsWith :: Gr NodeLabel EdgeLabelNormal -> Set Node -> EdgeLabelNormal -> Set Node
-succsWith gr ns x = S.fromList $ map fst . filter ((==x).snd) $ concatMap (lsuc gr) (S.toList ns)
+succsWith gr ns x = S.fromList $ map fst . filter ((==x) . snd) $ concatMap (lsuc gr) (S.toList ns)
 
 determinizeState :: [Set Node]
                  -> Gr NodeLabel EdgeLabelNormal
@@ -81,7 +81,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
   case rs_merged of
     pr@MkPrimitiveNodeLabel{} -> error ("Tried to combine primitive type" <> show pr <> " and algebraic type " <> show fstLabel)
     combLabel@MkNodeLabel{} ->
-      if returnKind (nl_kind combLabel) == returnKind knd then 
+      if (nl_kind combLabel).returnKind == knd.returnKind then 
         if nl_pol combLabel == pol then
           MkNodeLabel {
             nl_pol = pol,
@@ -92,7 +92,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
                            mrgRecVars (snd $ nl_ref_data fstLabel, snd $ nl_ref_data combLabel)),
             nl_ref_codata = (mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ <- [fstLabel, combLabel]],
                             mrgRecVars (snd $ nl_ref_codata fstLabel, snd $ nl_ref_codata combLabel)),
-            nl_kind = MkPolyKind (mrgKindArgs (kindArgs $ nl_kind combLabel) (kindArgs knd))  (returnKind knd)
+            nl_kind = MkPolyKind (mrgKindArgs (nl_kind combLabel).kindArgs knd.kindArgs)  knd.returnKind
           }
         else
           error "Tried to combine node labels of different polarity!"

@@ -45,7 +45,7 @@ lookupMatchCase :: Monad m => XtorName -> [CmdCase] -> EvalM m CmdCase
 lookupMatchCase xt cases = case find (\MkCmdCase { cmdcase_pat = XtorPat _ xt' _ } -> xt == xt') cases of
   Just pmcase -> return pmcase
   Nothing -> throwEvalError defaultLoc ["Error during evaluation. The xtor: "
-                                       , unXtorName xt
+                                       , xt.unXtorName
                                        , "doesn't occur in match."
                                        ]
 

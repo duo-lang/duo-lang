@@ -64,7 +64,7 @@ checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn _ xtorSi
 checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) tys) = do
 
   NominalResult _ _ _ polyKind' <- lookupTypeConstructor loc tyName
-  go ((\(v,_,_) -> v) <$> kindArgs polyKind') (NE.toList tys)
+  go ((\(v,_,_) -> v) <$> polyKind'.kindArgs) (NE.toList tys)
   where
     go :: [Variance] -> [CST.Typ] -> ResolverM ()
     go [] []          = return ()
@@ -75,7 +75,7 @@ checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) tys)
     go (_:_) []       = throwError (UnknownResolutionError loc ("Type Constructor " <> T.pack (show tyName) <> " is applied to too few arguments"))
 checkVarianceTyp loc _ _ (CST.TyNominal _loc' tyName) = do
   NominalResult _ _ _ polyKnd' <- lookupTypeConstructor loc tyName
-  case kindArgs polyKnd' of 
+  case polyKnd'.kindArgs of 
     [] -> return () 
     _ -> throwError (UnknownResolutionError loc ("Type Constructor " <> T.pack (show tyName) <> " is applied to too few arguments"))
 checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyParens _ ty) args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty args)
@@ -107,7 +107,7 @@ checkVarianceTyp loc var polyKind (CST.TyKindAnnot _ ty) = checkVarianceTyp loc 
 
 checkVarianceXtor :: Loc -> Variance -> PolyKind -> CST.XtorSig -> ResolverM ()
 checkVarianceXtor loc var polyKind xtor = do
-  sequence_ $ f <$> CST.sig_args xtor
+  sequence_ $ f <$> xtor.sig_args
   where
     f :: CST.PrdCnsTyp -> ResolverM ()
     f (CST.PrdType ty) = checkVarianceTyp loc (Covariant     <> var) polyKind ty
@@ -149,7 +149,7 @@ resolveDataDecl decl = do
       polyKind <- case decl.data_kind of
                         Nothing -> pure $ MkPolyKind [] (case decl.data_polarity of CST.Data -> CBV; CST.Codata -> CBN)
                         Just knd -> pure knd
-      checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
+      checkVarianceDataDecl decl.data_loc polyKind decl.data_polarity decl.data_xtors
       -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
       let g :: TypeNameResolve -> TypeNameResolve
           g (SynonymResult tn ty) = SynonymResult tn ty
@@ -313,7 +313,7 @@ resolveInstanceDeclaration decl = do
 
 resolveDecl :: CST.Declaration -> ResolverM RST.Declaration
 resolveDecl (CST.PrdCnsDecl decl) = do
-  case CST.pcdecl_pc decl of
+  case decl.pcdecl_pc of
     Prd -> do
       decl' <- resolvePrdCnsDeclaration PrdRep decl
       pure (RST.PrdCnsDecl PrdRep decl')

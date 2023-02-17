@@ -52,8 +52,8 @@ getKindDecl ::  TST.DataDecl -> GenM (MonoKind,[MonoKind])
 getKindDecl decl = do
   -- this can never be a kind var
   let polyknd = TST.data_kind decl
-  let argKnds = map (\(_,_,mk) -> mk) (kindArgs polyknd)
-  return (CBox $ returnKind polyknd, argKnds)
+  let argKnds = map (\(_,_,mk) -> mk) polyknd.kindArgs
+  return (CBox polyknd.returnKind, argKnds)
 
 checkXtorKind :: EvaluationOrder -> TST.XtorSig pol -> GenM () 
 checkXtorKind eo xtor = do 
@@ -158,7 +158,7 @@ annotVarTy (RST.ContravariantType ty) = do
 
 
 getKindSkolem :: PolyKind -> SkolemTVar -> PolyKind
-getKindSkolem polyknd = searchKindArgs (kindArgs polyknd)
+getKindSkolem polyknd = searchKindArgs polyknd.kindArgs
   where 
     searchKindArgs :: [(Variance, SkolemTVar, MonoKind)] -> SkolemTVar -> PolyKind
     searchKindArgs [] _ = error "Skolem Variable not found in argument types of polykind"
@@ -503,20 +503,20 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
  
   annotateKind (RST.TyDataRefined loc pol pknd tyn  rv xtors) = do 
     xtors' <- mapM annotateKind xtors
-    mapM_ (checkXtorKind (returnKind pknd)) xtors'
+    mapM_ (checkXtorKind pknd.returnKind) xtors'
     return (TST.TyDataRefined loc pol pknd tyn rv xtors')
 
   annotateKind (RST.TyCodataRefined loc pol pknd tyn rv xtors) = do
     xtors' <- mapM annotateKind xtors
-    mapM_ (checkXtorKind (returnKind pknd)) xtors'
+    mapM_ (checkXtorKind pknd.returnKind) xtors'
     return (TST.TyCodataRefined loc pol pknd tyn rv xtors')
 
   annotateKind (RST.TyApp _loc' _pol' (RST.TyNominal loc pol pknd tyn) args) = do 
-    if length args /= length (kindArgs pknd) then 
+    if length args /= length pknd.kindArgs then 
       throwOtherError loc ["Wrong number of arguments of type " <> ppPrint tyn] 
     else do 
       args' <- mapM annotateKind args
-      let varArgs = zipWith (curry (\ ((x, _, y), z) -> (x, y, z))) (kindArgs pknd) (NE.toList args')
+      let varArgs = zipWith (curry (\ ((x, _, y), z) -> (x, y, z))) pknd.kindArgs (NE.toList args')
       mapM_ (checkVariantType loc) varArgs
       return (TST.TyApp loc pol (TST.TyNominal loc pol pknd tyn) args')
 
@@ -540,31 +540,31 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       knd -> throwOtherError loc ["Kind of recursive variable " <> ppPrint tyr' <> "can't be " <> ppPrint knd]
 
   annotateKind (RST.TyApp loc pol (RST.TyDataRefined loc' pol' pknd tyn mrv xtors) args) = do 
-    if length args /= length (kindArgs pknd) 
+    if length args /= length pknd.kindArgs
     then throwOtherError loc ["Number of arguments for refinement type " <> ppPrint tyn <> " are incorrect"] 
     else do
       xtors' <- mapM annotateKind xtors
       args' <- mapM annotateKind args
-      let varArgs = zipWith (curry (\ ((x, _, y), z) -> (x, y, z))) (kindArgs pknd) (NE.toList args')
+      let varArgs = zipWith (curry (\ ((x, _, y), z) -> (x, y, z))) pknd.kindArgs (NE.toList args')
       mapM_ (checkVariantType loc) varArgs 
-      mapM_ (checkXtorKind (returnKind pknd)) xtors'
+      mapM_ (checkXtorKind pknd.returnKind) xtors'
       return (TST.TyApp loc pol (TST.TyDataRefined loc' pol' pknd tyn mrv xtors') args')
  
   annotateKind (RST.TyApp loc pol (RST.TyCodataRefined loc' pol' pknd tyn mrv xtors) args) = do 
-    if length args /= length (kindArgs pknd) 
+    if length args /= length pknd.kindArgs
     then throwOtherError loc ["Number of arguments for refinement type " <> ppPrint tyn <> " are incorrect"] 
     else do
       xtors' <- mapM annotateKind xtors
       args' <- mapM annotateKind args
-      let varArgs = zipWith (curry (\ ((x, _, y), z) -> (x, y, z))) (kindArgs pknd) (NE.toList args')
+      let varArgs = zipWith (curry (\ ((x, _, y), z) -> (x, y, z))) pknd.kindArgs (NE.toList args')
       mapM_ (checkVariantType loc) varArgs 
-      mapM_ (checkXtorKind (returnKind pknd)) xtors'
+      mapM_ (checkXtorKind pknd.returnKind) xtors'
       return (TST.TyApp loc pol (TST.TyCodataRefined loc' pol' pknd tyn mrv xtors') args')
    
   annotateKind (RST.TyApp loc _ ty _ ) = throwOtherError loc ["Types can only be applied to nominal or refinement types types, was applied to ", ppPrint ty]
 
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
-    case kindArgs polyknd of 
+    case polyknd.kindArgs of 
       [] -> do 
         return $ TST.TyNominal loc pol polyknd tyn
       _ -> throwOtherError loc ["Nominal Type " <> ppPrint tyn <> " was not fully applied"]

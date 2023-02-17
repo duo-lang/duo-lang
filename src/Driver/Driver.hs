@@ -111,7 +111,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
         CST.NonRecursive -> genConstraints pcdecl_term
   (tmInferred, constraintSet) <- liftEitherErr (runGenM pcdecl_loc env genFun)
   guardVerbose $ do
-    ppPrintIO (Header (unFreeVarName pcdecl_name))
+    ppPrintIO (Header pcdecl_name.unFreeVarName)
     ppPrintIO ("" :: T.Text)
     ppPrintIO pcdecl_term
     ppPrintIO ("" :: T.Text)
@@ -135,7 +135,7 @@ inferPrdCnsDeclaration mn Core.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_doc, pcd
   -- 6. Simplify
   typSimplified <- if infOptsSimplify infopts then (do
                      printGraphs <- gets (infOptsPrintGraphs . drvOpts)
-                     tys <- simplify (TST.generalize typ) printGraphs (T.unpack (unFreeVarName pcdecl_name))
+                     tys <- simplify (TST.generalize typ) printGraphs (T.unpack pcdecl_name.unFreeVarName)
                      guardVerbose $ putStr "\nInferred type (Simplified): " >> ppPrintIO tys >> putStrLn ""
                      return tys) else return (TST.generalize typ)
   -- 6. Check type annotation.
@@ -176,7 +176,7 @@ inferCommandDeclaration mn Core.MkCommandDeclaration { cmddecl_loc, cmddecl_doc,
   -- Solve the constraints
   solverResult <- liftEitherErrLoc cmddecl_loc $ solveConstraints constraints Nothing env
   guardVerbose $ do
-    ppPrintIO (Header (unFreeVarName cmddecl_name))
+    ppPrintIO (Header cmddecl_name.unFreeVarName)
     ppPrintIO ("" :: T.Text)
     ppPrintIO cmddecl_cmd
     ppPrintIO ("" :: T.Text)
@@ -208,7 +208,7 @@ inferInstanceDeclaration mn decl@Core.MkInstanceDeclaration { instancedecl_loc, 
   -- Solve the constraints
   solverResult <- liftEitherErrLoc instancedecl_loc $ solveConstraints constraints Nothing env
   guardVerbose $ do
-    ppPrintIO (Header  $ unClassName instancedecl_class <> " " <> ppPrint (fst instancedecl_typ))
+    ppPrintIO (Header  $ instancedecl_class.unClassName <> " " <> ppPrint (fst instancedecl_typ))
     ppPrintIO ("" :: T.Text)
     ppPrintIO (Core.InstanceDecl decl)
     ppPrintIO ("" :: T.Text)
@@ -286,7 +286,7 @@ inferDecl mn (Core.DataDecl decl) = do
   let loc = RST.data_loc decl
   env <- gets drvEnv
   let xtorNames = map RST.sig_name (fst (RST.data_xtors decl))
-  let retKnd = returnKind $ RST.data_kind decl  
+  let retKnd = decl.data_kind.returnKind 
   let kndList = zip xtorNames (repeat retKnd) 
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
   let f env = env { declEnv = (loc, decl') : declEnv env, kindEnv = M.fromList (kndList ++ M.toList (kindEnv env)) }
@@ -359,10 +359,10 @@ inferProgram Core.MkModule { mod_name, mod_libpath, mod_decls } = do
 adjustModulePath :: CST.Module -> FilePath -> Either (NE.NonEmpty Error) CST.Module
 adjustModulePath mod fp =
   let fp'  = fpToList fp
-      mlp  = CST.mod_libpath mod
+      mlp  = mod.mod_libpath
       mFp  = fpToList mlp
-      mn   = CST.mod_name mod
-      mp   = T.unpack <$> mn_path mn ++ [mn_base mn]
+      mn   = mod.mod_name
+      mp   = T.unpack <$> mn.mn_path ++ [mn.mn_base]
   in do
     prefix <- reverse <$> dropModulePart (reverse mp) (reverse mFp)
     if prefix `isPrefixOf` fp'
@@ -376,7 +376,7 @@ adjustModulePath mod fp =
     dropModulePart mp mFp =
       case stripPrefix mp mFp of
         Just mFp' -> pure mFp'
-        Nothing   -> throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString (CST.mod_name mod)) <> " is not a suffix of path " <> T.pack (CST.mod_libpath mod)  ]
+        Nothing   -> throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString mod.mod_name) <> " is not a suffix of path " <> T.pack mod.mod_libpath]
 
 
 ---------------------------------------------------------------------------------
@@ -435,8 +435,8 @@ inferProgramIO state decls = do
   let action :: DriverM TST.Module
       action = do
         addModule decls
-        runCompilationModule (CST.mod_name decls)
-        queryTypecheckedModule (CST.mod_name decls)
+        runCompilationModule decls.mod_name
+        queryTypecheckedModule decls.mod_name
   res <- execDriverM state action
   case res of
     (Left err, warnings) -> return (Left err, warnings)

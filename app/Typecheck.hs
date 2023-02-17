@@ -26,7 +26,7 @@ runTypecheck DebugFlags { df_debug, df_printGraphs } modId = do
                 mod <- runFileParser fp (moduleP fp) file ErrParser
                 case adjustModulePath mod fp of
                   Right mod -> do
-                      let mn = mod_name mod
+                      let mn = mod.mod_name
                       addModule mod
                       res <- runCompilationModule mn
                       pure (mn,res)
@@ -38,7 +38,7 @@ runTypecheck DebugFlags { df_debug, df_printGraphs } modId = do
       mapM_ printLocatedReport errs
       exitWith (ExitFailure 1)
     Right ((mn,_), MkDriverState {}) -> do
-      putStrLn $ "Module " <> T.unpack (fold (intersperse "." (mn_path mn ++  [mn_base mn]))) <> " typechecks"
+      putStrLn $ "Module " <> T.unpack (fold (intersperse "." (mn.mn_path ++  [mn.mn_base]))) <> " typechecks"
   return ()
     where
       driverState = defaultDriverState { drvOpts = infOpts }
