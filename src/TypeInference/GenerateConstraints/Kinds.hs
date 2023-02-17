@@ -4,6 +4,7 @@ module TypeInference.GenerateConstraints.Kinds
   , resolveDataDecl
   ) where
 
+import Debug.Trace 
 
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
@@ -24,6 +25,7 @@ import Control.Monad.Reader
 import Control.Monad.Except
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List.NonEmpty qualified as NE
+import Data.Set qualified as S
 import Control.Monad.State
 import Data.Map qualified as M
 import Data.Text qualified as T
@@ -203,46 +205,75 @@ annotTy (RST.TyCodata loc pol xtors) = do
     compXtorKinds [] = Nothing 
     compXtorKinds [mk] = Just mk
     compXtorKinds (xtor1:xtor2:rst) = if xtor1==xtor2 then compXtorKinds (xtor2:rst) else Nothing
-annotTy (RST.TyDataRefined loc pol pknd tyn rv xtors) =  do 
-  tyn' <- gets (\x -> x.declTyName)
-  if tyn == tyn' then do
-    case rv of 
-      Nothing -> do 
-        let xtorNames = map (\x->x.sig_name) xtors
-        xtors' <- getXtors pol xtorNames
-        return $ TST.TyDataRefined loc pol pknd tyn rv xtors' 
-      Just rv' -> do 
-        addRecVar rv' pknd
-        let tyrvPos = RST.TyRecVar loc PosRep rv'
-        let tyrvNeg = RST.TyRecVar loc NegRep rv'
-        let xtorsReplaced = RST.replaceNominal tyrvPos tyrvNeg tyn <$> xtors
-        xtors' <- mapM annotXtor xtorsReplaced
-        return $ TST.TyDataRefined loc pol pknd tyn rv xtors'
-  else do 
-    decl <- lookupTypeName loc tyn
-    let xtors' = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) decl.data_xtors 
-    return $ TST.TyDataRefined loc pol pknd tyn rv xtors' 
 
-annotTy (RST.TyCodataRefined loc pol pknd tyn rv xtors) = do 
+annotTy (RST.TyDataRefined loc pol pknd tyn Nothing xtors) = do 
   tyn' <- gets (\x -> x.declTyName)
   if tyn == tyn' then do 
-    case rv of 
-      Nothing -> do
-        let xtorNames = map (\x->x.sig_name) xtors
-        xtors' <- getXtors (RST.flipPolarityRep pol) xtorNames
-        return $ TST.TyCodataRefined loc pol pknd tyn rv xtors'
-      Just rv' -> do
-        addRecVar rv' pknd
-        let tyrvPos = RST.TyRecVar loc PosRep rv'
-        let tyrvNeg = RST.TyRecVar loc NegRep rv'
-        let xtorsReplaced = RST.replaceNominal tyrvPos tyrvNeg tyn <$> xtors
-        xtors' <- mapM annotXtor xtorsReplaced
-        return $ TST.TyCodataRefined loc pol pknd tyn rv xtors'
+    let xtorNames = map (\x->x.sig_name) xtors
+    xtors' <- getXtors pol xtorNames
+    return $ TST.TyDataRefined loc pol pknd tyn Nothing xtors'
+  else do 
+    decl <- lookupTypeName loc tyn
+    let xtors' = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) decl.data_xtors
+    return $ TST.TyDataRefined loc pol pknd tyn Nothing xtors'
 
-  else do
+annotTy (RST.TyDataRefined loc pol pknd tyn (Just rv) xtors) = do 
+  tyn' <- gets (\x -> x.declTyName)
+  if tyn == tyn' then do 
+    addRecVar rv pknd 
+    let tyrvPos = RST.TyRecVar loc PosRep rv 
+    let tyrvNeg = RST.TyRecVar loc NegRep rv
+    let xtorsReplaced = RST.replaceNominal tyrvPos tyrvNeg tyn <$> xtors
+    xtors' <- mapM annotXtor xtorsReplaced
+    return $ TST.TyDataRefined loc pol pknd tyn (Just rv) xtors'
+  else do 
+    decl <- lookupTypeName loc tyn 
+    let tyrvPos = TST.TyRecVar loc PosRep pknd rv
+    let tyrvNeg = TST.TyRecVar loc NegRep pknd rv
+    let xtors' = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) decl.data_xtors
+    let recVars = case decl of TST.NominalDecl {} -> error "can't happen"; TST.RefinementDecl _ _ _ _ _ data_refinement_full _ _ _ ->  TST.recTVars (fst data_refinement_full)
+    case S.toList recVars of 
+      [] -> return $ TST.TyDataRefined loc pol pknd tyn (Just rv) xtors'
+      [rv'] -> do
+        let bisubst = TST.MkBisubstitution (M.fromList [(rv',(tyrvPos,tyrvNeg))])
+        let xtorsReplaced = TST.zonk TST.RecRep bisubst <$> xtors'
+        return $ TST.TyDataRefined loc pol pknd tyn (Just rv) xtorsReplaced
+      _ -> error "can't happen"
+
+annotTy (RST.TyCodataRefined loc pol pknd tyn Nothing xtors) = do 
+  tyn' <- gets (\x -> x.declTyName)
+  if tyn == tyn' then do 
+    let xtorNames = map (\x->x.sig_name) xtors
+    xtors' <- getXtors (RST.flipPolarityRep pol) xtorNames
+    return $ TST.TyCodataRefined loc pol pknd tyn Nothing xtors'
+  else do 
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> snd; RST.NegRep -> fst) decl.data_xtors
-    return $ TST.TyCodataRefined loc pol pknd tyn rv xtors'
+    return $ TST.TyCodataRefined loc pol pknd tyn Nothing xtors'
+
+annotTy (RST.TyCodataRefined loc pol pknd tyn (Just rv) xtors) = do 
+  tyn' <- gets (\x -> x.declTyName)
+  if tyn == tyn' then do 
+    addRecVar rv pknd 
+    let tyrvPos = RST.TyRecVar loc PosRep rv 
+    let tyrvNeg = RST.TyRecVar loc NegRep rv
+    let xtorsReplaced = RST.replaceNominal tyrvPos tyrvNeg tyn <$> xtors
+    xtors' <- mapM annotXtor xtorsReplaced
+    return $ TST.TyCodataRefined loc pol pknd tyn (Just rv) xtors'
+  else do 
+    decl <- lookupTypeName loc tyn 
+    let tyrvPos = TST.TyRecVar loc PosRep pknd rv
+    let tyrvNeg = TST.TyRecVar loc NegRep pknd rv
+    let xtors' = (case pol of RST.PosRep -> snd; RST.NegRep -> fst) decl.data_xtors
+    let recVars = case decl of TST.NominalDecl {} -> error "can't happen"; TST.RefinementDecl _ _ _ _ _ data_refinement_full _ _ _ ->  TST.recTVars (fst data_refinement_full)
+    case S.toList recVars of 
+      [] -> return $ TST.TyCodataRefined loc pol pknd tyn (Just rv) xtors'
+      [rv'] -> do
+        let bisubst = TST.MkBisubstitution (M.fromList [(rv',(tyrvPos,tyrvNeg))])
+        let xtorsReplaced = TST.zonk TST.RecRep bisubst <$> xtors'
+        return $ TST.TyCodataRefined loc pol pknd tyn (Just rv) xtorsReplaced
+      _ -> error "can't happen"
+
 annotTy (RST.TyApp loc pol ty args) = do 
   ty' <- annotTy ty 
   args' <- mapM annotVarTy args
@@ -376,6 +407,22 @@ annotateDataDecl RST.RefinementDecl {
     let xtorsRefinedNeg = RST.replaceNominal fulPos fulNeg tyn <$> snd xtors
     xtorsRefPos <- mapM annotXtor xtorsRefinedPos
     xtorsRefNeg <- mapM annotXtor xtorsRefinedNeg
+    trace ("empty positive " <> ppPrintString emptyPos) $ pure ()
+    trace ("empty negative " <> ppPrintString emptyNeg) $ pure ()
+    trace ("empty positive (annot) " <> ppPrintString emptPos') $ pure ()
+    trace ("empty negative (annot) " <> ppPrintString emptNeg') $ pure ()
+    trace ("full positive " <> ppPrintString fulPos) $ pure ()
+    trace ("full negative " <> ppPrintString fulNeg) $ pure ()
+    trace ("full positive (annot) " <> ppPrintString fulPos') $ pure () 
+    trace ("full negative (annot) " <> ppPrintString fulNeg') $ pure ()
+    trace ("xtors not refined positive " <> ppPrintString (fst xtors)) $ pure ()
+    trace ("xtors not refined negative " <> ppPrintString (snd xtors)) $ pure ()
+    trace ("xtors not refined positive (annot) " <> ppPrintString xtorsPos) $ pure ()
+    trace ("xtors not refined negative (annot) " <> ppPrintString xtorsNeg) $ pure ()
+    trace ("xtors refined positive " <> ppPrintString xtorsRefinedPos) $ pure ()
+    trace ("xtors refined negative " <> ppPrintString xtorsRefinedNeg) $ pure ()
+    trace ("xtors refined positive (annot) " <> ppPrintString xtorsRefPos) $ pure ()
+    trace ("xtors refined negative (annot) " <> ppPrintString xtorsRefNeg) $ pure ()
     return TST.RefinementDecl {
       data_loc = loc,
       data_doc = doc,
