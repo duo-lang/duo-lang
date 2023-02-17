@@ -271,18 +271,8 @@ annotTy (RST.TyInter loc ty1 ty2) = do
     return $ TST.TyInter loc knd1 ty1' ty2'
   else 
     throwOtherError loc ["Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2 <> " of union are not compatible"]
-annotTy (RST.TyRec loc pol rv ty) = case ty of 
-  -- recursive types can only appear inside Refinement declarations
-  -- when they do, the recvars always represent the type that is being refined
-  RST.TyDataRefined loc' pol' pknd tyn mrv xtors -> do 
-    addRecVar rv pknd
-    xtors' <- mapM annotXtor xtors
-    return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' pknd tyn mrv xtors')
-  RST.TyCodataRefined loc' pol' pknd tyn mrv xtors -> do
-    addRecVar rv pknd
-    xtors' <- mapM annotXtor xtors
-    return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' pknd tyn mrv xtors')
-  _ -> throwOtherError loc ["TyRec can only appear inside Refinement Declaration"]
+annotTy (RST.TyRec loc _ _ _) = 
+  throwOtherError loc ["Recursive Types cannot appear in declarations, use <typename | recvar | xtors > syntax instead"]
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
 annotTy (RST.TyF64 loc pol) = return $ TST.TyF64 loc pol
 annotTy (RST.TyChar loc pol) = return $ TST.TyChar loc pol
