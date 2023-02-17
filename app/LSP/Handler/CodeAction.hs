@@ -111,29 +111,6 @@ workspaceEditToCodeAction edit descr =
                    , _xdata = Nothing
                    }
 
-workspaceEditToCodeActionWithCommand :: (WorkspaceEdit |? WorkspaceEdit) -> Text -> Command |? CodeAction
-workspaceEditToCodeActionWithCommand (InR edit) descr = 
-  InR $ CodeAction { _title = descr
-                   , _kind = Just CodeActionQuickFix
-                   , _diagnostics = Nothing
-                   , _isPreferred = Nothing
-                   , _disabled = Nothing
-                   , _edit = Just edit
-                   , _command = Nothing
-                   , _xdata = Nothing
-                   }
-
-
-workspaceEditToCodeActionWithCommand (InL _) descr =
-  InR $ CodeAction { _title = descr
-                   , _kind = Just CodeActionQuickFix
-                   , _diagnostics = Nothing
-                   , _isPreferred = Nothing
-                   , _disabled = Nothing
-                   , _edit = Nothing
-                   , _command = Just Command {_title="transformation_not_possible", _command="transformation-not-possible", _arguments=Nothing}
-                   , _xdata = Nothing
-                   }
 
 ---------------------------------------------------------------------------------
 -- Class for generating code actions
@@ -204,7 +181,7 @@ instance GetCodeActions TST.DataDecl where
   getCodeActions id _ decl =
     let 
       dualize = [ workspaceEditToCodeAction (generateDualizeDeclEdit id decl.data_loc decl) ("Dualize declaration " <> ppPrint decl.data_name) ]
-      xfunc = [workspaceEditToCodeActionWithCommand (generateXfuncDeclEdit id decl.data_loc decl) ("Xfunc (co)datatype" <> ppPrint decl.data_name) ]
+      xfunc = [generateXfuncCodeAction id decl.data_loc decl ]
     in
       List (dualize <> xfunc)
 ---------------------------------------------------------------------------------
@@ -273,19 +250,32 @@ generateDualizeDeclEdit (TextDocumentIdentifier uri) loc decl =
 -- Provide Re-/Defunctionalize Actions 
 ---------------------------------------------------------------------------------
 
-generateXfuncDeclEdit :: TextDocumentIdentifier -> Loc -> TST.DataDecl -> (WorkspaceEdit |? WorkspaceEdit)
-generateXfuncDeclEdit (TextDocumentIdentifier _) _ decl =
+generateXfuncCodeAction:: TextDocumentIdentifier -> Loc -> TST.DataDecl -> (Command |? CodeAction)
+generateXfuncCodeAction (TextDocumentIdentifier _) _ decl =
   let
     transformable = Xfunc.transformable decl
+    descr = "Xfunc (co)datatype" <> ppPrint decl.data_name
   in
     if transformable then
-      InR $ WorkspaceEdit{ _changes = Nothing
-                         , _documentChanges = Nothing
-                         , _changeAnnotations = Nothing}
+      InR $ CodeAction { _title = descr
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Nothing
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
     else
-      InL $ WorkspaceEdit{ _changes = Nothing
-                         , _documentChanges = Nothing
-                         , _changeAnnotations = Nothing}
+      InR $ CodeAction { _title = descr
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Nothing
+                   , _command = Just Command {_title="transformation_not_possible", _command="transformation-not-possible", _arguments=Nothing}
+                   , _xdata = Nothing
+                   }
 
 
 ---------------------------------------------------------------------------------
