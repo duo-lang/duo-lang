@@ -9,7 +9,7 @@ import qualified Data.Set as S
 import Data.Maybe (fromMaybe, isJust)
 import Control.Monad.State
 import qualified Data.Bifunctor as BF
-import Data.List (nub, (\\))
+import Data.List (nub, (\\),intersect)
 
 import Syntax.TST.Types (TypeScheme(..))
 import Data.List.NonEmpty (NonEmpty)
@@ -81,9 +81,9 @@ intersectLabels (MkNodeLabel pol  data'  codata  nominal  ref_data  ref_codata  
  | otherwise = Just $ MkNodeLabel pol (S.intersection <$> data' <*> data'')
                                       (S.intersection <$> codata <*> codata')
                                       (S.intersection nominal nominal')
-                                      (M.intersectionWith S.intersection (fst ref_data) (fst ref_data'),
+                                      (M.intersectionWith (\(xtors1,vars1) (xtors2, vars2) ->  (S.intersection xtors1 xtors2, vars1 `intersect` vars2)) (fst ref_data) (fst ref_data'),
                                         mrgRecVars (snd ref_data,snd ref_data'))
-                                      (M.intersectionWith S.intersection (fst ref_codata) (fst ref_codata'),
+                                      (M.intersectionWith (\(xtors1,vars1) (xtors2, vars2) -> (S.intersection xtors1 xtors2, vars1 `intersect` vars2)) (fst ref_codata) (fst ref_codata'),
                                         mrgRecVars (snd ref_data,snd ref_data'))
                                         kind
   where 
@@ -180,8 +180,3 @@ intersectAutM aut1 aut2 = do
                                                        , is_todo  = ((\(n,m,_) -> (n,m)) <$> outEdges) ++ todos'
                                                        }
             go
-
-            
-          
-
-

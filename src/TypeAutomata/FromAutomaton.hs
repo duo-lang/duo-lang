@@ -177,6 +177,10 @@ nodeToTypeNoCache rep i  = do
       let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
       let refDatTypes = M.toList (fst refDat) -- Unique data ref types
       let refCodatTypes = M.toList (fst refCodat) -- Unique codata ref types
+      let adjEdges = lsuc gr i
+      let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
+      let unsafeLookup :: (RnTypeName, Int) -> AutToTypeM (Node,Variance) = \k -> case M.lookup k typeArgsMap of Just x -> pure x; Nothing -> throwOtherError defaultLoc ["Impossible: Cannot loose type arguments in automata"]
+
       resType <- local (visitNode i) $ do
         -- Creating type variables
         varL <- nodeToTVars rep i
@@ -200,26 +204,33 @@ nodeToTypeNoCache rep i  = do
             return [TyCodata defaultLoc rep pk.returnKind sig]
         -- Creating ref data types
         refDatL <- do
-          forM refDatTypes $ \(tn,xtors) -> do
+          forM refDatTypes $ \(tn,(xtors,vars)) -> do
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Data xt
               argTypes <- argNodesToArgTypes nodes rep
-              return (MkXtorSig xt.labelName argTypes)
-            return $ TyDataRefined defaultLoc rep pk tn (snd refDat) sig
+              return (MkXtorSig xt.labelName argTypes) 
+            argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length vars - 1)]]
+            let f (node, Covariant) = CovariantType <$> nodeToType rep node
+                f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
+            args <- mapM f argNodes 
+            case args of 
+              [] -> return $ TyDataRefined defaultLoc rep pk tn (snd refDat) sig
+              (arg1:argRst) -> return $ TyApp defaultLoc rep (TyDataRefined defaultLoc rep pk tn (snd refDat) sig) (arg1:|argRst)
         -- Creating ref codata types
         refCodatL <- do
-          forM refCodatTypes $ \(tn,xtors) -> do
+          forM refCodatTypes $ \(tn,(xtors,vars)) -> do
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Codata xt
               argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
               return (MkXtorSig xt.labelName argTypes)
-            return $ TyCodataRefined defaultLoc rep pk tn (snd refCodat) sig
+            argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length vars - 1)]]
+            let f (node, Covariant) = CovariantType <$> nodeToType rep node
+                f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
+            args <- mapM f argNodes 
+            case args of
+              [] -> return $ TyCodataRefined defaultLoc rep pk tn (snd refCodat) sig
+              (arg1:argRst) -> return $ TyApp defaultLoc rep (TyCodataRefined defaultLoc rep pk tn (snd refDat) sig) (arg1:|argRst)
         -- Creating Nominal types
-        let adjEdges = lsuc gr i
-        let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
-        let unsafeLookup :: (RnTypeName, Int) -> AutToTypeM (Node,Variance) = \k -> case M.lookup k typeArgsMap of
-              Just x -> pure x
-              Nothing -> throwOtherError defaultLoc ["Impossible: Cannot loose type arguments in automata"]
         nominals <- do
             forM (S.toList tns) $ \(tn, variances) -> do
               argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length variances - 1)]]

@@ -17,6 +17,7 @@ import Control.Monad.State (StateT(runStateT), MonadTrans (..))
 import Control.Monad.State.Class ( MonadState(..), modify )
 import Control.Monad ( guard, forM_ )
 
+
 import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), TypeGr, NodeLabel (..))
 
 typeAutEqual :: TypeAutDet pol -> TypeAutDet pol -> Bool
@@ -49,7 +50,7 @@ isEmptyLabel nl@MkNodeLabel{}
              = nothingOrEmpty nl.nl_data && nothingOrEmpty nl.nl_codata && S.null nl.nl_nominal && mapNull (fst nl.nl_ref_data) && mapNull (fst nl.nl_ref_codata) && isNothing (snd nl.nl_ref_data) && isNothing (snd nl.nl_ref_codata)
   where nothingOrEmpty Nothing = True
         nothingOrEmpty (Just s) = S.null s
-        mapNull = M.foldr (\x y -> S.null x && y) True
+        mapNull = M.foldr (\(xtors,_) y -> S.null xtors && y) True
 isEmptyLabel _ = False
 
 -- | Check whether all labels in an automaton are empty.
