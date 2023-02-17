@@ -7,6 +7,7 @@ module TypeInference.SolveConstraints
     isSubtype
   ) where
 
+
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -314,6 +315,25 @@ checkContexts (_:_) _ _ _ [] _ _ _ =
 -- constraint set generated from a program is not solvable.
 subConstraints :: Constraint ConstraintInfo -> SolverM (SubtypeWitness, [Constraint ConstraintInfo])
 
+
+-- Type Applications
+-- a constraint of the form ty1(arg1,...,argn) <: ty2(arg1',...,argm') we have to make sure
+-- the kinds of ty1 and ty2 are the same
+-- argi <: argi'
+-- ty1 <: ty2
+subConstraints (SubType info (TyApp _ _ ty1 args1) (TyApp _ _ ty2 args2)) = do
+  let 
+    f (CovariantType ty1) (CovariantType ty2) = SubType ApplicationSubConstraint ty1 ty2
+    f (ContravariantType ty1) (ContravariantType ty2) = SubType ApplicationSubConstraint ty2 ty1
+    f _ _ = error "cannot occur"
+    refConstr = SubType info ty1 ty2
+    constraints = refConstr : NE.toList (NE.zipWith f args1 args2)
+  --constraints' <- forM  ctors1 (\x -> checkXtor ctors2 mrv2 loc2 x mrv1 loc1)
+  let constrs = constraints ++ constraints
+  pure (DataApp ty1 ty2 $ SubVar . void <$> constrs, constrs)
+
+  
+
 -- Skolem Vars can only be subtypes of each other if they are the same
 -- double check if this should ever occur
 
@@ -362,44 +382,6 @@ subConstraints (SubType _ ty@(TyCodataRefined _ _ _ _ (Just rv') _) r@(TyRecVar 
                                  , "    " <> ppPrint r
                                  , "and"
                                  , "    " <> ppPrint ty]
-
-subConstraints (SubType _ r@(TyApp _ _ (TyRecVar _ _ _ rv) _) ty@(TyApp _ _ (TyDataRefined _ _ _ _ (Just rv') _) _)) = 
-  if rv == rv' then
-    pure (Refl r ty, [])
-  else 
-    throwSolverError defaultLoc ["Cannot constrain types"
-                                 , "    " <> ppPrint r
-                                 , "and"
-                                 , "    " <> ppPrint ty]
-
-subConstraints (SubType _ ty@(TyApp _ _ (TyDataRefined _ _ _ _ (Just rv') _) _) r@(TyApp _ _ (TyRecVar _ _ _ rv) _)) = 
-  if rv == rv' then
-    pure (Refl ty r, [])
-  else 
-    throwSolverError defaultLoc ["Cannot constrain types"
-                                 , "    " <> ppPrint r
-                                 , "and"
-                                 , "    " <> ppPrint ty]
-
-subConstraints (SubType _ r@(TyApp _ _ (TyRecVar _ _ _ rv) _) ty@(TyApp _ _ (TyCodataRefined _ _ _ _ (Just rv') _) _)) = 
-  if rv == rv' then
-    pure (Refl r ty, [])
-  else 
-    throwSolverError defaultLoc ["Cannot constrain types"
-                                 , "    " <> ppPrint r
-                                 , "and"
-                                 , "    " <> ppPrint ty]
-
-subConstraints (SubType _ ty@(TyApp _ _ (TyCodataRefined _ _ _ _ (Just rv') _) _) r@(TyApp _ _ (TyRecVar _ _ _ rv) _)) = 
-  if rv == rv' then
-    pure (Refl ty r, [])
-  else 
-    throwSolverError defaultLoc ["Cannot constrain types"
-                                 , "    " <> ppPrint r
-                                 , "and"
-                                 , "    " <> ppPrint ty]
-
-
 
 -- Type synonyms are unfolded and are not preserved through constraint solving.
 -- A more efficient solution to directly compare type synonyms is possible in the
@@ -479,18 +461,6 @@ subConstraints (SubType _ t1@TyDataRefined{} t2@TyDataRefined{}) =
                                  , "and"
                                  , "    " <> ppPrint t2]
 
-subConstraints (SubType info (TyApp _ _ ty1@(TyDataRefined loc1 PosRep _ tn1 mrv1 ctors1) args1) (TyApp _ _ ty2@(TyDataRefined loc2 NegRep _ _ mrv2 ctors2) args2)) = do
-  let 
-    f (CovariantType ty1) (CovariantType ty2) = SubType RefinementSubConstraint ty1 ty2
-    f (ContravariantType ty1) (ContravariantType ty2) = SubType RefinementSubConstraint ty2 ty1
-    f _ _ = error "cannot occur"
-    refConstr = SubType info ty1 ty2
-    constraints = refConstr : NE.toList (NE.zipWith f args1 args2)
-  constraints' <- forM  ctors1 (\x -> checkXtor ctors2 mrv2 loc2 x mrv1 loc1)
-  let constrs = constraints ++ concat constraints'
-  pure (DataRefined tn1 $ SubVar . void <$> constrs, constrs)
-
-
 subConstraints (SubType _ (TyCodataRefined loc1 PosRep _ tn1 mrv1 dtors1) (TyCodataRefined loc2 NegRep _ tn2 mrv2 dtors2))  | tn1 == tn2 = do
   constraints <- forM dtors2 (\x -> checkXtor dtors1 mrv1 loc1 x mrv2 loc2)
   pure (CodataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
@@ -502,17 +472,6 @@ subConstraints (SubType _ t1@TyCodataRefined{} t2@TyCodataRefined{}) =
                                  , "    " <> ppPrint t2]
 
 
-subConstraints (SubType info (TyApp _ _ ty1@(TyCodataRefined loc1 _ _ tn1 mrv1 dtors1) args1) (TyApp _ _ ty2@(TyCodataRefined loc2 _ _ _ mrv2 dtors2) args2)) = do
-  let 
-    f (CovariantType ty1) (CovariantType ty2) = SubType RefinementSubConstraint ty1 ty2
-    f (ContravariantType ty1) (ContravariantType ty2) = SubType RefinementSubConstraint ty2 ty1
-    f _ _ = error "cannot occur"
-    refConstr = SubType info ty1 ty2
-    constraints = refConstr : NE.toList (NE.zipWith f args1 args2)
-  constraints' <- forM dtors2 (\x -> checkXtor dtors1 mrv1 loc1 x mrv2 loc2)
-  let constrs = constraints ++ concat constraints'
-  pure (DataRefined tn1 $ SubVar . void <$> constrs, constrs)
-
 
 -- Constraints between nominal types:
 --
@@ -522,14 +481,6 @@ subConstraints (SubType info (TyApp _ _ ty1@(TyCodataRefined loc1 _ _ tn1 mrv1 d
 --     Bool <: Nat               ~>     FAIL
 --     Bool <: Bool              ~>     []
 --
-subConstraints (SubType info (TyApp _ _ ty1@(TyNominal _ _ _ tn1) args1) (TyApp _ _ ty2@TyNominal{} args2)) = do
-  let 
-    f (CovariantType ty1) (CovariantType ty2) = SubType NominalSubConstraint ty1 ty2
-    f (ContravariantType ty1) (ContravariantType ty2) = SubType NominalSubConstraint ty2 ty1
-    f _ _ = error "cannot occur"
-    nomConstr = SubType info ty1 ty2
-    constraints = nomConstr : NE.toList (NE.zipWith f args1 args2)
-  pure (DataNominal tn1 $ SubVar . void <$> constraints, constraints)
 
 subConstraints (SubType _ t1@(TyNominal _ _ _ tn1) t2@(TyNominal _ _ _ tn2)) = 
   if tn1==tn2 then 
@@ -580,6 +531,7 @@ substitute = do
     go m (DataRefined rn ws) = DataRefined rn <$> mapM (go m) ws
     go m (CodataRefined rn ws) = CodataRefined rn <$> mapM (go m) ws
     go m (DataNominal rn ws) = DataNominal rn <$> mapM (go m) ws
+    go m (DataApp typ tyn ws) = DataApp typ tyn <$> mapM (go m) ws
     go _ (Refl typ tyn) = pure $ Refl typ tyn
     go _ (UVarL uv tyn) = pure $ UVarL uv tyn
     go _ (UVarR uv typ) = pure $ UVarR uv typ

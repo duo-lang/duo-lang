@@ -1,13 +1,25 @@
 module ListRefinement;
 
-import Codata.Function;
-import Data.Peano;
+--import Codata.Function;
+--import Data.Peano;
+
+
+data Nat {
+    Z,
+    S(Nat)
+};
+codata Fun : (-a : CBV, +b : CBV) -> CBV {
+    Ap(a,return b)
+};
 
 
 refinement data List : (+a : CBV) -> CBV {
     Nil,
     Cons(a, List(a))
 };
+
+
+type operator -> rightassoc at 0 := Fun;
 
 def prd x : forall a. <List|Nil>(a) := Nil;
 def prd x2 : forall a. <List | r | Nil>(a) := Nil;
@@ -18,11 +30,11 @@ def prd y := Nil;
 
 
 --  Computes the length of a list.
-def rec prd length :=
-    \xs => case xs of {
-        Nil => Z,
-        Cons(_, xs) => S(length xs)
-    };
+--def rec prd length :=
+--    \xs => case xs of {
+--        Nil => Z,
+--        Cons(_, xs) => S(length xs)
+--    };
 
 -- | Append two lists together.
 def rec prd append :=

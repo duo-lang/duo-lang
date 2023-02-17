@@ -99,6 +99,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
   --
   genConstraints (Core.FreeVar loc rep v) = do
     tys <- snd <$> lookupTerm loc rep v
+--    trace ("term for free var " <> ppPrintString v <> ": " <> show (tys.ts_monotype) <> "\n\n") $ pure ()
     ty <- instantiateTypeScheme v loc tys
     return (TST.FreeVar loc rep ty v)
   --

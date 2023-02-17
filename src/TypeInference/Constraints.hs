@@ -35,6 +35,7 @@ data ConstraintInfo
   | RecTypeSubConstraint
   | NominalSubConstraint
   | RefinementSubConstraint
+  | ApplicationSubConstraint
   | KindConstraint
   | ClassResolutionConstraint
   deriving (Show)
@@ -76,6 +77,8 @@ data SubtypeWitness
   -- ^ Witness for two refined codata types and subwitnesses for each destructor.
   | DataNominal RnTypeName [SubtypeWitness]
   -- ^ Witness for two nominal (co-)data types and subwitnesses for their arguments.
+  | DataApp (Typ Pos) (Typ Neg) [SubtypeWitness]
+  -- ^ Witness for two applied types and subwitnesses for their arguments.
   | Refl (Typ Pos) (Typ Neg)
   -- ^ Witness for the reflexivity of the subtyping relation. Contains a positive and negative representation of the same type.
   | UVarL UniTVar (Typ Neg)
