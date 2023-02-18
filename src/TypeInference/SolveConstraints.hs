@@ -7,6 +7,7 @@ module TypeInference.SolveConstraints
     isSubtype
   ) where
 
+import Debug.Trace
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -452,6 +453,7 @@ subConstraints (SubType _ (TyCodata loc1 PosRep _ dtors1) (TyCodata loc2 NegRep 
 --     {{ Nat :>> < ctors1 > }} <: {{ Bool :>> < ctors2 > }}   ~>    FAIL
 --
 subConstraints (SubType _ (TyDataRefined loc1 PosRep _ tn1 mrv1 ctors1) (TyDataRefined loc2 NegRep _ tn2 mrv2 ctors2)) | tn1 == tn2 = do
+  trace ("subconstraints for refinement data types " <> ppPrintString tn1 <> "\n recvars " <> ppPrintString mrv1 <> ", " <> ppPrintString mrv2) $ pure ()
   constraints <- forM ctors1 (\x -> checkXtor ctors2 mrv2 loc2 x mrv1 loc1)
   pure (DataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
 

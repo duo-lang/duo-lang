@@ -207,6 +207,91 @@ instance GetKind (VariantType pol) where
   getKind (CovariantType ty) = getKind ty 
   getKind (ContravariantType ty) = getKind ty
 
+-- | Typeclass for computing occurring recursive variables
+class RecTVars (a :: Type) where
+  recTVars :: a -> Set RecTVar
+
+instance RecTVars (Typ pol) where
+  recTVars TySkolemVar{}                        = S.empty
+  recTVars (TyRecVar _ _ _ rv)                  = S.singleton rv
+  recTVars TyUniVar{}                           = S.empty
+  recTVars TyTop {}                             = S.empty
+  recTVars TyBot {}                             = S.empty
+  recTVars (TyUnion _ _ ty ty')                 = S.union (recTVars ty) (recTVars ty')
+  recTVars (TyInter _ _ ty ty')                 = S.union (recTVars ty) (recTVars ty')
+  recTVars (TyRec _ _ rv t)                     = S.union (S.singleton rv) (recTVars t)
+  recTVars TyNominal{}                          = S.empty
+  recTVars (TyApp _ _ ty args)                  = S.union (recTVars ty) (S.unions (recTVars <$> args))
+  recTVars (TySyn _ _ _ ty)                     = recTVars ty
+  recTVars (TyData _  _ _ xtors)                = S.unions (recTVars <$> xtors)
+  recTVars (TyCodata _ _ _ xtors)               = S.unions (recTVars <$> xtors)
+  recTVars (TyDataRefined _ _ _ _ mrv xtors)    = S.union (maybe S.empty S.singleton mrv) (S.unions (recTVars <$> xtors))
+  recTVars (TyCodataRefined  _ _ _ _ mrv xtors) = S.union (maybe S.empty S.singleton mrv) (S.unions (recTVars <$> xtors))
+  recTVars (TyI64 _ _)                          = S.empty
+  recTVars (TyF64 _ _)                          = S.empty
+  recTVars (TyChar _ _)                         = S.empty
+  recTVars (TyString _ _)                       = S.empty
+  recTVars (TyFlipPol _ ty)                     = recTVars ty
+
+instance RecTVars (PrdCnsType pol) where
+  recTVars (PrdCnsType _ ty) = recTVars ty
+
+instance RecTVars (VariantType pol) where
+  recTVars (CovariantType ty)     = recTVars ty
+  recTVars (ContravariantType ty) = recTVars ty
+
+instance RecTVars (LinearContext pol) where
+  recTVars ctxt = S.unions (recTVars <$> ctxt)
+
+instance RecTVars (XtorSig pol) where
+  recTVars xtor = recTVars xtor.sig_args 
+
+instance RecTVars [XtorSig pol] where 
+  recTVars xtors = S.unions (recTVars <$> xtors)
+
+
+class AddRecVarRefinement (a:: Type) where 
+  addRecVarRefinement :: RnTypeName -> RecTVar -> a -> a
+
+instance AddRecVarRefinement (Typ pol) where 
+  addRecVarRefinement _ _ ty@TySkolemVar{}                                      = ty
+  addRecVarRefinement _ _ ty@TyRecVar{}                                         = ty
+  addRecVarRefinement _ _ ty@TyUniVar{}                                         = ty
+  addRecVarRefinement _ _ ty@TyTop {}                                           = ty
+  addRecVarRefinement _ _ ty@TyBot {}                                           = ty
+  addRecVarRefinement tyn rv (TyUnion loc pol ty ty')                           = TyUnion loc pol (addRecVarRefinement tyn rv ty) (addRecVarRefinement tyn rv ty')
+  addRecVarRefinement tyn rv (TyInter loc pol ty ty')                           = TyInter loc pol (addRecVarRefinement tyn rv ty) (addRecVarRefinement tyn rv ty')
+  addRecVarRefinement tyn rv (TyRec loc pol rv' t)                              = TyRec loc pol rv' (addRecVarRefinement tyn rv t)
+  addRecVarRefinement _ _ ty@TyNominal{}                                        = ty
+  addRecVarRefinement tyn rv (TyApp loc pol ty args)                            = TyApp loc pol (addRecVarRefinement tyn rv ty) (addRecVarRefinement tyn rv <$> args) 
+  addRecVarRefinement tyn rv (TySyn loc pol tyn' ty)                            = TySyn loc pol tyn' (addRecVarRefinement tyn rv ty)
+  addRecVarRefinement tyn rv (TyData loc pol mk xtors)                          = TyData loc pol mk (addRecVarRefinement tyn rv <$> xtors)
+  addRecVarRefinement tyn rv (TyCodata loc pol mk xtors)                        = TyCodata loc pol mk (addRecVarRefinement tyn rv <$> xtors)
+  addRecVarRefinement _ _ ty@(TyDataRefined _ _ _ _ (Just _) _)                 = ty
+  addRecVarRefinement tyn rv (TyDataRefined loc pol pknd tyn' Nothing xtors)    =  if tyn == tyn' then 
+                                                                                     TyDataRefined loc pol pknd tyn' (Just rv) (addRecVarRefinement tyn rv <$> xtors) 
+                                                                                   else 
+                                                                                     TyDataRefined loc pol pknd tyn' Nothing (addRecVarRefinement tyn rv <$> xtors)
+  addRecVarRefinement _ _ ty@(TyCodataRefined  _ _ _ _ (Just _) _) = ty
+  addRecVarRefinement tyn rv (TyCodataRefined loc pol pknd tyn' Nothing xtors)  = if tyn == tyn' then 
+                                                                                    TyCodataRefined loc pol pknd tyn' (Just rv) (addRecVarRefinement tyn rv <$> xtors) 
+                                                                                  else 
+                                                                                    TyCodataRefined loc pol pknd tyn' Nothing (addRecVarRefinement tyn rv <$> xtors)
+  addRecVarRefinement _ _ ty@TyI64{}                                            = ty
+  addRecVarRefinement _ _ ty@TyF64{}                                            = ty
+  addRecVarRefinement _ _ ty@TyChar{}                                           = ty
+  addRecVarRefinement _ _ ty@TyString{}                                         = ty
+  addRecVarRefinement tyn rv (TyFlipPol loc ty)                                 = TyFlipPol loc (addRecVarRefinement tyn rv ty)
+
+instance AddRecVarRefinement (VariantType pol) where 
+  addRecVarRefinement tyn rv (CovariantType ty) = CovariantType (addRecVarRefinement tyn rv ty)
+  addRecVarRefinement tyn rv (ContravariantType ty) = ContravariantType (addRecVarRefinement tyn rv ty)
+
+instance AddRecVarRefinement (XtorSig pol) where 
+  addRecVarRefinement tyn rv (MkXtorSig nm args) = MkXtorSig nm (addRecVarRefinement tyn rv <$> args)
+
+instance AddRecVarRefinement (PrdCnsType pol) where 
+  addRecVarRefinement tyn rv (PrdCnsType pc ty) = PrdCnsType pc (addRecVarRefinement tyn rv ty)
 
 ------------------------------------------------------------------------------
 -- Type Schemes
@@ -276,47 +361,6 @@ instance FreeTVars (XtorSig pol) where
 generalize :: Typ pol -> TypeScheme pol
 generalize ty = TypeScheme defaultLoc (S.toList $ freeTVars ty) ty
 
--- | Typeclass for computing occurring recursive variables
-class RecTVars (a :: Type) where
-  recTVars :: a -> Set RecTVar
-
-instance RecTVars (Typ pol) where
-  recTVars TySkolemVar{}                        = S.empty
-  recTVars (TyRecVar _ _ _ rv)                  = S.singleton rv
-  recTVars TyUniVar{}                           = S.empty
-  recTVars TyTop {}                             = S.empty
-  recTVars TyBot {}                             = S.empty
-  recTVars (TyUnion _ _ ty ty')                 = S.union (recTVars ty) (recTVars ty')
-  recTVars (TyInter _ _ ty ty')                 = S.union (recTVars ty) (recTVars ty')
-  recTVars (TyRec _ _ rv t)                     = S.union (S.singleton rv) (recTVars t)
-  recTVars TyNominal{}                          = S.empty
-  recTVars (TyApp _ _ ty args)                  = S.union (recTVars ty) (S.unions (recTVars <$> args))
-  recTVars (TySyn _ _ _ ty)                     = recTVars ty
-  recTVars (TyData _  _ _ xtors)                = S.unions (recTVars <$> xtors)
-  recTVars (TyCodata _ _ _ xtors)               = S.unions (recTVars <$> xtors)
-  recTVars (TyDataRefined _ _ _ _ mrv xtors)    = S.union (maybe S.empty S.singleton mrv) (S.unions (recTVars <$> xtors))
-  recTVars (TyCodataRefined  _ _ _ _ mrv xtors) = S.union (maybe S.empty S.singleton mrv) (S.unions (recTVars <$> xtors))
-  recTVars (TyI64 _ _)                          = S.empty
-  recTVars (TyF64 _ _)                          = S.empty
-  recTVars (TyChar _ _)                         = S.empty
-  recTVars (TyString _ _)                       = S.empty
-  recTVars (TyFlipPol _ ty)                     = recTVars ty
-
-instance RecTVars (PrdCnsType pol) where
-  recTVars (PrdCnsType _ ty) = recTVars ty
-
-instance RecTVars (VariantType pol) where
-  recTVars (CovariantType ty)     = recTVars ty
-  recTVars (ContravariantType ty) = recTVars ty
-
-instance RecTVars (LinearContext pol) where
-  recTVars ctxt = S.unions (recTVars <$> ctxt)
-
-instance RecTVars (XtorSig pol) where
-  recTVars xtor = recTVars xtor.sig_args 
-
-instance RecTVars [XtorSig pol] where 
-  recTVars xtors = S.unions (recTVars <$> xtors)
 
 ------------------------------------------------------------------------------
 -- Bisubstitution and Zonking

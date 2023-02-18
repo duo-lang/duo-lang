@@ -4,6 +4,7 @@ module TypeInference.GenerateConstraints.Terms
   ) where
 
 import Pretty.Pretty
+import Pretty.Terms()
 
 import Control.Monad.Reader
 import Errors
@@ -32,6 +33,8 @@ import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 import Syntax.TST.Terms (Substitution(..))
 import Data.Set qualified as S
+
+import Debug.Trace 
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -99,7 +102,6 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
   --
   genConstraints (Core.FreeVar loc rep v) = do
     tys <- snd <$> lookupTerm loc rep v
---    trace ("term for free var " <> ppPrintString v <> ": " <> show (tys.ts_monotype) <> "\n\n") $ pure ()
     ty <- instantiateTypeScheme v loc tys
     return (TST.FreeVar loc rep ty v)
   --
@@ -150,15 +152,17 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- Since we infer refinement types, we have to look up the translated xtorSig.
     decl <- lookupDataDecl loc xt
     xtorSigUpper <- lookupXtorSigUpper loc xt
-    -- Then we generate constraints between the inferred types of the substitution
-    -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
-    genConstraintsCtxts substTypes xtorSigUpper.sig_args (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
     -- generate Constraints for applied types (if there are any)
     (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
     let sig_args' = TST.zonk TST.SkolemRep tyParamsMap substTypes
     let sig_args'' = TST.zonk TST.SkolemRep tyParamsMap xtorSigUpper.sig_args
-    genConstraintsCtxts substTypes sig_args'' (case rep of {PrdRep -> DtorArgsConstraint loc; CnsRep -> CtorArgsConstraint loc} )
     mrv <- case S.toList $ TST.recTVars xtorSigUpper.sig_args  of [] -> return Nothing; [rv] -> return $ Just rv; lst -> throwOtherError loc ["Refinement Xtor cannot contain multiple recursive variables ",ppPrint lst]
+    let substTypes' = case mrv  of Nothing -> substTypes; Just rv -> TST.addRecVarRefinement decl.data_name rv <$> substTypes
+    genConstraintsCtxts substTypes' sig_args'' (case rep of {PrdRep -> DtorArgsConstraint loc; CnsRep -> CtorArgsConstraint loc} )
+    -- Then we generate constraints between the inferred types of the substitution
+    -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
+    genConstraintsCtxts substTypes xtorSigUpper.sig_args (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
+
     let ty = case rep of 
                PrdRep -> do
                  let refTy = TST.TyDataRefined   defaultLoc PosRep decl.data_kind decl.data_name mrv [TST.MkXtorSig xt sig_args']
