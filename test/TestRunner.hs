@@ -30,6 +30,8 @@ import Utils (listRecursiveDuoFiles, filePathToModuleName, moduleNameToFullPath)
 
 type Description = String
 
+data TypeCheckMode = Standard | CollectParsetree
+
 data Options where
   OptEmpty  :: Options
   OptFilter :: [FilePath] -> Options
@@ -79,6 +81,22 @@ getTypecheckedDecls :: CST.Module -> IO (Either (NonEmpty Error) TST.Module)
 getTypecheckedDecls cst =
     fmap snd <$> (fst <$> inferProgramIO defaultDriverState cst)
 
+typecheckExamplesStandard :: [(a0, Either (NonEmpty Error) CST.Module)] -> IO [(a0, Either (NonEmpty Error) TST.Module)]
+typecheckExamplesStandard examples =
+  forM examples $ \(example, parse) -> do
+    case parse of
+      Left err -> pure (example, Left err)
+      Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, res)
+
+      
+typecheckExamplesCollectParsetree :: [(a0, Either (NonEmpty Error) CST.Module)] -> IO [(a0, Either (NonEmpty Error) (CST.Module, Either (NonEmpty Error) TST.Module))]
+typecheckExamplesCollectParsetree examples =
+  forM examples $ \(example, parse) -> do
+    case parse of
+      Left err -> pure (example, Left err)
+      Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, Right (cst, res))
+
+------------------------------------------------------------------------------------------------------------------------
 
 -- Run Tests: A description, set of testvalues, a predicate (conditions for testing) and a spec test are needed
 runner :: Description
@@ -89,6 +107,24 @@ runner :: Description
 runner descr exs p spec = do
   describe descr $ do
     forM_ exs $ \a -> Control.Monad.when (p a) $ spec a
+
+
+-- Monadrunner nimmt description, examples und predicate an, wie der normale runner. 
+-- Allerdings muss jede spec Funktion jetzt ein Monad tuple ausgeben. Hier ist einmal der Spec, der von Hspec durchgeführt werden kann
+-- und einmal b, das Ergebnis des Tests (Ergebnis = tuple, mit dem weitergearbeitet werden kann)
+-- idealerweise ist das Ergebnis von runner ein tupel -> eine Liste, von Tests, die geklappt sind (bspw parses, die Funktionierten)
+--                                                    -> Eine Abfolge von Specs, die im Anschluss durchgeführt werden können
+{-
+runner :: Monad m
+            => Description
+            -> [a]
+            -> (a -> Bool)
+            -> (a -> m (b, Spec))
+            -> m ([b], Spec)
+runner descr exs p spectest = do 
+  tested <- forM exs $ \a -> Control.Monad.when (p a) $ spectest a
+  result <- 
+  -}
 
 main :: IO ()
 main = do
@@ -109,22 +145,16 @@ main = do
 
 
     -- Typechecking: 
-    typecheckedExamples <- forM parsedExamples $ \(example, parse) -> do
-      case parse of
-        Left err -> pure (example, Left err)
-        Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, res)
+    typecheckedExamples <- typecheckExamplesStandard parsedExamples
 
     -- counterexamples 
     -- for the sake of the type inference test, they contain both the parse and the TST
-    typecheckedCounterExamples <- forM parsedCounterExamples $ \(example, parse) -> do
-      case parse of
-        Left err -> pure (example, Left err)
-        Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, Right (cst, res))
+    typecheckedCounterExamples <- typecheckExamplesCollectParsetree parsedCounterExamples
 
 
     withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
     -- Tests before typechecking:
-      runner "Examples could be successfully parsed" parsedExamples (const True) Spec.ParseTest.spec
+      runner "Examples and Counterexamples could be successfully parsed" (parsedExamples ++ parsedCounterExamples) (const True) Spec.ParseTest.spec
       runner "Prettyprinting and parsing again" parsedExamples (isRight . snd) Spec.Prettyprinter.specParse
     -- Tests after typechecking:
       runner "Examples could be successfully typechecked" typecheckedExamples (const True) Spec.TypecheckTest.spec
