@@ -159,13 +159,13 @@ instance PrettyAnn CST.Typ where
     braces' commaSym (prettyAnn <$> xtors)
   -- Refinement types
   prettyAnn (CST.TyXRefined _ CST.Data   tn Nothing xtors) =
-    angles' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+    angles' mempty [prettyAnn tn <+> pipeSym <+> hsep (intersperse commaSym (prettyAnn <$> xtors))]
   prettyAnn (CST.TyXRefined _ CST.Data   tn (Just rv) xtors) =
-    angles' mempty [prettyAnn tn <+> pipeSym, prettyAnn rv <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))] 
+    angles' mempty [prettyAnn tn <+> pipeSym <+> prettyAnn rv <+> pipeSym <+> hsep (intersperse commaSym (prettyAnn <$> xtors))] 
   prettyAnn (CST.TyXRefined _ CST.Codata tn Nothing xtors) =
-    braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+    braces' mempty [prettyAnn tn <+> pipeSym <+> hsep (intersperse commaSym (prettyAnn <$> xtors))]
   prettyAnn (CST.TyXRefined _ CST.Codata tn (Just rv) xtors) =
-    braces' mempty [prettyAnn tn <+> pipeSym, prettyAnn rv <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+    braces' mempty [prettyAnn tn <+> pipeSym <+> prettyAnn rv <+> pipeSym <+> hsep (intersperse commaSym (prettyAnn <$> xtors))]
 
   -- Primitive types
   prettyAnn (CST.TyI64 _) = "#I64"
