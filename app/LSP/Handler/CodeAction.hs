@@ -63,6 +63,7 @@ import Utils (filePathToModuleName)
 import System.Directory (makeRelativeToCurrentDirectory)
 import Data.IORef (readIORef)
 import Data.Functor.Identity(Identity)
+import qualified Xfunc.Xfunc as Xfunc
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -109,6 +110,7 @@ workspaceEditToCodeAction edit descr =
                    , _command = Nothing
                    , _xdata = Nothing
                    }
+
 
 ---------------------------------------------------------------------------------
 -- Class for generating code actions
@@ -176,9 +178,12 @@ instance GetCodeActions TST.DataDecl where
   -- If we are not in the correct range, then don't generate code actions.
   getCodeActions _ Range {_start = start} decl | not (lookupPos start decl.data_loc) =
     List []
-  getCodeActions id _ decl = 
-    List [ workspaceEditToCodeAction (generateDualizeDeclEdit id decl.data_loc decl) ("Dualize declaration " <> ppPrint decl.data_name) ]
-
+  getCodeActions id _ decl =
+    let 
+      dualize = [ workspaceEditToCodeAction (generateDualizeDeclEdit id decl.data_loc decl) ("Dualize declaration " <> ppPrint decl.data_name) ]
+      xfunc = [generateXfuncCodeAction id decl.data_loc decl ]
+    in
+      List (dualize <> xfunc)
 ---------------------------------------------------------------------------------
 -- Provide TypeAnnot Action
 ---------------------------------------------------------------------------------
@@ -239,6 +244,38 @@ generateDualizeDeclEdit (TextDocumentIdentifier uri) loc decl =
     WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing
                   , _changeAnnotations = Nothing }
+
+
+---------------------------------------------------------------------------------
+-- Provide Re-/Defunctionalize Actions 
+---------------------------------------------------------------------------------
+
+generateXfuncCodeAction:: TextDocumentIdentifier -> Loc -> TST.DataDecl -> (Command |? CodeAction)
+generateXfuncCodeAction (TextDocumentIdentifier _) _ decl =
+  let
+    transformable = Xfunc.transformable decl
+    descr = "Xfunc (co)datatype" <> ppPrint decl.data_name
+  in
+    if transformable then
+      InR $ CodeAction { _title = descr
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Nothing
+                   , _command = Nothing
+                   , _xdata = Nothing
+                   }
+    else
+      InR $ CodeAction { _title = descr
+                   , _kind = Just CodeActionQuickFix
+                   , _diagnostics = Nothing
+                   , _isPreferred = Nothing
+                   , _disabled = Nothing
+                   , _edit = Nothing
+                   , _command = Just Command {_title="transformation_not_possible", _command="transformation-not-possible", _arguments=Nothing}
+                   , _xdata = Nothing
+                   }
 
 
 ---------------------------------------------------------------------------------
@@ -383,6 +420,7 @@ evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params 
   let ExecuteCommandParams{_command = _command, _arguments = _arguments} = _params
   case _command of
     "duo-inline-eval" -> do
+      liftIO $ debugM source "Received eval request"
       -- parse arguments back from JSON
       args <- evalArgsFromJSON
                 (stopHandler responder source "Arguments should not be empty")
@@ -414,5 +452,8 @@ evalHandler = requestHandler SWorkspaceExecuteCommand $ \RequestMessage{_params 
 
       -- signal success
       responder (Right $ J.toJSON ())
+    "transformation-not-possible" -> do
+      liftIO $ debugM source "Received transformation request"
+      sendInfo "Transformation not possible"
     _ -> responder (Left $ ResponseError InvalidRequest ("Request " <> _command <> " is invalid") Nothing)
 

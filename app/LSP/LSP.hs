@@ -43,7 +43,7 @@ serverOptions = LSP.Options
   , signatureHelpRetriggerCharacters = Nothing
   , codeActionKinds = Just [LSP.CodeActionQuickFix]
   , documentOnTypeFormattingTriggerCharacters = Nothing
-  , executeCommandCommands = Just ["duo-inline-eval"]
+  , executeCommandCommands = Just ["duo-inline-eval", "transformation-not-possible"]
   , serverInfo = Just LSP.ServerInfo { _name = "duo-lsp"
                                      , _version = Just (T.pack $ showVersion version)
                                      }
