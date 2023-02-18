@@ -98,18 +98,17 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
   where
     pol = fstLabel.nl_pol
     knd = fstLabel.nl_kind
+
     mrgDat Nothing Nothing = Nothing
-    mrgDat xtors1 xtors2 = 
-      let xtors1' = fromMaybe S.empty xtors1
-          xtors2' = fromMaybe S.empty xtors2 
-      in
-      Just $ case pol of {Pos -> S.union xtors1' xtors2'; Neg -> S.intersection xtors1' xtors2'}
+    mrgDat (Just xtors1) Nothing = Just xtors1
+    mrgDat Nothing (Just xtors2) = Just xtors2
+    mrgDat (Just xtors1) (Just xtors2) = Just $ case pol of {Pos -> S.union xtors1 xtors2; Neg -> S.intersection xtors1 xtors2}
+
     mrgCodat Nothing Nothing = Nothing
-    mrgCodat xtors1 xtors2 = 
-      let xtors1' = fromMaybe S.empty xtors1 
-          xtors2' = fromMaybe S.empty xtors2
-      in 
-      Just $ case pol of {Pos -> S.intersection xtors1' xtors2'; Neg -> S.union xtors1' xtors2'}
+    mrgCodat (Just xtors1) Nothing = Just xtors1
+    mrgCodat Nothing (Just xtors2) = Just xtors2
+    mrgCodat (Just xtors1) (Just xtors2) = Just $ case pol of {Pos -> S.intersection xtors1 xtors2; Neg -> S.union xtors1 xtors2}
+
     mrgRefDat refs1 refs2 = 
       let mrgXtors xtors1 xtors2 = case pol of Pos -> S.union xtors1 xtors2; Neg -> S.intersection xtors1 xtors2
           f (xtors1, vars1) (xtors2, vars2) = (mrgXtors xtors1 xtors2, vars1 `L.union` vars2)
