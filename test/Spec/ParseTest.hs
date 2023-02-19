@@ -17,14 +17,18 @@ type Reason = String
 pendingFiles :: [(ModuleName, Reason)]
 pendingFiles = []
 
-spec :: ((FilePath, ModuleName), Either (NonEmpty Error) CST.Module) -> Spec
+spec :: Monad m => ((FilePath, ModuleName), Either (NonEmpty Error) CST.Module) 
+              -> m (((FilePath, ModuleName), Either (NonEmpty Error) CST.Module), Spec)
 spec ((example, mn), prog) = do
   let fullName = moduleNameToFullPath mn example
   case mn `lookup` pendingFiles of
-    Just reason -> it "" $ pendingWith $ "Could check local closure of file " ++ fullName ++ "\nReason: " ++ reason
-    Nothing -> 
-      describe ("The example " ++ fullName ++ " was parsed successfully") $ do
-            it "Was parsed." $
-              case prog of
-                Left err -> expectationFailure (ppPrintString err)
-                Right _ -> prog `shouldSatisfy` isRight
+    Just reason -> return (((example, mn), prog),  
+                          it "" $ pendingWith $ "Could not check Parse of file " ++ fullName ++ "\nReason: " ++ reason)
+    Nothing -> do
+        let returnSpec = describe ("The example " ++ fullName ++ " was parsed successfully") $ do
+              it "Was parsed." $
+                case prog of
+                  Left err -> expectationFailure (ppPrintString err)
+                  Right _  -> prog `shouldSatisfy` isRight
+        return (((example, mn), prog), 
+                returnSpec) 

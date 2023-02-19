@@ -1,7 +1,7 @@
 module Main where
 
 import Control.Monad.Except (runExceptT, forM, forM_)
-import Control.Monad (when)
+import Control.Monad (when, foldM)
 import Data.List.NonEmpty (NonEmpty(..))
 import Data.List (sort)
 import Data.Either (isRight)
@@ -88,7 +88,7 @@ typecheckExamplesStandard examples =
       Left err -> pure (example, Left err)
       Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, res)
 
-      
+
 typecheckExamplesCollectParsetree :: [(a0, Either (NonEmpty Error) CST.Module)] -> IO [(a0, Either (NonEmpty Error) (CST.Module, Either (NonEmpty Error) TST.Module))]
 typecheckExamplesCollectParsetree examples =
   forM examples $ \(example, parse) -> do
@@ -98,6 +98,7 @@ typecheckExamplesCollectParsetree examples =
 
 ------------------------------------------------------------------------------------------------------------------------
 
+{-
 -- Run Tests: A description, set of testvalues, a predicate (conditions for testing) and a spec test are needed
 runner :: Description
             -> [a]
@@ -107,24 +108,29 @@ runner :: Description
 runner descr exs p spec = do
   describe descr $ do
     forM_ exs $ \a -> Control.Monad.when (p a) $ spec a
-
+-}
 
 -- Monadrunner nimmt description, examples und predicate an, wie der normale runner. 
 -- Allerdings muss jede spec Funktion jetzt ein Monad tuple ausgeben. Hier ist einmal der Spec, der von Hspec durchgeführt werden kann
 -- und einmal b, das Ergebnis des Tests (Ergebnis = tuple, mit dem weitergearbeitet werden kann)
 -- idealerweise ist das Ergebnis von runner ein tupel -> eine Liste, von Tests, die geklappt sind (bspw parses, die Funktionierten)
 --                                                    -> Eine Abfolge von Specs, die im Anschluss durchgeführt werden können
-{-
+
 runner :: Monad m
             => Description
             -> [a]
             -> (a -> Bool)
             -> (a -> m (b, Spec))
             -> m ([b], Spec)
-runner descr exs p spectest = do 
-  tested <- forM exs $ \a -> Control.Monad.when (p a) $ spectest a
-  result <- 
-  -}
+runner descr exs p spectest = do
+  tested <- forM exs $ \a -> spectest a
+  sequenced <- foldM f ([], mempty) tested
+  case sequenced of
+    (bs, specs) -> return (bs, describe descr specs)
+  where f (bs, specsequence) (b, spec) = case snd b of
+                                            Left _ -> return (bs, spec >> specsequence)
+                                            Right _ -> return (b:bs, spec >> specsequence)
+
 
 main :: IO ()
 main = do
@@ -139,29 +145,53 @@ main = do
     -- Collect the parsed declarations
     parsedExamples <- parseExampleList examples
     parsedCounterExamples <- parseExampleList counterExamples
-
-
-
-
-
     -- Typechecking: 
     typecheckedExamples <- typecheckExamplesStandard parsedExamples
-
     -- counterexamples 
     -- for the sake of the type inference test, they contain both the parse and the TST
     typecheckedCounterExamples <- typecheckExamplesCollectParsetree parsedCounterExamples
 
+    --------------Collect specs----------------
+    -- Parsetests
+    successfullyParsedExamples <- runner "Examples could be successfully parsed" parsedExamples (const True) Spec.ParseTest.spec
+    successfullyParsedCounterExamples <- runner "Counterexamples could be successfully parsed" parsedCounterExamples (const True) Spec.ParseTest.spec
+
+    {-
+    TODO: Rest of the tests
+
+    -- Prettyprinting after parsing: 
+    parsedPPExamples <- runner "Prettyprinting and parsing again" (fst successfullyParsedExamples) (const True) Spec.Prettyprinter.specParse
+
+    -- Locally closed (if examples are not locally closed, typechecking is naught): 
+    locallyClosedExamples <- runner "Examples are locally closed" typecheckedExamples (const True) Spec.LocallyClosed.spec
+
+    -- Typechecktest: 
+    successfullyTypecheckedExamples <- runner "Examples could be successfully typechecked" (fst locallyClosedExamples) (const True) Spec.TypecheckTest.spec
+
+    -- Prettyprinting after typechecking: 
+    typecheckedPPExamples <- runner "Examples parse and typecheck after prettyprinting" (fst successfullytypecheckedExamples) (const True) Spec.Prettyprinter.specType
+
+    -- Focusing (makes only sense, if examples could be successfully typechecked):
+    successfullyFocusedExamples <- runner "Examples can be focused" (fst successfullyTypecheckedExamples) (const True) Spec.Focusing.spec
+    -}
+
+
+
+
+
+
 
     withArgs [] $ hspecWith defaultConfig { configFormatter = Just specdoc } $ do
-    -- Tests before typechecking:
-      runner "Examples and Counterexamples could be successfully parsed" (parsedExamples ++ parsedCounterExamples) (const True) Spec.ParseTest.spec
-      runner "Prettyprinting and parsing again" parsedExamples (isRight . snd) Spec.Prettyprinter.specParse
-    -- Tests after typechecking:
-      runner "Examples could be successfully typechecked" typecheckedExamples (const True) Spec.TypecheckTest.spec
-      runner "Examples parse and typecheck after prettyprinting" typecheckedExamples (isRight . snd) Spec.Prettyprinter.specType
-      runner "Examples are locally closed" typecheckedExamples (isRight . snd) Spec.LocallyClosed.spec  -- <- TODO: Only typechecking is dependent on local closedness
-      runner "Examples can be focused" typecheckedExamples (isRight . snd) Spec.Focusing.spec
-      runner "TypeInference with check" typecheckedCounterExamples (isRight . snd) Spec.TypeInferenceExamples.spec
+      -- Tests before typechecking:
+      snd successfullyParsedExamples
+      snd successfullyParsedCounterExamples
+
+      -- Tests after typechecking:
+      --snd parsedPPExamples
+      --snd locallyClosedExamples
+      --snd successfullyTypecheckedExamples  
+      --snd typecheckedPPExamples
+      --snd successfullyFocusedExamples
       -- Overlap Check: Not dependent on any parses:
       Spec.OverlapCheck.spec
 
