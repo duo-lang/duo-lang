@@ -66,16 +66,7 @@ getAvailableExamples = do
     where
       filterFun s = s `notElem` excluded
 
-getParsedDeclarations :: FilePath -> ModuleName -> IO (Either (NonEmpty Error) CST.Module)
-getParsedDeclarations fp mn = do
-  let fullFp = moduleNameToFullPath mn fp
-  runExceptT (parseAndCheckModule fullFp mn fp)
 
-parseExampleList :: [(FilePath, ModuleName)] -> IO [((FilePath, ModuleName), Either (NonEmpty Error) CST.Module)]
-parseExampleList examples = do
-  forM examples $ \example ->
-    uncurry getParsedDeclarations example >>=
-      \res -> pure (example, res)
 
 getTypecheckedDecls :: CST.Module -> IO (Either (NonEmpty Error) TST.Module)
 getTypecheckedDecls cst =
@@ -118,18 +109,18 @@ runner descr exs p spec = do
 
 runner :: Monad m
             => Description
-            -> [(a, Either a1 b0)]
-            -> ((a, Either a1 b0) -> Bool)
-            -> ((a, Either a1 b0) -> m ((a, Either a1 b0), Spec))
-            -> m ([(a, Either a1 b0)], Spec)
+            -> [a]
+            -> (a -> Bool)
+            -> (a -> m (Maybe b, Spec))
+            -> m ([b], Spec)
 runner descr exs p spectest = do
   tested <- forM exs $ \a -> spectest a
   sequenced <- foldM f ([], return ()) tested
   case sequenced of
     (bs, specs) -> return (bs, describe descr specs)
-  where f (bs, specsequence) (b, spec) = case snd b of
-                                            Left _ -> return (bs, spec >> specsequence)
-                                            Right _ -> return (b:bs, spec >> specsequence)
+  where f (bs, specsequence) (b, spec) = case b of
+                                            Nothing -> return (bs, spec >> specsequence)
+                                            Just x -> return (x:bs, spec >> specsequence)
 
 
 main :: IO ()
@@ -142,16 +133,19 @@ main = do
       -- only use files specified in command line
       OptFilter fs -> pure $ (,) "." . filePathToModuleName <$> fs
     counterExamples <- getAvailableCounterExamples
-    -- Collect the parsed declarations
-    parsedExamples <- parseExampleList examples
-    parsedCounterExamples <- parseExampleList counterExamples
+    
     -- Typechecking: 
-    typecheckedExamples <- typecheckExamplesStandard parsedExamples
+    --typecheckedExamples <- typecheckExamplesStandard parsedExamples
     -- counterexamples 
     -- for the sake of the type inference test, they contain both the parse and the TST
-    typecheckedCounterExamples <- typecheckExamplesCollectParsetree parsedCounterExamples
+    --typecheckedCounterExamples <- typecheckExamplesCollectParsetree parsedCounterExamples
 
     --------------Collect specs----------------
+    -- Collect the parsed declarations
+    successfullyParsedExamples <- runner "Examples could be successfully parsed" examples (const True) Spec.ParseTest.spec
+    successfullyParsedCounterExamples <- runner "Counterexamples could be successfully parsed" counterExamples (const True) Spec.ParseTest.spec
+    {-
+    TODO: Rest of the tests
     -- Parsetests
     successfullyParsedExamples <- runner "Examples could be successfully parsed" parsedExamples (const True) Spec.ParseTest.spec
     successfullyParsedCounterExamples <- runner "Counterexamples could be successfully parsed" parsedCounterExamples (const True) Spec.ParseTest.spec
@@ -166,8 +160,7 @@ main = do
     
     -- Typechecktest: 
     successfullyTypecheckedExamples <- runner "Examples could be successfully typechecked" (fst locallyClosedExamples) (const True) Spec.TypecheckTest.spec
-    {-
-    TODO: Rest of the tests
+    
     -- Prettyprinting after typechecking: 
     typecheckedPPExamples <- runner "Examples parse and typecheck after prettyprinting" (fst successfullytypecheckedExamples) (const True) Spec.Prettyprinter.specType
 
@@ -187,9 +180,9 @@ main = do
       snd successfullyParsedCounterExamples
 
       -- Tests after typechecking:
-      snd parsedPPExamples
-      snd locallyClosedExamples
-      snd successfullyTypecheckedExamples  
+      --snd parsedPPExamples
+      --snd locallyClosedExamples
+      --snd successfullyTypecheckedExamples  
       --snd typecheckedPPExamples
       --snd successfullyFocusedExamples
       -- Overlap Check: Not dependent on any parses:
