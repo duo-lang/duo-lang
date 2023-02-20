@@ -3,6 +3,7 @@ module Spec.TypecheckTest (spec) where
 import Data.List.NonEmpty (NonEmpty)
 import Test.Hspec
 
+
 import Data.Either(isRight)
 import Syntax.TST.Program qualified as TST
 import Errors

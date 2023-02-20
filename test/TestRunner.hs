@@ -160,14 +160,14 @@ main = do
     -- Prettyprinting after parsing: 
     parsedPPExamples <- runner "Prettyprinting and parsing again" (fst successfullyParsedExamples) (const True) Spec.Prettyprinter.specParse
 
-    {-
-    TODO: Rest of the tests
+    
     -- Locally closed (if examples are not locally closed, typechecking is naught): 
     locallyClosedExamples <- runner "Examples are locally closed" typecheckedExamples (const True) Spec.LocallyClosed.spec
-
+    
     -- Typechecktest: 
     successfullyTypecheckedExamples <- runner "Examples could be successfully typechecked" (fst locallyClosedExamples) (const True) Spec.TypecheckTest.spec
-
+    {-
+    TODO: Rest of the tests
     -- Prettyprinting after typechecking: 
     typecheckedPPExamples <- runner "Examples parse and typecheck after prettyprinting" (fst successfullytypecheckedExamples) (const True) Spec.Prettyprinter.specType
 
@@ -188,8 +188,8 @@ main = do
 
       -- Tests after typechecking:
       snd parsedPPExamples
-      --snd locallyClosedExamples
-      --snd successfullyTypecheckedExamples  
+      snd locallyClosedExamples
+      snd successfullyTypecheckedExamples  
       --snd typecheckedPPExamples
       --snd successfullyFocusedExamples
       -- Overlap Check: Not dependent on any parses:
