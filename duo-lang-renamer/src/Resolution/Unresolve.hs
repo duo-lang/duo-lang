@@ -205,9 +205,9 @@ instance EmbedRST RST.CmdCase CST.TermCase where
   embedRST cmdcase = do
     pat' <- embedRST cmdcase.cmdcase_pat
     cmd' <- embedRST cmdcase.cmdcase_cmd
-    pure $ CST.MkTermCase { tmcase_loc = cmdcase.cmdcase_loc
-                          , tmcase_pat = pat'
-                          , tmcase_term = cmd'
+    pure $ CST.MkTermCase { loc = cmdcase.cmdcase_loc
+                          , pat = pat'
+                          , term = cmd'
                           }
 
 instance Unresolve RST.CmdCase CST.TermCase where
@@ -232,9 +232,9 @@ instance EmbedRST (RST.TermCase pc) CST.TermCase where
   embedRST tmcase = do
     pat <- embedRST tmcase.tmcase_pat
     term <- embedRST tmcase.tmcase_term
-    pure $ CST.MkTermCase { tmcase_loc = tmcase.tmcase_loc
-                          , tmcase_pat = pat
-                          , tmcase_term = term
+    pure $ CST.MkTermCase { loc = tmcase.tmcase_loc
+                          , pat = pat
+                          , term = term
                           }
 
 instance Unresolve (RST.TermCase pc) CST.TermCase where
@@ -259,9 +259,9 @@ instance EmbedRST (RST.TermCaseI pc) CST.TermCase where
   embedRST tmcase = do
     pat <- embedRST tmcase.tmcasei_pat
     term <- embedRST tmcase.tmcasei_term
-    pure CST.MkTermCase { tmcase_loc = tmcase.tmcasei_loc
-                        , tmcase_pat = pat
-                        , tmcase_term = term
+    pure CST.MkTermCase { loc = tmcase.tmcasei_loc
+                        , pat = pat
+                        , term = term
                         }
 
 instance Unresolve (RST.TermCaseI pc) CST.TermCase where
@@ -286,9 +286,9 @@ instance EmbedRST RST.InstanceCase CST.TermCase where
   embedRST icase = do
     pat <- embedRST icase.instancecase_pat
     cmd <- embedRST icase.instancecase_cmd
-    pure CST.MkTermCase { tmcase_loc = icase.instancecase_loc
-                        , tmcase_pat = pat
-                        , tmcase_term = cmd
+    pure CST.MkTermCase { loc = icase.instancecase_loc
+                        , pat = pat
+                        , term = cmd
                         }
 
 instance Unresolve RST.InstanceCase CST.TermCase where
@@ -537,8 +537,8 @@ instance Unresolve (RST.XtorSig pol) CST.XtorSig where
   unresolve :: RST.XtorSig pol -> UnresolveM CST.XtorSig
   unresolve sig = do
     sig_args' <- unresolve sig.sig_args
-    pure CST.MkXtorSig { sig_name = sig.sig_name
-                       , sig_args = sig_args'
+    pure CST.MkXtorSig { name = sig.sig_name
+                       , args = sig_args'
                        }
 
 instance Unresolve (RST.VariantType pol) CST.Typ where
@@ -627,18 +627,18 @@ instance Unresolve (RST.TypeScheme pol) CST.TypeScheme where
   unresolve :: RST.TypeScheme pol -> UnresolveM CST.TypeScheme
   unresolve ts = do
     type' <- unresolve ts.ts_monotype
-    pure $ CST.TypeScheme  { ts_loc         = ts.ts_loc
-                           , ts_vars        = ts.ts_vars
-                           , ts_constraints = []
-                           , ts_monotype    = type'
+    pure $ CST.TypeScheme  { loc         = ts.ts_loc
+                           , vars        = ts.ts_vars
+                           , constraints = []
+                           , monotype    = type'
                            }
 
 instance Unresolve (RST.MethodSig pol) CST.XtorSig where
   unresolve :: RST.MethodSig pol -> UnresolveM CST.XtorSig
   unresolve msig = do
     args' <- mapM unresolve msig.msig_args
-    pure CST.MkXtorSig { sig_name = MkXtorName $ msig.msig_name.unMethodName
-                       , sig_args = args'
+    pure CST.MkXtorSig { name = MkXtorName $ msig.msig_name.unMethodName
+                       , args = args'
                        }
 
 ---------------------------------------------------------------------------------

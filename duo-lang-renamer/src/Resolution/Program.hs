@@ -107,7 +107,7 @@ checkVarianceTyp loc var polyKind (CST.TyKindAnnot _ ty) = checkVarianceTyp loc 
 
 checkVarianceXtor :: Loc -> Variance -> PolyKind -> CST.XtorSig -> ResolverM ()
 checkVarianceXtor loc var polyKind xtor = do
-  sequence_ $ f <$> xtor.sig_args
+  sequence_ $ f <$> xtor.args
   where
     f :: CST.PrdCnsTyp -> ResolverM ()
     f (CST.PrdType ty) = checkVarianceTyp loc (Covariant     <> var) polyKind ty

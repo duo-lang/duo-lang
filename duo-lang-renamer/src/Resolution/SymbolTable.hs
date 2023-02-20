@@ -150,7 +150,7 @@ createSymbolTable' _ _ (XtorDecl decl) st = do
 createSymbolTable' fp mn  (DataDecl decl) st = do
   -- Check whether the TypeName, and the XtorNames, are already declared in this module
   checkFreshTypeName decl.loc decl.name st
-  forM_ ((\x -> x.sig_name) <$> decl.xtors) $ \xtorName -> checkFreshXtorName decl.loc xtorName st
+  forM_ ((\sig -> sig.name) <$> decl.xtors) $ \xtorName -> checkFreshXtorName decl.loc xtorName st
   -- Create the default polykind
   let polyKind = case decl.kind of
                     Nothing -> MkPolyKind [] (case decl.data_codata of Data -> CBV; Codata -> CBN)
@@ -158,7 +158,7 @@ createSymbolTable' fp mn  (DataDecl decl) st = do
   let ns = case decl.isRefined of
                Refined -> Refinement
                NotRefined -> Nominal
-  let xtors = M.fromList [(xt.sig_name, XtorNameResult decl.data_codata ns (linearContextToArity xt.sig_args))| xt <- decl.xtors]
+  let xtors = M.fromList [(sig.name, XtorNameResult decl.data_codata ns (linearContextToArity sig.args))| sig <- decl.xtors]
   let rnTypeName = MkRnTypeName { rnTnLoc = decl.loc
                                 , rnTnDoc = decl.doc
                                 , rnTnFp = Just fp
@@ -197,9 +197,9 @@ createSymbolTable' _ _ (CmdDecl decl) st = do
   pure $ st { freeVarMap = M.insert decl.name FreeVarResult st.freeVarMap }
 createSymbolTable' _ _ (SetDecl _) st = pure st
 createSymbolTable' _ _ (ClassDecl decl)  st = do
-  let xtor_names = (\x -> x.sig_name) <$> decl.methods
+  let xtor_names = (\sig -> sig.name) <$> decl.methods
   mapM_ (flip (checkFreshXtorName decl.loc) st) xtor_names
-  pure $ st { xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult decl.name . linearContextToArity . (\x -> x.sig_args) <$> decl.methods)) st.xtorNameMap
+  pure $ st { xtorNameMap = M.union (M.fromList $ zip xtor_names (MethodNameResult decl.name . linearContextToArity . (\sig -> sig.args) <$> decl.methods)) st.xtorNameMap
             , classDecls = S.insert decl.name st.classDecls }
 createSymbolTable' _ _ (InstanceDecl decl) st =
   if isPermittedInstance decl.class_name decl.typ st
