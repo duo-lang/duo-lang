@@ -20,7 +20,6 @@ import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
 import Resolution.Unresolve
 import Translate.EmbedTST (EmbedTST(..))
-import Syntax.CST.Program (PrdCnsDeclaration(pcdecl_term))
 
 ---------------------------------------------------------------------------------
 -- Data declarations
@@ -53,22 +52,22 @@ instance PrettyAnn TST.DataDecl where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn CST.PrdCnsDeclaration where
-  prettyAnn decl | decl.pcdecl_isRec == CST.Recursive =
+  prettyAnn decl | decl.isRecursive == CST.Recursive =
     annKeyword "def" <+>
     annKeyword "rec" <+>
-    prettyPrdCns decl.pcdecl_pc <+>
-    prettyAnn decl.pcdecl_name <+>
-    prettyAnnot decl.pcdecl_annot <+>
+    prettyPrdCns decl.prd_cns <+>
+    prettyAnn decl.name <+>
+    prettyAnnot decl.annot <+>
     annSymbol ":=" <+>
-    prettyAnn decl.pcdecl_term <>
+    prettyAnn decl.term <>
     semi
   prettyAnn decl =
     annKeyword "def" <+>
-    prettyPrdCns decl.pcdecl_pc <+>
-    prettyAnn decl.pcdecl_name <+>
-    prettyAnnot decl.pcdecl_annot <+>
+    prettyPrdCns decl.prd_cns <+>
+    prettyAnn decl.name <+>
+    prettyAnnot decl.annot <+>
     annSymbol ":=" <+>
-    prettyAnn decl.pcdecl_term <>
+    prettyAnn decl.term <>
     semi
 
 prettyAnnot :: Maybe CST.TypeScheme -> Doc Annotation
@@ -83,9 +82,9 @@ instance PrettyAnn CST.CommandDeclaration where
   prettyAnn decl =
     annKeyword "def" <+>
     annKeyword "cmd" <+>
-    prettyAnn decl.cmddecl_name <+>
+    prettyAnn decl.name <+>
     annSymbol ":=" <+>
-    prettyAnn decl.cmddecl_cmd <>
+    prettyAnn decl.cmd <>
     semi
 
 ---------------------------------------------------------------------------------
@@ -98,14 +97,14 @@ prettyCCList xs =  parens' comma ((\(pc,k) -> case pc of Prd -> prettyAnn k; Cns
 
 instance PrettyAnn CST.StructuralXtorDeclaration where
   prettyAnn decl =
-    annKeyword (case decl.strxtordecl_xdata of CST.Data -> "constructor"; CST.Codata -> "destructor") <+>
-    prettyAnn decl.strxtordecl_name <>
-    prettyCCList decl.strxtordecl_arity <+>
-    (case decl.strxtordecl_evalOrder of
+    annKeyword (case decl.data_codata of CST.Data -> "constructor"; CST.Codata -> "destructor") <+>
+    prettyAnn decl.name <>
+    prettyCCList decl.arity <+>
+    (case decl.evalOrder of
         Nothing -> mempty
-        Just strxtordecl_evalOrder' ->
+        Just evalOrder' ->
             colon <+>
-            prettyAnn strxtordecl_evalOrder') <>
+            prettyAnn evalOrder') <>
     semi
 
 ---------------------------------------------------------------------------------
@@ -115,7 +114,7 @@ instance PrettyAnn CST.StructuralXtorDeclaration where
 instance PrettyAnn CST.ImportDeclaration where
   prettyAnn decl =
     annKeyword "import" <+>
-    prettyAnn decl.imprtdecl_module <>
+    prettyAnn decl.mod <>
     semi
 
 ---------------------------------------------------------------------------------
@@ -125,7 +124,7 @@ instance PrettyAnn CST.ImportDeclaration where
 instance PrettyAnn CST.SetDeclaration where
   prettyAnn decl =
     annKeyword "set" <+>
-    prettyAnn decl.setdecl_option <>
+    prettyAnn decl.option <>
     semi
 
 ---------------------------------------------------------------------------------
@@ -136,12 +135,12 @@ instance PrettyAnn CST.TyOpDeclaration where
   prettyAnn decl =
     annKeyword "type" <+>
     annKeyword "operator" <+>
-    prettyAnn decl.tyopdecl_sym <+>
-    prettyAnn decl.tyopdecl_assoc <+>
+    prettyAnn decl.symbol <+>
+    prettyAnn decl.associativity <+>
     annKeyword "at" <+>
-    prettyAnn decl.tyopdecl_prec <+>
+    prettyAnn decl.precedence <+>
     annSymbol ":=" <+>
-    prettyAnn decl.tyopdecl_res <>
+    prettyAnn decl.res <>
     semi
 
 ---------------------------------------------------------------------------------
@@ -151,9 +150,9 @@ instance PrettyAnn CST.TyOpDeclaration where
 instance PrettyAnn CST.TySynDeclaration where
   prettyAnn decl =
     annKeyword "type" <+>
-    prettyAnn decl.tysyndecl_name <+>
+    prettyAnn decl.name <+>
     annSymbol ":=" <+>
-    prettyAnn decl.tysyndecl_res <>
+    prettyAnn decl.res <>
     semi
 
 ---------------------------------------------------------------------------------
@@ -167,9 +166,9 @@ prettyTVars tvs = parens $ cat (punctuate comma (prettyTParam <$> tvs))
 instance PrettyAnn CST.ClassDeclaration where
   prettyAnn decl =
     annKeyword "class" <+>
-    prettyAnn decl.classdecl_name <+>
-    prettyTVars decl.classdecl_kinds.kindArgs <+>
-    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> decl.classdecl_methods))))) <>
+    prettyAnn decl.name <+>
+    prettyTVars decl.kinds.kindArgs <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> decl.methods))))) <>
     semi
 
 ---------------------------------------------------------------------------------
@@ -179,10 +178,10 @@ instance PrettyAnn CST.ClassDeclaration where
 instance PrettyAnn CST.InstanceDeclaration where
   prettyAnn decl =
     annKeyword "instance" <+>
-    prettyAnn decl.instancedecl_name <+> annSymbol ":" <+>
-    prettyAnn decl.instancedecl_class <+>
-    prettyAnn decl.instancedecl_typ <+>
-    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> decl.instancedecl_cases))))) <>
+    prettyAnn decl.instance_name <+> annSymbol ":" <+>
+    prettyAnn decl.class_name <+>
+    prettyAnn decl.typ <+>
+    braces (group (nest 3 (line' <> vsep (punctuate comma (prettyAnn <$> decl.cases))))) <>
     semi
 
 ---------------------------------------------------------------------------------
@@ -217,8 +216,8 @@ instance PrettyAnn CST.Declaration where
 ---------------------------------------------------------------------------------
 
 instance PrettyAnn CST.Module where
-  prettyAnn mod = vsep (moduleDecl : (prettyAnn <$> mod.mod_decls))
-    where moduleDecl = annKeyword "module" <+> prettyAnn mod.mod_name <> semi
+  prettyAnn mod = vsep (moduleDecl : (prettyAnn <$> mod.decls))
+    where moduleDecl = annKeyword "module" <+> prettyAnn mod.name <> semi
 
 instance PrettyAnn TST.Module where
   prettyAnn mod = vsep (moduleDecl : (prettyAnn <$> mod.mod_decls))

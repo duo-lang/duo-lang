@@ -132,12 +132,12 @@ getSymbolTable  :: CST.Module
                 -> DriverM SymbolTable
 getSymbolTable mod = do
   sts <- getSymbolTables
-  case M.lookup mod.mod_name sts of
+  case M.lookup mod.name sts of
     Nothing -> do
       st <- case createSymbolTable mod of
         Left err -> throwError (ErrResolution err :| [])
         Right res -> pure res
-      addSymboltable mod.mod_name st
+      addSymboltable mod.name st
       return st
     Just st -> return st
 
@@ -154,9 +154,9 @@ getDependencies ds mn = nub $ directDeps ++ concatMap (getDependencies ds) direc
 
 checkModuleName :: MonadError (NonEmpty Error) m => ModuleName -> CST.Module -> m ()
 checkModuleName mn mod =
-  if mn == mod.mod_name
+  if mn == mod.name
     then pure ()
-    else throwOtherError defaultLoc [ "Wrong module declaration: Found declaration " <> T.pack (ppPrintString mod.mod_name) <> " in module " <> T.pack (ppPrintString mn) ]
+    else throwOtherError defaultLoc [ "Wrong module declaration: Found declaration " <> T.pack (ppPrintString mod.name) <> " in module " <> T.pack (ppPrintString mn) ]
 
 parseAndCheckModule :: (MonadError (NonEmpty Error) m, MonadIO m) => FilePath -> ModuleName -> FilePath -> m CST.Module
 parseAndCheckModule fullFp mn fp = do
@@ -182,7 +182,7 @@ getModuleDeclarations mn = do
 
 addModule :: CST.Module -> DriverM ()
 addModule mod = do
-  modify (\ds-> ds { drvFiles = M.insert mod.mod_name mod ds.drvFiles })
+  modify (\ds-> ds { drvFiles = M.insert mod.name mod ds.drvFiles })
 
 -- AST Cache
 
