@@ -37,6 +37,8 @@ getInstanceCases TST.MkModule { mod_decls } = go mod_decls []
     go ((TST.InstanceDecl (TST.MkInstanceDeclaration _ _ _ _ _ cases)):rest) acc = go rest (cases++acc)
     go (_:rest) acc = go rest acc
 
+
+-- TODO: Wie kann ich alle Teiltests hier aufsammeln, und bei einem Fehlschlag einen Error zurückgeben, ohne den Rest der Tests abzubrechen?
 spec :: ((FilePath, ModuleName), Either (NonEmpty Error) TST.Module) -> Spec
 spec ((fp, mn), tst) = do
     let fullName = moduleNameToFullPath mn fp
