@@ -26,20 +26,17 @@ pendingFiles = []
 -- 2. Prettyprinted
 -- 3a. Parsed again from the prettyprinted result.
 -- 3b. Parsed and typechecked again from the prettyprinted result.
-specParse :: Monad m => ((FilePath, ModuleName), Either (NonEmpty Error) CST.Module)
-              -> m (((FilePath, ModuleName), Either (NonEmpty Error) CST.Module), Spec)
+specParse :: Monad m => ((FilePath, ModuleName), CST.Module)
+              -> m (Maybe ((FilePath, ModuleName), CST.Module), Spec)
 specParse ((example, mn), prog) = do
   let fullName = moduleNameToFullPath mn example
   let msg = it "Can be parsed again."
-  case prog of
-        Left err     -> return (((example, mn), prog), msg $ expectationFailure (ppPrintString err))
-        Right decls  -> do
-          let test = runFileParser example (moduleP example) (ppPrint decls) ErrParser
-          let pendingSpec = describe ("The example " ++ fullName ++ " can be parsed after prettyprinting.") $ do
-                msg $ test `shouldSatisfy` isRight
-          case test of
-            Left err -> return (((example, mn),Left err), pendingSpec)
-            Right _  -> return (((example, mn), prog), pendingSpec)
+  let test = runFileParser example (moduleP example) (ppPrint prog) ErrParser
+  let pendingSpec = describe ("The example " ++ fullName ++ " can be parsed after prettyprinting.") $ do
+        msg $ test `shouldSatisfy` isRight
+  case test of
+        Left err -> return (Nothing, pendingSpec)
+        Right _  -> return (Just ((example, mn), prog), pendingSpec)
 
 
 specType :: ((FilePath, ModuleName), Either (NonEmpty Error) TST.Module) -> Spec

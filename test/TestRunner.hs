@@ -144,16 +144,11 @@ main = do
     -- Collect the parsed declarations
     successfullyParsedExamples <- runner "Examples could be successfully parsed" examples (const True) Spec.ParseTest.spec
     successfullyParsedCounterExamples <- runner "Counterexamples could be successfully parsed" counterExamples (const True) Spec.ParseTest.spec
-    {-
-    TODO: Rest of the tests
-    -- Parsetests
-    successfullyParsedExamples <- runner "Examples could be successfully parsed" parsedExamples (const True) Spec.ParseTest.spec
-    successfullyParsedCounterExamples <- runner "Counterexamples could be successfully parsed" parsedCounterExamples (const True) Spec.ParseTest.spec
-
 
     -- Prettyprinting after parsing: 
     parsedPPExamples <- runner "Prettyprinting and parsing again" (fst successfullyParsedExamples) (const True) Spec.Prettyprinter.specParse
-
+    {-
+    TODO: Rest of the tests
     
     -- Locally closed (if examples are not locally closed, typechecking is naught): 
     locallyClosedExamples <- runner "Examples are locally closed" typecheckedExamples (const True) Spec.LocallyClosed.spec
@@ -180,7 +175,7 @@ main = do
       snd successfullyParsedCounterExamples
 
       -- Tests after typechecking:
-      --snd parsedPPExamples
+      snd parsedPPExamples
       --snd locallyClosedExamples
       --snd successfullyTypecheckedExamples  
       --snd typecheckedPPExamples

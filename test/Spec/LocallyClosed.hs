@@ -39,47 +39,41 @@ getInstanceCases TST.MkModule { mod_decls } = go mod_decls []
 
 
 -- TODO: Wie kann ich alle Teiltests hier aufsammeln, und bei einem Fehlschlag einen Error zurückgeben, ohne den Rest der Tests abzubrechen?
-spec :: Monad m => ((FilePath, ModuleName), Either (NonEmpty Error) TST.Module)
-              -> m (((FilePath, ModuleName), Either (NonEmpty Error) TST.Module), Spec)
-spec ((fp, mn), tst) = do
+spec :: Monad m => ((FilePath, ModuleName), TST.Module)
+              -> m (Maybe ((FilePath, ModuleName), TST.Module), Spec)
+spec ((fp, mn), env) = do
     let fullName = moduleNameToFullPath mn fp
     case mn `lookup` pendingFiles of
-      Just reason -> return (((fp, mn), tst),
+      Just reason -> return (Nothing,
                             it "" $ pendingWith $ "Could check local closure of file " ++ fullName ++ "\nReason: " ++ reason)
       Nothing     -> do
         let pendingDescribe = describe ("Examples in " ++ fullName ++ " are locally closed")
-        case tst of
-          Left err -> return (((fp, mn), tst),
-                              it "Could not load examples." $ expectationFailure (ppPrintString err))
-          Right env -> do
-            -- fold producer and instance checks for deBrujin indizes:
-            danglingProducers <- foldM foldProducers (Nothing, return()) (getProducers env)
-            danglingInstanceClasses <- foldM foldInstanceClasses (Nothing, return()) (getInstanceCases env)
-            let returnSpec = pendingDescribe (snd danglingProducers >> snd danglingInstanceClasses)
-            let returnErrorCase = case (fst danglingProducers, fst danglingInstanceClasses) of
-                                          (Just (Left err), _) -> Left (pure err)
-                                          (_, Just (Left err)) -> Left (pure err)
-                                          (_, _)        -> tst
-            return (((fp, mn), returnErrorCase), returnSpec)
+        -- fold producer and instance checks for deBrujin indizes:
+        danglingProducers <- foldM foldProducers (Nothing, return()) (getProducers env)
+        danglingInstanceClasses <- foldM foldInstanceClasses (Nothing, return()) (getInstanceCases env)
+        let returnSpec = pendingDescribe (snd danglingProducers >> snd danglingInstanceClasses)
+        case (fst danglingProducers, fst danglingInstanceClasses) of
+                (Nothing, Nothing) -> return (Just ((fp, mn), env), returnSpec)
+                _                  -> return (Nothing, returnSpec)
 
-            where foldProducers (failure, specSequence) (name, term) = do
-                                        let locallyClosed = termLocallyClosed term
-                                        let msg = it (T.unpack (unFreeVarName name) ++ " does not contain dangling deBruijn indizes")
-                                        let danglingSpec = msg $ locallyClosed `shouldSatisfy` isRight
-                                        let fail = case locallyClosed of
-                                                        Left err -> Just locallyClosed
-                                                        Right _  -> Nothing 
-                                        return (fail,
-                                                danglingSpec >> specSequence)
-                  foldInstanceClasses (failure, specSequence) instance_case = do
-                                        let locallyClosed = instanceCaseLocallyClosed instance_case
-                                        let msg = it (T.unpack (unXtorName $ (\(XtorPat _ xt _) -> xt) $ instancecase_pat instance_case) ++ " does not contain dangling deBruijn indizes")
-                                        let danglingSpec = msg $ locallyClosed `shouldSatisfy` isRight
-                                        let fail = case locallyClosed of
-                                                        Left err -> Just locallyClosed
-                                                        Right _  -> Nothing 
-                                        return (fail,
-                                                danglingSpec >> specSequence)
+        where foldProducers (failure, specSequence) (name, term) = do
+                                    let locallyClosed = termLocallyClosed term
+                                    let msg = it (T.unpack (unFreeVarName name) ++ " does not contain dangling deBruijn indizes")
+                                    let danglingSpec = msg $ locallyClosed `shouldSatisfy` isRight
+                                    let fail = case locallyClosed of
+                                                    Left err -> Just locallyClosed
+                                                    Right _  -> Nothing 
+                                    return (fail,
+                                            danglingSpec >> specSequence)
+              foldInstanceClasses (failure, specSequence) instance_case = do
+                                    let locallyClosed = instanceCaseLocallyClosed instance_case
+                                    let msg = it (T.unpack (unXtorName $ (\(XtorPat _ xt _) -> xt) $ instancecase_pat instance_case) ++ " does not contain dangling deBruijn indizes")
+                                    let danglingSpec = msg $ locallyClosed `shouldSatisfy` isRight
+                                    let fail = case locallyClosed of
+                                                    Left err -> Just locallyClosed
+                                                    Right _  -> Nothing 
+                                    return (fail,
+                                            danglingSpec >> specSequence)
 
 
 
