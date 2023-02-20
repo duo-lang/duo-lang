@@ -118,13 +118,13 @@ runner descr exs p spec = do
 
 runner :: Monad m
             => Description
-            -> [a]
-            -> (a -> Bool)
-            -> (a -> m (b, Spec))
-            -> m ([b], Spec)
+            -> [(a, Either a1 b0)]
+            -> ((a, Either a1 b0) -> Bool)
+            -> ((a, Either a1 b0) -> m ((a, Either a1 b0), Spec))
+            -> m ([(a, Either a1 b0)], Spec)
 runner descr exs p spectest = do
   tested <- forM exs $ \a -> spectest a
-  sequenced <- foldM f ([], mempty) tested
+  sequenced <- foldM f ([], return ()) tested
   case sequenced of
     (bs, specs) -> return (bs, describe descr specs)
   where f (bs, specsequence) (b, spec) = case snd b of
