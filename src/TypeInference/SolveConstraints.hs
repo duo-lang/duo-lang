@@ -19,7 +19,7 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.List (partition)
 
-import Driver.Environment (Environment (..))
+import TypeInference.Environment (Environment (..))
 import Errors
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))

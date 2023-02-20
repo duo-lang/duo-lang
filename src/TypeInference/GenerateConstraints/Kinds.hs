@@ -18,7 +18,7 @@ import Errors
 import Loc
 import TypeInference.Constraints
 import TypeInference.GenerateConstraints.Definition
-import Driver.Environment
+import TypeInference.Environment
 
 import Control.Monad.Reader
 import Control.Monad.Except
