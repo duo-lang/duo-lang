@@ -62,17 +62,17 @@ printUVar :: (UniTVar, UVarProvenance, AnyKind) -> Doc Annotation
 printUVar (tv,prov,kv) = prettyAnn tv <> ":" <> prettyAnn kv <+> prettyAnn prov
 
 instance PrettyAnn ConstraintSet where
-  prettyAnn ConstraintSet { cs_constraints, cs_uvars, cs_kvars } = vsep
+  prettyAnn cs = vsep
     [ headerise "-" " " "Generated Constraints"
     , ""
     , "Generated unification variables:"
-    , nest 3 (line' <> vsep (printUVar <$> cs_uvars))
+    , nest 3 (line' <> vsep (printUVar <$> cs.cs_uvars))
     , ""
     , "Generated Kind Variables: "
-    , nest 3 (line' <> vsep (prettyAnn <$> cs_kvars))
+    , nest 3 (line' <> vsep (prettyAnn <$> cs.cs_kvars))
     , ""
     , "Generated constraints:"
-    , nest 3 (line' <> vsep (prettyAnn <$> cs_constraints))
+    , nest 3 (line' <> vsep (prettyAnn <$> cs.cs_constraints))
     , ""
     ]
 
@@ -133,15 +133,15 @@ prettyVariableState (u, VariableState { vst_lowerbounds = lbs , vst_upperbounds 
     printBounds PosRep u lbs <> line <> printBounds NegRep u ubs <> line <> printTypeClassConstraints u cns
 
 instance PrettyAnn SolverResult where
-  prettyAnn MkSolverResult { tvarSolution, witnessSolution } = vsep
+  prettyAnn result = vsep
 
     [ headerise "-" " " "Solved Constraints"
     , ""
-    , vsep $ intersperse "" (prettyVariableState <$> M.toList tvarSolution)
+    , vsep $ intersperse "" (prettyVariableState <$> M.toList result.tvarSolution)
     , ""
     , headerise "-" " " "Generated Witnesses:"
     , ""
-    , vsep $ intersperse "" (solvedWitnessesToDoc <$> M.toList witnessSolution)
+    , vsep $ intersperse "" (solvedWitnessesToDoc <$> M.toList result.witnessSolution)
     , ""
     ]
     where
@@ -178,24 +178,24 @@ instance PrettyAnn (TST.Bisubstitution TST.UniVT) where
     [ headerise "-" " " "Bisubstitution (UniTVar)"
     , ""
     , "Unification Variables: "
-    , vsep $ prettyBisubst <$> M.toList (fst (TST.bisubst_map uvsubst))
+    , vsep $ prettyBisubst <$> M.toList (fst uvsubst.bisubst_map)
     , ""
     , "Kind Variables: "
-    , vsep $ intersperse "" (prettyKindSubst <$> M.toList (snd (TST.bisubst_map uvsubst)))
+    , vsep $ intersperse "" (prettyKindSubst <$> M.toList (snd uvsubst.bisubst_map))
     ]
 
 instance PrettyAnn (TST.Bisubstitution TST.SkolemVT) where
   prettyAnn skolvsubst = vsep
     [ headerise "-" " " "Bisubstitution (SkolemTVar)"
     , ""
-    , vsep $ prettySkolBisubst <$> M.toList (TST.bisubst_map skolvsubst)
+    , vsep $ prettySkolBisubst <$> M.toList skolvsubst.bisubst_map
     ]
 
 instance PrettyAnn (TST.Bisubstitution TST.RecVT) where
   prettyAnn recvsubst = vsep
     [ headerise "-" " " "Bisubstitution (RecTVar)"
     , ""
-    , vsep $ prettyRecBisubst <$> M.toList (TST.bisubst_map recvsubst)
+    , vsep $ prettyRecBisubst <$> M.toList recvsubst.bisubst_map 
     ]
 
 

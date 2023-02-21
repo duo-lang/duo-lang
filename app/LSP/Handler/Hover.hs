@@ -27,8 +27,8 @@ import Syntax.TST.Terms
               PrimOp),
       Term(PrimLitString, BoundVar, FreeVar, PrimLitI64, PrimLitF64,
            PrimLitChar),
-      InstanceCase(MkInstanceCase, instancecase_cmd),
-      CmdCase(MkCmdCase, cmdcase_cmd),
+      InstanceCase(instancecase_cmd),
+      CmdCase(cmdcase_cmd),
       Substitution(unSubstitution),
       PrdCnsTerm(..) )
 import Syntax.TST.Terms qualified as TST
@@ -79,16 +79,16 @@ mkHoverMap loc msg = M.fromList [(locToRange loc, mkHover msg (locToRange loc))]
 ---------------------------------------------------------------------------------
 
 instance ToHoverMap (TermCase pc) where
-  toHoverMap MkTermCase {tmcase_term} = toHoverMap tmcase_term
+  toHoverMap tmcase = toHoverMap tmcase.tmcase_term
 
 instance ToHoverMap (TermCaseI pc) where
-  toHoverMap MkTermCaseI {tmcasei_term} = toHoverMap tmcasei_term
+  toHoverMap icase = toHoverMap icase.tmcasei_term
 
 instance ToHoverMap CmdCase where
-  toHoverMap MkCmdCase {cmdcase_cmd} = toHoverMap cmdcase_cmd
+  toHoverMap cmdcase = toHoverMap cmdcase.cmdcase_cmd
 
 instance ToHoverMap InstanceCase where
-  toHoverMap MkInstanceCase {instancecase_cmd} = toHoverMap instancecase_cmd
+  toHoverMap icase = toHoverMap icase.instancecase_cmd
 
 
 boundVarToHoverMap :: Loc -> TST.Typ pol -> HoverMap
@@ -266,7 +266,7 @@ instance ToHoverMap TST.Command where
     M.unions $ toHoverMap t : map toHoverMap tmcasesI
 
 instance ToHoverMap Substitution where
-  toHoverMap subst = M.unions (toHoverMap <$> unSubstitution subst)
+  toHoverMap subst = M.unions (toHoverMap <$> subst.unSubstitution)
 
 ---------------------------------------------------------------------------------
 -- Converting a type to a HoverMap
@@ -279,7 +279,7 @@ instance ToHoverMap (TST.LinearContext pol) where
   toHoverMap ctxt = M.unions $ toHoverMap <$> ctxt
 
 instance ToHoverMap (TST.XtorSig pol) where
-  toHoverMap TST.MkXtorSig { sig_args } = toHoverMap sig_args
+  toHoverMap sig = toHoverMap sig.sig_args
 
 instance ToHoverMap [TST.XtorSig pol] where 
   toHoverMap lst = M.unions (map toHoverMap lst)
@@ -359,7 +359,7 @@ instance ToHoverMap (TST.Typ pol) where
     let
       msg = T.unlines [ "#### Nominal type"
                       , "- Name: `" <> ppPrint tn <> "`"
-                      , "- Doc: " <> maybe "" ppPrint (rnTnDoc tn)
+                      , "- Doc: " <> maybe "" ppPrint tn.rnTnDoc
                       , "- Polarity: " <> prettyPolRep rep
                       , "- Kind: " <> ppPrint _knd
                       ]
@@ -376,7 +376,7 @@ instance ToHoverMap (TST.Typ pol) where
     let
       msg = T.unlines [ "#### Type synonym"
                       , "- Name: `" <> ppPrint nm <> "`"
-                      , "- Doc: " <> maybe "" ppPrint (rnTnDoc nm)
+                      , "- Doc: " <> maybe "" ppPrint nm.rnTnDoc
                       , "- Definition: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                       , "- Polarity: " <> prettyPolRep rep
                       ]
@@ -458,43 +458,45 @@ instance ToHoverMap (TST.Typ pol) where
 
  
 instance ToHoverMap (TST.TypeScheme pol) where
-  toHoverMap TST.TypeScheme { ts_monotype } = toHoverMap ts_monotype
+  toHoverMap ts = toHoverMap ts.ts_monotype
 
 ---------------------------------------------------------------------------------
 -- Converting declarations to a HoverMap
 ---------------------------------------------------------------------------------
 
 instance ToHoverMap (TST.PrdCnsDeclaration pc) where
-  toHoverMap TST.MkPrdCnsDeclaration { pcdecl_loc, pcdecl_annot = TST.Inferred tys, pcdecl_term } =
-    -- For an inferred type, we don't want to apply 'toHover' to tys, since it only contains
-    -- defaultLoc.
-    M.union (toHoverMap pcdecl_term) (M.fromList [(locToRange pcdecl_loc, mkHover (ppPrint tys) (locToRange pcdecl_loc))])
-  toHoverMap TST.MkPrdCnsDeclaration { pcdecl_annot = TST.Annotated tys, pcdecl_term } =
-    M.union (toHoverMap pcdecl_term) (toHoverMap tys)
+  toHoverMap decl =
+    case decl.pcdecl_annot of
+      TST.Inferred tys ->
+            -- For an inferred type, we don't want to apply 'toHover' to tys, since it only contains
+            -- defaultLoc.
+            M.union (toHoverMap decl.pcdecl_term) (M.fromList [(locToRange decl.pcdecl_loc, mkHover (ppPrint tys) (locToRange decl.pcdecl_loc))])
+      TST.Annotated tys -> 
+            M.union (toHoverMap decl.pcdecl_term) (toHoverMap tys)
 
 instance ToHoverMap TST.CommandDeclaration where
-  toHoverMap TST.MkCommandDeclaration { cmddecl_cmd } =
-    toHoverMap cmddecl_cmd
+  toHoverMap decl=
+    toHoverMap decl.cmddecl_cmd
 
 instance ToHoverMap TST.DataDecl where
-  toHoverMap TST.NominalDecl { data_loc, data_polarity, data_kind, data_xtors} = M.union (mkHoverMap data_loc msg) (toHoverMap $ fst data_xtors)
+  toHoverMap decl@TST.NominalDecl {} = M.union (mkHoverMap decl.data_loc msg) (toHoverMap $ fst decl.data_xtors)
     where
-      msg = T.unlines [ "#### Nominal " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration",
-                        "with polykind " <> ppPrint data_kind
+      msg = T.unlines [ "#### Nominal " <> case decl.data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration",
+                        "with polykind " <> ppPrint decl.data_kind
                       ]
-  toHoverMap TST.RefinementDecl { data_loc, data_polarity, data_kind, data_refinement_empty, data_refinement_full, data_xtors } = M.union (mkHoverMap data_loc msg) (toHoverMap $ fst data_xtors)
+  toHoverMap decl@TST.RefinementDecl {} = M.union (mkHoverMap decl.data_loc msg) (toHoverMap $ fst decl.data_xtors)
     where
-      msg = T.unlines [ "#### Refinement " <> case data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" 
-                      , "with polykind " <> ppPrint data_kind
-                      , " - Empty refinement type: " <> ppPrint (fst data_refinement_empty)
-                      , " - Full refinement type: " <> ppPrint (fst data_refinement_full)
+      msg = T.unlines [ "#### Refinement " <> case decl.data_polarity of { Data -> "data"; Codata -> "codata"} <> " declaration" 
+                      , "with polykind " <> ppPrint decl.data_kind
+                      , " - Empty refinement type: " <> ppPrint (fst decl.data_refinement_empty)
+                      , " - Full refinement type: " <> ppPrint (fst decl.data_refinement_full)
                       ]
       
 instance ToHoverMap RST.StructuralXtorDeclaration where
-  toHoverMap RST.MkStructuralXtorDeclaration { strxtordecl_loc, strxtordecl_xdata, strxtordecl_arity, strxtordecl_evalOrder } = mkHoverMap strxtordecl_loc msg
+  toHoverMap decl = mkHoverMap decl.strxtordecl_loc msg
     where
-      msg = T.unlines [ "#### Structural " <> case strxtordecl_xdata of { Data -> "constructor"; Codata -> "destructor"} <> " declaration"
-                      , "with Arguments" <> argsToStr strxtordecl_arity <> " and return Kind " <> ppPrint strxtordecl_evalOrder
+      msg = T.unlines [ "#### Structural " <> case decl.strxtordecl_xdata of { Data -> "constructor"; Codata -> "destructor"} <> " declaration"
+                      , "with Arguments" <> argsToStr decl.strxtordecl_arity <> " and return Kind " <> ppPrint decl.strxtordecl_evalOrder
                       ]
       argsToStr :: [(PrdCns,MonoKind)] -> Text
       argsToStr [] = ""
@@ -502,33 +504,33 @@ instance ToHoverMap RST.StructuralXtorDeclaration where
       argsToStr ((Cns, mk):rst) = "Consumer " <> ppPrint mk <> ", " <> argsToStr rst
 
 instance ToHoverMap CST.ImportDeclaration where
-  toHoverMap CST.MkImportDeclaration { imprtdecl_loc } = mkHoverMap imprtdecl_loc msg
+  toHoverMap decl = mkHoverMap decl.imprtdecl_loc msg
     where
       msg = T.unlines [ "#### Module import"]
 
 instance ToHoverMap CST.SetDeclaration where
-  toHoverMap CST.MkSetDeclaration { setdecl_loc } = mkHoverMap setdecl_loc msg
+  toHoverMap decl = mkHoverMap decl.setdecl_loc msg
     where
       msg = T.unlines [ "#### Set option"]
 
 instance ToHoverMap RST.TyOpDeclaration where
-  toHoverMap RST.MkTyOpDeclaration { tyopdecl_loc } = mkHoverMap tyopdecl_loc msg
+  toHoverMap decl = mkHoverMap decl.tyopdecl_loc msg
     where
       msg = T.unlines [ "#### Binary type operator"]
 
 instance ToHoverMap RST.TySynDeclaration where
-  toHoverMap RST.MkTySynDeclaration { tysyndecl_loc } = mkHoverMap tysyndecl_loc msg
+  toHoverMap decl = mkHoverMap decl.tysyndecl_loc msg
     where
       msg = T.unlines [ "#### Type synonym"]
 
 instance ToHoverMap RST.ClassDeclaration where
-  toHoverMap RST.MkClassDeclaration { classdecl_loc } = mkHoverMap classdecl_loc msg
+  toHoverMap decl = mkHoverMap decl.classdecl_loc msg
     where
       msg = T.unlines [ "#### Type class"]
 
 instance ToHoverMap TST.InstanceDeclaration where
-  toHoverMap TST.MkInstanceDeclaration { instancedecl_cases } =
-    M.unions $! toHoverMap <$> instancedecl_cases
+  toHoverMap decl =
+    M.unions $! toHoverMap <$> decl.instancedecl_cases
 
 ---------------------------------------------------------------------------------
 -- Converting a program to a HoverMap
@@ -547,4 +549,4 @@ instance ToHoverMap TST.Declaration where
   toHoverMap (TST.InstanceDecl decl) = toHoverMap decl
 
 instance ToHoverMap TST.Module where
-  toHoverMap TST.MkModule { mod_decls } = M.unions (toHoverMap <$> mod_decls)
+  toHoverMap mod = M.unions (toHoverMap <$> mod.mod_decls)

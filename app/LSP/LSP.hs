@@ -43,7 +43,7 @@ serverOptions = LSP.Options
   , signatureHelpRetriggerCharacters = Nothing
   , codeActionKinds = Just [LSP.CodeActionQuickFix]
   , documentOnTypeFormattingTriggerCharacters = Nothing
-  , executeCommandCommands = Just ["duo-inline-eval"]
+  , executeCommandCommands = Just ["duo-inline-eval", "transformation-not-possible"]
   , serverInfo = Just LSP.ServerInfo { _name = "duo-lsp"
                                      , _version = Just (T.pack $ showVersion version)
                                      }
@@ -61,7 +61,7 @@ definition = do
     , onConfigurationChange = \config _ -> pure config
     , doInitialize = \env _req -> pure $ Right env
     , staticHandlers = handlers
-    , interpretHandler = \env -> LSP.Iso { forward = LSP.runLspT env . unLSPMonad, backward = liftIO }
+    , interpretHandler = \env -> LSP.Iso { forward = LSP.runLspT env . (\x -> x.unLSPMonad), backward = liftIO }
     , options = serverOptions
     }
 

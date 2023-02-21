@@ -40,19 +40,19 @@ runCoalesceM res m = evalState (runReaderT m initialReader) initialState
 
 freshRecVar :: CoalesceM RecTVar
 freshRecVar = do
-    i <- gets s_var_counter
+    i <- gets (\x -> x.s_var_counter)
     modify (\s -> s { s_var_counter = i+1 } )
     return (MkRecTVar (T.pack $ "rr" ++ show i)) -- Use "rr" so that they don't clash.
 
 freshSkolemVar :: CoalesceM SkolemTVar
 freshSkolemVar = do
-    i <- gets s_var_counter
+    i <- gets (\x -> x.s_var_counter)
     modify (\s -> s { s_var_counter = i+1 } )
     return (MkSkolemTVar (T.pack $ "s" ++ show i)) -- Use "s" so that they don't clash.
 
 getSkolemVar :: UniTVar -> CoalesceM SkolemTVar
 getSkolemVar uv = do
-  uts <- gets s_uni_to_skolem
+  uts <- gets (\x -> x.s_uni_to_skolem)
   case M.lookup uv uts of
     Nothing -> do
       sv <- freshSkolemVar
@@ -62,32 +62,32 @@ getSkolemVar uv = do
 
 inProcess :: (UniTVar, Polarity) -> CoalesceM Bool
 inProcess ptv = do
-    inp <- asks r_inProcess
+    inp <- asks (\x -> x.r_inProcess)
     return $ ptv `S.member` inp
 
 getVariableState :: UniTVar -> CoalesceM VariableState
 getVariableState tv = do
-    mp <- asks (tvarSolution . r_result)
+    mp <- asks (\x -> x.r_result.tvarSolution)
     case M.lookup tv mp of
-      Nothing -> error ("Not in variable states: " ++ show (unUniTVar tv))
+      Nothing -> error ("Not in variable states: " ++ show tv.unUniTVar)
       Just vs -> return vs
 
 getOrElseUpdateRecVar :: (UniTVar, Polarity) -> CoalesceM RecTVar
 getOrElseUpdateRecVar ptv = do
-    mp <- gets s_recursive
+    mp <- gets (\x -> x.s_recursive)
     case M.lookup ptv mp of
       Nothing -> do
           recVar <- freshRecVar
-          modify (\s -> s { s_recursive = M.insert ptv recVar (s_recursive s) })
+          modify (\s -> s { s_recursive = M.insert ptv recVar s.s_recursive })
           return recVar
       Just tv -> return tv
 
 
 coalesce :: SolverResult -> Bisubstitution UniVT
-coalesce result@MkSolverResult { tvarSolution, kvarSolution } = MkBisubstitution (M.fromList xs,kvarSolution)
+coalesce result = MkBisubstitution (M.fromList xs,result.kvarSolution)
     where
-        res = M.keys tvarSolution
-        kinds = map (\x -> vst_kind (fromMaybe  (error "UniVar not found in SolverResult (should never happen)") (M.lookup x tvarSolution))) res
+        res = M.keys result.tvarSolution
+        kinds = map (\x -> (fromMaybe  (error "UniVar not found in SolverResult (should never happen)") (M.lookup x result.tvarSolution)).vst_kind) res
         f (tvar,pk) = do 
           x <- coalesceType $ TyUniVar defaultLoc PosRep pk tvar
           y <- coalesceType $ TyUniVar defaultLoc NegRep pk tvar
@@ -107,10 +107,10 @@ coalesceType (TyUniVar _ PosRep pk tv) = do
       MkPknd pk' -> return (TyRecVar defaultLoc PosRep pk' recVar)
       primk -> error ("Recursive Variable " <> show recVar <> " can't have primitive kind " <> show primk)
   else do
-    VariableState { vst_lowerbounds } <- getVariableState tv
-    let f r = r { r_inProcess =  S.insert (tv, Pos) (r_inProcess r) }
-    lbs' <- local f $ mapM coalesceType vst_lowerbounds
-    recVarMap <- gets s_recursive
+    vst <- getVariableState tv
+    let f r = r { r_inProcess =  S.insert (tv, Pos) r.r_inProcess }
+    lbs' <- local f $ mapM coalesceType vst.vst_lowerbounds
+    recVarMap <- gets (\x -> x.s_recursive)
     case (pk, M.lookup (tv, Pos) recVarMap) of
       (MkPknd pk', Nothing)     -> do
         newName <- getSkolemVar tv
@@ -127,10 +127,10 @@ coalesceType (TyUniVar _ NegRep pk tv) = do
       MkPknd pk' -> return (TyRecVar defaultLoc NegRep pk' recVar)
       primk -> error ("Recursive Variable " <> show recVar <> " can't have primitive kind " <> show primk)
   else do
-      VariableState { vst_upperbounds } <- getVariableState tv
-      let f r = r { r_inProcess =  S.insert (tv, Neg) (r_inProcess r) }
-      ubs' <- local f $ mapM coalesceType vst_upperbounds 
-      recVarMap <- gets s_recursive
+      vst <- getVariableState tv
+      let f r = r { r_inProcess =  S.insert (tv, Neg) r.r_inProcess }
+      ubs' <- local f $ mapM coalesceType vst.vst_upperbounds 
+      recVarMap <- gets (\x -> x.s_recursive)
       case (pk, M.lookup (tv, Neg) recVarMap) of
         (MkPknd pk', Nothing) -> do
           newName <- getSkolemVar tv

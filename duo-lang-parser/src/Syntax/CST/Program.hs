@@ -49,7 +49,7 @@ data PrdCnsDeclaration = MkPrdCnsDeclaration
 deriving instance Show PrdCnsDeclaration
 
 instance HasLoc PrdCnsDeclaration where
-  getLoc = pcdecl_loc
+  getLoc decl = decl.pcdecl_loc
 
 ---------------------------------------------------------------------------------
 -- Command Declaration
@@ -70,7 +70,7 @@ data CommandDeclaration = MkCommandDeclaration
 deriving instance Show CommandDeclaration
 
 instance HasLoc CommandDeclaration where
-  getLoc = cmddecl_loc
+  getLoc decl = decl.cmddecl_loc
 
 ---------------------------------------------------------------------------------
 -- Structural Xtor Declaration
@@ -102,7 +102,7 @@ data StructuralXtorDeclaration = MkStructuralXtorDeclaration
 deriving instance Show StructuralXtorDeclaration
 
 instance HasLoc StructuralXtorDeclaration where
-  getLoc = strxtordecl_loc
+  getLoc decl = decl.strxtordecl_loc
 
 ---------------------------------------------------------------------------------
 -- Import Declaration
@@ -121,7 +121,7 @@ data ImportDeclaration = MkImportDeclaration
 deriving instance Show ImportDeclaration
 
 instance HasLoc ImportDeclaration where
-  getLoc = imprtdecl_loc
+  getLoc decl = decl.imprtdecl_loc
 
 ---------------------------------------------------------------------------------
 -- Set Declaration
@@ -140,7 +140,7 @@ data SetDeclaration = MkSetDeclaration
 deriving instance Show SetDeclaration
 
 instance HasLoc SetDeclaration where
-  getLoc = setdecl_loc
+  getLoc decl = decl.setdecl_loc
 
 ---------------------------------------------------------------------------------
 -- Type Operator Declaration
@@ -165,7 +165,7 @@ data TyOpDeclaration = MkTyOpDeclaration
 deriving instance Show TyOpDeclaration
 
 instance HasLoc TyOpDeclaration where
-  getLoc = tyopdecl_loc
+  getLoc decl = decl.tyopdecl_loc
 
 ---------------------------------------------------------------------------------
 -- Type Synonym Declaration
@@ -186,7 +186,7 @@ data TySynDeclaration = MkTySynDeclaration
 deriving instance Show TySynDeclaration
 
 instance HasLoc TySynDeclaration where
-  getLoc = tysyndecl_loc
+  getLoc decl = decl.tysyndecl_loc
 
 ------------------------------------------------------------------------------
 -- Instance Declaration
@@ -210,7 +210,7 @@ data InstanceDeclaration = MkInstanceDeclaration
 deriving instance Show InstanceDeclaration
 
 instance HasLoc InstanceDeclaration where
-  getLoc = instancedecl_loc
+  getLoc decl = decl.instancedecl_loc
 
 ------------------------------------------------------------------------------
 -- Class Declaration
@@ -232,7 +232,7 @@ data ClassDeclaration = MkClassDeclaration
 deriving instance Show ClassDeclaration
 
 instance HasLoc ClassDeclaration where
-  getLoc = classdecl_loc
+  getLoc decl = decl.classdecl_loc
 
 ------------------------------------------------------------------------------
 -- Data Type declarations
@@ -262,7 +262,7 @@ data DataDecl = MkDataDecl
 deriving instance Show DataDecl
 
 instance HasLoc DataDecl where
-  getLoc = data_loc
+  getLoc decl = decl.data_loc
 
 ---------------------------------------------------------------------------------
 -- Declarations

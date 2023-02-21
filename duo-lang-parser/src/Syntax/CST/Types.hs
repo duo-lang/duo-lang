@@ -105,7 +105,7 @@ data TypeScheme = TypeScheme
   deriving Show
 
 instance HasLoc TypeScheme where
-  getLoc ts = ts_loc ts
+  getLoc ts = ts.ts_loc
 
 ---------------------------------------------------------------------------------
 -- Constraints
