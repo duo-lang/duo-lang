@@ -24,6 +24,10 @@ type Reason = String
 pendingFiles :: [(ModuleName, Reason)]
 pendingFiles = []
 
+getTypecheckedDecls :: (MonadIO m) => CST.Module -> m (Either (NonEmpty Error) TST.Module)
+getTypecheckedDecls cst =
+    fmap snd <$> (fst <$> liftIO (inferProgramIO defaultDriverState cst))
+
 testHelper :: (MonadIO m) => ((FilePath, ModuleName), TST.Module) -> EvaluationOrder -> m (Maybe TST.Module, SpecWith ())
 testHelper ((example, mn),decls) cbx = do 
   let pendingDescribe = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") 
@@ -32,7 +36,7 @@ testHelper ((example, mn),decls) cbx = do
     Just reason -> return (Nothing, pendingDescribe (it "" $ pendingWith $ "Could not focus file " ++ fullName ++ "\nReason: " ++ reason))
     Nothing     -> do
         let focusedDecls :: CST.Module = runUnresolveM $ unresolve $ embedCore $ embedTST $ focus cbx decls
-        res <- fmap snd <$> (fst <$> liftIO (inferProgramIO defaultDriverState focusedDecls))
+        res <- getTypecheckedDecls focusedDecls
         case res of
           (Left err) -> do
             let msg = unlines [ "---------------------------------"

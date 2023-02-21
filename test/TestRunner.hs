@@ -72,21 +72,6 @@ getTypecheckedDecls :: CST.Module -> IO (Either (NonEmpty Error) TST.Module)
 getTypecheckedDecls cst =
     fmap snd <$> (fst <$> inferProgramIO defaultDriverState cst)
 
-typecheckExamplesStandard :: [(a0, Either (NonEmpty Error) CST.Module)] -> IO [(a0, Either (NonEmpty Error) TST.Module)]
-typecheckExamplesStandard examples =
-  forM examples $ \(example, parse) -> do
-    case parse of
-      Left err -> pure (example, Left err)
-      Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, res)
-
-
-typecheckExamplesCollectParsetree :: [(a0, Either (NonEmpty Error) CST.Module)] -> IO [(a0, Either (NonEmpty Error) (CST.Module, Either (NonEmpty Error) TST.Module))]
-typecheckExamplesCollectParsetree examples =
-  forM examples $ \(example, parse) -> do
-    case parse of
-      Left err -> pure (example, Left err)
-      Right cst -> getTypecheckedDecls cst >>= \res -> pure (example, Right (cst, res))
-
 ------------------------------------------------------------------------------------------------------------------------
 
 -- Monadrunner nimmt description, examples und predicate an, wie der normale runner. 
@@ -150,7 +135,7 @@ main = do
     successfullyFocusedExamples <- runner "Examples can be focused" (fst successfullyTypecheckedExamples) Spec.Focusing.spec
 
     -- Type Inference Test
-    
+    typeInferredCounterExamples <- runner "Counterexamples can be parsed but not typechecked" (fst successfullyParsedCounterExamples) Spec.TypeInferenceExamples.spec
 
 
 
@@ -169,6 +154,7 @@ main = do
       snd successfullyTypecheckedExamples  
       snd typecheckedPPExamples
       snd successfullyFocusedExamples
+      snd typeInferredCounterExamples
       -- Overlap Check: Not dependent on any parses:
       Spec.OverlapCheck.spec
 

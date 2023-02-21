@@ -21,6 +21,10 @@ type Reason = String
 pendingFiles :: [(ModuleName, Reason)]
 pendingFiles = []
 
+getTypecheckedDecls :: (MonadIO m) => CST.Module -> m (Either (NonEmpty Error) TST.Module)
+getTypecheckedDecls cst =
+    fmap snd <$> (fst <$> liftIO (inferProgramIO defaultDriverState cst))
+
 -- Check that all the examples in `examples/..` can be:
 -- 1. Parsed
 -- 2. Prettyprinted
@@ -52,7 +56,7 @@ specType ((fp, mn), prog) = do
         case parse of 
           Left _ -> return (Nothing, pendingDescribe (msg $ expectationFailure "Could not be parsed again"))
           Right decls -> do
-            res <- fmap snd <$> (fst <$> liftIO (inferProgramIO defaultDriverState decls))
+            res <- getTypecheckedDecls decls
             case res of 
               Left _ -> return (Nothing, pendingDescribe (msg $ expectationFailure "Could not be typechecked again"))
               Right _ -> return (Just ((fp, mn), prog), pendingDescribe (msg $ res `shouldSatisfy` isRight))
