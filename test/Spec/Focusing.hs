@@ -30,8 +30,8 @@ getTypecheckedDecls cst =
 
 testHelper :: (MonadIO m) => ((FilePath, ModuleName), TST.Module) -> EvaluationOrder -> m (Maybe TST.Module, SpecWith ())
 testHelper ((example, mn),decls) cbx = do 
-  let pendingDescribe = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") 
   let fullName = moduleNameToFullPath mn example 
+  let pendingDescribe = describe (show cbx ++ " Focusing the program in " ++ fullName ++ " typechecks.") 
   case mn `lookup` pendingFiles of
     Just reason -> return (Nothing, pendingDescribe (it "" $ pendingWith $ "Could not focus file " ++ fullName ++ "\nReason: " ++ reason))
     Nothing     -> do

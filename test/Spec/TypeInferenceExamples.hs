@@ -26,13 +26,13 @@ spec :: (MonadIO m) => ((FilePath, ModuleName), CST.Module)
         -> m (Maybe ((FilePath, ModuleName), CST.Module), Spec)
 spec ((example, mn), cst) = do
   let filePath = moduleNameToFullPath mn example
-  let pendingDescribe = describe ("The counterexample " ++ filePath ++ " can be parsed and doesn't typecheck")
+  let pendingDescribe = describe ("The counterexample " ++ filePath ++ " doesn't typecheck")
   case mn `lookup` pendingFiles of
     Just reason -> return (Nothing, 
                           pendingDescribe (it "" $ pendingWith $ "Could not parse file " ++ filePath ++ "\nReason: " ++ reason))
     Nothing     -> do 
         res <- getTypecheckedDecls cst
-        let returnSpec = pendingDescribe $ it "Can be parsed and does not typecheck" $ res `shouldSatisfy` isLeft
+        let returnSpec = pendingDescribe $ it "Does not typecheck" $ res `shouldSatisfy` isLeft
         case res of
             Left _  -> return (Just ((example, mn), cst), returnSpec)
             Right _ -> return (Nothing, returnSpec)

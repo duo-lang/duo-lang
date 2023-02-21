@@ -121,7 +121,7 @@ main = do
     successfullyFocusedExamples <- runner "Examples can be focused" (fst successfullyTypecheckedExamples) Spec.Focusing.spec
 
     -- Type Inference Test
-    typeInferredCounterExamples <- runner "Counterexamples can be parsed but not typechecked" (fst successfullyParsedCounterExamples) Spec.TypeInferenceExamples.spec
+    typeInferredCounterExamples <- runner "Counterexamples cannot be typechecked" (fst successfullyParsedCounterExamples) Spec.TypeInferenceExamples.spec
 
 
 
