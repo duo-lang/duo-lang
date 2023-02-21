@@ -3,7 +3,7 @@ module Spec.Prettyprinter (specParse, specType) where
 import Data.Either (isRight)
 import Data.List.NonEmpty ( NonEmpty )
 import Test.Hspec
-
+import Control.Monad.Except (MonadIO, liftIO)
 import Parser.Parser
 import Pretty.Pretty
 import Pretty.Errors ()
@@ -39,19 +39,21 @@ specParse ((example, mn), prog) = do
         Right _  -> return (Just ((example, mn), prog), pendingSpec)
 
 
-specType :: ((FilePath, ModuleName), Either (NonEmpty Error) TST.Module) -> Spec
-specType ((example, mn), prog) = do
-  let fullName = moduleNameToFullPath mn example
-  describe ("The example " ++ fullName ++ " can be parsed after prettyprinting.") $ do
-    case mn `lookup` pendingFiles of
-      Just reason -> it "" $ pendingWith $ "Could not focus file " ++ fullName ++ "\nReason: " ++ reason
-      Nothing     -> describe ("The example " ++ fullName ++ " can be parsed and typechecked after prettyprinting.") $ do
-          let msg = it "Can be parsed and typechecked again."
-          case prog of
-            Left err -> msg $ expectationFailure (ppPrintString err)
-            Right decls -> case runFileParser example (moduleP example) (ppPrint decls) ErrParser of
-              Left _ -> msg $ expectationFailure "Could not be parsed"
-              Right decls -> do
-                res <- runIO $ inferProgramIO defaultDriverState decls
-                msg $ fst res `shouldSatisfy` isRight
+specType :: (MonadIO m) => ((FilePath, ModuleName), TST.Module) 
+                    -> m (Maybe ((FilePath, ModuleName), TST.Module), Spec)
+specType ((fp, mn), prog) = do
+  let fullName = moduleNameToFullPath mn fp
+  let pendingDescribe = describe ("The example " ++ fullName ++ " can be parsed after prettyprinting.")
+  case mn `lookup` pendingFiles of
+    Just reason -> return (Nothing, pendingDescribe (it "" $ pendingWith $ "Could not Prettyprint file " ++ fullName ++ " after parsing. \nReason: " ++ reason))
+    Nothing     -> do
+        let msg = it "Can be parsed and typechecked again."
+        let parse = runFileParser fp (moduleP fp) (ppPrint prog) ErrParser
+        case parse of 
+          Left _ -> return (Nothing, pendingDescribe (msg $ expectationFailure "Could not be parsed again"))
+          Right decls -> do
+            res <- fmap snd <$> (fst <$> liftIO (inferProgramIO defaultDriverState decls))
+            case res of 
+              Left _ -> return (Nothing, pendingDescribe (msg $ expectationFailure "Could not be typechecked again"))
+              Right _ -> return (Just ((fp, mn), prog), pendingDescribe (msg $ res `shouldSatisfy` isRight))
 

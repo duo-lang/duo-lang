@@ -6,6 +6,7 @@ import Test.Hspec hiding (focus)
 import Pretty.Pretty
 import Pretty.Program ()
 import Utils (moduleNameToFullPath)
+import Control.Monad.Except (MonadIO, liftIO)
 import Driver.Definition
 import Driver.Driver (inferProgramIO)
 import Sugar.Desugar (Desugar(..))
@@ -23,38 +24,43 @@ type Reason = String
 pendingFiles :: [(ModuleName, Reason)]
 pendingFiles = []
 
-testHelper :: ((FilePath, ModuleName), Either (NonEmpty Error) TST.Module) -> EvaluationOrder -> SpecWith ()
-testHelper ((example, mn),decls) cbx = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") $ 
-  let fullName = moduleNameToFullPath mn example in
+testHelper :: (MonadIO m) => ((FilePath, ModuleName), TST.Module) -> EvaluationOrder -> m (Maybe TST.Module, SpecWith ())
+testHelper ((example, mn),decls) cbx = do 
+  let pendingDescribe = describe (show cbx ++ " Focusing the program in  " ++ example ++ " typechecks.") 
+  let fullName = moduleNameToFullPath mn example 
   case mn `lookup` pendingFiles of
-    Just reason -> it "" $ pendingWith $ "Could not focus file " ++ fullName ++ "\nReason: " ++ reason
-    Nothing     -> 
-      case decls of
-        Left err -> it "Could not read in example " $ expectationFailure (ppPrintString err)
-        Right decls -> do
-          let focusedDecls :: CST.Module = runUnresolveM $ unresolve $ embedCore $ embedTST $ focus cbx decls
-          res <- runIO $ inferProgramIO defaultDriverState focusedDecls
-          case res of
-            (Left err,_) -> do
-              let msg = unlines [ "---------------------------------"
-                                , "Prettyprinted declarations:"
-                                , ""
-                                ,  ppPrintString (focus cbx decls)
-                                , ""
-                                , "Show instance of declarations:"
-                                , ""
-                                , show focusedDecls
-                                , ""
-                                , "Error message:"
-                                , ""
-                                , ppPrintString err
-                                , "---------------------------------"
-                                ]
-              it "Could not load examples" $ expectationFailure msg
-            (Right _env,_) -> it ("Focused " ++ fullName ++ " succesfully") $ () `shouldBe` ()
+    Just reason -> return (Nothing, pendingDescribe (it "" $ pendingWith $ "Could not focus file " ++ fullName ++ "\nReason: " ++ reason))
+    Nothing     -> do
+        let focusedDecls :: CST.Module = runUnresolveM $ unresolve $ embedCore $ embedTST $ focus cbx decls
+        res <- fmap snd <$> (fst <$> liftIO (inferProgramIO defaultDriverState focusedDecls))
+        case res of
+          (Left err) -> do
+            let msg = unlines [ "---------------------------------"
+                              , "Prettyprinted declarations:"
+                              , ""
+                              ,  ppPrintString (focus cbx decls)
+                              , ""
+                              , "Show instance of declarations:"
+                              , ""
+                              , show focusedDecls
+                              , ""
+                              , "Error message:"
+                              , ""
+                              , ppPrintString err
+                              , "---------------------------------"
+                              ]
+            return (Nothing, pendingDescribe (it "Could not load examples" $ expectationFailure msg))
+          (Right _) -> return (Just decls, 
+                               pendingDescribe (it ("Focused " ++ fullName ++ " succesfully") $ () `shouldBe` ()))
 
-spec :: ((FilePath, ModuleName),Either (NonEmpty Error) TST.Module) -> Spec
+spec :: (MonadIO m) => ((FilePath, ModuleName), TST.Module) -> 
+                   m (Maybe ((FilePath, ModuleName), TST.Module), Spec)
 spec example = do
-    describe "Focusing an entire program still typechecks" $ do
-      testHelper example CBV
-      testHelper example CBN
+    testCBV <- testHelper example CBV
+    testCBN <- testHelper example CBN
+    let returnSpec = describe "Focusing an entire program still typechecks" $ do
+                        snd testCBV
+                        snd testCBN
+    case (fst testCBV, fst testCBN) of
+      (Just _, Just _) -> return (Just example, returnSpec)
+      _                -> return (Nothing, returnSpec)

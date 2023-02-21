@@ -89,18 +89,6 @@ typecheckExamplesCollectParsetree examples =
 
 ------------------------------------------------------------------------------------------------------------------------
 
-{-
--- Run Tests: A description, set of testvalues, a predicate (conditions for testing) and a spec test are needed
-runner :: Description
-            -> [a]
-            -> (a -> Bool)
-            -> (a -> Spec)
-            -> Spec
-runner descr exs p spec = do
-  describe descr $ do
-    forM_ exs $ \a -> Control.Monad.when (p a) $ spec a
--}
-
 -- Monadrunner nimmt description, examples und predicate an, wie der normale runner. 
 -- Allerdings muss jede spec Funktion jetzt ein Monad tuple ausgeben. Hier ist einmal der Spec, der von Hspec durchgeführt werden kann
 -- und einmal b, das Ergebnis des Tests (Ergebnis = tuple, mit dem weitergearbeitet werden kann)
@@ -110,10 +98,9 @@ runner descr exs p spec = do
 runner :: Monad m
             => Description
             -> [a]
-            -> (a -> Bool)
             -> (a -> m (Maybe b, Spec))
             -> m ([b], Spec)
-runner descr exs p spectest = do
+runner descr exs spectest = do
   tested <- forM exs $ \a -> spectest a
   sequenced <- foldM f ([], return ()) tested
   case sequenced of
@@ -142,26 +129,28 @@ main = do
 
     --------------Collect specs----------------
     -- Collect the parsed declarations
-    successfullyParsedExamples <- runner "Examples could be successfully parsed" examples (const True) Spec.ParseTest.spec
-    successfullyParsedCounterExamples <- runner "Counterexamples could be successfully parsed" counterExamples (const True) Spec.ParseTest.spec
+    successfullyParsedExamples <- runner "Examples could be successfully parsed" examples Spec.ParseTest.spec
+    successfullyParsedCounterExamples <- runner "Counterexamples could be successfully parsed" counterExamples Spec.ParseTest.spec
 
     -- Prettyprinting after parsing: 
-    parsedPPExamples <- runner "Prettyprinting and parsing again" (fst successfullyParsedExamples) (const True) Spec.Prettyprinter.specParse
-    {-
-    TODO: Rest of the tests
-    
-    -- Locally closed (if examples are not locally closed, typechecking is naught): 
-    locallyClosedExamples <- runner "Examples are locally closed" typecheckedExamples (const True) Spec.LocallyClosed.spec
+    parsedPPExamples <- runner "Prettyprinting and parsing again" (fst successfullyParsedExamples) Spec.Prettyprinter.specParse
     
     -- Typechecktest: 
-    successfullyTypecheckedExamples <- runner "Examples could be successfully typechecked" (fst locallyClosedExamples) (const True) Spec.TypecheckTest.spec
+    successfullyTypecheckedExamples <- runner "Examples could be successfully typechecked" (fst successfullyParsedExamples) Spec.TypecheckTest.spec
+
+    -- Locally closed (if examples are not locally closed, typechecking is naught): 
+    locallyClosedExamples <- runner "Examples are locally closed" (fst successfullyTypecheckedExamples) Spec.LocallyClosed.spec
+    
+    
     
     -- Prettyprinting after typechecking: 
-    typecheckedPPExamples <- runner "Examples parse and typecheck after prettyprinting" (fst successfullytypecheckedExamples) (const True) Spec.Prettyprinter.specType
+    typecheckedPPExamples <- runner "Examples parse and typecheck after prettyprinting" (fst successfullyTypecheckedExamples) Spec.Prettyprinter.specType
 
     -- Focusing (makes only sense, if examples could be successfully typechecked):
-    successfullyFocusedExamples <- runner "Examples can be focused" (fst successfullyTypecheckedExamples) (const True) Spec.Focusing.spec
-    -}
+    successfullyFocusedExamples <- runner "Examples can be focused" (fst successfullyTypecheckedExamples) Spec.Focusing.spec
+
+    -- Type Inference Test
+    
 
 
 
@@ -176,10 +165,10 @@ main = do
 
       -- Tests after typechecking:
       snd parsedPPExamples
-      --snd locallyClosedExamples
-      --snd successfullyTypecheckedExamples  
-      --snd typecheckedPPExamples
-      --snd successfullyFocusedExamples
+      snd locallyClosedExamples
+      snd successfullyTypecheckedExamples  
+      snd typecheckedPPExamples
+      snd successfullyFocusedExamples
       -- Overlap Check: Not dependent on any parses:
       Spec.OverlapCheck.spec
 

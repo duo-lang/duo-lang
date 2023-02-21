@@ -3,7 +3,7 @@ module Spec.TypecheckTest (spec) where
 import Data.List.NonEmpty (NonEmpty)
 import Test.Hspec
 
-import Control.Monad.Except (MonadIO)
+import Control.Monad.Except (MonadIO, liftIO)
 import Data.Either(isRight)
 import Driver.Driver (inferProgramIO)
 import Driver.Definition (defaultDriverState)
@@ -24,7 +24,7 @@ pendingFiles = [(  MkModuleName [] "ListRefinement" ,"Type Applications to Refin
 
 getTypecheckedDecls :: (MonadIO m) => CST.Module -> m (Either (NonEmpty Error) TST.Module)
 getTypecheckedDecls cst =
-    fmap snd <$> (fst <$> inferProgramIO defaultDriverState cst)
+    fmap snd <$> (fst <$> liftIO (inferProgramIO defaultDriverState cst))
 
 
 
