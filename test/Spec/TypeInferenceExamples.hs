@@ -3,7 +3,7 @@ module Spec.TypeInferenceExamples ( spec ) where
 import Data.List.NonEmpty (NonEmpty)
 import Test.Hspec
 import Control.Monad.Except (MonadIO, liftIO)
-import Data.Either( isRight, isLeft )
+import Data.Either( isLeft )
 import Driver.Driver (inferProgramIO)
 import Driver.Definition (defaultDriverState)
 import Syntax.TST.Program qualified as TST

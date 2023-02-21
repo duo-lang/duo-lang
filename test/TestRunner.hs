@@ -1,20 +1,14 @@
 module Main where
 
-import Control.Monad.Except (runExceptT, forM, forM_)
-import Control.Monad (when, foldM)
-import Data.List.NonEmpty (NonEmpty(..))
+import Control.Monad.Except (forM)
+import Control.Monad (foldM)
 import Data.List (sort)
-import Data.Either (isRight)
 import System.Environment (withArgs)
 import Test.Hspec
 import Test.Hspec.Runner
 import Test.Hspec.Formatters
 import GHC.IO.Encoding (setLocaleEncoding)
 import System.IO (utf8)
-
-import Driver.Definition (defaultDriverState, parseAndCheckModule)
-import Driver.Driver (inferProgramIO)
-import Errors
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified
 import Spec.OverlapCheck qualified
@@ -22,11 +16,9 @@ import Spec.Prettyprinter qualified
 import Spec.Focusing qualified
 import Spec.ParseTest qualified
 import Spec.TypecheckTest qualified
-import Syntax.CST.Program qualified as CST
 import Syntax.CST.Names
-import Syntax.TST.Program qualified as TST
 import Options.Applicative
-import Utils (listRecursiveDuoFiles, filePathToModuleName, moduleNameToFullPath)
+import Utils (listRecursiveDuoFiles, filePathToModuleName)
 
 type Description = String
 
@@ -65,12 +57,6 @@ getAvailableExamples = do
   return $ zip (repeat examplesFp) examplesFiltered ++ zip (repeat examplesFp') examplesFiltered'
     where
       filterFun s = s `notElem` excluded
-
-
-
-getTypecheckedDecls :: CST.Module -> IO (Either (NonEmpty Error) TST.Module)
-getTypecheckedDecls cst =
-    fmap snd <$> (fst <$> inferProgramIO defaultDriverState cst)
 
 ------------------------------------------------------------------------------------------------------------------------
 

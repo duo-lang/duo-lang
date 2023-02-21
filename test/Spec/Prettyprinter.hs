@@ -39,7 +39,7 @@ specParse ((example, mn), prog) = do
   let pendingSpec = describe ("The example " ++ fullName ++ " can be parsed after prettyprinting.") $ do
         msg $ test `shouldSatisfy` isRight
   case test of
-        Left err -> return (Nothing, pendingSpec)
+        Left _ -> return (Nothing, pendingSpec)
         Right _  -> return (Just ((example, mn), prog), pendingSpec)
 
 

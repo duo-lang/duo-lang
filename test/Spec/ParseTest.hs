@@ -4,7 +4,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Test.Hspec
 
 import Control.Monad.Except (runExceptT, MonadIO)
-import Data.Either(isRight, fromRight)
+import Data.Either(isRight)
 import Driver.Definition (parseAndCheckModule)
 import Errors
 import Pretty.Pretty ( ppPrintString )

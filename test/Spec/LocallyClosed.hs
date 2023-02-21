@@ -1,18 +1,14 @@
 module Spec.LocallyClosed where
 
-import Control.Monad (forM_, foldM)
+import Control.Monad (foldM)
 import Data.Text qualified as T
-import Data.List.NonEmpty (NonEmpty)
 import Test.Hspec
-
-import Pretty.Pretty ( ppPrintString )
 import Pretty.Errors ()
 import Syntax.Core.Terms (Pattern(..))
 import Syntax.TST.Terms ( InstanceCase (instancecase_pat), Term, termLocallyClosed, instanceCaseLocallyClosed)
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Names
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
-import Errors ( Error )
 import Data.Either (isRight)
 import Utils (moduleNameToFullPath)
 
@@ -60,18 +56,18 @@ spec ((fp, mn), env) = do
                                     let locallyClosed = termLocallyClosed term
                                     let msg = it (T.unpack (unFreeVarName name) ++ " does not contain dangling deBruijn indizes")
                                     let danglingSpec = msg $ locallyClosed `shouldSatisfy` isRight
-                                    let fail = case locallyClosed of
-                                                    Left err -> Just locallyClosed
-                                                    Right _  -> Nothing 
+                                    let fail = case failure of
+                                                    Nothing -> if isRight locallyClosed then Nothing else Just locallyClosed
+                                                    x       -> x
                                     return (fail,
                                             danglingSpec >> specSequence)
               foldInstanceClasses (failure, specSequence) instance_case = do
                                     let locallyClosed = instanceCaseLocallyClosed instance_case
                                     let msg = it (T.unpack (unXtorName $ (\(XtorPat _ xt _) -> xt) $ instancecase_pat instance_case) ++ " does not contain dangling deBruijn indizes")
                                     let danglingSpec = msg $ locallyClosed `shouldSatisfy` isRight
-                                    let fail = case locallyClosed of
-                                                    Left err -> Just locallyClosed
-                                                    Right _  -> Nothing 
+                                    let fail = case failure of
+                                                    Nothing -> if isRight locallyClosed then Nothing else Just locallyClosed
+                                                    x       -> x 
                                     return (fail,
                                             danglingSpec >> specSequence)
 
