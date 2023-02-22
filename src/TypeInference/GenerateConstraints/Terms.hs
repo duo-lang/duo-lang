@@ -3,9 +3,6 @@ module TypeInference.GenerateConstraints.Terms
   , genConstraintsTermRecursive
   ) where
 
-import Pretty.Pretty
-import Pretty.Terms()
-
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -33,8 +30,7 @@ import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 import Syntax.TST.Terms (Substitution(..))
 import Data.Set qualified as S
-
-import Debug.Trace 
+import Pretty.Pretty
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -154,14 +150,13 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     xtorSigUpper <- lookupXtorSigUpper loc xt
     -- generate Constraints for applied types (if there are any)
     (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
-    let sig_args' = TST.zonk TST.SkolemRep tyParamsMap substTypes
+    let substTypes' = TST.zonk TST.SkolemRep tyParamsMap substTypes
     let sig_args'' = TST.zonk TST.SkolemRep tyParamsMap xtorSigUpper.sig_args
     mrv <- case S.toList $ TST.recTVars xtorSigUpper.sig_args  of [] -> return Nothing; [rv] -> return $ Just rv; lst -> throwOtherError loc ["Refinement Xtor cannot contain multiple recursive variables ",ppPrint lst]
-    let substTypes' = case mrv  of Nothing -> substTypes; Just rv -> TST.addRecVarRefinement decl.data_name rv <$> substTypes
-    genConstraintsCtxts substTypes' sig_args'' (case rep of {PrdRep -> DtorArgsConstraint loc; CnsRep -> CtorArgsConstraint loc} )
+    let sig_args' = case mrv  of Nothing -> substTypes'; Just rv -> TST.addRecVarRefinement decl.data_name rv <$> substTypes'
     -- Then we generate constraints between the inferred types of the substitution
     -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
-    genConstraintsCtxts substTypes xtorSigUpper.sig_args (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
+    genConstraintsCtxts sig_args' sig_args'' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
 
     let ty = case rep of 
                PrdRep -> do
