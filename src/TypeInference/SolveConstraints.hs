@@ -253,42 +253,48 @@ lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName'
   Just xtorSig -> pure xtorSig
 
 checkXtor :: [XtorSig Neg] -> Maybe RecTVar -> Loc -> XtorSig Pos -> Maybe RecTVar -> Loc -> SolverM [Constraint ConstraintInfo]
-checkXtor xtors2 mrv2 loc1 (MkXtorSig xtName subst1) mrv1 loc2= do
+checkXtor xtors2 mrv2 loc2 (MkXtorSig xtName subst1) mrv1 loc1 = do
   MkXtorSig nm2 subst2 <- lookupXtor xtName xtors2
   checkContexts subst1 mrv1 xtName loc1 subst2 mrv2 nm2 loc2
+
+replaceRecVarPos :: Typ Pos -> Maybe RecTVar -> Loc -> XtorName -> SolverM (Typ Pos)
+replaceRecVarPos ty Nothing _ _ = return ty
+replaceRecVarPos tyr@(TyRecVar _ _ _ rv) (Just rv') loc nm = 
+  if rv == rv' then do
+    decl <- lookupDataDecl loc nm
+    return $ fst decl.data_refinement_empty
+  else return tyr
+replaceRecVarPos (TyApp loc pol ty args) rv loc' nm = do 
+  ty' <- replaceRecVarPos ty rv loc' nm
+  return (TyApp loc pol ty' args)
+replaceRecVarPos ty _ _ _ = return ty
+
+replaceRecVarNeg :: Typ Neg -> Maybe RecTVar -> Loc -> XtorName -> SolverM (Typ Neg)
+replaceRecVarNeg ty Nothing _ _ = return ty
+replaceRecVarNeg tyr@(TyRecVar _ _ _ rv) (Just rv') loc nm = 
+  if rv == rv' then do
+    decl <- lookupDataDecl loc nm
+    case decl of 
+      NominalDecl{} -> error "can't happen"
+      RefinementDecl _ _ _ _ _ data_refinement_full _ _ _ -> return $ snd data_refinement_full 
+  else return tyr
+replaceRecVarNeg (TyApp loc pol ty args) rv loc' nm = do 
+  ty' <- replaceRecVarNeg ty rv loc' nm
+  return (TyApp loc pol ty' args)
+replaceRecVarNeg  ty _ _ _ = return ty
+
 checkContexts :: LinearContext Pos -> Maybe RecTVar -> XtorName -> Loc -> LinearContext Neg -> Maybe RecTVar -> XtorName -> Loc -> SolverM [Constraint ConstraintInfo]
 checkContexts [] _ _ _ [] _ _ _= return []
 checkContexts (PrdCnsType PrdRep ty1:rest1) mrv1 nm1 loc1 (PrdCnsType PrdRep ty2:rest2) mrv2 nm2 loc2 = do
   xs <- checkContexts rest1 mrv1 nm1 loc1 rest2 mrv2 nm2 loc2
-  ty1' <- case (ty1,mrv1) of (TyRecVar _ _ _ rv, Just rv') -> if rv == rv' then getEmptyRefType loc1 nm1 else return ty1 ; _ -> return ty1
-  ty2' <- case (ty2,mrv2) of (TyRecVar _ _ _ rv, Just rv') -> if rv == rv' then getFullRefType loc2 nm2 else return ty2; _ -> return ty2
+  ty1' <- replaceRecVarPos ty1 mrv1 loc1 nm1
+  ty2' <- replaceRecVarNeg ty2 mrv2 loc2 nm2 
   return (SubType XtorSubConstraint ty1' ty2':xs)
-  where 
-    getFullRefType :: Loc -> XtorName -> SolverM (Typ Neg)
-    getFullRefType loc nm = do 
-      decl <- lookupDataDecl loc nm
-      case decl of 
-        NominalDecl{} -> error "can't happen"
-        RefinementDecl _ _ _ _ _ data_refinement_full _ _ _ -> return $ snd data_refinement_full 
-    getEmptyRefType :: Loc -> XtorName -> SolverM (Typ Pos)
-    getEmptyRefType loc nm = do
-      decl <- lookupDataDecl loc nm
-      return $ fst decl.data_refinement_empty
 checkContexts (PrdCnsType CnsRep ty1:rest1) mrv1 nm1 loc1 (PrdCnsType CnsRep ty2:rest2) mrv2 nm2 loc2 = do
   xs <- checkContexts rest1 mrv1 nm1 loc1 rest2 mrv2 nm2 loc2
-  ty1' <- case (ty1,mrv1) of (TyRecVar _ _ _ rv, Just rv') -> if rv == rv' then getFullRefType loc1 nm1 else return ty1 ; _ -> return ty1
-  ty2' <- case (ty2,mrv2) of (TyRecVar _ _ _ rv, Just rv') -> if rv == rv' then getEmptyRefType loc2 nm2 else return ty2; _ -> return ty2
+  ty1' <- replaceRecVarNeg ty1 mrv1 loc1 nm1 
+  ty2' <- replaceRecVarPos ty2 mrv2 loc2 nm2 
   return (SubType XtorSubConstraint ty2' ty1':xs)
-  where 
-    getFullRefType :: Loc -> XtorName -> SolverM (Typ Neg)
-    getFullRefType loc nm = do 
-      decl <- lookupDataDecl loc nm
-      return $ snd decl.data_refinement_full 
-    getEmptyRefType :: Loc -> XtorName -> SolverM (Typ Pos)
-    getEmptyRefType loc nm = do
-      decl <- lookupDataDecl loc nm
-      return $ fst decl.data_refinement_empty
-
 checkContexts (PrdCnsType PrdRep _:_) _ _  _ (PrdCnsType CnsRep _:_) _ _ _ =
   throwSolverError defaultLoc ["checkContexts: Tried to constrain PrdType by CnsType."]
 checkContexts (PrdCnsType CnsRep _:_) _ _  _ (PrdCnsType PrdRep _:_) _ _  _ =
