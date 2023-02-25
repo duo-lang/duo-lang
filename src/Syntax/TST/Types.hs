@@ -249,6 +249,29 @@ instance RecTVars (XtorSig pol) where
 instance RecTVars [XtorSig pol] where 
   recTVars xtors = S.unions (recTVars <$> xtors)
 
+-- used to get typename of application
+getTypeNames :: Typ pol -> [RnTypeName]
+getTypeNames TySkolemVar{} = []
+getTypeNames TyUniVar{} = []
+getTypeNames TyRecVar{} = []  
+getTypeNames TyData{} = []
+getTypeNames TyCodata{} = []
+getTypeNames (TyDataRefined _ _ _ tyn _ _) = [tyn]
+getTypeNames (TyCodataRefined _ _ _ tyn _ _) = [tyn]
+getTypeNames (TyNominal _ _ _ tyn) = [tyn]
+getTypeNames (TyApp _ _ ty _) = getTypeNames ty
+getTypeNames (TySyn _ _ tyn _) = [tyn]
+getTypeNames TyBot{} = []
+getTypeNames TyTop{} = []
+getTypeNames (TyUnion _ _ ty1 ty2) = getTypeNames ty1 ++ getTypeNames ty2
+getTypeNames (TyInter _ _ ty1 ty2) = getTypeNames ty1 ++ getTypeNames ty2
+getTypeNames TyRec{} = []
+getTypeNames TyI64{} = []
+getTypeNames TyF64{} = []
+getTypeNames TyString{} = []
+getTypeNames TyChar{} = [] 
+getTypeNames (TyFlipPol _ ty) = getTypeNames ty
+
 ------------------------------------------------------------------------------
 -- Type Schemes
 ------------------------------------------------------------------------------
