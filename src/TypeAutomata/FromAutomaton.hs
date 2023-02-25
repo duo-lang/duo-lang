@@ -123,7 +123,6 @@ computeArgNodes outs dc lbl = args
     argFun (n,pc) = (pc, [ node | (EdgeSymbol dc' xt pc' pos, node) <- outs, dc' == dc, xt == lbl.labelName, pc == pc', pos == n])
     args = argFun <$> enumerate lbl.labelArity
 
-
 -- | Takes the output of computeArgNodes and turns the nodes into types.
 argNodesToArgTypes :: [(PrdCns,[Node])] -> PolarityRep pol -> AutToTypeM (LinearContext pol)
 argNodesToArgTypes argNodes rep = do

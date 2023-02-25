@@ -27,9 +27,6 @@ import Loc ( defaultLoc )
 import Utils ( enumerate )
 import Control.Monad
 
-import Debug.Trace
-
-
 --------------------------------------------------------------------------
 -- The TypeToAutomaton (TTA) Monad
 --------------------------------------------------------------------------
@@ -173,7 +170,6 @@ insertXtorsRefinement dc rep tyn Nothing pknd@(MkPolyKind [] _) xtors = do
   newNode <- newNodeM
   let refXDat = Just (tyn, [], Nothing)
   let xtorLabel = singleNodeLabelXtor (polarityRepToPol rep) dc refXDat (S.fromList (sigToLabel <$> xtors)) pknd
-  trace ("inserting xtor label " <> show xtorLabel) $ pure ()
   insertNode newNode xtorLabel 
   forM_ xtors $ \(MkXtorSig xt ctxt) -> mapM_ (\x -> insertCtxt xt x newNode) (enumerate ctxt)
   return newNode
@@ -187,7 +183,6 @@ insertXtorsRefinement dc rep tyn (Just rv) pknd@(MkPolyKind [] _) xtors = do
   newNode <- newNodeM
   let refXDat = Just (tyn, [], Just rv)
   let xtorLabel = singleNodeLabelXtor (polarityRepToPol rep) dc refXDat (S.fromList (sigToLabel <$> xtors)) pknd
-  trace ("inserting xtor label " <> show xtorLabel) $ pure ()
   insertNode newNode xtorLabel 
   forM_ xtors $ \(MkXtorSig xt ctxt) -> mapM_ (\x -> insertCtxt xt x rv newNode) (enumerate ctxt)
   return newNode
@@ -205,23 +200,19 @@ insertXtorsRefinement dc rep tyn mrv pknd xtors = do
   vars <- case M.lookup tyn varsMap of Nothing -> throwAutomatonError defaultLoc ["type " <> ppPrint tyn <> " was not fully applied"]; Just vars -> return vars
   let refXDat = Just (tyn, map snd vars,mrv)
   let xtorLabel = singleNodeLabelXtor (polarityRepToPol rep) dc refXDat (S.fromList (sigToLabel <$> xtors)) pknd
-  trace ("inserting xtor label " <> show xtorLabel) $ pure ()
   insertNode newNode xtorLabel
-  forM_ xtors $ \(MkXtorSig xt ctxt) -> mapM_ (\x -> insertCtxt xt x tyn mrv newNode vars) (enumerate ctxt)
+  insertEdges ((\(i,(n,variance)) -> (newNode, n, TypeArgEdge tyn variance i)) <$> enumerate vars)
+  forM_ xtors $ \(MkXtorSig xt ctxt) -> mapM_ (\x -> insertCtxt xt x mrv newNode) (enumerate ctxt)
   return newNode 
   where 
-    insertCtxt :: XtorName -> (Int, PrdCnsType pol) -> RnTypeName -> Maybe RecTVar -> Node -> [(Node, Variance)] -> TTA ()
-    insertCtxt nm (i,pcType) tyn (Just rv) newNode vars = do 
+    insertCtxt :: XtorName -> (Int, PrdCnsType pol) -> Maybe RecTVar -> Node -> TTA ()
+    insertCtxt nm (i,pcType) (Just rv) newNode = do 
       let extendEnv PosRep (LookupEnv tSkolemVars tRecVars tArgs) = LookupEnv tSkolemVars (M.insert rv (Just newNode, Nothing) tRecVars) tArgs 
           extendEnv NegRep (LookupEnv tSkolemVars tRecVars tArgs) = LookupEnv tSkolemVars (M.insert rv (Nothing, Just newNode) tRecVars) tArgs
       n <- local (extendEnv rep) (insertPCType pcType)
-      trace ("inserting TypeArgEdges " <> ppPrintString tyn <> ", " <> ppPrintString (snd <$> vars)) $ pure ()
-      insertEdges ((\(i,(n,variance)) -> (newNode, n, TypeArgEdge tyn variance i)) <$> enumerate vars)
       insertEdges [(newNode, n, EdgeSymbol dc nm (case pcType of (PrdCnsType PrdRep _) -> Prd; (PrdCnsType CnsRep _) -> Cns) i)]
-    insertCtxt nm (i,pcType) tyn Nothing newNode vars = do 
+    insertCtxt nm (i,pcType) Nothing newNode = do 
       n <- insertPCType pcType
-      trace ("inserting TypeArgEdges " <> ppPrintString tyn <> ", " <> ppPrintString (snd <$> vars)) $ pure ()
-      insertEdges ((\(i,(n,variance)) -> (newNode, n, TypeArgEdge tyn variance i)) <$> enumerate vars)
       insertEdges [(newNode, n, EdgeSymbol dc nm (case pcType of (PrdCnsType PrdRep _) -> Prd; (PrdCnsType CnsRep _) -> Cns) i)]
 
 insertXtorsXData :: CST.DataCodata -> PolarityRep pol1 -> EvaluationOrder -> [XtorSig pol] -> TTA Node 
@@ -319,7 +310,6 @@ insertType (TyNominal _ rep polyknd tn) = do
   varsMap <- asks (\x -> x.tyArgEnv) 
   vars <- case M.lookup tn varsMap of Nothing -> throwAutomatonError defaultLoc ["Nominal Type " <> ppPrint tn <> " was not fully applied"]; Just vars -> return vars
   insertNode newNode (singleNodeLabelNominal pol (tn,map snd vars) polyknd )
-  trace ("inserting TypeArgEdges " <> ppPrintString tn <> ", " <> ppPrintString (snd <$> vars)) $ pure ()
   insertEdges ((\(i,(n,variance)) -> (newNode, n, TypeArgEdge tn variance i)) <$> enumerate vars)
   return newNode
 

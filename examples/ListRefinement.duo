@@ -24,7 +24,7 @@ type operator -> rightassoc at 0 := Fun;
 --def prd x : forall a. <List|Nil>(a) := Nil;
 --def prd x2 : forall a. <List | r | Nil>(a) := Nil;
 --def prd y := Nil; 
-def prd z := Cons(Z,Cons(S(S(Z)),Nil));
+def prd z := Cons(S(S(Z)), Nil);
 --doesn't typecheck because what type is applied is unclear
 --def prd y : <List|Nil>(Z) := Nil; 
 --def prd z : <List|Nil>(Z) := Cons(MkZ, Nil);
