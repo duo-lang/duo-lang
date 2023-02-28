@@ -53,7 +53,7 @@ resolveTyp rep (TyXData loc Data sigs) = do
 resolveTyp rep (TyXRefined loc Data tn sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs rep sigs
-    pure $ RST.TyDataRefined loc rep pknd tn' Nothing sigs
+    pure $ RST.TyDataRefined loc rep pknd tn' sigs
 -- Nominal Codata
 resolveTyp rep (TyXData loc Codata sigs) = do
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
@@ -62,7 +62,7 @@ resolveTyp rep (TyXData loc Codata sigs) = do
 resolveTyp rep (TyXRefined loc Codata tn sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
-    pure $ RST.TyCodataRefined loc rep pknd tn' Nothing sigs
+    pure $ RST.TyCodataRefined loc rep pknd tn' sigs
 resolveTyp rep (TyNominal loc name) = do
   res <- lookupTypeConstructor loc name
   case res of 
@@ -102,14 +102,14 @@ resolveTyp rep (TyApp loc (TyXRefined loc' Data tn sigs) args) = do
     sigs <- resolveXTorSigs rep sigs
     args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
     let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
-    pure $ RST.TyApp loc rep (RST.TyDataRefined loc' rep pknd tn' Nothing sigs) args''
+    pure $ RST.TyApp loc rep (RST.TyDataRefined loc' rep pknd tn' sigs) args''
 
 resolveTyp rep (TyApp loc (TyXRefined loc' Codata tn sigs) args) = do 
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
     args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
     let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
-    pure $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' Nothing sigs) args''
+    pure $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' sigs) args''
 
   
 resolveTyp rep (TyApp loc (TyKindAnnot mk ty) args) = do 
