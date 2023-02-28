@@ -165,11 +165,13 @@ lookupTRecVar NegRep tv = do
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 
-insertXtorsRefinement :: CST.DataCodata -> PolarityRep pol1 -> RnTypeName -> Maybe RecTVar -> PolyKind -> [XtorSig pol] -> TTA Node
-insertXtorsRefinement dc rep tyn Nothing pknd@(MkPolyKind [] _) xtors = do 
+insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> PolyKind -> [XtorSig pol] -> TTA Node
+insertXtors dc pol mtn pk xtors = do
   newNode <- newNodeM
   let refXDat = Just (tyn, [], Nothing)
   let xtorLabel = singleNodeLabelXtor (polarityRepToPol rep) dc refXDat (S.fromList (sigToLabel <$> xtors)) pknd
+  vars <- case M.lookup tyn varsMap of Nothing -> throwAutomatonError defaultLoc ["type " <> ppPrint tyn <> " was not fully applied"]; Just vars -> return vars
+  insertEdges ((\(i,(n,variance)) -> (newNode, n, TypeArgEdge tyn variance i)) <$> enumerate vars)
   insertNode newNode xtorLabel 
   forM_ xtors $ \(MkXtorSig xt ctxt) -> mapM_ (\x -> insertCtxt xt x newNode) (enumerate ctxt)
   return newNode
@@ -178,56 +180,6 @@ insertXtorsRefinement dc rep tyn Nothing pknd@(MkPolyKind [] _) xtors = do
     insertCtxt nm (i,pcType) newNode = do 
       n <- insertPCType pcType
       insertEdges [(newNode, n, EdgeSymbol dc nm (case pcType of (PrdCnsType PrdRep _) -> Prd; (PrdCnsType CnsRep _) -> Cns) i)]
-
-insertXtorsRefinement dc rep tyn (Just rv) pknd@(MkPolyKind [] _) xtors = do 
-  newNode <- newNodeM
-  let refXDat = Just (tyn, [], Just rv)
-  let xtorLabel = singleNodeLabelXtor (polarityRepToPol rep) dc refXDat (S.fromList (sigToLabel <$> xtors)) pknd
-  insertNode newNode xtorLabel 
-  forM_ xtors $ \(MkXtorSig xt ctxt) -> mapM_ (\x -> insertCtxt xt x rv newNode) (enumerate ctxt)
-  return newNode
-  where 
-    insertCtxt :: XtorName -> (Int, PrdCnsType pol) -> RecTVar -> Node -> TTA ()
-    insertCtxt nm (i,pcType) rv newNode = do 
-      let extendEnv PosRep (LookupEnv tSkolemVars tRecVars tArgs) = LookupEnv tSkolemVars (M.insert rv (Just newNode, Nothing) tRecVars) tArgs 
-          extendEnv NegRep (LookupEnv tSkolemVars tRecVars tArgs) = LookupEnv tSkolemVars (M.insert rv (Nothing, Just newNode) tRecVars) tArgs
-      n <- local (extendEnv rep) (insertPCType pcType)
-      insertEdges [(newNode, n, EdgeSymbol dc nm (case pcType of (PrdCnsType PrdRep _) -> Prd; (PrdCnsType CnsRep _) -> Cns) i)]
-    
-insertXtorsRefinement dc rep tyn mrv pknd xtors = do 
-  newNode <- newNodeM
-  varsMap <- asks (\x -> x.tyArgEnv) 
-  vars <- case M.lookup tyn varsMap of Nothing -> throwAutomatonError defaultLoc ["type " <> ppPrint tyn <> " was not fully applied"]; Just vars -> return vars
-  let refXDat = Just (tyn, map snd vars,mrv)
-  let xtorLabel = singleNodeLabelXtor (polarityRepToPol rep) dc refXDat (S.fromList (sigToLabel <$> xtors)) pknd
-  insertNode newNode xtorLabel
-  insertEdges ((\(i,(n,variance)) -> (newNode, n, TypeArgEdge tyn variance i)) <$> enumerate vars)
-  forM_ xtors $ \(MkXtorSig xt ctxt) -> mapM_ (\x -> insertCtxt xt x mrv newNode) (enumerate ctxt)
-  return newNode 
-  where 
-    insertCtxt :: XtorName -> (Int, PrdCnsType pol) -> Maybe RecTVar -> Node -> TTA ()
-    insertCtxt nm (i,pcType) (Just rv) newNode = do 
-      let extendEnv PosRep (LookupEnv tSkolemVars tRecVars tArgs) = LookupEnv tSkolemVars (M.insert rv (Just newNode, Nothing) tRecVars) tArgs 
-          extendEnv NegRep (LookupEnv tSkolemVars tRecVars tArgs) = LookupEnv tSkolemVars (M.insert rv (Nothing, Just newNode) tRecVars) tArgs
-      n <- local (extendEnv rep) (insertPCType pcType)
-      insertEdges [(newNode, n, EdgeSymbol dc nm (case pcType of (PrdCnsType PrdRep _) -> Prd; (PrdCnsType CnsRep _) -> Cns) i)]
-    insertCtxt nm (i,pcType) Nothing newNode = do 
-      n <- insertPCType pcType
-      insertEdges [(newNode, n, EdgeSymbol dc nm (case pcType of (PrdCnsType PrdRep _) -> Prd; (PrdCnsType CnsRep _) -> Cns) i)]
-
-insertXtorsXData :: CST.DataCodata -> PolarityRep pol1 -> EvaluationOrder -> [XtorSig pol] -> TTA Node 
-insertXtorsXData dc rep eo xtors = do 
-  newNode <- newNodeM
-  let xtorLabel = singleNodeLabelXtor (polarityRepToPol rep) dc Nothing (S.fromList (sigToLabel <$> xtors)) (MkPolyKind [] eo)
-  insertNode newNode xtorLabel
-  forM_ xtors $ \(MkXtorSig xt ctxt) -> mapM_ (\x -> insertCtxt xt x newNode) (enumerate ctxt)
-  return newNode 
-  where 
-    insertCtxt :: XtorName -> (Int,PrdCnsType pol) -> Node -> TTA ()
-    insertCtxt xt (i,pcType) newNode = do 
-      node <- insertPCType pcType
-      insertEdges [(newNode, node, EdgeSymbol dc xt (case pcType of (PrdCnsType PrdRep _)-> Prd; (PrdCnsType CnsRep _) -> Cns) i)]      
-
 
 insertPCType :: PrdCnsType pol -> TTA Node
 insertPCType (PrdCnsType _ ty) = insertType ty
@@ -279,13 +231,10 @@ insertType (TyRec _ rep rv ty) = do
   n <- local (extendEnv rep) (insertType ty)
   insertEdges [(newNode, n, EpsilonEdge ())]
   return newNode
-insertType (TyData _  polrep eo xtors)   = insertXtorsXData CST.Data   polrep eo xtors
-insertType (TyCodata _ polrep eo  xtors) = insertXtorsXData CST.Codata polrep eo xtors
-insertType (TyDataRefined _ polrep pk mtn Nothing xtors)   = insertXtorsRefinement CST.Data   polrep mtn Nothing pk xtors
-insertType (TyDataRefined _ polrep pk mtn (Just rv) xtors) = insertXtorsRefinement CST.Data   polrep mtn (if rv `elem` recTVars xtors then Just rv else Nothing) pk xtors
-insertType (TyCodataRefined _ polrep pk mtn Nothing xtors)   = insertXtorsRefinement CST.Codata polrep mtn Nothing pk xtors
-insertType (TyCodataRefined _ polrep pk mtn (Just rv) xtors) = insertXtorsRefinement CST.Codata polrep mtn (if rv `elem` recTVars xtors then Just rv else Nothing) pk xtors
-
+insertType (TyData _  polrep eo xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
+insertType (TyCodata _ polrep eo  xtors) = insertXtors CST.Codata (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
+insertType (TyDataRefined _ polrep pk mtn xtors)   = insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) pk xtors
+insertType (TyCodataRefined _ polrep pk mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) pk xtors
 insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyApp _ _ ty args) = do 
   argNodes <- mapM insertVariantType args

@@ -300,7 +300,8 @@ inferDecl _mn (Core.XtorDecl decl) = do
   -- check constructor kinds
   let retKnd = decl.strxtordecl_evalOrder
   let xtornm = decl.strxtordecl_name
-  let f env = env { kindEnv = M.insert xtornm retKnd env.kindEnv, xtorEnv = M.insert xtornm decl env.xtorEnv}
+  let argKnds = map snd decl.strxtordecl_arity
+  let f env = env { kindEnv = M.insert xtornm (retKnd, argKnds) env.kindEnv}
   modifyEnvironment _mn f
   pure (TST.XtorDecl decl)
 --

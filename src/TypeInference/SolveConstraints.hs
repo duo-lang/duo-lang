@@ -456,18 +456,12 @@ subConstraints (SubType _ (TyCodata loc1 PosRep _ dtors1) (TyCodata loc2 NegRep 
 --     {{ Nat :>> < ctors1 > }} <: {{ Nat  :>> < ctors2 > }}   ~>    [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     {{ Nat :>> < ctors1 > }} <: {{ Bool :>> < ctors2 > }}   ~>    FAIL
 --
-subConstraints (SubType _ (TyDataRefined loc1 PosRep _ tn1 mrv1 ctors1) (TyDataRefined loc2 NegRep _ tn2 mrv2 ctors2)) | tn1 == tn2 = do
-  constraints <- forM ctors1 (\x -> checkXtor ctors2 mrv2 loc2 x mrv1 loc1)
+subConstraints (SubType _ (TyDataRefined _ PosRep _ tn1 ctors1) (TyDataRefined _ NegRep _ tn2 ctors2)) | tn1 == tn2 = do
+  constraints <- forM ctors1 (checkXtor ctors2)
   pure (DataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
 
-subConstraints (SubType _ t1@TyDataRefined{} t2@TyDataRefined{}) = 
-      throwSolverError defaultLoc ["Cannot constrain refinement data types"
-                                 , "    " <> ppPrint t1
-                                 , "and"
-                                 , "    " <> ppPrint t2]
-
-subConstraints (SubType _ (TyCodataRefined loc1 PosRep _ tn1 mrv1 dtors1) (TyCodataRefined loc2 NegRep _ tn2 mrv2 dtors2))  | tn1 == tn2 = do
-  constraints <- forM dtors2 (\x -> checkXtor dtors1 mrv1 loc1 x mrv2 loc2)
+subConstraints (SubType _ (TyCodataRefined _ PosRep _ tn1 dtors1) (TyCodataRefined _ NegRep _ tn2 dtors2))  | tn1 == tn2 = do
+  constraints <- forM dtors2 (checkXtor dtors1)
   pure (CodataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
 
 subConstraints (SubType _ t1@TyCodataRefined{} t2@TyCodataRefined{}) = 

@@ -174,12 +174,11 @@ nodeToTypeNoCache rep i  = do
     MkNodeLabel _ datSet codatSet tns refDat refCodat pk@(MkPolyKind _ _) -> do
       outs <- nodeToOuts i
       let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
-      let refDatTypes = M.toList (fst refDat) -- Unique data ref types
-      let refCodatTypes = M.toList (fst refCodat) -- Unique codata ref types
+      let refDatTypes = M.toList refDat -- Unique data ref types
+      let refCodatTypes = M.toList refCodat -- Unique codata ref types
       let adjEdges = lsuc gr i
       let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
       let unsafeLookup :: (RnTypeName, Int) -> AutToTypeM (Node,Variance) = \k -> case M.lookup k typeArgsMap of Just x -> pure x; Nothing -> throwOtherError defaultLoc ["Impossible: Cannot loose type arguments in automata"]
-
       resType <- local (visitNode i) $ do
         -- Creating type variables
         varL <- nodeToTVars rep i
@@ -213,8 +212,8 @@ nodeToTypeNoCache rep i  = do
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
             args <- mapM f argNodes 
             case args of 
-              [] -> return $ TyDataRefined defaultLoc rep pk tn (snd refDat) sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep (TyDataRefined defaultLoc rep pk tn (snd refDat) sig) (arg1:|argRst)
+              [] -> return $ TyDataRefined defaultLoc rep pk tn sig
+              (arg1:argRst) -> return $ TyApp defaultLoc rep (TyDataRefined defaultLoc rep pk tn sig) (arg1:|argRst)
         -- Creating ref codata types
         refCodatL <- do
           forM refCodatTypes $ \(tn,(xtors,vars)) -> do
@@ -227,8 +226,8 @@ nodeToTypeNoCache rep i  = do
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
             args <- mapM f argNodes 
             case args of
-              [] -> return $ TyCodataRefined defaultLoc rep pk tn (snd refCodat) sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep (TyCodataRefined defaultLoc rep pk tn (snd refDat) sig) (arg1:|argRst)
+              [] -> return $ TyCodataRefined defaultLoc rep pk tn sig
+              (arg1:argRst) -> return $ TyApp defaultLoc rep (TyCodataRefined defaultLoc rep pk tn sig) (arg1:|argRst)
         -- Creating Nominal types
         nominals <- do
             forM (S.toList tns) $ \(tn, variances) -> do

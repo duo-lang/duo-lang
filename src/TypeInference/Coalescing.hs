@@ -153,20 +153,12 @@ coalesceType (TyData loc rep mk xtors) = do
 coalesceType (TyCodata loc rep mk xtors) = do
     xtors' <- mapM coalesceXtor xtors
     return (TyCodata loc rep mk xtors')
-coalesceType (TyDataRefined loc rep mk tn Nothing xtors) = do
+coalesceType (TyDataRefined loc rep mk tn xtors) = do
     xtors' <- mapM coalesceXtor xtors
-    return (TyDataRefined loc rep mk tn Nothing xtors')
-coalesceType (TyDataRefined loc rep mk tn (Just rv) xtors) = do
-    modify (\s -> s { s_ref_recvars = S.insert rv s.s_ref_recvars } )
+    return (TyDataRefined loc rep mk tn xtors')
+coalesceType (TyCodataRefined loc rep mk tn xtors) = do
     xtors' <- mapM coalesceXtor xtors
-    return (TyDataRefined loc rep mk tn (Just rv) xtors')
-coalesceType (TyCodataRefined loc rep mk tn Nothing xtors) = do
-    xtors' <- mapM coalesceXtor xtors
-    return (TyCodataRefined loc rep mk tn Nothing xtors')
-coalesceType (TyCodataRefined loc rep mk tn (Just rv) xtors) = do
-    modify (\s -> s { s_ref_recvars = S.insert rv s.s_ref_recvars } )
-    xtors' <- mapM coalesceXtor xtors
-    return (TyCodataRefined loc rep mk tn (Just rv) xtors')
+    return (TyCodataRefined loc rep mk tn xtors')
 coalesceType (TyNominal loc rep mk tn) = do
     return $ TyNominal loc rep mk tn 
 coalesceType (TyApp loc rep ty args) = do 

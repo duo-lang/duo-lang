@@ -154,6 +154,7 @@ library
       Translate.EmbedTST
       Translate.InsertInstance
       Utils
+      Xfunc.Xfunc
   other-modules:
       Paths_duo_lang
   hs-source-dirs:

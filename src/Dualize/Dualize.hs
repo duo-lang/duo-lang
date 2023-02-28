@@ -230,14 +230,14 @@ dualType PosRep (TST.TyCodata loc _ eo xtors) =
   TST.TyData loc NegRep  (dualEvaluationOrder eo) xtors
 dualType NegRep (TST.TyCodata loc _ eo xtors) =
   TST.TyData loc PosRep  (dualEvaluationOrder eo) xtors 
-dualType PosRep (TST.TyDataRefined loc _ pk rn rv xtors) =
-  TST.TyCodataRefined loc NegRep  (dualPolyKind pk) (dualRnTypeName rn) rv xtors
-dualType NegRep (TST.TyDataRefined loc _ pk rn rv xtors) =
-  TST.TyCodataRefined loc PosRep  (dualPolyKind pk) (dualRnTypeName rn) rv xtors
-dualType PosRep (TST.TyCodataRefined loc _ pk rn rv xtors) =
-  TST.TyDataRefined loc NegRep  (dualPolyKind pk) (dualRnTypeName rn) rv xtors
-dualType NegRep (TST.TyCodataRefined loc _ pk rn rv xtors) =
-  TST.TyDataRefined loc PosRep  (dualPolyKind pk) (dualRnTypeName rn) rv xtors
+dualType PosRep (TST.TyDataRefined loc _ pk rn xtors) =
+  TST.TyCodataRefined loc NegRep  (dualPolyKind pk) (dualRnTypeName rn) xtors
+dualType NegRep (TST.TyDataRefined loc _ pk rn xtors) =
+  TST.TyCodataRefined loc PosRep  (dualPolyKind pk) (dualRnTypeName rn) xtors
+dualType PosRep (TST.TyCodataRefined loc _ pk rn xtors) =
+  TST.TyDataRefined loc NegRep  (dualPolyKind pk) (dualRnTypeName rn) xtors
+dualType NegRep (TST.TyCodataRefined loc _ pk rn xtors) =
+  TST.TyDataRefined loc PosRep  (dualPolyKind pk) (dualRnTypeName rn) xtors
 dualType _ (TST.TyFlipPol _ ty) = ty
 
 dualVariantType :: PolarityRep pol -> TST.VariantType pol -> TST.VariantType (FlipPol pol)
@@ -274,13 +274,13 @@ dualCmdDeclaration decl = do
                                 }
 
 dualDataDecl :: TST.DataDecl -> TST.DataDecl
-dualDataDecl (TST.NominalDecl data_loc data_doc data_name data_polarity data_kind data_xtors) = 
-    TST.NominalDecl { data_loc = data_loc
-                    , data_doc = data_doc
-                    , data_name = dualRnTypeName data_name
-                    , data_polarity = flipDC data_polarity
-                    , data_kind = dualPolyKind data_kind
-                    , data_xtors = bimap (dualXtorSig PosRep <$>) (dualXtorSig NegRep <$>) data_xtors
+dualDataDecl decl@TST.NominalDecl{} =
+    TST.NominalDecl { data_loc = decl.data_loc
+                    , data_doc = decl.data_doc
+                    , data_name = dualRnTypeName decl.data_name
+                    , data_polarity = flipDC decl.data_polarity
+                    , data_kind = dualPolyKind decl.data_kind
+                    , data_xtors = bimap  (dualXtorSig PosRep) <$> dualXtorSig NegRep <$>
                     }
 dualDataDecl (TST.RefinementDecl data_loc data_doc data_name data_polarity (refinementEmptyPos, refinementEmptyNeg) (refinementFullPos, refinementFullNeg) data_kind (sigsPos,sigsNeg) (sigsPosRefined, sigsNegRefined)) = do
     TST.RefinementDecl { data_loc = data_loc

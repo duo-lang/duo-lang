@@ -36,8 +36,8 @@ instance PrettyAnn NodeLabel where
     intercalateX ";" (catMaybes [printDat <$> maybeDat
                                 , printCodat <$> maybeCodat
                                 , printNominal tns
-                                , printRefDat (fst refDat)
-                                , printRefCodat (fst refCodat)
+                                , printRefDat refDat
+                                , printRefCodat refCodat 
                                 , Just $ prettyAnn knd])
     where
       printDat   dat   = mempty <+> cat (punctuate " , " (prettyAnn <$> S.toList dat)) <+> mempty
@@ -51,8 +51,8 @@ instance PrettyAnn NodeLabel where
           prettyAnn tn <+> pipeSym <+> printDat xtors <+> "@" <+> prettyAnn vars <+> mempty) <$> refTns
       printRefCodat refCodat = case M.toList refCodat of
         [] -> Nothing
-        refTns -> Just $ intercalateX "; " $ (\(tn, (xtors,vars)) -> braces $ mempty <+>
-          prettyAnn tn <+> pipeSym <+> printCodat xtors <+> "@" <+> prettyAnn vars <+> mempty) <$> refTns
+        refTns -> Just $ intercalateX "; " $ (\(key, content) -> braces $ mempty <+>
+          prettyAnn key <+> pipeSym <+> printCodat content <+> mempty) <$> refTns
 
 instance PrettyAnn (EdgeLabel a) where
   prettyAnn (EdgeSymbol _ xt Prd i) = prettyAnn xt <> parens (pretty i)

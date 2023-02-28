@@ -1,18 +1,14 @@
 module Spec.LocallyClosed where
 
-import Control.Monad (forM_)
+import Control.Monad (foldM)
 import Data.Text qualified as T
-import Data.List.NonEmpty (NonEmpty)
 import Test.Hspec
-
-import Pretty.Pretty ( ppPrintString )
 import Pretty.Errors ()
 import Syntax.Core.Terms (Pattern(..))
 import Syntax.TST.Terms ( InstanceCase (instancecase_pat), Term, termLocallyClosed, instanceCaseLocallyClosed)
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Names
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
-import Errors ( Error )
 import Data.Either (isRight)
 import Utils (moduleNameToFullPath)
 
@@ -37,20 +33,40 @@ getInstanceCases mod = go mod.mod_decls []
     go ((TST.InstanceDecl (TST.MkInstanceDeclaration _ _ _ _ _ cases)):rest) acc = go rest (cases++acc)
     go (_:rest) acc = go rest acc
 
-spec :: ((FilePath, ModuleName), Either (NonEmpty Error) TST.Module) -> Spec
-spec ((fp, mn), tst) = do
+
+-- TODO: Wie kann ich alle Teiltests hier aufsammeln, und bei einem Fehlschlag einen Error zurückgeben, ohne den Rest der Tests abzubrechen?
+spec :: Monad m => ((FilePath, ModuleName), TST.Module)
+              -> m (Maybe ((FilePath, ModuleName), TST.Module), Spec)
+spec ((fp, mn), env) = do
     let fullName = moduleNameToFullPath mn fp
     case mn `lookup` pendingFiles of
-      Just reason -> it "" $ pendingWith $ "Could check local closure of file " ++ fullName ++ "\nReason: " ++ reason
-      Nothing     -> describe ("Examples in " ++ fullName ++ " are locally closed") $ do
-        case tst of
-          Left err -> it "Could not load examples." $ expectationFailure (ppPrintString err)
-          Right env -> do
-            forM_ (getProducers env) $ \(name,term) -> do
-              it (T.unpack name.unFreeVarName ++ " does not contain dangling deBruijn indizes") $
-                termLocallyClosed term `shouldSatisfy` isRight
-            forM_ (getInstanceCases env) $ \instance_case -> do
-              it (T.unpack ((\x -> x.unXtorName) $ (\(XtorPat _ xt _) -> xt) instance_case.instancecase_pat) ++ " does not contain dangling deBruijn indizes") $
-                instanceCaseLocallyClosed instance_case `shouldSatisfy` isRight
+      Just reason -> return (Nothing,
+                            it "" $ pendingWith $ "Could check local closure of file " ++ fullName ++ "\nReason: " ++ reason)
+      Nothing     -> do
+        let pendingDescribe = describe ("Examples in " ++ fullName ++ " are locally closed")
+        -- fold producer and instance checks for deBrujin indizes:
+        danglingProducers <- foldM foldProducers (Nothing, return()) (getProducers env)
+        danglingInstanceClasses <- foldM foldInstanceClasses (Nothing, return()) (getInstanceCases env)
+        let returnSpec = pendingDescribe (snd danglingProducers >> snd danglingInstanceClasses)
+        case (fst danglingProducers, fst danglingInstanceClasses) of
+                (Nothing, Nothing) -> return (Just ((fp, mn), env), returnSpec)
+                _                  -> return (Nothing, returnSpec)
 
-
+        where foldProducers (failure, specSequence) (name, term) = do
+                                    let locallyClosed = termLocallyClosed term
+                                    let msg = it (T.unpack name.unFreeVarName  ++ " does not contain dangling deBruijn indizes")
+                                    let danglingSpec = msg $ locallyClosed `shouldSatisfy` isRight
+                                    let fail = case failure of
+                                                    Nothing -> if isRight locallyClosed then Nothing else Just locallyClosed
+                                                    x       -> x
+                                    return (fail,
+                                            danglingSpec >> specSequence)
+              foldInstanceClasses (failure, specSequence) instance_case = do
+                                    let locallyClosed = instanceCaseLocallyClosed instance_case
+                                    let msg = it (T.unpack ((\x -> x.unXtorName) $ (\(XtorPat _ xt _) -> xt) $ instance_case.instancecase_pat) ++ " does not contain dangling deBruijn indizes")
+                                    let danglingSpec = msg $ locallyClosed `shouldSatisfy` isRight
+                                    let fail = case failure of
+                                                    Nothing -> if isRight locallyClosed then Nothing else Just locallyClosed
+                                                    x       -> x 
+                                    return (fail,
+                                            danglingSpec >> specSequence)

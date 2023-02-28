@@ -112,11 +112,11 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
     mrgRefDat refs1 refs2 = 
       let mrgXtors xtors1 xtors2 = case pol of Pos -> S.union xtors1 xtors2; Neg -> S.intersection xtors1 xtors2
           f (xtors1, vars1) (xtors2, vars2) = (mrgXtors xtors1 xtors2, vars1 `L.union` vars2)
-      in (M.unionWith f (fst refs1) (fst refs2), case snd refs1 of Nothing -> snd refs2; Just rv -> Just rv)
+      in M.unionWith f refs1 refs2 
     mrgRefCodat refs1 refs2 = 
       let mrgXtors xtors1 xtors2 = case pol of Pos -> S.intersection xtors1 xtors2; Neg -> S.union xtors1 xtors2
           f (xtors1,vars1) (xtors2,vars2) = (mrgXtors xtors1 xtors2, vars1 `L.union` vars2)
-      in (M.unionWith f (fst refs1) (fst refs2), case snd refs1 of Nothing -> snd refs2; Just rv -> Just rv)
+      in M.unionWith f refs1 refs2
     rs_merged = combineNodeLabels rs
     mrgKindArgs [] knds = knds
     mrgKindArgs knds [] = knds

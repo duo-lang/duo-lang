@@ -169,7 +169,6 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                    [] -> refTy 
                    (fst:rst) -> TST.TyApp defaultLoc NegRep refTy (fst:|rst)
     return $ TST.Xtor loc annot rep ty CST.Refinement xt substInferred
-
   --
   -- Structural pattern and copattern matches:
   --

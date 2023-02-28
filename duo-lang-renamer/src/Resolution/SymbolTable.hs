@@ -213,5 +213,5 @@ isPermittedInstance :: ClassName -> Typ -> SymbolTable -> Bool
 isPermittedInstance cn ty st = S.member cn st.classDecls || maybe False (`M.member` st.typeNameMap) (getTypeName ty)
   where getTypeName :: Typ -> Maybe TypeName
         getTypeName (TyNominal _ typeName) = Just typeName
-        getTypeName (TyXRefined _ _ typeName _ _) = Just typeName
+        getTypeName (TyXRefined _ _ typeName _ ) = Just typeName
         getTypeName _ = Nothing
