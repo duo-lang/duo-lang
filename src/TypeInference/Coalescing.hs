@@ -24,7 +24,6 @@ data CoalesceState  = CoalesceState
   { s_var_counter :: Int
   , s_recursive :: Map (UniTVar, Polarity) RecTVar
   , s_uni_to_skolem :: Map UniTVar SkolemTVar
-  , s_ref_recvars :: Set RecTVar
   }
 data CoalesceReader = CoalesceReader
   { r_result :: SolverResult
@@ -36,7 +35,7 @@ type CoalesceM  a = ReaderT CoalesceReader (State CoalesceState) a
 runCoalesceM :: SolverResult ->  CoalesceM a -> a
 runCoalesceM res m = evalState (runReaderT m initialReader) initialState
   where
-    initialState  = CoalesceState 0 M.empty M.empty S.empty
+    initialState  = CoalesceState 0 M.empty M.empty
     initialReader = CoalesceReader res S.empty
 
 freshRecVar :: CoalesceM RecTVar
@@ -117,11 +116,7 @@ coalesceType (TyUniVar _ PosRep pk tv) = do
         newName <- getSkolemVar tv
         return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk' newName : lbs')
       (MkPknd pk', Just recVar) -> do
-        refRvs <- gets (\x -> x.s_ref_recvars)
-        if recVar `elem` refRvs then
-          return $ mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk' recVar : lbs')
-        else 
-          return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk' recVar  : lbs'))
+        return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk' recVar  : lbs'))
       (primk, _) -> error ("Type Variable can't have primitive kind " <> show primk)
 
 coalesceType (TyUniVar _ NegRep pk tv) = do
@@ -141,11 +136,7 @@ coalesceType (TyUniVar _ NegRep pk tv) = do
           newName <- getSkolemVar tv
           return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep pk' newName : ubs')
         (MkPknd pk', Just recVar) -> do
-          refRvs <- gets (\x -> x.s_ref_recvars)
-          if recVar `elem` refRvs then 
-            return $ mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk' recVar : ubs')
-          else 
-            return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk' recVar  : ubs')) 
+          return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk' recVar  : ubs')) 
         (primk, _) -> error ("Type Variable can't have primitive kind " <> show primk)
 coalesceType (TyData loc rep mk xtors) = do
     xtors' <- mapM coalesceXtor xtors
