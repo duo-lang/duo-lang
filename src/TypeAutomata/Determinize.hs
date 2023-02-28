@@ -88,10 +88,8 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
             nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ _ <- [fstLabel,combLabel]],
             nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ _ <- [fstLabel,combLabel]],
             nl_nominal = S.unions [tn | MkNodeLabel _ _ _ tn _ _ _ <- [fstLabel, combLabel]],
-            nl_ref_data = (mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ _ <- [fstLabel, combLabel]], 
-                           mrgRecVars (snd fstLabel.nl_ref_data, snd combLabel.nl_ref_data)),
-            nl_ref_codata = (mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ <- [fstLabel, combLabel]],
-                            mrgRecVars (snd fstLabel.nl_ref_codata, snd combLabel.nl_ref_codata)),
+            nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ _ <- [fstLabel, combLabel]], 
+            nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ <- [fstLabel, combLabel]], 
             nl_kind = MkPolyKind (mrgKindArgs combLabel.nl_kind.kindArgs knd.kindArgs) knd.returnKind
           }
         else
@@ -106,15 +104,12 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
     mrgCodat [] = Nothing
     mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
     mrgRefDat refs = case pol of
-      Pos -> M.unionsWith S.union (map fst refs)
-      Neg -> M.unionsWith S.intersection (map fst refs)
+      Pos -> M.unionsWith S.union refs
+      Neg -> M.unionsWith S.intersection refs
     mrgRefCodat refs = case pol of
-      Pos -> M.unionsWith S.intersection (map fst refs)
-      Neg -> M.unionsWith S.union (map fst refs)
+      Pos -> M.unionsWith S.intersection refs
+      Neg -> M.unionsWith S.union refs
     rs_merged = combineNodeLabels rs
-    mrgRecVars (Nothing,Nothing) = Nothing
-    mrgRecVars (Just r1,_) = Just r1
-    mrgRecVars (_,Just r2) = Just r2
     mrgKindArgs [] knds = knds
     mrgKindArgs knds [] = knds
     mrgKindArgs (knd1:knds1) knds2 = if knd1 `elem` knds2 then mrgKindArgs knds1 knds2 else knd1:mrgKindArgs knds1 knds2

@@ -187,21 +187,21 @@ annotTy (RST.TyDataRefined loc pol pknd tyn xtors) =  do
   if tyn == tyn' then do
     let xtorNames = map (\x -> x.sig_name) xtors
     xtors' <- getXtors pol xtorNames
-    return $ TST.TyDataRefined loc pol pknd tyn Nothing xtors' 
+    return $ TST.TyDataRefined loc pol pknd tyn xtors' 
   else do 
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) decl.data_xtors 
-    return $ TST.TyDataRefined loc pol pknd tyn Nothing xtors' 
+    return $ TST.TyDataRefined loc pol pknd tyn xtors' 
 annotTy (RST.TyCodataRefined loc pol pknd tyn xtors) = do 
   tyn' <- gets (\x -> x.declTyName)
   if tyn == tyn' then do 
     let xtorNames = map (\x -> x.sig_name) xtors
     xtors' <- getXtors (RST.flipPolarityRep pol) xtorNames
-    return $ TST.TyCodataRefined loc pol pknd tyn Nothing xtors'
+    return $ TST.TyCodataRefined loc pol pknd tyn xtors'
   else do
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> snd; RST.NegRep -> fst) decl.data_xtors
-    return $ TST.TyCodataRefined loc pol pknd tyn Nothing xtors'
+    return $ TST.TyCodataRefined loc pol pknd tyn xtors'
 annotTy (RST.TyApp loc pol ty args) = do 
   ty' <- annotTy ty 
   args' <- mapM annotVarTy args
@@ -236,11 +236,11 @@ annotTy (RST.TyRec loc pol rv ty) = case ty of
   RST.TyDataRefined loc' pol' pknd tyn xtors -> do 
     addRecVar rv pknd
     xtors' <- mapM annotXtor xtors
-    return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' pknd tyn Nothing xtors')
+    return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' pknd tyn xtors')
   RST.TyCodataRefined loc' pol' pknd tyn xtors -> do
     addRecVar rv pknd
     xtors' <- mapM annotXtor xtors
-    return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' pknd tyn Nothing xtors')
+    return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' pknd tyn xtors')
   _ -> throwOtherError loc ["TyRec can only appear inside Refinement Declaration"]
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
 annotTy (RST.TyF64 loc pol) = return $ TST.TyF64 loc pol
@@ -501,7 +501,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     xtors' <- mapM annotateKind xtors
     decl <- lookupTypeName loc tyn
     checkXtors loc xtors' decl
-    return (TST.TyDataRefined loc pol pknd tyn Nothing xtors')
+    return (TST.TyDataRefined loc pol pknd tyn xtors')
     where 
       checkXtors :: Loc -> [TST.XtorSig pol] -> TST.DataDecl -> GenM ()
       checkXtors _ [] _ = return ()
@@ -518,7 +518,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     xtors' <- mapM annotateKind xtors
     decl <- lookupTypeName loc tyn
     checkXtors loc xtors' decl
-    return (TST.TyCodataRefined loc pol pknd tyn Nothing xtors')
+    return (TST.TyCodataRefined loc pol pknd tyn xtors')
     where 
       checkXtors :: Loc -> [TST.XtorSig (RST.FlipPol pol)] -> TST.DataDecl -> GenM ()
       checkXtors _ [] _ = return ()

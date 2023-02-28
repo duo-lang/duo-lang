@@ -140,13 +140,13 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     RST.TyKindAnnot (CBox eo) $ RST.TyData loc pol (map embedTST xtors)
   embedTST (TST.TyCodata loc pol eo xtors) =
     RST.TyKindAnnot (CBox eo) $ RST.TyCodata loc pol (map embedTST xtors)
-  embedTST (TST.TyDataRefined loc pol pk@(MkPolyKind _ rk) tn _ xtors) =
+  embedTST (TST.TyDataRefined loc pol pk@(MkPolyKind _ rk) tn xtors) =
     RST.TyKindAnnot (CBox rk) $ RST.TyDataRefined loc pol pk tn (map embedTST xtors)
-  embedTST (TST.TyDataRefined loc pol pk@(KindVar _) tn _ xtors) =
+  embedTST (TST.TyDataRefined loc pol pk@(KindVar _) tn xtors) =
     RST.TyDataRefined loc pol pk tn (map embedTST xtors)
-  embedTST (TST.TyCodataRefined loc pol pk@(MkPolyKind _ rk) tn _ xtors) = 
+  embedTST (TST.TyCodataRefined loc pol pk@(MkPolyKind _ rk) tn xtors) = 
     RST.TyKindAnnot (CBox rk) $ RST.TyCodataRefined loc pol pk tn (map embedTST xtors)
-  embedTST (TST.TyCodataRefined loc pol pk@(KindVar _) tn _ xtors) = 
+  embedTST (TST.TyCodataRefined loc pol pk@(KindVar _) tn xtors) = 
     RST.TyCodataRefined loc pol pk tn (map embedTST xtors)
   -- if arguments are applied to TyNominal, don't annotate the Kind, otherwise the parser will break after prettyprint
   embedTST (TST.TyApp loc pol (TST.TyNominal loc' pol' polyknd tn) args) = 
