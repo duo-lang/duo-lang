@@ -29,8 +29,6 @@ import Driver.Environment
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 import Syntax.TST.Terms (Substitution(..))
-import Data.Set qualified as S
-import Pretty.Pretty
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -152,19 +150,18 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
     let substTypes' = TST.zonk TST.SkolemRep tyParamsMap substTypes
     let sig_args'' = TST.zonk TST.SkolemRep tyParamsMap xtorSigUpper.sig_args
-    mrv <- case S.toList $ TST.recTVars xtorSigUpper.sig_args  of [] -> return Nothing; [rv] -> return $ Just rv; lst -> throwOtherError loc ["Refinement Xtor cannot contain multiple recursive variables ",ppPrint lst]
     -- Then we generate constraints between the inferred types of the substitution
     -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
     genConstraintsCtxts substTypes' sig_args'' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
 
     let ty = case rep of 
                PrdRep -> do
-                 let refTy = TST.TyDataRefined   defaultLoc PosRep decl.data_kind decl.data_name mrv [TST.MkXtorSig xt substTypes']
+                 let refTy = TST.TyDataRefined   defaultLoc PosRep decl.data_kind decl.data_name [TST.MkXtorSig xt substTypes']
                  case args of
                    [] -> refTy 
                    (fst:rst) -> TST.TyApp defaultLoc PosRep refTy (fst:|rst) 
                CnsRep -> do
-                 let refTy = TST.TyCodataRefined defaultLoc NegRep decl.data_kind  decl.data_name mrv [TST.MkXtorSig xt substTypes']
+                 let refTy = TST.TyCodataRefined defaultLoc NegRep decl.data_kind  decl.data_name [TST.MkXtorSig xt substTypes']
                  case args of 
                    [] -> refTy 
                    (fst:rst) -> TST.TyApp defaultLoc NegRep refTy (fst:|rst)
@@ -268,14 +265,12 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     case rep of
       CnsRep -> do
         let xtors = TST.zonk TST.SkolemRep tyParamsMapNeg . snd <$> inferredCases
-        mrv <- case S.toList $ TST.recTVars xtors of [] -> return Nothing; [rv] -> return $ Just rv; lst -> throwOtherError loc ["Refinement Xtor cannot contain multiple recursive variables ",ppPrint lst]
-        let refTy = TST.TyDataRefined defaultLoc NegRep decl.data_kind decl.data_name mrv xtors
+        let refTy = TST.TyDataRefined defaultLoc NegRep decl.data_kind decl.data_name xtors
         let ty = case argsNeg of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc NegRep refTy (fst:|rst)
         return $ TST.XCase loc annot rep ty CST.Refinement (fst <$> inferredCases)
       PrdRep -> do
         let xtors = TST.zonk TST.SkolemRep tyParamsMapPos . snd <$> inferredCases
-        mrv <- case S.toList $ TST.recTVars xtors of [] -> return Nothing; [rv] -> return $ Just rv; lst -> throwOtherError loc ["Refinement Xtor cannot contain multiple recursive variables ",ppPrint lst]
-        let refTy = TST.TyCodataRefined defaultLoc PosRep decl.data_kind decl.data_name mrv xtors
+        let refTy = TST.TyCodataRefined defaultLoc PosRep decl.data_kind decl.data_name xtors
         let ty = case argsPos of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc PosRep refTy (fst:|rst)
         return $ TST.XCase loc annot rep ty CST.Refinement (fst <$> inferredCases)
   --

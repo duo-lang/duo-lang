@@ -280,7 +280,7 @@ dualDataDecl decl@TST.NominalDecl{} =
                     , data_name = dualRnTypeName decl.data_name
                     , data_polarity = flipDC decl.data_polarity
                     , data_kind = dualPolyKind decl.data_kind
-                    , data_xtors = bimap  (dualXtorSig PosRep) <$> dualXtorSig NegRep <$>
+                    , data_xtors = bimap  (map (dualXtorSig PosRep)) (map (dualXtorSig NegRep)) decl.data_xtors
                     }
 dualDataDecl (TST.RefinementDecl data_loc data_doc data_name data_polarity (refinementEmptyPos, refinementEmptyNeg) (refinementFullPos, refinementFullNeg) data_kind (sigsPos,sigsNeg) (sigsPosRefined, sigsNegRefined)) = do
     TST.RefinementDecl { data_loc = data_loc

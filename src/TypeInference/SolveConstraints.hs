@@ -19,10 +19,9 @@ import Data.Set qualified as S
 import Data.List (partition)
 
 import Driver.Environment
-    ( Environment(instanceEnv), lookupDataDecl )
+    ( Environment(instanceEnv))
 import Errors
 import Syntax.TST.Types
-import Syntax.TST.Program (DataDecl(..))
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))
 import Pretty.Pretty
 import Pretty.Types ()
@@ -252,56 +251,26 @@ lookupXtor xtName xtors = case find (\(MkXtorSig xtName' _) -> xtName == xtName'
                                          , ppPrint xtors ]
   Just xtorSig -> pure xtorSig
 
-checkXtor :: [XtorSig Neg] -> Maybe RecTVar -> Loc -> XtorSig Pos -> Maybe RecTVar -> Loc -> SolverM [Constraint ConstraintInfo]
-checkXtor xtors2 mrv2 loc2 (MkXtorSig xtName subst1) mrv1 loc1 = do
+checkXtor :: [XtorSig Neg]  -> Loc -> XtorSig Pos -> Loc -> SolverM [Constraint ConstraintInfo]
+checkXtor xtors2 loc2 (MkXtorSig xtName subst1) loc1 = do
   MkXtorSig nm2 subst2 <- lookupXtor xtName xtors2
-  checkContexts subst1 mrv1 xtName loc1 subst2 mrv2 nm2 loc2
+  checkContexts subst1 xtName loc1 subst2 nm2 loc2
 
-replaceRecVarPos :: Typ Pos -> Maybe RecTVar -> Loc -> XtorName -> SolverM (Typ Pos)
-replaceRecVarPos ty Nothing _ _ = return ty
-replaceRecVarPos tyr@(TyRecVar _ _ _ rv) (Just rv') loc nm = 
-  if rv == rv' then do
-    decl <- lookupDataDecl loc nm
-    return $ fst decl.data_refinement_empty
-  else return tyr
-replaceRecVarPos (TyApp loc pol ty args) rv loc' nm = do 
-  ty' <- replaceRecVarPos ty rv loc' nm
-  return (TyApp loc pol ty' args)
-replaceRecVarPos ty _ _ _ = return ty
-
-replaceRecVarNeg :: Typ Neg -> Maybe RecTVar -> Loc -> XtorName -> SolverM (Typ Neg)
-replaceRecVarNeg ty Nothing _ _ = return ty
-replaceRecVarNeg tyr@(TyRecVar _ _ _ rv) (Just rv') loc nm = 
-  if rv == rv' then do
-    decl <- lookupDataDecl loc nm
-    case decl of 
-      NominalDecl{} -> error "can't happen"
-      RefinementDecl _ _ _ _ _ data_refinement_full _ _ _ -> return $ snd data_refinement_full 
-  else return tyr
-replaceRecVarNeg (TyApp loc pol ty args) rv loc' nm = do 
-  ty' <- replaceRecVarNeg ty rv loc' nm
-  return (TyApp loc pol ty' args)
-replaceRecVarNeg  ty _ _ _ = return ty
-
-checkContexts :: LinearContext Pos -> Maybe RecTVar -> XtorName -> Loc -> LinearContext Neg -> Maybe RecTVar -> XtorName -> Loc -> SolverM [Constraint ConstraintInfo]
-checkContexts [] _ _ _ [] _ _ _= return []
-checkContexts (PrdCnsType PrdRep ty1:rest1) mrv1 nm1 loc1 (PrdCnsType PrdRep ty2:rest2) mrv2 nm2 loc2 = do
-  xs <- checkContexts rest1 mrv1 nm1 loc1 rest2 mrv2 nm2 loc2
-  ty1' <- replaceRecVarPos ty1 mrv1 loc1 nm1
-  ty2' <- replaceRecVarNeg ty2 mrv2 loc2 nm2 
-  return (SubType XtorSubConstraint ty1' ty2':xs)
-checkContexts (PrdCnsType CnsRep ty1:rest1) mrv1 nm1 loc1 (PrdCnsType CnsRep ty2:rest2) mrv2 nm2 loc2 = do
-  xs <- checkContexts rest1 mrv1 nm1 loc1 rest2 mrv2 nm2 loc2
-  ty1' <- replaceRecVarNeg ty1 mrv1 loc1 nm1 
-  ty2' <- replaceRecVarPos ty2 mrv2 loc2 nm2 
-  return (SubType XtorSubConstraint ty2' ty1':xs)
-checkContexts (PrdCnsType PrdRep _:_) _ _  _ (PrdCnsType CnsRep _:_) _ _ _ =
+checkContexts :: LinearContext Pos -> XtorName -> Loc -> LinearContext Neg -> XtorName -> Loc -> SolverM [Constraint ConstraintInfo]
+checkContexts [] _ _ [] _ _= return []
+checkContexts (PrdCnsType PrdRep ty1:rest1) nm1 loc1 (PrdCnsType PrdRep ty2:rest2) nm2 loc2 = do
+  xs <- checkContexts rest1 nm1 loc1 rest2 nm2 loc2
+  return (SubType XtorSubConstraint ty1 ty2:xs)
+checkContexts (PrdCnsType CnsRep ty1:rest1) nm1 loc1 (PrdCnsType CnsRep ty2:rest2) nm2 loc2 = do
+  xs <- checkContexts rest1 nm1 loc1 rest2 nm2 loc2
+  return (SubType XtorSubConstraint ty2 ty1:xs)
+checkContexts (PrdCnsType PrdRep _:_) _  _ (PrdCnsType CnsRep _:_) _ _ =
   throwSolverError defaultLoc ["checkContexts: Tried to constrain PrdType by CnsType."]
-checkContexts (PrdCnsType CnsRep _:_) _ _  _ (PrdCnsType PrdRep _:_) _ _  _ =
+checkContexts (PrdCnsType CnsRep _:_) _  _ (PrdCnsType PrdRep _:_) _ __ =
   throwSolverError defaultLoc ["checkContexts: Tried to constrain CnsType by PrdType."]
-checkContexts [] _ _  _ (_:_) _ _  _ =
+checkContexts [] _  _ (_:_) _ __ =
   throwSolverError defaultLoc ["checkContexts: Linear contexts have unequal length."]
-checkContexts (_:_) _ _ _ [] _ _ _ =
+checkContexts (_:_) _ _ [] _ _ =
   throwSolverError defaultLoc ["checkContexts: Linear contexts have unequal length."]
 
 
@@ -350,43 +319,6 @@ subConstraints (SubType _ p@(TySkolemVar _ _ _ sk1) n@(TySkolemVar _ _ _ sk2)) =
                                  , "    " <> ppPrint p
                                  , "and"
                                  , "    " <> ppPrint n]
-
--- rec vars in refinementy types stand for the entire type, so this is always an equality
-subConstraints (SubType _ r@(TyRecVar _ _ _ rv) ty@(TyDataRefined _ _ _ _ (Just rv') _)) = 
-  if rv == rv' then
-    pure (Refl r ty, [])
-  else 
-    throwSolverError defaultLoc ["Cannot constrain types"
-                                 , "    " <> ppPrint r
-                                 , "and"
-                                 , "    " <> ppPrint ty]
-
-subConstraints (SubType _ ty@(TyDataRefined _ _ _ _ (Just rv') _) r@(TyRecVar _ _ _ rv)) = 
-  if rv == rv' then
-    pure (Refl ty r, [])
-  else 
-    throwSolverError defaultLoc ["Cannot constrain types"
-                                 , "    " <> ppPrint r
-                                 , "and"
-                                 , "    " <> ppPrint ty]
-
-subConstraints (SubType _ r@(TyRecVar _ _ _ rv) ty@(TyCodataRefined _ _ _ _ (Just rv') _)) = 
-  if rv == rv' then
-    pure (Refl r ty, [])
-  else 
-    throwSolverError defaultLoc ["Cannot constrain types"
-                                 , "    " <> ppPrint r
-                                 , "and"
-                                 , "    " <> ppPrint ty]
-
-subConstraints (SubType _ ty@(TyCodataRefined _ _ _ _ (Just rv') _) r@(TyRecVar _ _ _ rv)) = 
-  if rv == rv' then
-    pure (Refl ty r, [])
-  else 
-    throwSolverError defaultLoc ["Cannot constrain types"
-                                 , "    " <> ppPrint r
-                                 , "and"
-                                 , "    " <> ppPrint ty]
 
 -- Type synonyms are unfolded and are not preserved through constraint solving.
 -- A more efficient solution to directly compare type synonyms is possible in the
@@ -441,11 +373,11 @@ subConstraints (SubType _ ty' ty@(TyRec _ _ recTVar _)) = do
 --     { dtors1 } <: { dtors2 }  ~>     [ checkXtors dtors1 dtor | dtor <- dtors2 ]
 --
 subConstraints (SubType _ (TyData loc1 PosRep _ ctors1) (TyData loc2 NegRep _ ctors2)) = do
-  constraints <- forM ctors1 (\x -> checkXtor ctors2 Nothing loc2 x Nothing loc1)
+  constraints <- forM ctors1 (\x -> checkXtor ctors2 loc2 x loc1)
   pure (Data $ SubVar . void <$> concat constraints, concat constraints)
 
 subConstraints (SubType _ (TyCodata loc1 PosRep _ dtors1) (TyCodata loc2 NegRep _ dtors2)) = do
-  constraints <- forM dtors2 (\x -> checkXtor dtors1 Nothing loc1 x Nothing loc2)
+  constraints <- forM dtors2 (\x -> checkXtor dtors1 loc1 x loc2)
   pure (Codata $ SubVar . void <$> concat constraints, concat constraints)
 
 -- Constraints between refinement data or codata types:
@@ -456,12 +388,12 @@ subConstraints (SubType _ (TyCodata loc1 PosRep _ dtors1) (TyCodata loc2 NegRep 
 --     {{ Nat :>> < ctors1 > }} <: {{ Nat  :>> < ctors2 > }}   ~>    [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     {{ Nat :>> < ctors1 > }} <: {{ Bool :>> < ctors2 > }}   ~>    FAIL
 --
-subConstraints (SubType _ (TyDataRefined _ PosRep _ tn1 ctors1) (TyDataRefined _ NegRep _ tn2 ctors2)) | tn1 == tn2 = do
-  constraints <- forM ctors1 (checkXtor ctors2)
+subConstraints (SubType _ (TyDataRefined loc1 PosRep _ tn1 ctors1) (TyDataRefined loc2 NegRep _ tn2 ctors2)) | tn1 == tn2 = do
+  constraints <- forM ctors1 (\x -> checkXtor ctors2 loc2 x loc1)
   pure (DataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
 
-subConstraints (SubType _ (TyCodataRefined _ PosRep _ tn1 dtors1) (TyCodataRefined _ NegRep _ tn2 dtors2))  | tn1 == tn2 = do
-  constraints <- forM dtors2 (checkXtor dtors1)
+subConstraints (SubType _ (TyCodataRefined loc1 PosRep _ tn1 dtors1) (TyCodataRefined loc2 NegRep _ tn2 dtors2))  | tn1 == tn2 = do
+  constraints <- forM dtors2 (\x -> checkXtor dtors1 loc1 x loc2)
   pure (CodataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
 
 subConstraints (SubType _ t1@TyCodataRefined{} t2@TyCodataRefined{}) = 
@@ -638,7 +570,7 @@ resolveInstanceAnnot pol ty cn env = case getInstances cn env of
 -- | Resolves and returns the correct instance for each type-class-constrained unification variable.
 solveClassConstraints :: SolverResult -> Bisubstitution 'UniVT -> Map ModuleName Environment -> Either (NE.NonEmpty Error) InstanceResult
 solveClassConstraints sr bisubst env = do
-  let uvs = fmap (\(uv, vst) -> (uv, vst.vst_typeclasses, vst.vst_kind)) $ M.toList sr.tvarSolution
+  let uvs =   (\ (uv, vst) -> (uv, vst.vst_typeclasses, vst.vst_kind))  <$> M.toList sr.tvarSolution
   res <- forM uvs $ \(uv, cns, k) -> do
     let mTy = getUniVType bisubst uv
     forM cns $ \cn -> ((uv,cn),) <$>

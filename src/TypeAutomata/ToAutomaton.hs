@@ -166,11 +166,17 @@ sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 
 insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> PolyKind -> [XtorSig pol] -> TTA Node
-insertXtors dc pol mtn pk xtors = do
-  newNode <- newNodeM
-  let refXDat = Just (tyn, [], Nothing)
-  let xtorLabel = singleNodeLabelXtor (polarityRepToPol rep) dc refXDat (S.fromList (sigToLabel <$> xtors)) pknd
+insertXtors dc pol Nothing pk xtors = do 
+  newNode <- newNodeM 
+  let xtorLabel = singleNodeLabelXtor pol dc Nothing (S.fromList (sigToLabel <$> xtors)) pk
+  insertNode newNode xtorLabel 
+  return newNode 
+
+insertXtors dc pol (Just tyn) pk xtors = do
+  varsMap <- asks (\x -> x.tyArgEnv)
   vars <- case M.lookup tyn varsMap of Nothing -> throwAutomatonError defaultLoc ["type " <> ppPrint tyn <> " was not fully applied"]; Just vars -> return vars
+  newNode <- newNodeM
+  let xtorLabel = singleNodeLabelXtor pol dc (Just (tyn, snd <$> vars)) (S.fromList (sigToLabel <$> xtors)) pk
   insertEdges ((\(i,(n,variance)) -> (newNode, n, TypeArgEdge tyn variance i)) <$> enumerate vars)
   insertNode newNode xtorLabel 
   forM_ xtors $ \(MkXtorSig xt ctxt) -> mapM_ (\x -> insertCtxt xt x newNode) (enumerate ctxt)

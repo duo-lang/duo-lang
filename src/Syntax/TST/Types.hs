@@ -207,47 +207,6 @@ instance GetKind (VariantType pol) where
   getKind (CovariantType ty) = getKind ty 
   getKind (ContravariantType ty) = getKind ty
 
--- | Typeclass for computing occurring recursive variables
-class RecTVars (a :: Type) where
-  recTVars :: a -> Set RecTVar
-
-instance RecTVars (Typ pol) where
-  recTVars TySkolemVar{}                        = S.empty
-  recTVars (TyRecVar _ _ _ rv)                  = S.singleton rv
-  recTVars TyUniVar{}                           = S.empty
-  recTVars TyTop {}                             = S.empty
-  recTVars TyBot {}                             = S.empty
-  recTVars (TyUnion _ _ ty ty')                 = S.union (recTVars ty) (recTVars ty')
-  recTVars (TyInter _ _ ty ty')                 = S.union (recTVars ty) (recTVars ty')
-  recTVars (TyRec _ _ rv t)                     = S.union (S.singleton rv) (recTVars t)
-  recTVars TyNominal{}                          = S.empty
-  recTVars (TyApp _ _ ty args)                  = S.union (recTVars ty) (S.unions (recTVars <$> args))
-  recTVars (TySyn _ _ _ ty)                     = recTVars ty
-  recTVars (TyData _  _ _ xtors)                = S.unions (recTVars <$> xtors)
-  recTVars (TyCodata _ _ _ xtors)               = S.unions (recTVars <$> xtors)
-  recTVars (TyDataRefined _ _ _ _ mrv xtors)    = S.union (maybe S.empty S.singleton mrv) (S.unions (recTVars <$> xtors))
-  recTVars (TyCodataRefined  _ _ _ _ mrv xtors) = S.union (maybe S.empty S.singleton mrv) (S.unions (recTVars <$> xtors))
-  recTVars (TyI64 _ _)                          = S.empty
-  recTVars (TyF64 _ _)                          = S.empty
-  recTVars (TyChar _ _)                         = S.empty
-  recTVars (TyString _ _)                       = S.empty
-  recTVars (TyFlipPol _ ty)                     = recTVars ty
-
-instance RecTVars (PrdCnsType pol) where
-  recTVars (PrdCnsType _ ty) = recTVars ty
-
-instance RecTVars (VariantType pol) where
-  recTVars (CovariantType ty)     = recTVars ty
-  recTVars (ContravariantType ty) = recTVars ty
-
-instance RecTVars (LinearContext pol) where
-  recTVars ctxt = S.unions (recTVars <$> ctxt)
-
-instance RecTVars (XtorSig pol) where
-  recTVars xtor = recTVars xtor.sig_args 
-
-instance RecTVars [XtorSig pol] where 
-  recTVars xtors = S.unions (recTVars <$> xtors)
 
 -- used to get typename of application
 getTypeNames :: Typ pol -> [RnTypeName]
@@ -256,8 +215,8 @@ getTypeNames TyUniVar{} = []
 getTypeNames TyRecVar{} = []  
 getTypeNames TyData{} = []
 getTypeNames TyCodata{} = []
-getTypeNames (TyDataRefined _ _ _ tyn _ _) = [tyn]
-getTypeNames (TyCodataRefined _ _ _ tyn _ _) = [tyn]
+getTypeNames (TyDataRefined _ _ _ tyn _) = [tyn]
+getTypeNames (TyCodataRefined _ _ _ tyn _) = [tyn]
 getTypeNames (TyNominal _ _ _ tyn) = [tyn]
 getTypeNames (TyApp _ _ ty _) = getTypeNames ty
 getTypeNames (TySyn _ _ tyn _) = [tyn]
