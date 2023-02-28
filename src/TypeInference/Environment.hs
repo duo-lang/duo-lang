@@ -1,4 +1,4 @@
-module Driver.Environment where
+module TypeInference.Environment where
 
 import Control.Monad.Except
 import Control.Monad.Reader

@@ -43,7 +43,7 @@ import Data.Map ( Map )
 import Data.Map qualified as M
 import Data.Text qualified as T
 
-import Driver.Environment
+import TypeInference.Environment
 import Errors
 import Errors.Renamer
 import Syntax.RST.Types qualified as RST

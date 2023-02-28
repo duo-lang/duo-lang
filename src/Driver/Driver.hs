@@ -19,7 +19,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Driver.Definition
-import Driver.Environment
+import TypeInference.Environment
 import Driver.DepGraph
 import Errors
 import Errors.Renamer
