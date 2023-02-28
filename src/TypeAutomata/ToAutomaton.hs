@@ -170,7 +170,14 @@ insertXtors dc pol Nothing pk xtors = do
   newNode <- newNodeM 
   let xtorLabel = singleNodeLabelXtor pol dc Nothing (S.fromList (sigToLabel <$> xtors)) pk
   insertNode newNode xtorLabel 
-  return newNode 
+  forM_ xtors $ \(MkXtorSig xt ctxt) -> mapM_ (\x -> insertCtxt xt x newNode) (enumerate ctxt)
+  return newNode
+  where 
+    insertCtxt :: XtorName -> (Int, PrdCnsType pol) -> Node -> TTA () 
+    insertCtxt nm (i,pcType) newNode = do 
+      n <- insertPCType pcType
+      insertEdges [(newNode, n, EdgeSymbol dc nm (case pcType of (PrdCnsType PrdRep _) -> Prd; (PrdCnsType CnsRep _) -> Cns) i)]
+
 
 insertXtors dc pol (Just tyn) pk xtors = do
   varsMap <- asks (\x -> x.tyArgEnv)

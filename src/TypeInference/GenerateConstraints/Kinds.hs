@@ -116,6 +116,8 @@ resolveDataDecl decl env = do
   (decl', _) <- runDataDeclM (annotateDataDecl decl) env (createDataDeclState decl.data_kind decl.data_name)
   return decl' 
 
+addRecVar :: RecTVar -> PolyKind -> DataDeclM () 
+addRecVar rv pk = modify (\s@MkDataDeclState{refRecVars = recVarMap} -> s {refRecVars = M.insert rv pk recVarMap})
 
 addXtors :: ([TST.XtorSig RST.Pos],[TST.XtorSig RST.Neg]) -> DataDeclM ()
 addXtors newXtors =  modify (\s@MkDataDeclState{refXtors = xtors} -> 
@@ -249,8 +251,17 @@ annotTy (RST.TyInter loc ty1 ty2) = do
     return $ TST.TyInter loc knd1 ty1' ty2'
   else 
     throwOtherError loc ["Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2 <> " of union are not compatible"]
-annotTy (RST.TyRec loc _ _ _) = 
-  throwOtherError loc ["Recursive Types cannot appear in declarations, use <typename | recvar | xtors > syntax instead"]
+annotTy (RST.TyRec loc pol rv ty) = case ty of 
+  RST.TyDataRefined loc' pol' pknd tyn xtors -> do 
+    addRecVar rv pknd
+    xtors' <- mapM annotXtor xtors
+    return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' pknd tyn xtors')
+  RST.TyCodataRefined loc' pol' pknd tyn xtors -> do
+    addRecVar rv pknd
+    xtors' <- mapM annotXtor xtors
+    return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' pknd tyn xtors')
+  _ -> throwOtherError loc ["TyRec can only appear inside Refinement Declarations"]
+
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
 annotTy (RST.TyF64 loc pol) = return $ TST.TyF64 loc pol
 annotTy (RST.TyChar loc pol) = return $ TST.TyChar loc pol
@@ -529,11 +540,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyApp loc _ ty _ ) = throwOtherError loc ["Types can only be applied to nominal or refinement types types, was applied to ", ppPrint ty]
 
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
-    case polyknd.kindArgs of 
-      [] -> do 
-        return $ TST.TyNominal loc pol polyknd tyn
-      _ -> throwOtherError loc ["Nominal Type " <> ppPrint tyn <> " was not fully applied"]
-             
+    return $ TST.TyNominal loc pol polyknd tyn
+              
   annotateKind (RST.TySyn loc pol tn ty) = do 
     ty' <- annotateKind ty 
     return (TST.TySyn loc pol tn ty')
