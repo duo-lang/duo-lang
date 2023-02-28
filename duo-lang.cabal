@@ -112,7 +112,6 @@ library
       Driver.Definition
       Driver.DepGraph
       Driver.Driver
-      Driver.Environment
       Errors
       Eval.Definition
       Eval.Eval
@@ -148,6 +147,7 @@ library
       TypeInference.GenerateConstraints.Primitives
       TypeInference.GenerateConstraints.Terms
       TypeInference.GenerateConstraints.Kinds
+      TypeInference.Environment
       TypeInference.SolveConstraints
       TypeInference.Constraints
       Translate.Focusing
