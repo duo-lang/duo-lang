@@ -4,7 +4,7 @@ import Control.Monad.IO.Class (liftIO)
 import Data.Map qualified as M
 
 import Driver.Definition
-import Driver.Environment
+import TypeInference.Environment
 import Driver.Driver ( runCompilationModule )
 import Eval.Definition (EvalEnv)
 import Eval.Eval (eval)
