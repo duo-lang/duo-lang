@@ -37,12 +37,12 @@ import Syntax.RST.Types (Polarity(..), PolarityRep (..))
 
 getXtorKinds :: Loc -> [RST.XtorSig pol] -> GenM EvaluationOrder
 getXtorKinds loc [] = throwSolverError loc ["Can't find kinds of empty List of Xtors"]
-getXtorKinds _ [xtor] = do
+getXtorKinds loc [xtor] = do
   let nm = xtor.sig_name
-  lookupXtorKind nm 
+  lookupXtorKind loc nm 
 getXtorKinds loc (xtor:xtors) = do 
   let nm = xtor.sig_name
-  mk <- lookupXtorKind nm
+  mk <- lookupXtorKind loc nm
   mk' <- getXtorKinds loc xtors
   -- all constructors of a structural type need to have the same return kind
   addConstraint (KindEq KindConstraint (MkPknd $ MkPolyKind [] mk) (MkPknd $ MkPolyKind [] mk'))
@@ -55,9 +55,9 @@ getKindDecl decl = do
   let argKnds = map (\(_,_,mk) -> mk) polyknd.kindArgs
   return (CBox polyknd.returnKind, argKnds)
 
-checkXtorKind :: EvaluationOrder -> TST.XtorSig pol -> GenM () 
-checkXtorKind eo xtor = do 
-  xtorKnd <- lookupXtorKind (xtor.sig_name)
+checkXtorKind :: Loc -> EvaluationOrder -> TST.XtorSig pol -> GenM () 
+checkXtorKind loc eo xtor = do 
+  xtorKnd <- lookupXtorKind loc (xtor.sig_name)
   let sigKnds = map TST.getKind (xtor.sig_args)
   let constrs = map (KindEq KindConstraint (MkPknd (MkPolyKind [] xtorKnd))) sigKnds
   mapM_ addConstraint constrs
@@ -174,7 +174,7 @@ annotTy (RST.TyRecVar loc pol tv) = do
     Just pk -> return $ TST.TyRecVar loc pol pk tv
 annotTy (RST.TyData loc pol xtors) = do 
   let xtnms = map (\x -> x.sig_name) xtors
-  xtorKinds <- mapM lookupXtorKind xtnms
+  xtorKinds <- mapM (lookupXtorKind loc) xtnms
   let allEq = compXtorKinds xtorKinds
   case allEq of 
     Nothing -> throwOtherError loc ["Not all xtors have the same return kind"]
@@ -188,7 +188,7 @@ annotTy (RST.TyData loc pol xtors) = do
     compXtorKinds (xtor1:xtor2:rst) = if xtor1==xtor2 then compXtorKinds (xtor2:rst) else Nothing
 annotTy (RST.TyCodata loc pol xtors) = do 
   let xtnms = map (\x -> x.sig_name) xtors
-  xtorKinds <- mapM lookupXtorKind xtnms
+  xtorKinds <- mapM (lookupXtorKind loc) xtnms
   let allEq = compXtorKinds xtorKinds
   case allEq of 
     Nothing -> throwOtherError loc ["Not all xtors have the same return kind"]
@@ -468,23 +468,23 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyData loc pol xtors) = do 
     xtors' <- mapM annotateKind xtors
     eo <- getXtorKinds loc xtors
-    mapM_ (checkXtorKind eo) xtors'
+    mapM_ (checkXtorKind loc eo) xtors'
     return (TST.TyData loc pol eo xtors')
 
   annotateKind (RST.TyCodata loc pol xtors) = do  
     xtors' <- mapM annotateKind xtors
     eo <- getXtorKinds loc xtors
-    mapM_ (checkXtorKind eo) xtors'
+    mapM_ (checkXtorKind loc eo) xtors'
     return (TST.TyCodata loc pol eo xtors')
  
   annotateKind (RST.TyDataRefined loc pol pknd tyn xtors) = do 
     xtors' <- mapM annotateKind xtors
-    mapM_ (checkXtorKind pknd.returnKind) xtors'
+    mapM_ (checkXtorKind loc pknd.returnKind) xtors'
     return (TST.TyDataRefined loc pol pknd tyn xtors')
 
   annotateKind (RST.TyCodataRefined loc pol pknd tyn xtors) = do
     xtors' <- mapM annotateKind xtors
-    mapM_ (checkXtorKind pknd.returnKind) xtors'
+    mapM_ (checkXtorKind loc pknd.returnKind) xtors'
     return (TST.TyCodataRefined loc pol pknd tyn xtors')
 
   annotateKind (RST.TyApp _loc' _pol' (RST.TyNominal loc pol pknd tyn) args) = do 
@@ -523,7 +523,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       args' <- mapM annotateKind args
       let varArgs = zipWith (curry (\ ((x, _, y), z) -> (x, y, z))) pknd.kindArgs (NE.toList args')
       mapM_ (checkVariantType loc) varArgs 
-      mapM_ (checkXtorKind pknd.returnKind) xtors'
+      mapM_ (checkXtorKind loc pknd.returnKind) xtors'
       return (TST.TyApp loc pol (TST.TyDataRefined loc' pol' pknd tyn xtors') args')
  
   annotateKind (RST.TyApp loc pol (RST.TyCodataRefined loc' pol' pknd tyn xtors) args) = do 
@@ -534,7 +534,7 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
       args' <- mapM annotateKind args
       let varArgs = zipWith (curry (\ ((x, _, y), z) -> (x, y, z))) pknd.kindArgs (NE.toList args')
       mapM_ (checkVariantType loc) varArgs 
-      mapM_ (checkXtorKind pknd.returnKind) xtors'
+      mapM_ (checkXtorKind loc pknd.returnKind) xtors'
       return (TST.TyApp loc pol (TST.TyCodataRefined loc' pol' pknd tyn xtors') args')
    
   annotateKind (RST.TyApp loc _ ty _ ) = throwOtherError loc ["Types can only be applied to nominal or refinement types types, was applied to ", ppPrint ty]

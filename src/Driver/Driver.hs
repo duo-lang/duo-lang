@@ -285,11 +285,8 @@ inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
   let loc = decl.data_loc
   env <- gets (\x->x.drvEnv)
-  let xtorNames = map (\x -> x.sig_name) (fst decl.data_xtors)
-  let retKnd = decl.data_kind.returnKind 
-  let kndList = zip xtorNames (repeat retKnd) 
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
-  let f env = env { declEnv = (loc, decl') : env.declEnv, kindEnv = M.fromList (kndList ++ M.toList env.kindEnv) }
+  let f env = env { declEnv = (loc, decl') : env.declEnv}
   modifyEnvironment mn f
   pure (TST.DataDecl decl')
 
@@ -298,9 +295,8 @@ inferDecl mn (Core.DataDecl decl) = do
 --
 inferDecl _mn (Core.XtorDecl decl) = do
   -- check constructor kinds
-  let retKnd = decl.strxtordecl_evalOrder
   let xtornm = decl.strxtordecl_name
-  let f env = env { kindEnv = M.insert xtornm retKnd env.kindEnv, xtorEnv = M.insert xtornm decl env.xtorEnv}
+  let f env = env { xtorEnv = M.insert xtornm decl env.xtorEnv}
   modifyEnvironment _mn f
   pure (TST.XtorDecl decl)
 --

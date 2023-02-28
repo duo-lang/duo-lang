@@ -19,7 +19,7 @@ import Syntax.TST.Types ( TypeScheme, Typ, XtorSig(..) )
 import Syntax.TST.Program ( DataDecl(..), InstanceDeclaration )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), MethodSig (..), LinearContext)
 import Syntax.CST.Types( PrdCns(..), PrdCnsRep(..))
-import Syntax.CST.Kinds (EvaluationOrder)
+import Syntax.CST.Kinds (EvaluationOrder,PolyKind(..))
 import Loc ( Loc, defaultLoc )
 import qualified Syntax.RST.Program as RST
 
@@ -35,12 +35,11 @@ data Environment = MkEnvironment
   , instanceDeclEnv :: Map FreeVarName InstanceDeclaration
   , instanceEnv :: Map ClassName (Set (FreeVarName, Typ Pos, Typ Neg))
   , declEnv :: [(Loc,DataDecl)]
-  , kindEnv :: Map XtorName EvaluationOrder -- for each xtructor a return kind 
   , xtorEnv :: Map XtorName StructuralXtorDeclaration
   }
 
 emptyEnvironment :: Environment
-emptyEnvironment = MkEnvironment M.empty M.empty M.empty M.empty M.empty M.empty [] M.empty M.empty
+emptyEnvironment = MkEnvironment M.empty M.empty M.empty M.empty M.empty M.empty [] M.empty
 instance Show Environment where
   show :: Environment -> String
   show _ = "<Environment>"
@@ -189,11 +188,26 @@ lookupMethodType loc mn decl NegRep =
     Just msig -> pure msig.msig_args
 
 lookupXtorKind :: EnvReader a m
-             => XtorName -> m EvaluationOrder
-lookupXtorKind xtorn = do
-  let err = ErrOther $ SomeOtherError defaultLoc ("No Kinds for XTor " <> ppPrint xtorn)
-  let f env = M.lookup xtorn env.kindEnv
+             => Loc -> XtorName -> m EvaluationOrder
+lookupXtorKind loc xtorn = do
+  let err = ErrOther $ SomeOtherError loc ("No Kinds for XTor " <> ppPrint xtorn)
   snd <$> findFirstM f err
+  where 
+    containsXtor :: XtorSig Pos -> Bool
+    containsXtor sig = sig.sig_name == xtorn
+    typeContainsXtor :: DataDecl -> Bool
+    typeContainsXtor decl@NominalDecl {} | or (containsXtor <$> fst decl.data_xtors) = True
+                                                      | otherwise = False
+    typeContainsXtor decl@RefinementDecl {} | or (containsXtor <$> fst decl.data_xtors) = True
+                                                      | otherwise = False
+
+    f :: Environment -> Maybe EvaluationOrder
+    f env = 
+      case (find typeContainsXtor (fmap snd env.declEnv),M.lookup xtorn env.xtorEnv) of 
+       (Just decl,_) -> Just (decl.data_kind.returnKind); 
+       (_,Just xt) -> Just xt.strxtordecl_evalOrder; 
+       (Nothing,Nothing) -> Nothing 
+
 
 
 lookupStructuralXtor :: EnvReader a m
