@@ -105,7 +105,9 @@ xdataOrRefinementP Data = do
   sc
   case refinementargs of
     Nothing -> pure (TyXData (Loc startPos endPos) Data ctors, endPos)
-    Just (tn, rv) ->  pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
+    Just (tn, Nothing) -> pure (TyXRefined (Loc startPos endPos) Data tn ctors, endPos)
+    Just (tn, Just rv) -> pure (TyRec (Loc startPos endPos) rv (TyXRefined (Loc startPos endPos) Data tn ctors),endPos)
+
 xdataOrRefinementP Codata = do
   startPos <- getSourcePos
   symbolP SymBraceLeft
@@ -117,7 +119,8 @@ xdataOrRefinementP Codata = do
   sc
   case refinementargs of
     Nothing -> pure (TyXData (Loc startPos endPos) Codata dtors, endPos)
-    Just (tn, rv) -> pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
+    Just (tn, Nothing) -> pure (TyXRefined (Loc startPos endPos) Codata tn dtors, endPos)
+    Just (tn, Just rv) -> pure (TyRec (Loc startPos endPos) rv (TyXRefined (Loc startPos endPos) Codata tn dtors), endPos)
 
 
 ---------------------------------------------------------------------------------
