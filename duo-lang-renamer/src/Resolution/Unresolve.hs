@@ -579,14 +579,12 @@ instance Unresolve (RST.Typ pol) CST.Typ where
   unresolve (RST.TyCodata loc _ xtors) = do
     xtors' <- mapM unresolve xtors
     pure $ CST.TyXData loc CST.Codata xtors'
-  unresolve (RST.TyDataRefined loc _ _ tn mrv xtors) = do
+  unresolve (RST.TyDataRefined loc _ _ tn _ xtors) = do
     xtors' <- mapM unresolve xtors
-    let rv = fmap embedRecTVar mrv
-    pure $ CST.TyXRefined loc CST.Data tn.rnTnName rv xtors'
-  unresolve (RST.TyCodataRefined loc _ _ tn mrv xtors) = do
+    pure $ CST.TyXRefined loc CST.Data tn.rnTnName xtors'
+  unresolve (RST.TyCodataRefined loc _ _ tn _ xtors) = do
     xtors' <- mapM unresolve xtors
-    let rv = fmap embedRecTVar mrv
-    pure $ CST.TyXRefined loc CST.Codata tn.rnTnName rv xtors'
+    pure $ CST.TyXRefined loc CST.Codata tn.rnTnName xtors'
   unresolve (RST.TyApp loc _ ty args) = do 
     ty' <- unresolve ty
     args' <- mapM unresolve args
