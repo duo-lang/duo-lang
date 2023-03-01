@@ -17,7 +17,8 @@ import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
 import Pretty.Pretty
 import Syntax.TST.Types
-import Syntax.RST.Types (PolarityRep(..), Polarity(..), polarityRepToPol)
+import Syntax.RST.Types (PolarityRep(..), Polarity(..), polarityRepToPol, getTypeNames)
+import Translate.EmbedTST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.CST.Names
@@ -266,7 +267,7 @@ insertType (TySyn _ _ _ ty) = insertType ty
 
 insertType (TyApp _ _ ty args) = do 
   argNodes <- mapM insertVariantType args
-  let tyns = getTypeNames ty
+  let tyns = getTypeNames (embedTST ty)
   case tyns of 
     [] -> insertType ty
     _ -> do

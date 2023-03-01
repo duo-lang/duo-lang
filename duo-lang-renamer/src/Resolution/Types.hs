@@ -8,7 +8,6 @@ module Resolution.Types
 import Control.Monad.Except (throwError)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NE
 
@@ -75,50 +74,27 @@ resolveTyp rep (TyNominal loc name) = do
       pure $ RST.TyNominal loc rep polyknd name'
 
 --applied types 
-resolveTyp rep (TyApp loc ty@(TyNominal _loc tyn) args) = do 
-  res <- lookupTypeConstructor loc tyn
-  case res of 
-    SynonymResult _ _ -> throwError (UnknownResolutionError loc "Type synonmys cannot be applied to arguments (yet)")
-    NominalResult rtn _ CST.Refined _ -> throwError (UnknownResolutionError loc ("Refined type " <> T.pack (show rtn) <> " cannot be used as a nominal type constructor"))
-    NominalResult _tyn' _ CST.NotRefined polyknd -> do 
-      ty' <- resolveTyp rep ty
-      args' <- resolveTypeArgs loc rep tyn polyknd (NE.toList args)
-      case args' of 
-        [] -> pure ty'
-        (fst:rst) -> pure $ RST.TyApp loc rep ty' (fst:|rst)
-
-resolveTyp rep (TyApp loc (TySkolemVar loc' sk) args) = do
-  recVars <- asks (\x -> x.rr_ref_recVars)
-  let rv = skolemToRecRVar sk
-  case M.lookup rv recVars of 
-    Nothing -> throwError (UnknownResolutionError loc' "Types can't be applied to Skolem Variables")
-    Just (tn,pknd) -> do 
-      args'<- resolveTypeArgs loc rep tn pknd (NE.toList args)
-      let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst :| rst
-      pure $ RST.TyApp loc rep (RST.TyRecVar loc' rep rv) args''
-
-resolveTyp rep (TyApp loc (TyXRefined loc' Data tn sigs) args) = do 
-    NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-    sigs <- resolveXTorSigs rep sigs
-    args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
-    let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
-    pure $ RST.TyApp loc rep (RST.TyDataRefined loc' rep pknd tn' sigs) args''
-
-resolveTyp rep (TyApp loc (TyXRefined loc' Codata tn sigs) args) = do 
-    NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
-    sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
-    args' <- resolveTypeArgs loc rep tn pknd (NE.toList args)
-    let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
-    pure $ RST.TyApp loc rep (RST.TyCodataRefined loc' rep pknd tn' sigs) args''
-
-  
-resolveTyp rep (TyApp loc (TyKindAnnot mk ty) args) = do 
-  resolved <-  resolveTyp rep (TyApp loc ty args)
-  pure $ RST.TyKindAnnot mk resolved
-
-resolveTyp rep (TyApp loc (TyParens _ ty) args) = resolveTyp rep (TyApp loc ty args)
-
-resolveTyp _ (TyApp loc ty _) = throwError (UnknownResolutionError loc ("Types can only be applied to nominal and refinement types, was applied to\n" <> T.pack (show ty)))
+resolveTyp rep (TyApp loc ty args) = do 
+   ty' <- resolveTyp rep ty
+   let tyns = RST.getTypeNames ty'
+   case tyns of 
+     [] -> throwError (UnknownResolutionError loc "Types applied to neither Refinement nor Nominal tpye")
+     [tyn] -> do 
+       res <- lookupTypeConstructor loc tyn.rnTnName
+       case res of 
+         SynonymResult _ _ -> throwError (UnknownResolutionError loc "Type synonmys cannot be applied to arguments (yet)")
+         NominalResult _ _ CST.Refined pknd -> do 
+           args' <- resolveArgs loc rep tyn pknd args 
+           pure $ RST.TyApp loc rep ty' args'
+         NominalResult _tyn' _ CST.NotRefined pknd -> do 
+           args' <- resolveArgs loc rep tyn pknd args
+           pure $ RST.TyApp loc rep ty' args'
+     _ -> throwError (UnknownResolutionError loc "Ambiguous Type Application")
+  where 
+    resolveArgs loc rep tyn pknd args = do
+      args' <- resolveTypeArgs loc rep tyn.rnTnName pknd (NE.toList args)
+      let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
+      return args''
 
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v

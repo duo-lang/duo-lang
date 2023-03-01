@@ -340,8 +340,29 @@ instance FreeTVars (XtorSig pol) where
 generalize :: Typ pol -> TypeScheme pol
 generalize ty = TypeScheme defaultLoc (zip (S.toList $ freeTVars ty) (repeat Nothing)) ty
 
-
-
+-- used to get typename of application
+getTypeNames :: Typ pol -> [RnTypeName]
+getTypeNames TySkolemVar{} = []
+getTypeNames TyUniVar{} = []
+getTypeNames TyRecVar{} = []  
+getTypeNames TyData{} = []
+getTypeNames TyCodata{} = []
+getTypeNames (TyDataRefined _ _ _ tyn _) = [tyn]
+getTypeNames (TyCodataRefined _ _ _ tyn _) = [tyn]
+getTypeNames (TyNominal _ _ _ tyn) = [tyn]
+getTypeNames (TyApp _ _ ty _) = getTypeNames ty
+getTypeNames (TySyn _ _ tyn _) = [tyn]
+getTypeNames TyBot{} = []
+getTypeNames TyTop{} = []
+getTypeNames (TyUnion _ ty1 ty2) = getTypeNames ty1 ++ getTypeNames ty2
+getTypeNames (TyInter _ ty1 ty2) = getTypeNames ty1 ++ getTypeNames ty2
+getTypeNames (TyRec _ _ _ ty) = getTypeNames ty
+getTypeNames TyI64{} = []
+getTypeNames TyF64{} = []
+getTypeNames TyString{} = []
+getTypeNames TyChar{} = [] 
+getTypeNames (TyFlipPol _ ty) = getTypeNames ty
+getTypeNames (TyKindAnnot _ ty) = getTypeNames ty
 
 
 

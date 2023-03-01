@@ -411,7 +411,7 @@ runCompilationPlan compilationOrder = do
       sts <- getSymbolTables
       let helper :: (a -> a') -> (Either a b, c) -> (Either a' b, c)
           helper f (x,y) = (first f x, y)
-      resolvedDecls <- liftEitherErr(helper (\err -> ErrResolution err :| []) (runResolverM (ResolveReader sts mempty mempty) (resolveModule decls)))
+      resolvedDecls <- liftEitherErr(helper (\err -> ErrResolution err :| []) (runResolverM (ResolveReader sts mempty) (resolveModule decls)))
       -- 4. Desugar the program
       let desugaredProg = desugar resolvedDecls
       -- 5. Infer the declarations
