@@ -179,8 +179,8 @@ unifyKinds (MkPknd (MkPolyKind args1 eo1)) (MkPknd (MkPolyKind args2 eo2)) = do
   where 
     compArgs ::[(Variance, SkolemTVar, MonoKind)] ->[(Variance, SkolemTVar, MonoKind)] -> SolverM ()
     compArgs [] [] = return () 
-    compArgs _ [] = return () --throwSolverError defaultLoc ["Numbers of type arguments don't match"]
-    compArgs [] _ = return () --throwSolverError defaultLoc ["Numbers of type arguments don't match"]
+    compArgs _ [] = throwSolverError defaultLoc ["Numbers of type arguments don't match"]
+    compArgs [] _ = throwSolverError defaultLoc ["Numbers of type arguments don't match"]
     compArgs ((var1,sk1,mk1):rst1) ((var2,sk2,mk2):rst2) = 
       if var1 == var2 && mk1 == mk2 then 
         compArgs rst1 rst2 

@@ -37,6 +37,7 @@ data ConstraintInfo
   | RefinementSubConstraint
   | ApplicationSubConstraint
   | KindConstraint
+  | ReturnKindConstraint
   | ClassResolutionConstraint
   deriving (Show)
 
