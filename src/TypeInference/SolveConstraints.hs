@@ -129,6 +129,9 @@ solve (cs:css) = do
       (KindEq _ k1 k2) -> do
         unifyKinds k1 k2
         solve css
+      (ReturnKind _ knd eo) -> do
+        unifyRetKnd knd eo
+        solve css
       (SubType _ ty@(TyUniVar _ PosRep _ uvl) tvu@(TyUniVar _ NegRep _ uvu)) ->
         if uvl == uvu
         then addToCache cs (Refl ty tvu) >> solve css
@@ -155,6 +158,11 @@ solve (cs:css) = do
 ------------------------------------------------------------------------------
 -- Kind Inference
 ------------------------------------------------------------------------------
+
+unifyRetKnd :: AnyKind -> EvaluationOrder -> SolverM () 
+unifyRetKnd (MkPknd (MkPolyKind _ eo)) eo' = if eo == eo' then return () else throwSolverError defaultLoc ["EvaluationOrders " <> ppPrint eo <> " and " <> ppPrint eo' <> " do not match"]
+unifyRetKnd (MkPknd (KindVar kv)) eo = return () -- this is not correct yet
+unifyRetKnd primK eo = throwSolverError defaultLoc ["Kinds " <> ppPrint primK <> " and " <> ppPrint eo <> " don't match"]
 
 partitionM :: [([KVar], Maybe AnyKind)] -> KVar -> SolverM (([KVar], Maybe AnyKind),[([KVar], Maybe AnyKind)])
 partitionM sets kv = do
@@ -438,6 +446,7 @@ subConstraints (SubType info t1 t2) = do
 -- type class constraints should only be resolved after subtype constraints
 subConstraints TypeClass{} = throwSolverError defaultLoc ["subContraints should not be called on type class Constraints"]
 subConstraints KindEq{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
+subConstraints ReturnKind{} = throwSolverError defaultLoc ["subConstraints should not be calledo n Kind Equality constraints"]
 
 -- | Substitute cached witnesses for generated subtyping witness variables.
 substitute :: ReaderT (Set (Constraint ())) SolverM ()
