@@ -42,11 +42,11 @@ getXtorKinds loc [xtor] = do
   lookupXtorKind loc nm 
 getXtorKinds loc (xtor:xtors) = do 
   let nm = xtor.sig_name
-  mk <- lookupXtorKind loc nm
-  mk' <- getXtorKinds loc xtors
+  eo <- lookupXtorKind loc nm
+  eo' <- getXtorKinds loc xtors
   -- all constructors of a structural type need to have the same return kind
-  addConstraint (KindEq ReturnKindConstraint (MkPknd $ MkPolyKind [] mk) (MkPknd $ MkPolyKind [] mk'))
-  return mk
+  addConstraint (KindEq ReturnKindConstraint (MkEo eo) (MkEo eo'))
+  return eo
   
 getKindDecl ::  TST.DataDecl -> GenM (MonoKind,[MonoKind])
 getKindDecl decl = do
@@ -57,11 +57,11 @@ getKindDecl decl = do
 
 checkXtorKind :: Loc -> EvaluationOrder -> TST.XtorSig pol -> GenM () 
 checkXtorKind loc eo xtor = do 
-  xtorKnd <- lookupXtorKind loc (xtor.sig_name)
+  xtorEo <- lookupXtorKind loc (xtor.sig_name)
   let sigKnds = map TST.getKind (xtor.sig_args)
-  let constrs = map (KindEq ReturnKindConstraint (MkPknd (MkPolyKind [] xtorKnd))) sigKnds
+  let constrs = map (KindEq ReturnKindConstraint (MkEo xtorEo)) sigKnds
   mapM_ addConstraint constrs
-  addConstraint $ KindEq ReturnKindConstraint (MkPknd $ MkPolyKind [] xtorKnd) (MkPknd $ MkPolyKind [] eo)
+  addConstraint $ KindEq ReturnKindConstraint (MkEo xtorEo) (MkEo eo)
   return ()
 
 checkVariantType :: Loc -> (Variance,MonoKind,TST.VariantType pol) -> GenM ()
