@@ -20,7 +20,7 @@ import Pretty.Types ()
 import Pretty.Terms ()
 import Syntax.CST.Names
     ( MethodName, ClassName, RnTypeName(rnTnDoc) )
-import Syntax.CST.Kinds ( MonoKind )
+import Syntax.CST.Kinds ( MonoKind,AnyKind )
 import Syntax.CST.Types ( PrdCnsRep(..), DataCodata(..), PrdCns(..))
 import Syntax.TST.Terms
     ( Command(Method, Print, Read, Jump, ExitSuccess, ExitFailure,
@@ -242,7 +242,7 @@ instance ToHoverMap PrdCnsTerm where
   toHoverMap (PrdTerm tm) = toHoverMap tm
   toHoverMap (CnsTerm tm) = toHoverMap tm
 
-applyToHoverMap :: Range -> MonoKind -> HoverMap
+applyToHoverMap :: Range -> AnyKind -> HoverMap
 applyToHoverMap rng cc = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
 instance ToHoverMap TST.Command where

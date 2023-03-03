@@ -96,7 +96,7 @@ dualCmd :: Command -> DualizeM Command
 dualCmd (Apply _ annot kind prd cns) = do
   t1 <- dualTerm cns
   t2 <- dualTerm prd
-  pure $ Apply defaultLoc (dualApplyAnnot annot) (dualMonoKind kind) t1 t2
+  pure $ Apply defaultLoc (dualApplyAnnot annot) (dualAnyKind kind) t1 t2
 dualCmd (Print loc _ _) =
   throwDualizeError (DualPrint loc "Cannot dualize Print command")
 dualCmd (Read loc _)  =
@@ -170,9 +170,6 @@ dualMuAnnot MuAnnotCocaseOf = MuAnnotCaseOf
 ------------------------------------------------------------------------------
 -- Kinds
 ------------------------------------------------------------------------------
-
-dualMonoKind :: MonoKind -> MonoKind
-dualMonoKind mk = mk
 
 dualEvaluationOrder :: EvaluationOrder -> EvaluationOrder 
 dualEvaluationOrder eo = eo

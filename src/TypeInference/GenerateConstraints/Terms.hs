@@ -360,16 +360,7 @@ instance GenConstraints Core.Command TST.Command where
     let ty2 = TST.getTypeTerm t2'
     addConstraint (SubType (CommandConstraint loc) ty1 ty2)
     addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2)
-    knd <- anyToMonoKind loc (TST.getKind ty1)
-    pure (TST.Apply loc annot knd t1' t2')
-    where 
-      anyToMonoKind :: Loc -> AnyKind -> GenM MonoKind
-      anyToMonoKind loc (MkPknd _) = throwOtherError loc ["Apply can only have monokind"]
-      anyToMonoKind _ (MkEo eo) = return $ CBox eo 
-      anyToMonoKind _ MkI64 = return I64Rep
-      anyToMonoKind _ MkF64 = return F64Rep
-      anyToMonoKind _ MkChar = return CharRep
-      anyToMonoKind _ MkString = return StringRep
+    pure (TST.Apply loc annot (TST.getKind ty1) t1' t2')
 
   genConstraints (Core.PrimOp loc op subst) = do
     substInferred <- genConstraints subst
