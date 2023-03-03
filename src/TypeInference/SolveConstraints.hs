@@ -170,7 +170,13 @@ unifyKinds (MkEo eo) (MkEo eo') =
   else  
     throwSolverError defaultLoc ["EvaluationOrders " <> ppPrint eo <> " and " <> ppPrint eo' <> " do not match"]
 unifyKinds (MkEo eo) (MkPknd (MkPolyKind _ eo')) = unifyKinds (MkEo eo) (MkEo eo')
-unifyKinds (MkEo eo) (MkPknd (KindVar kv)) = return () -- this is not done yet
+unifyKinds (MkEo eo) (MkPknd (KindVar kv)) = do
+  sets <- getKVars
+  ((_,pk1),_) <- partitionM sets kv
+  case pk1 of 
+    Nothing -> return () -- this is not done yet
+    Just (MkPknd (MkPolyKind [] eo')) -> unifyKinds (MkEo eo) (MkEo eo')
+    Just primk -> throwSolverError defaultLoc ["Can't unify kinds " <> ppPrint primk <> " and " <> ppPrint eo]
 unifyKinds (MkEo eo) primK = throwSolverError defaultLoc ["Kinds " <> ppPrint eo <> " and " <> ppPrint primK <> "don't match"]
 unifyKinds knd (MkEo eo) = unifyKinds (MkEo eo) knd
 --unifyKinds ReturnKindConstraint primK pk = throwSolverError defaultLoc ["Kinds " <> ppPrint primK <> " and " <> ppPrint pk <> " don't match"]
