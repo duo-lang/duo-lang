@@ -126,8 +126,8 @@ solve (cs:css) = do
   cacheHit <- inCache cs
   if cacheHit then solve css else
     case cs of
-      (KindEq info k1 k2) -> do
-        unifyKinds info k1 k2
+      (KindEq _ k1 k2) -> do
+        unifyKinds k1 k2
         solve css
       (SubType _ ty@(TyUniVar _ PosRep _ uvl) tvu@(TyUniVar _ NegRep _ uvu)) ->
         if uvl == uvu
@@ -163,12 +163,19 @@ partitionM sets kv = do
     ([fst],rest) -> pure (fst, rest)
     (_:_:_,_) -> throwSolverError defaultLoc ["Kind variable occurs in more than one equivalence class: " <> ppPrint kv]
 
-unifyKinds :: ConstraintInfo -> AnyKind -> AnyKind -> SolverM ()
-unifyKinds ReturnKindConstraint (MkPknd (MkPolyKind _ eo)) (MkPknd (MkPolyKind _ eo')) = if eo == eo' then return () else throwSolverError defaultLoc ["EvaluationOrders " <> ppPrint eo <> " and " <> ppPrint eo' <> " do not match"]
-unifyKinds ReturnKindConstraint (MkPknd (KindVar kv)) (MkPknd (MkPolyKind _ eo)) = return () -- this is not correct yet
-unifyKinds ReturnKindConstraint primK pk = throwSolverError defaultLoc ["Kinds " <> ppPrint primK <> " and " <> ppPrint pk <> " don't match"]
+unifyKinds :: AnyKind -> AnyKind -> SolverM ()
+unifyKinds (MkEo eo) (MkEo eo') = 
+  if eo == eo' then 
+    return () 
+  else  
+    throwSolverError defaultLoc ["EvaluationOrders " <> ppPrint eo <> " and " <> ppPrint eo' <> " do not match"]
+unifyKinds (MkEo eo) (MkPknd (MkPolyKind _ eo')) = unifyKinds (MkEo eo) (MkEo eo')
+unifyKinds (MkEo eo) (MkPknd (KindVar kv)) = return () -- this is not done yet
+unifyKinds (MkEo eo) primK = throwSolverError defaultLoc ["Kinds " <> ppPrint eo <> " and " <> ppPrint primK <> "don't match"]
+unifyKinds knd (MkEo eo) = unifyKinds (MkEo eo) knd
+--unifyKinds ReturnKindConstraint primK pk = throwSolverError defaultLoc ["Kinds " <> ppPrint primK <> " and " <> ppPrint pk <> " don't match"]
 
-unifyKinds _ (MkPknd (MkPolyKind args1 eo1)) (MkPknd (MkPolyKind args2 eo2)) = do
+unifyKinds (MkPknd (MkPolyKind args1 eo1)) (MkPknd (MkPolyKind args2 eo2)) = do
   if eo1 == eo2
     then compArgs args1 args2
     else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint eo1 <> " and " <> ppPrint eo2]
@@ -181,7 +188,7 @@ unifyKinds _ (MkPknd (MkPolyKind args1 eo1)) (MkPknd (MkPolyKind args2 eo2)) = d
       if var1 == var2 && mk1 == mk2 then 
         compArgs rst1 rst2 
         else throwSolverError defaultLoc ["Arguments " <> ppPrint var1 <> " " <> ppPrint sk1 <> ":"<> ppPrint mk1 <> " and " <> ppPrint var2 <> " " <> ppPrint sk2 <> ":" <> ppPrint mk2 <> " don't match"]
-unifyKinds _ (MkPknd (KindVar kv1)) (MkPknd (KindVar kv2)) = 
+unifyKinds (MkPknd (KindVar kv1)) (MkPknd (KindVar kv2)) = 
   if kv1 == kv2 then return () else do
   sets <- getKVars
   ((kvset1,pk1),rest1) <- partitionM sets kv1
@@ -197,20 +204,20 @@ unifyKinds _ (MkPknd (KindVar kv1)) (MkPknd (KindVar kv2)) =
         putKVars $ (newSet,pk2):rest2
       (Just pk1, Just pk2) | pk1 == pk2 -> putKVars $ (newSet, Just pk1) :rest2
                            | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint pk1 <> " and " <> ppPrint pk2]
-unifyKinds info (MkPknd (KindVar kv)) kind = do
+unifyKinds (MkPknd (KindVar kv)) kind = do
   sets <- getKVars
   ((kvset,mk),rest) <- partitionM sets kv
   case mk of
     Nothing -> putKVars $ (kvset, Just kind):rest
     Just pk -> do 
-      unifyKinds info kind pk
+      unifyKinds kind pk
       return ()
-unifyKinds info kind (MkPknd (KindVar kv)) = unifyKinds info (MkPknd (KindVar kv)) kind
-unifyKinds _ MkI64 MkI64 = return () 
-unifyKinds _ MkF64 MkF64 = return () 
-unifyKinds _ MkChar MkChar = return () 
-unifyKinds _ MkString MkString = return () 
-unifyKinds _ knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1 <> " and " <> ppPrint knd2]
+unifyKinds kind (MkPknd (KindVar kv)) = unifyKinds (MkPknd (KindVar kv)) kind
+unifyKinds MkI64 MkI64 = return () 
+unifyKinds MkF64 MkF64 = return () 
+unifyKinds MkChar MkChar = return () 
+unifyKinds MkString MkString = return () 
+unifyKinds knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1 <> " and " <> ppPrint knd2]
 
 computeKVarSolution :: KindPolicy
                     -> Maybe (KVar, AnyKind)
