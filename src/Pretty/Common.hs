@@ -26,7 +26,6 @@ import Syntax.CST.Types (Arity, PrdCns(..))
 import Syntax.CST.Kinds
     ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), KindedSkolem, MaybeKindedSkolem, AnyKind(..))
 import Loc ( Loc(..) )
-import Data.Foldable (fold)
 import Data.List (intersperse)
 
 
@@ -69,7 +68,7 @@ instance PrettyAnn FreeVarName where
   prettyAnn (MkFreeVarName nm) = prettyAnn nm
 
 instance PrettyAnn ModuleName where
-  prettyAnn (MkModuleName p nm) = fold (prettyAnn <$> intersperse "." (p  ++ [nm]))
+  prettyAnn (MkModuleName p nm) = foldMap prettyAnn (intersperse "." (p ++ [nm]))
 
 instance PrettyAnn UniTVar where
   prettyAnn (MkUniTVar tv) = prettyAnn tv
@@ -150,6 +149,7 @@ instance PrettyAnn PolyKind where
 
 instance PrettyAnn AnyKind where 
   prettyAnn (MkPknd pk) = prettyAnn pk
+  prettyAnn (MkEo eo) = prettyAnn eo
   prettyAnn MkI64 = prettyAnn I64Rep
   prettyAnn MkF64 = prettyAnn F64Rep
   prettyAnn MkChar = prettyAnn CharRep

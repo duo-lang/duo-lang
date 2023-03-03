@@ -57,7 +57,6 @@ import Syntax.TST.Program as TST
 import TypeInference.Constraints
 import Loc ( Loc, defaultLoc )
 import Utils ( indexMaybe )
-import Pretty.Pretty
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -255,19 +254,19 @@ lookupContext loc rep idx@(i,j) = do
 instantiateTypeScheme :: FreeVarName -> Loc -> TST.TypeScheme pol -> GenM (TST.Typ pol)
 instantiateTypeScheme fv loc ts = do 
   freshVars <- forM ts.ts_vars (\(tv,knd) -> freshTVar (TypeSchemeInstance fv loc) (Just $ MkPknd knd) >>= \ty -> return (tv, ty))
-  mapM_ (addKindConstr loc ts.ts_monotype) freshVars
+-- I think this is not needed, as the constarints are already generated before this is called
+--  mapM_ (addKindConstr loc (TST.getKind ts.ts_monotype)) (map snd freshVars)
   pure $ TST.zonk TST.SkolemRep (TST.MkBisubstitution (M.fromList freshVars)) ts.ts_monotype
-  where 
-    addKindConstr :: Loc -> TST.Typ pol -> (SkolemTVar, (TST.Typ Pos, TST.Typ Neg)) -> GenM () 
-    addKindConstr loc ty (_,(typos,tyneg)) =  
-      case (TST.getKind ty, TST.getKind typos, TST.getKind tyneg) of 
-        (MkPknd pk1, MkPknd pk2, MkPknd pk3) -> do
-          addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk2)
-          addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk3)
-          return () 
-        (primk1, primk2, primk3) -> 
-          if primk1 == primk2 && primk1 == primk3 then return () 
-          else throwOtherError loc ["Kinds " <> ppPrint (TST.getKind ty) <> " and " <> ppPrint (TST.getKind typos) <> " don't match"]
+--  where 
+--    addKindConstr :: Loc -> AnyKind -> (TST.Typ Pos, TST.Typ Neg) -> GenM () 
+--      case (TST.getKind ty, TST.getKind typos, TST.getKind tyneg) of 
+--        (MkPknd pk1, MkPknd pk2, MkPknd pk3) -> do
+--          addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk2)
+--          addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk3)
+--          return () 
+--        (primk1, primk2, primk3) -> 
+--          if primk1 == primk2 && primk1 == primk3 then return () 
+--         else throwOtherError loc ["Kinds " <> ppPrint (TST.getKind ty) <> " and " <> ppPrint (TST.getKind typos) <> " don't match"]
         
 
 ---------------------------------------------------------------------------------------------

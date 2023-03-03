@@ -67,25 +67,17 @@ deriving instance (Eq PolyKind)
 deriving instance (Ord PolyKind)
 
 --either polykind or primitive kind
-data AnyKind = MkPknd PolyKind | MkI64 | MkF64 | MkChar | MkString 
+data AnyKind = MkPknd PolyKind | MkEo EvaluationOrder | MkI64 | MkF64 | MkChar | MkString 
 deriving instance (Show AnyKind)
 deriving instance (Eq AnyKind)
 deriving instance (Ord AnyKind)
 
 monoToAnyKind :: MonoKind -> AnyKind
-monoToAnyKind (CBox eo) = MkPknd (MkPolyKind [] eo)
+monoToAnyKind (CBox eo) = MkEo eo
 monoToAnyKind I64Rep = MkI64
 monoToAnyKind F64Rep = MkF64
 monoToAnyKind CharRep = MkChar
 monoToAnyKind StringRep = MkString
-
-anyToMonoKind :: AnyKind -> MonoKind 
-anyToMonoKind (MkPknd (MkPolyKind _ eo)) = CBox eo
-anyToMonoKind MkI64 = I64Rep
-anyToMonoKind MkF64 = F64Rep
-anyToMonoKind MkChar = CharRep
-anyToMonoKind MkString = StringRep
-anyToMonoKind _ = error "should never happen"
 
 allTypeVars :: PolyKind -> Set SkolemTVar
 allTypeVars pk@MkPolyKind{} = S.fromList ((\(_,var,_) -> var) <$> pk.kindArgs)

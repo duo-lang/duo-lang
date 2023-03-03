@@ -56,8 +56,6 @@ instance PrettyAnn UVarProvenance where
 instance (PrettyAnn a) => PrettyAnn (Constraint a) where
   prettyAnn (KindEq ann k1 k2) =
     prettyAnn k1 <+> "~" <+> prettyAnn k2 <+> prettyAnn ann
-  prettyAnn (ReturnKind ann knd eo) =
-    prettyAnn knd <+> " returns " <+> prettyAnn eo <+> prettyAnn ann
   prettyAnn (SubType ann t1 t2) =
     prettyAnn t1 <+> "<:" <+> prettyAnn t2 <+> prettyAnn ann
   prettyAnn (TypeClass ann cn typ) =

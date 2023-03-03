@@ -126,11 +126,8 @@ solve (cs:css) = do
   cacheHit <- inCache cs
   if cacheHit then solve css else
     case cs of
-      (KindEq _ k1 k2) -> do
-        unifyKinds k1 k2
-        solve css
-      (ReturnKind _ knd eo) -> do
-        unifyRetKnd knd eo
+      (KindEq info k1 k2) -> do
+        unifyKinds info k1 k2
         solve css
       (SubType _ ty@(TyUniVar _ PosRep _ uvl) tvu@(TyUniVar _ NegRep _ uvu)) ->
         if uvl == uvu
@@ -159,11 +156,6 @@ solve (cs:css) = do
 -- Kind Inference
 ------------------------------------------------------------------------------
 
-unifyRetKnd :: AnyKind -> EvaluationOrder -> SolverM () 
-unifyRetKnd (MkPknd (MkPolyKind _ eo)) eo' = if eo == eo' then return () else throwSolverError defaultLoc ["EvaluationOrders " <> ppPrint eo <> " and " <> ppPrint eo' <> " do not match"]
-unifyRetKnd (MkPknd (KindVar kv)) eo = return () -- this is not correct yet
-unifyRetKnd primK eo = throwSolverError defaultLoc ["Kinds " <> ppPrint primK <> " and " <> ppPrint eo <> " don't match"]
-
 partitionM :: [([KVar], Maybe AnyKind)] -> KVar -> SolverM (([KVar], Maybe AnyKind),[([KVar], Maybe AnyKind)])
 partitionM sets kv = do
   case partition (\x -> kv `elem` fst x) sets of
@@ -171,8 +163,12 @@ partitionM sets kv = do
     ([fst],rest) -> pure (fst, rest)
     (_:_:_,_) -> throwSolverError defaultLoc ["Kind variable occurs in more than one equivalence class: " <> ppPrint kv]
 
-unifyKinds :: AnyKind -> AnyKind -> SolverM ()
-unifyKinds (MkPknd (MkPolyKind args1 eo1)) (MkPknd (MkPolyKind args2 eo2)) = do
+unifyKinds :: ConstraintInfo -> AnyKind -> AnyKind -> SolverM ()
+unifyKinds ReturnKindConstraint (MkPknd (MkPolyKind _ eo)) (MkPknd (MkPolyKind _ eo')) = if eo == eo' then return () else throwSolverError defaultLoc ["EvaluationOrders " <> ppPrint eo <> " and " <> ppPrint eo' <> " do not match"]
+unifyKinds ReturnKindConstraint (MkPknd (KindVar kv)) (MkPknd (MkPolyKind _ eo)) = return () -- this is not correct yet
+unifyKinds ReturnKindConstraint primK pk = throwSolverError defaultLoc ["Kinds " <> ppPrint primK <> " and " <> ppPrint pk <> " don't match"]
+
+unifyKinds _ (MkPknd (MkPolyKind args1 eo1)) (MkPknd (MkPolyKind args2 eo2)) = do
   if eo1 == eo2
     then compArgs args1 args2
     else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint eo1 <> " and " <> ppPrint eo2]
@@ -185,7 +181,7 @@ unifyKinds (MkPknd (MkPolyKind args1 eo1)) (MkPknd (MkPolyKind args2 eo2)) = do
       if var1 == var2 && mk1 == mk2 then 
         compArgs rst1 rst2 
         else throwSolverError defaultLoc ["Arguments " <> ppPrint var1 <> " " <> ppPrint sk1 <> ":"<> ppPrint mk1 <> " and " <> ppPrint var2 <> " " <> ppPrint sk2 <> ":" <> ppPrint mk2 <> " don't match"]
-unifyKinds (MkPknd (KindVar kv1)) (MkPknd (KindVar kv2)) = 
+unifyKinds _ (MkPknd (KindVar kv1)) (MkPknd (KindVar kv2)) = 
   if kv1 == kv2 then return () else do
   sets <- getKVars
   ((kvset1,pk1),rest1) <- partitionM sets kv1
@@ -201,20 +197,20 @@ unifyKinds (MkPknd (KindVar kv1)) (MkPknd (KindVar kv2)) =
         putKVars $ (newSet,pk2):rest2
       (Just pk1, Just pk2) | pk1 == pk2 -> putKVars $ (newSet, Just pk1) :rest2
                            | otherwise -> throwSolverError defaultLoc ["Cannot unify incompatiple kinds: " <> ppPrint pk1 <> " and " <> ppPrint pk2]
-unifyKinds (MkPknd (KindVar kv)) kind = do
+unifyKinds info (MkPknd (KindVar kv)) kind = do
   sets <- getKVars
   ((kvset,mk),rest) <- partitionM sets kv
   case mk of
     Nothing -> putKVars $ (kvset, Just kind):rest
     Just pk -> do 
-      unifyKinds kind pk
+      unifyKinds info kind pk
       return ()
-unifyKinds kind (MkPknd (KindVar kv)) = unifyKinds (MkPknd (KindVar kv)) kind
-unifyKinds MkI64 MkI64 = return () 
-unifyKinds MkF64 MkF64 = return () 
-unifyKinds MkChar MkChar = return () 
-unifyKinds MkString MkString = return () 
-unifyKinds knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1 <> " and " <> ppPrint knd2]
+unifyKinds info kind (MkPknd (KindVar kv)) = unifyKinds info (MkPknd (KindVar kv)) kind
+unifyKinds _ MkI64 MkI64 = return () 
+unifyKinds _ MkF64 MkF64 = return () 
+unifyKinds _ MkChar MkChar = return () 
+unifyKinds _ MkString MkString = return () 
+unifyKinds _ knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1 <> " and " <> ppPrint knd2]
 
 computeKVarSolution :: KindPolicy
                     -> Maybe (KVar, AnyKind)
@@ -446,7 +442,6 @@ subConstraints (SubType info t1 t2) = do
 -- type class constraints should only be resolved after subtype constraints
 subConstraints TypeClass{} = throwSolverError defaultLoc ["subContraints should not be called on type class Constraints"]
 subConstraints KindEq{} = throwSolverError defaultLoc ["subContraints should not be called on Kind Equality Constraints"]
-subConstraints ReturnKind{} = throwSolverError defaultLoc ["subConstraints should not be calledo n Kind Equality constraints"]
 
 -- | Substitute cached witnesses for generated subtyping witness variables.
 substitute :: ReaderT (Set (Constraint ())) SolverM ()

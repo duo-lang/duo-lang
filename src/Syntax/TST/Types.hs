@@ -414,6 +414,7 @@ instance ZonkKind PolyKind where
   zonkKind bisubst kindV@(KindVar kv) = case M.lookup kv bisubst of
     Nothing -> kindV
     Just (MkPknd pk) -> pk
+    Just (MkEo eo) -> MkPolyKind [] eo
     Just _ -> error "should never happen"
   zonkKind _ pk = pk
 

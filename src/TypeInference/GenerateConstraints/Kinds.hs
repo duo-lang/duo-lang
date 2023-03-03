@@ -45,7 +45,7 @@ getXtorKinds loc (xtor:xtors) = do
   mk <- lookupXtorKind loc nm
   mk' <- getXtorKinds loc xtors
   -- all constructors of a structural type need to have the same return kind
-  addConstraint (KindEq KindConstraint (MkPknd $ MkPolyKind [] mk) (MkPknd $ MkPolyKind [] mk'))
+  addConstraint (KindEq ReturnKindConstraint (MkPknd $ MkPolyKind [] mk) (MkPknd $ MkPolyKind [] mk'))
   return mk
   
 getKindDecl ::  TST.DataDecl -> GenM (MonoKind,[MonoKind])
@@ -59,9 +59,9 @@ checkXtorKind :: Loc -> EvaluationOrder -> TST.XtorSig pol -> GenM ()
 checkXtorKind loc eo xtor = do 
   xtorKnd <- lookupXtorKind loc (xtor.sig_name)
   let sigKnds = map TST.getKind (xtor.sig_args)
-  let constrs = map (KindEq KindConstraint (MkPknd (MkPolyKind [] xtorKnd))) sigKnds
+  let constrs = map (KindEq ReturnKindConstraint (MkPknd (MkPolyKind [] xtorKnd))) sigKnds
   mapM_ addConstraint constrs
-  addConstraint $ KindEq KindConstraint (MkPknd $ MkPolyKind [] xtorKnd) (MkPknd $ MkPolyKind [] eo)
+  addConstraint $ KindEq ReturnKindConstraint (MkPknd $ MkPolyKind [] xtorKnd) (MkPknd $ MkPolyKind [] eo)
   return ()
 
 checkVariantType :: Loc -> (Variance,MonoKind,TST.VariantType pol) -> GenM ()
@@ -241,7 +241,7 @@ annotTy (RST.TyUnion loc ty1 ty2) = do
   if knd1 == knd2 then
     return $ TST.TyUnion loc knd1 ty1' ty2'
   else 
-    throwOtherError loc ["Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2 <> " of union are not compatible"]
+    throwOtherError loc ["Kinds " <> T.pack (show knd1) <> " and " <> T.pack (show knd2) <> " of union are not compatible"]
 annotTy (RST.TyInter loc ty1 ty2) = do 
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
@@ -250,7 +250,7 @@ annotTy (RST.TyInter loc ty1 ty2) = do
   if knd1 == knd2 then
     return $ TST.TyInter loc knd1 ty1' ty2'
   else 
-    throwOtherError loc ["Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2 <> " of union are not compatible"]
+    throwOtherError loc ["Kinds " <> T.pack (show  knd1) <> " and " <> T.pack (show knd2) <> " of union are not compatible"]
 annotTy (RST.TyRec loc pol rv ty) = case ty of 
   RST.TyDataRefined loc' pol' pknd tyn xtors -> do 
     addRecVar rv pknd
@@ -274,7 +274,7 @@ annotTy (RST.TyKindAnnot mk ty) = do
   if getKind ty' == monoToAnyKind mk then
     return ty'
   else 
-    throwOtherError (getLoc ty') ["Annotated Kind " <> ppPrint mk <> " and inferred kind " <> ppPrint (getKind ty') <> " are not compatible"]
+    throwOtherError (getLoc ty') ["Annotated Kind " <> T.pack (show mk) <> " and inferred kind " <> T.pack (show (getKind ty')) <> " are not compatible"]
 
 -- | Given the polarity (data/codata) and the name of a type, compute the empty refinement of that type.
 -- Example:
