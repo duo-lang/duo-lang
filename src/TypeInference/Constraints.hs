@@ -27,6 +27,9 @@ data ConstraintInfo
   | RecursionConstraint        -- ^ Constraint corresponds to typechecking of recursive function.
   | PrimOpArgsConstraint Loc   -- ^ Constraint for checking that args of primitive operation have correct type
   | TypeClassConstraint Loc    -- ^ Constraint for checking that type class instance for type exists.
+  | KindConstraint             -- ^ Constraint for kind equalities
+  | ReturnKindConstraint       -- ^ Constraint for matching return kinds
+  | TypeArgKindConstraint      -- ^ Constraint for type arguments
   -- Derived constraints generated during constraing solving
   | UpperBoundConstraint
   | LowerBoundConstraint
@@ -36,8 +39,6 @@ data ConstraintInfo
   | NominalSubConstraint
   | RefinementSubConstraint
   | ApplicationSubConstraint
-  | KindConstraint
-  | ReturnKindConstraint
   | ClassResolutionConstraint
   deriving (Show)
 

@@ -31,6 +31,7 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn (TypeClassConstraint loc) = parens ("Type class constraint at" <+> prettyAnn loc)
   prettyAnn KindConstraint = parens "Kind Constraint"
   prettyAnn ReturnKindConstraint = parens "Return Kind Constraint"
+  prettyAnn TypeArgKindConstraint = parens "Type Argument Kind Constraint"
   -- Derived Constraints
   prettyAnn UpperBoundConstraint           = parens "UpperBound"
   prettyAnn LowerBoundConstraint           = parens "LowerBound"

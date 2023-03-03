@@ -64,17 +64,26 @@ checkXtorKind loc eo xtor = do
   addConstraint $ KindEq ReturnKindConstraint (MkEo xtorEo) (MkEo eo)
   return ()
 
-checkVariantType :: Loc -> (Variance,MonoKind,TST.VariantType pol) -> GenM ()
-checkVariantType _ (Covariant,mk,TST.CovariantType ty) = do
-  let argKnd = TST.getKind ty
-  addConstraint $ KindEq KindConstraint argKnd (monoToAnyKind mk)
-  return ()
-checkVariantType _ (Contravariant,mk,TST.ContravariantType ty) = do
-  let argKnd = TST.getKind ty
-  addConstraint $ KindEq KindConstraint argKnd (monoToAnyKind mk)
-  return ()
-checkVariantType loc (Covariant,_,TST.ContravariantType _) = throwOtherError loc ["Used Contravariant type as covariant type"]
-checkVariantType loc (Contravariant,_,TST.CovariantType _) = throwOtherError loc ["Used Covariant Type as contravariant type"]
+checkVariance :: Loc -> (Variance,TST.VariantType pol) -> GenM ()
+checkVariance _ (Covariant, TST.CovariantType _) = return ()
+checkVariance _ (Contravariant, TST.ContravariantType _) = return () 
+checkVariance loc (v1,v2) = throwOtherError loc ["Variances " <> ppPrint v1 <> " and " <> ppPrint v2 <> " don't match"]
+
+checkVariantTypes :: Loc -> AnyKind -> NonEmpty (TST.VariantType pol) -> GenM ()
+checkVariantTypes loc (MkPknd (MkPolyKind kndArgs _)) args = 
+  if length kndArgs /= length args then 
+    throwOtherError loc ["Number of Type Arguments does not match declaration"]
+  else do
+    let argsLs = NE.toList args
+    -- check variances
+    let kndVars = map (\(x,_,_) -> x) kndArgs 
+    mapM_ (checkVariance loc) (zip kndVars argsLs)
+    let declKnds = map (\(_,_,z) -> z) kndArgs
+    let argKnds = map TST.getKind argsLs 
+    let kindEqs = zip declKnds argKnds
+    mapM_ (\(x,y) -> addConstraint (KindEq TypeArgKindConstraint y (monoToAnyKind x))) kindEqs
+checkVariantTypes loc (MkPknd (KindVar _)) _ = throwOtherError loc ["Polykind of application unclear"]
+checkVariantTypes loc mk _ = throwOtherError loc ["Types can't be applied to type with kind " <> ppPrint mk]
 
 newKVar :: GenM KVar
 newKVar = do
@@ -241,7 +250,7 @@ annotTy (RST.TyUnion loc ty1 ty2) = do
   if knd1 == knd2 then
     return $ TST.TyUnion loc knd1 ty1' ty2'
   else 
-    throwOtherError loc ["Kinds " <> T.pack (show knd1) <> " and " <> T.pack (show knd2) <> " of union are not compatible"]
+    throwOtherError loc ["Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2 <> " of union are not compatible"]
 annotTy (RST.TyInter loc ty1 ty2) = do 
   ty1' <- annotTy ty1 
   ty2' <- annotTy ty2
@@ -250,7 +259,7 @@ annotTy (RST.TyInter loc ty1 ty2) = do
   if knd1 == knd2 then
     return $ TST.TyInter loc knd1 ty1' ty2'
   else 
-    throwOtherError loc ["Kinds " <> T.pack (show  knd1) <> " and " <> T.pack (show knd2) <> " of union are not compatible"]
+    throwOtherError loc ["Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2 <> " of union are not compatible"]
 annotTy (RST.TyRec loc pol rv ty) = case ty of 
   RST.TyDataRefined loc' pol' pknd tyn xtors -> do 
     addRecVar rv pknd
@@ -274,7 +283,7 @@ annotTy (RST.TyKindAnnot mk ty) = do
   if getKind ty' == monoToAnyKind mk then
     return ty'
   else 
-    throwOtherError (getLoc ty') ["Annotated Kind " <> T.pack (show mk) <> " and inferred kind " <> T.pack (show (getKind ty')) <> " are not compatible"]
+    throwOtherError (getLoc ty') ["Annotated Kind " <> ppPrint mk <> " and inferred kind " <> ppPrint (getKind ty') <> " are not compatible"]
 
 -- | Given the polarity (data/codata) and the name of a type, compute the empty refinement of that type.
 -- Example:
@@ -487,47 +496,13 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     mapM_ (checkXtorKind loc pknd.returnKind) xtors'
     return (TST.TyCodataRefined loc pol pknd tyn xtors')
 
-  annotateKind (RST.TyApp _loc' _pol' (RST.TyNominal loc pol pknd tyn) args) = do 
-    if length args /= length pknd.kindArgs then 
-      throwOtherError loc ["Wrong number of arguments of type " <> ppPrint tyn] 
-    else do 
-      args' <- mapM annotateKind args
-      let varArgs = zipWith (curry (\ ((x, _, y), z) -> (x, y, z))) pknd.kindArgs (NE.toList args')
-      mapM_ (checkVariantType loc) varArgs
-      return (TST.TyApp loc pol (TST.TyNominal loc pol pknd tyn) args')
-
   annotateKind (RST.TyApp loc pol ty args) = do 
     ty' <- annotateKind ty 
     args' <- mapM annotateKind args
-    let pk = TST.getKind ty'
-    addArgKindConstrs loc pk args'
+    let pk = TST.getKind ty' 
+    checkVariantTypes loc pk args'
     return $ TST.TyApp loc pol ty' args'
-    where 
-      addArgKindConstrs :: Loc -> AnyKind -> NonEmpty (TST.VariantType pol) -> GenM () 
-      addArgKindConstrs loc (MkPknd (MkPolyKind kndArgs _)) args = do
-        if length kndArgs /= length args then
-          throwOtherError loc ["Number of arguments does not match with PolyKind"]
-        else do
-          -- make sure variances match
-          let declVars = map (\(x,_,_) -> x) kndArgs
-          let argVars = NE.map varTyToVariance args
-          mapM_ (checkVariance loc) (zip declVars (NE.toList argVars))
-          -- make sure kinds match
-          let declKinds = map (\(_,_,x) -> x) kndArgs
-          let argKnds = NE.map TST.getKind args
-          let kindEqs = zip declKinds (NE.toList argKnds)
-          mapM_ (\(x,y) -> addConstraint (KindEq KindConstraint (monoToAnyKind x) y)) kindEqs
-      addArgKindConstrs loc (MkPknd (KindVar kv)) _ = throwOtherError loc ["Can't apply args to kind " <> ppPrint (KindVar kv) <> " (not implemented yet)"]
-      addArgKindConstrs loc knd _ = throwOtherError loc ["Can't apply arguments to kind " <> ppPrint knd]
-      checkVariance :: Loc -> (Variance,Variance) -> GenM ()
-      checkVariance _ (Covariant, Covariant) = return ()
-      checkVariance _ (Contravariant, Contravariant) = return () 
-      checkVariance loc (v1,v2) = throwOtherError loc ["Variances " <> ppPrint v1 <> " and " <> ppPrint v2 <> " don't match"]
-
-      varTyToVariance :: TST.VariantType pol -> Variance
-      varTyToVariance (TST.CovariantType _) = Covariant
-      varTyToVariance (TST.ContravariantType _) = Contravariant
-
+    
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
     return $ TST.TyNominal loc pol polyknd tyn
               
