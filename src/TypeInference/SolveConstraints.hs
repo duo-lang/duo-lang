@@ -277,7 +277,7 @@ subConstraints :: Constraint ConstraintInfo -> SolverM (SubtypeWitness, [Constra
 -- the kinds of ty1 and ty2 are the same
 -- argi <: argi'
 -- ty1 <: ty2
-subConstraints (SubType info (TyApp _ _ ty1 args1) (TyApp _ _ ty2 args2)) = do
+subConstraints (SubType info (TyApp _ _ eo1 ty1 args1) (TyApp _  _ eo2 ty2 args2)) = if eo1 == eo2 then do
   let 
     f (CovariantType ty1) (CovariantType ty2) = SubType ApplicationSubConstraint ty1 ty2
     f (ContravariantType ty1) (ContravariantType ty2) = SubType ApplicationSubConstraint ty2 ty1
@@ -287,6 +287,8 @@ subConstraints (SubType info (TyApp _ _ ty1 args1) (TyApp _ _ ty2 args2)) = do
   --constraints' <- forM  ctors1 (\x -> checkXtor ctors2 mrv2 loc2 x mrv1 loc1)
   let constrs = constraints ++ constraints
   pure (DataApp ty1 ty2 $ SubVar . void <$> constrs, constrs)
+  else 
+    throwSolverError defaultLoc ["Evaluationorders " <> ppPrint eo1 <> " and " <> ppPrint eo2 <> " don't match"]
 
   
 

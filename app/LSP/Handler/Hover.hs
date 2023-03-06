@@ -365,7 +365,7 @@ instance ToHoverMap (TST.Typ pol) where
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (TST.TyApp loc _ ty args) = 
+  toHoverMap (TST.TyApp loc _ _ ty args) = 
     let 
       hoverTy = toHoverMap ty 
       betw = mkHoverMap loc (T.unlines ["applied to"])

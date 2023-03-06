@@ -131,6 +131,7 @@ coalesceType (TyUniVar _ NegRep pk tv) = do
     recVar <- getOrElseUpdateRecVar (tv, Neg)
     case pk of 
       MkPknd pk' -> return (TyRecVar defaultLoc NegRep pk' recVar)
+      MkEo eo -> return (TyRecVar defaultLoc NegRep (MkPolyKind [] eo) recVar)
       primk -> error ("Recursive Variable " <> show recVar <> " can't have primitive kind " <> show primk)
   else do
       vst <- getVariableState tv
@@ -164,10 +165,10 @@ coalesceType (TyCodataRefined loc rep mk tn xtors) = do
     return (TyCodataRefined loc rep mk tn xtors')
 coalesceType (TyNominal loc rep mk tn) = do
     return $ TyNominal loc rep mk tn 
-coalesceType (TyApp loc rep ty args) = do 
+coalesceType (TyApp loc rep eo ty args) = do 
     ty' <- coalesceType ty
     args' <- mapM coalesceVariantType args
-    return $ TyApp loc rep ty' args'
+    return $ TyApp loc rep eo ty' args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
 coalesceType (TyTop loc pk) = do 
     pure (TyTop loc pk)

@@ -135,7 +135,7 @@ data Typ (pol     :: Polarity) where
   TyCodataRefined :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
   TyNominal       :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName  -> Typ pol
-  TyApp           :: Loc -> PolarityRep pol -> Typ pol -> NonEmpty (VariantType pol) -> Typ pol
+  TyApp           :: Loc -> PolarityRep pol -> Typ pol  -> NonEmpty (VariantType pol) -> Typ pol
   -- | Type synonym
   TySyn           :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | Lattice types

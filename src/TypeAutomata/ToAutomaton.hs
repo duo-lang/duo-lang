@@ -265,7 +265,7 @@ insertType (TyDataRefined _ polrep pk mtn xtors)   = insertXtors CST.Data   (pol
 insertType (TyCodataRefined _ polrep pk mtn xtors) = insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) pk xtors
 insertType (TySyn _ _ _ ty) = insertType ty
 
-insertType (TyApp _ _ ty args) = do 
+insertType (TyApp _ _ _ ty args) = do 
   argNodes <- mapM insertVariantType args
   let tyns = getTypeNames (embedTST ty)
   case tyns of 

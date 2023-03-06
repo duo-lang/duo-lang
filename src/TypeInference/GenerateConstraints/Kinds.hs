@@ -64,24 +64,27 @@ checkXtorKind loc eo xtor = do
   addConstraint $ KindEq ReturnKindConstraint (MkEo xtorEo) (MkEo eo)
   return ()
 
-checkVariance :: Loc -> (Variance,TST.VariantType pol) -> GenM ()
-checkVariance _ (Covariant, TST.CovariantType _) = return ()
-checkVariance _ (Contravariant, TST.ContravariantType _) = return () 
-checkVariance loc (v1,v2) = throwOtherError loc ["Variances " <> ppPrint v1 <> " and " <> ppPrint v2 <> " don't match"]
+checkVariance :: (Variance,TST.VariantType pol) -> Bool
+checkVariance (Covariant, TST.CovariantType _) = True
+checkVariance (Contravariant, TST.ContravariantType _) = True 
+checkVariance _ = False 
 
-checkVariantTypes :: Loc -> AnyKind -> NonEmpty (TST.VariantType pol) -> GenM ()
-checkVariantTypes loc (MkPknd (MkPolyKind kndArgs _)) args = 
+checkVariantTypes :: Loc -> AnyKind -> NonEmpty (TST.VariantType pol) -> GenM EvaluationOrder
+checkVariantTypes loc (MkPknd (MkPolyKind kndArgs eo)) args = 
   if length kndArgs /= length args then 
     throwOtherError loc ["Number of Type Arguments does not match declaration"]
   else do
     let argsLs = NE.toList args
     -- check variances
     let kndVars = map (\(x,_,_) -> x) kndArgs 
-    mapM_ (checkVariance loc) (zip kndVars argsLs)
-    let declKnds = map (\(_,_,z) -> z) kndArgs
-    let argKnds = map TST.getKind argsLs 
-    let kindEqs = zip declKnds argKnds
-    mapM_ (\(x,y) -> addConstraint (KindEq TypeArgKindConstraint y (monoToAnyKind x))) kindEqs
+    let varsChecked = zipWith (curry checkVariance) kndVars argsLs
+    if all (==True) varsChecked then do
+      let declKnds = map (\(_,_,z) -> z) kndArgs
+      let argKnds = map TST.getKind argsLs 
+      let kindEqs = zip declKnds argKnds
+      mapM_ (\(x,y) -> addConstraint (KindEq TypeArgKindConstraint y (monoToAnyKind x))) kindEqs
+      return eo
+    else throwOtherError loc ["Variances of applied types don't match"]
 checkVariantTypes loc (MkPknd (KindVar _)) _ = throwOtherError loc ["Polykind of application unclear"]
 checkVariantTypes loc mk _ = throwOtherError loc ["Types can't be applied to type with kind " <> ppPrint mk]
 
@@ -235,7 +238,33 @@ annotTy (RST.TyCodataRefined loc pol pknd tyn xtors) = do
 annotTy (RST.TyApp loc pol ty args) = do 
   ty' <- annotTy ty 
   args' <- mapM annotVarTy args
-  return $ TST.TyApp loc pol ty' args'
+  let pk = TST.getKind ty'
+  case pk of 
+    (MkPknd (MkPolyKind kndArgs eo)) -> 
+      if length args' /= length kndArgs then
+        throwOtherError loc ["Number of arguments doesn't match declaration"]
+      else do 
+        let declVars = map (\(x,_,_) -> x) kndArgs
+        let declMks = map (\(_,_,z) -> z) kndArgs
+        let argMks = map TST.getKind (NE.toList args')
+        let mksChecked = zipWith (curry checkMk) declMks argMks
+        let varsChecked  = zipWith (curry checkVariance) declVars (NE.toList args')
+        if all (==True) mksChecked && all (==True) varsChecked then
+          return $ TST.TyApp loc pol eo ty' args'
+        else 
+          throwOtherError loc ["Applied Argument Kinds don't match kinds of declaration"]
+    (MkPknd (KindVar _)) -> throwOtherError loc ["Can't have a kind variable in declaration"]
+    _ -> throwOtherError loc ["can't apply arguments to monokinded type"]
+  where 
+    checkMk :: (MonoKind,AnyKind) -> Bool
+    checkMk (CBox eo1,MkEo eo2) = eo1 == eo2
+    checkMk (I64Rep,MkI64) = True
+    checkMk (F64Rep,MkF64) = True
+    checkMk (CharRep,MkChar)  = True
+    checkMk (StringRep,MkString) = True
+    checkMk _ = False
+
+
 annotTy (RST.TyNominal loc pol polyknd tyn) = return $ TST.TyNominal loc pol polyknd tyn
 annotTy (RST.TySyn loc pol tyn ty) =  do 
   ty' <- annotTy ty
@@ -500,8 +529,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     ty' <- annotateKind ty 
     args' <- mapM annotateKind args
     let pk = TST.getKind ty' 
-    checkVariantTypes loc pk args'
-    return $ TST.TyApp loc pol ty' args'
+    eo <- checkVariantTypes loc pk args'
+    return $ TST.TyApp loc pol eo ty' args'
     
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
     return $ TST.TyNominal loc pol polyknd tyn

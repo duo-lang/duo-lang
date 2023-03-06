@@ -131,7 +131,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- and the types we looked up, i.e. the types declared in the XtorSig.
     genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
     let nomTy rep = TST.TyNominal defaultLoc rep decl.data_kind decl.data_name
-    let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep (nomTy rep) (fst:|rst)
+    let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep decl.data_kind.returnKind (nomTy rep) (fst:|rst)
     case rep of
       PrdRep -> return (TST.Xtor loc annot rep (ty PosRep) CST.Nominal xt substInferred)
       CnsRep -> return (TST.Xtor loc annot rep (ty NegRep)  CST.Nominal xt substInferred)
@@ -159,12 +159,12 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                  let refTy = TST.TyDataRefined   defaultLoc PosRep decl.data_kind decl.data_name [TST.MkXtorSig xt substTypes']
                  case args of
                    [] -> refTy 
-                   (fst:rst) -> TST.TyApp defaultLoc PosRep refTy (fst:|rst) 
+                   (fst:rst) -> TST.TyApp defaultLoc PosRep decl.data_kind.returnKind refTy (fst:|rst) 
                CnsRep -> do
                  let refTy = TST.TyCodataRefined defaultLoc NegRep decl.data_kind  decl.data_name [TST.MkXtorSig xt substTypes']
                  case args of 
                    [] -> refTy 
-                   (fst:rst) -> TST.TyApp defaultLoc NegRep refTy (fst:|rst)
+                   (fst:rst) -> TST.TyApp defaultLoc NegRep decl.data_kind.returnKind refTy (fst:|rst)
     return $ TST.Xtor loc annot rep ty CST.Refinement xt substInferred
   --
   -- Structural pattern and copattern matches:
@@ -221,7 +221,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                     cmdInferred <- withContext posTypes' (genConstraints cmdcase_cmd)
                     return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc' xt args) cmdInferred, TST.MkXtorSig xt negTypes'))
     let nomTy rep = TST.TyNominal defaultLoc rep decl.data_kind decl.data_name
-    let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep (nomTy rep) (fst:|rst)
+    let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep decl.data_kind.returnKind (nomTy rep) (fst:|rst)
     case rep of
       PrdRep -> return $ TST.XCase loc annot rep (ty PosRep) CST.Nominal (fst <$> inferredCases)
       CnsRep -> return $ TST.XCase loc annot rep (ty NegRep) CST.Nominal (fst <$> inferredCases)
@@ -266,12 +266,12 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
       CnsRep -> do
         let xtors = TST.zonk TST.SkolemRep tyParamsMapNeg . snd <$> inferredCases
         let refTy = TST.TyDataRefined defaultLoc NegRep decl.data_kind decl.data_name xtors
-        let ty = case argsNeg of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc NegRep refTy (fst:|rst)
+        let ty = case argsNeg of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc NegRep decl.data_kind.returnKind refTy (fst:|rst)
         return $ TST.XCase loc annot rep ty CST.Refinement (fst <$> inferredCases)
       PrdRep -> do
         let xtors = TST.zonk TST.SkolemRep tyParamsMapPos . snd <$> inferredCases
         let refTy = TST.TyCodataRefined defaultLoc PosRep decl.data_kind decl.data_name xtors
-        let ty = case argsPos of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc PosRep refTy (fst:|rst)
+        let ty = case argsPos of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc PosRep decl.data_kind.returnKind refTy (fst:|rst)
         return $ TST.XCase loc annot rep ty CST.Refinement (fst <$> inferredCases)
   --
   -- Mu and TildeMu abstractions:
