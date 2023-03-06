@@ -79,15 +79,15 @@ data AnyKind = MkPknd PolyKind | MkEo EvaluationOrder | MkI64 | MkF64 | MkChar |
 deriving instance (Show AnyKind)
 deriving instance (Ord AnyKind)
 instance Eq AnyKind where 
-  MkI64 == MkI64 = True
-  MkF64 == MkF64 = True
-  MkChar == MkChar = True
-  MkString == MkString = True
-  MkEo eo1 == MkEo eo2 = eo1 == eo2
-  MkPknd pk1 == MkPknd pk2 = pk1 == pk2 
-  MkEo eo1 == MkPknd (MkPolyKind [] eo2) = eo1 == eo2
-  MkPknd (MkPolyKind [] eo1) == MkEo eo2 = eo1 == eo2
-  _ == _ = False
+  MkI64                      == MkI64                         = True
+  MkF64                      == MkF64                         = True
+  MkChar                     == MkChar                        = True
+  MkString                   == MkString                      = True
+  MkEo eo1                   == MkEo eo2                      = eo1 == eo2
+  MkPknd pk1                 == MkPknd pk2                    = pk1 == pk2 
+  MkEo eo1                   == MkPknd (MkPolyKind [] eo2)    = eo1 == eo2
+  MkPknd (MkPolyKind [] eo1) == MkEo eo2                      = eo1 == eo2
+  _ == _                                                      = False
 
 
 monoToAnyKind :: MonoKind -> AnyKind

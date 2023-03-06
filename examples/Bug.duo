@@ -1,29 +1,12 @@
 module Bug;
 
-refinement data List : (+a : CBV) -> CBV {
-    Nil,
-    Cons(a, List(a))
-};
-
+-- | The function type
 codata Fun : (-a : CBV, +b : CBV) -> CBV {
     Ap(a,return b)
 };
 
 type operator -> rightassoc at 0 := Fun;
---  Right fold over a list.
-def rec prd foldr :=
-    \f init xs => case xs of {
-        Nil => init,
-        Cons(y, ys) => f y (foldr f init ys)
-    };
 
---  Append two lists together.
-def rec prd append :=
-    \xs ys => case xs of {
-        Nil => ys,
-        Cons(z, zs) => Cons(z, append zs ys)
-    };
-
---  Concat all elements of a list of lists.
-def rec prd concat :=
-    foldr append Nil;
+-- | Function composition
+def prd compose :=
+  \f g x => f (g x);
