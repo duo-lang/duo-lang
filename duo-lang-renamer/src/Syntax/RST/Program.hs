@@ -15,7 +15,7 @@ import Syntax.CST.Names
       ModuleName,
       XtorName )
 import Syntax.CST.Kinds
-    ( EvaluationOrder, MonoKind, PolyKind )
+    ( EvaluationOrder, MonoKind, PolyKind, AnyKind )
 import Syntax.CST.Types ( DataCodata, PrdCns(..), PrdCnsRep(..) )
 
 import Loc ( Loc )
@@ -199,7 +199,7 @@ data DataDecl =
     -- ^ The name of the type. E.g. "List".
   , data_polarity :: DataCodata
     -- ^ Whether a data or codata type is declared.
-  , data_kind :: PolyKind
+  , data_kind :: AnyKind
     -- ^ The kind of the type constructor.
   , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
     -- The constructors/destructors of the declaration.
@@ -213,7 +213,7 @@ data DataDecl =
     -- ^ The name of the type. E.g. "List".
   , data_polarity :: DataCodata
     -- ^ Whether a data or codata type is declared.
-  , data_kind :: PolyKind
+  , data_kind :: AnyKind
     -- ^ The kind of the type constructor.
   , data_xtors :: ([XtorSig Pos], [XtorSig Neg])
     -- ^ The constructors/destructors of the declaration,

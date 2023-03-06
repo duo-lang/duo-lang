@@ -97,9 +97,16 @@ monoToAnyKind F64Rep = MkF64
 monoToAnyKind CharRep = MkChar
 monoToAnyKind StringRep = MkString
 
-allTypeVars :: PolyKind -> Set SkolemTVar
-allTypeVars pk@MkPolyKind{} = S.fromList ((\(_,var,_) -> var) <$> pk.kindArgs)
-allTypeVars (KindVar _) = S.empty
+class AllTypeVars a where 
+  allTypeVars :: a -> Set SkolemTVar 
+
+instance AllTypeVars PolyKind where 
+  allTypeVars pk@MkPolyKind{} = S.fromList ((\(_,var,_) -> var) <$> pk.kindArgs)
+  allTypeVars (KindVar _) = S.empty
+
+instance AllTypeVars AnyKind where 
+  allTypeVars (MkPknd pk) = allTypeVars pk 
+  allTypeVars _ = S.empty
 
 lookupPolyKind :: SkolemTVar -> PolyKind -> Maybe (Variance, SkolemTVar, MonoKind)
 lookupPolyKind tv pk@MkPolyKind{} = go pk.kindArgs

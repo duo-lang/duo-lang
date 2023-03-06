@@ -83,17 +83,17 @@ deriving instance Show (MethodSig pol)
 
 
 data Typ (pol :: Polarity) where
-  TySkolemVar     :: Loc -> PolarityRep pol -> PolyKind -> SkolemTVar -> Typ pol
+  TySkolemVar     :: Loc -> PolarityRep pol -> AnyKind -> SkolemTVar -> Typ pol
   TyUniVar        :: Loc -> PolarityRep pol -> AnyKind -> UniTVar -> Typ pol
-  TyRecVar        :: Loc -> PolarityRep pol -> PolyKind -> RecTVar -> Typ pol
+  TyRecVar        :: Loc -> PolarityRep pol -> AnyKind -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData          :: Loc -> PolarityRep pol -> EvaluationOrder           -> [XtorSig pol]           -> Typ pol
   TyCodata        :: Loc -> PolarityRep pol -> EvaluationOrder           -> [XtorSig (FlipPol pol)] -> Typ pol
-  TyDataRefined   :: Loc -> PolarityRep pol -> PolyKind   -> RnTypeName  -> [XtorSig pol]           -> Typ pol
-  TyCodataRefined :: Loc -> PolarityRep pol -> PolyKind   -> RnTypeName  -> [XtorSig (FlipPol pol)] -> Typ pol
+  TyDataRefined   :: Loc -> PolarityRep pol -> AnyKind   -> RnTypeName  -> [XtorSig pol]           -> Typ pol
+  TyCodataRefined :: Loc -> PolarityRep pol -> AnyKind   -> RnTypeName  -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
-  TyNominal       :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName -> Typ pol
+  TyNominal       :: Loc -> PolarityRep pol -> AnyKind -> RnTypeName -> Typ pol
   TyApp           :: Loc -> PolarityRep pol -> Typ pol -> NonEmpty (VariantType pol) -> Typ pol
   -- | Type synonym
   TySyn           :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
@@ -179,14 +179,14 @@ instance GetKind PolyKind where
   getKind = MkPknd
 
 instance GetKind (Typ pol) where 
-  getKind (TySkolemVar _ _ pk _)          = MkPknd pk
+  getKind (TySkolemVar _ _ pk _)          = pk
   getKind (TyUniVar _ _ knd _)            = knd
-  getKind (TyRecVar _ _ pk _)             = MkPknd pk 
-  getKind (TyData _ _ eo _ )              = MkPknd $ MkPolyKind [] eo
-  getKind (TyCodata _ _ eo _ )            = MkPknd $ MkPolyKind [] eo
-  getKind (TyDataRefined _ _ pk _ _)    = MkPknd pk
-  getKind (TyCodataRefined _ _ pk _ _)  = MkPknd pk
-  getKind (TyNominal _ _ pk _ )           = MkPknd pk
+  getKind (TyRecVar _ _ pk _)             = pk 
+  getKind (TyData _ _ eo _ )              = MkEo eo 
+  getKind (TyCodata _ _ eo _ )            = MkEo eo
+  getKind (TyDataRefined _ _ pk _ _)      = pk
+  getKind (TyCodataRefined _ _ pk _ _)    = pk
+  getKind (TyNominal _ _ pk _ )           = pk
   getKind (TyApp _ _ ty _)                = getKind ty
   getKind (TySyn _ _ _ ty)                = getKind ty
   getKind (TyTop _ knd)                   = knd
@@ -234,7 +234,7 @@ deriving instance Show (TopAnnot Neg)
 
 -- | Typeclass for computing free type variables
 class FreeTVars (a :: Type) where
-  freeTVars :: a -> Set (SkolemTVar, PolyKind)
+  freeTVars :: a -> Set (SkolemTVar, AnyKind)
 
 instance FreeTVars (Typ pol) where
   freeTVars (TySkolemVar _ _ knd tv)           = S.singleton (tv,knd)
@@ -273,7 +273,14 @@ instance FreeTVars (XtorSig pol) where
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
-generalize ty = TypeScheme defaultLoc (S.toList $ freeTVars ty) ty
+generalize ty = do 
+  let skolems = S.toList $ freeTVars ty
+  TypeScheme defaultLoc (map toKindedSkolem skolems) ty
+  where 
+    toKindedSkolem :: (SkolemTVar,AnyKind) -> KindedSkolem
+    toKindedSkolem (sk, MkPknd pk) = (sk,pk)
+    toKindedSkolem (sk, MkEo eo) = (sk,MkPolyKind [] eo)
+    toKindedSkolem _ = error "skolem variables can't have primitive kinds (should never happen)"
 
 
 ------------------------------------------------------------------------------

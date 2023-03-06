@@ -16,7 +16,7 @@ import Syntax.CST.Names
       TypeName,
       XtorName )
 import Syntax.CST.Kinds
-    ( EvaluationOrder, MonoKind, PolyKind, )
+    ( EvaluationOrder, MonoKind, AnyKind, PolyKind )
 import Loc ( HasLoc(..), Loc )
 
 ---------------------------------------------------------------------------------
@@ -253,7 +253,7 @@ data DataDecl = MkDataDecl
     -- ^ The name of the type. E.g. "List".
   , data_polarity :: DataCodata
     -- ^ Whether a data or codata type is declared.
-  , data_kind :: Maybe PolyKind
+  , data_kind :: Maybe AnyKind
     -- ^ The kind of the type constructor.
   , data_xtors :: [XtorSig]
     -- The constructors/destructors of the declaration.

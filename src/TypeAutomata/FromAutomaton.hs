@@ -105,7 +105,7 @@ nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks (\x -> x.tvMap)
   knd <- getNodeKindPk i
-  return (TySkolemVar defaultLoc rep knd <$> S.toList (fromJust $ M.lookup i tvMap))
+  return (TySkolemVar defaultLoc rep (MkPknd knd) <$> S.toList (fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
 nodeToOuts i = do
@@ -155,7 +155,7 @@ nodeToType rep i = do
   if inCache
     then do 
       knd <- getNodeKindPk i
-      pure (TyRecVar defaultLoc rep knd (MkRecTVar ("r" <> T.pack (show i))))
+      pure (TyRecVar defaultLoc rep (MkPknd knd) (MkRecTVar ("r" <> T.pack (show i))))
     else nodeToTypeNoCache rep i
 
 -- | Should only be called if node is not in cache.
@@ -212,8 +212,8 @@ nodeToTypeNoCache rep i  = do
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
             args <- mapM f argNodes 
             case args of 
-              [] -> return $ TyDataRefined defaultLoc rep pk tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep (TyDataRefined defaultLoc rep pk tn sig) (arg1:|argRst)
+              [] -> return $ TyDataRefined defaultLoc rep (MkPknd pk) tn sig
+              (arg1:argRst) -> return $ TyApp defaultLoc rep (TyDataRefined defaultLoc rep (MkPknd pk) tn sig) (arg1:|argRst)
         -- Creating ref codata types
         refCodatL <- do
           forM refCodatTypes $ \(tn,(xtors,vars)) -> do
@@ -226,8 +226,8 @@ nodeToTypeNoCache rep i  = do
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
             args <- mapM f argNodes 
             case args of
-              [] -> return $ TyCodataRefined defaultLoc rep pk tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep (TyCodataRefined defaultLoc rep pk tn sig) (arg1:|argRst)
+              [] -> return $ TyCodataRefined defaultLoc rep (MkPknd pk) tn sig
+              (arg1:argRst) -> return $ TyApp defaultLoc rep (TyCodataRefined defaultLoc rep (MkPknd pk) tn sig) (arg1:|argRst)
         -- Creating Nominal types
         nominals <- do
             forM (S.toList tns) $ \(tn, variances) -> do
@@ -236,8 +236,8 @@ nodeToTypeNoCache rep i  = do
                   f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
               args <- mapM f argNodes 
               case args of 
-                [] -> pure $ TyNominal defaultLoc rep pk tn
-                (fst:rst) -> pure $ TyApp defaultLoc rep (TyNominal defaultLoc rep pk tn) (fst:|rst)
+                [] -> pure $ TyNominal defaultLoc rep (MkPknd pk) tn
+                (fst:rst) -> pure $ TyApp defaultLoc rep (TyNominal defaultLoc rep (MkPknd pk) tn) (fst:|rst)
 
         let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
         return $ case rep of

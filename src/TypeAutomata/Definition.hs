@@ -183,17 +183,33 @@ emptyNodeLabel pol MkF64        = MkPrimitiveNodeLabel pol F64
 emptyNodeLabel pol MkString     = MkPrimitiveNodeLabel pol PString
 emptyNodeLabel pol MkChar       = MkPrimitiveNodeLabel pol PChar
 
-singleNodeLabelNominal :: Polarity -> (RnTypeName, [Variance]) ->  PolyKind -> NodeLabel
-singleNodeLabelNominal pol nominal k = MkNodeLabel { nl_pol = pol, nl_data = Nothing, nl_codata = Nothing, nl_nominal = S.singleton nominal, nl_ref_data = M.empty, nl_ref_codata = M.empty, nl_kind = k }
-singleNodeLabelXtor :: Polarity -> DataCodata -> Maybe (RnTypeName,[Variance]) -> Set XtorLabel -> PolyKind -> NodeLabel
+singleNodeLabelNominal :: Polarity -> (RnTypeName, [Variance]) ->  AnyKind -> NodeLabel
+singleNodeLabelNominal pol nominal k = 
+  let 
+    knd = case k of MkPknd pk@MkPolyKind{} -> pk; MkEo eo -> MkPolyKind [] eo; _ -> error "invalid kind for nominal type"
+  in
+    MkNodeLabel { nl_pol = pol, nl_data = Nothing, nl_codata = Nothing, nl_nominal = S.singleton nominal, nl_ref_data = M.empty, nl_ref_codata = M.empty, nl_kind = knd }
+singleNodeLabelXtor :: Polarity -> DataCodata -> Maybe (RnTypeName,[Variance]) -> Set XtorLabel -> AnyKind -> NodeLabel
 singleNodeLabelXtor pol Data   Nothing   xtors k =
-  MkNodeLabel { nl_pol = pol, nl_data = Just xtors, nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.empty,                     nl_ref_codata = M.empty,                     nl_kind = k }
+  let 
+    knd = case k of MkPknd pk@MkPolyKind{} -> pk; MkEo eo -> MkPolyKind [] eo; _ -> error "invalid kind for xtor"
+  in 
+  MkNodeLabel { nl_pol = pol, nl_data = Just xtors, nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.empty,                     nl_ref_codata = M.empty,                     nl_kind = knd }
 singleNodeLabelXtor pol Codata Nothing   xtors k = 
-  MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Just xtors, nl_nominal = S.empty, nl_ref_data = M.empty,                     nl_ref_codata = M.empty,                     nl_kind = k }
+  let 
+    knd = case k of MkPknd pk@MkPolyKind{} -> pk; MkEo eo -> MkPolyKind [] eo; _ -> error "invalid kind for xtor"
+  in 
+  MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Just xtors, nl_nominal = S.empty, nl_ref_data = M.empty,                     nl_ref_codata = M.empty,                     nl_kind = knd }
 singleNodeLabelXtor pol Data   (Just (tn,vars)) xtors k = 
-  MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.singleton tn (xtors,vars), nl_ref_codata = M.empty,                     nl_kind = k }
+  let 
+    knd = case k of MkPknd pk@MkPolyKind{} -> pk; MkEo eo -> MkPolyKind [] eo; _ -> error "invalid kind for xtor"
+  in 
+  MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.singleton tn (xtors,vars), nl_ref_codata = M.empty,                     nl_kind = knd }
 singleNodeLabelXtor pol Codata (Just (tn,vars)) xtors k = 
-  MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.empty,                     nl_ref_codata = M.singleton tn (xtors,vars), nl_kind = k }
+  let 
+    knd = case k of MkPknd pk@MkPolyKind{} -> pk; MkEo eo -> MkPolyKind [] eo; _ -> error "invalid kind for xtor"
+  in 
+  MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.empty,                     nl_ref_codata = M.singleton tn (xtors,vars), nl_kind = knd }
 
 getPolarityNL :: NodeLabel -> Polarity
 getPolarityNL (MkNodeLabel pol _ _ _ _ _ _) = pol

@@ -21,7 +21,7 @@ import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CST.Names
-import Syntax.CST.Kinds (EvaluationOrder(..),PolyKind(..))
+import Syntax.CST.Kinds (EvaluationOrder(..),PolyKind(..), AnyKind(..))
 import Loc
 
 
@@ -238,7 +238,7 @@ dataDeclP doc = do
                                  , data_refined = refined
                                  , data_name = tn
                                  , data_polarity = dataCodata
-                                 , data_kind = knd
+                                 , data_kind = case knd of Just (MkPolyKind [] eo) -> Just $ MkEo eo; Nothing -> Nothing; Just pk -> Just (MkPknd pk)
                                  , data_xtors = combineXtors xtors
                                  }
 
