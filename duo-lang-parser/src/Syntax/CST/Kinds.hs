@@ -63,8 +63,16 @@ data PolyKind =
   | KindVar KVar 
 
 deriving instance (Show PolyKind)
-deriving instance (Eq PolyKind)
 deriving instance (Ord PolyKind)
+instance Eq PolyKind where 
+  KindVar kv1 == KindVar kv2 = kv1 == kv2
+  MkPolyKind args1 eo1 == MkPolyKind args2 eo2 = 
+    let getVariances = Prelude.map (\(x,_,_) -> x)
+        getMks = Prelude.map (\(_,_,z) -> z)
+    in 
+    eo1 == eo2 && getVariances args1 == getVariances args2 && getMks args1 == getMks args2
+  _ == _ = False 
+
 
 --either polykind or primitive kind
 data AnyKind = MkPknd PolyKind | MkEo EvaluationOrder | MkI64 | MkF64 | MkChar | MkString 
