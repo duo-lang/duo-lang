@@ -91,11 +91,10 @@ resolveTyp rep (TyApp loc ty args) = do
            pure $ RST.TyApp loc rep ty' args'
      _ -> throwError (UnknownResolutionError loc "Ambiguous Type Application")
   where 
-    resolveArgs loc rep tyn (MkPknd pknd) args = do
+    resolveArgs loc rep tyn pknd args = do
       args' <- resolveTypeArgs loc rep tyn.rnTnName pknd (NE.toList args)
       let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
       return args''
-    resolveArgs loc _ _ _ _ = throwError $ UnknownResolutionError loc "Can't apply arguments to type with monokind"
 
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v

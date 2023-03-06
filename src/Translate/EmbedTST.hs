@@ -133,42 +133,34 @@ getAnnotKind MkString = Just StringRep
 instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST :: TST.Typ pol -> RST.Typ pol
   embedTST (TST.TySkolemVar loc pol pk tv) =
-    case getAnnotKind pk of 
-      Nothing -> RST.TySkolemVar loc pol tv
-      Just mk -> RST.TyKindAnnot mk $ RST.TySkolemVar loc pol tv
+    RST.TyKindAnnot (CBox pk.returnKind) $ RST.TySkolemVar loc pol tv
   embedTST (TST.TyUniVar loc pol knd tv) = case getAnnotKind knd of
     Nothing -> RST.TyUniVar loc pol tv
     Just mk -> RST.TyKindAnnot mk $ RST.TyUniVar loc pol tv
-  embedTST (TST.TyRecVar loc pol pk tv) =
-    case getAnnotKind pk of 
-      Nothing -> RST.TyRecVar loc pol tv
-      Just mk -> RST.TyKindAnnot mk $ RST.TyRecVar loc pol tv
+  embedTST (TST.TyRecVar loc pol (MkPolyKind _ rk) tv) =
+    RST.TyKindAnnot (CBox rk) $ RST.TyRecVar loc pol tv
+  embedTST (TST.TyRecVar loc pol (KindVar _) tv) =
+    RST.TyRecVar loc pol tv
   embedTST (TST.TyData loc pol eo xtors) =
     RST.TyKindAnnot (CBox eo) $ RST.TyData loc pol (map embedTST xtors)
   embedTST (TST.TyCodata loc pol eo xtors) =
     RST.TyKindAnnot (CBox eo) $ RST.TyCodata loc pol (map embedTST xtors)
-  embedTST (TST.TyDataRefined loc pol pk@MkPknd{} tn xtors) =
-    case getAnnotKind pk of 
-      Nothing -> RST.TyDataRefined loc pol pk tn (map embedTST xtors)
-      Just mk -> RST.TyKindAnnot mk $ RST.TyDataRefined loc pol pk tn (map embedTST xtors)
-  embedTST (TST.TyDataRefined loc pol (MkEo eo) tn xtors) = RST.TyKindAnnot (CBox eo) $ RST.TyDataRefined loc pol (MkEo eo) tn (map embedTST xtors)
-  embedTST TST.TyDataRefined{} = error "refinement data can't have primitive kind"
-  embedTST (TST.TyCodataRefined loc pol pk@MkPknd{} tn xtors) = 
-    case getAnnotKind pk of 
-      Nothing -> RST.TyCodataRefined loc pol pk tn (map embedTST xtors)
-      Just mk -> RST.TyKindAnnot mk $ RST.TyCodataRefined loc pol pk tn (map embedTST xtors)
-  embedTST (TST.TyCodataRefined loc pol (MkEo eo) tn xtors) = RST.TyKindAnnot (CBox eo) $ RST.TyCodataRefined loc pol (MkEo eo) tn (map embedTST xtors)
-  embedTST TST.TyCodataRefined{} = error "refinement codata can't have primitive kind"
+  embedTST (TST.TyDataRefined loc pol pk@(MkPolyKind _ rk) tn xtors) =
+    RST.TyKindAnnot (CBox rk) $ RST.TyDataRefined loc pol pk tn (map embedTST xtors)
+  embedTST (TST.TyDataRefined loc pol pk@(KindVar _) tn xtors) =
+    RST.TyDataRefined loc pol pk tn (map embedTST xtors)
+  embedTST (TST.TyCodataRefined loc pol pk@(MkPolyKind _ rk) tn xtors) = 
+    RST.TyKindAnnot (CBox rk) $ RST.TyCodataRefined loc pol pk tn (map embedTST xtors)
+  embedTST (TST.TyCodataRefined loc pol pk@(KindVar _) tn xtors) = 
+    RST.TyCodataRefined loc pol pk tn (map embedTST xtors)
   -- if arguments are applied to TyNominal, don't annotate the Kind, otherwise the parser will break after prettyprint
   embedTST (TST.TyApp loc pol (TST.TyNominal loc' pol' polyknd tn) args) = 
     RST.TyApp loc pol (RST.TyNominal loc' pol' polyknd tn) (embedTST <$> args)
   -- if thre is no application, kind annotation is needed, otherwise x:(Nat:CBV) := x will break after prettyprint
-  embedTST (TST.TyNominal loc pol pk@MkPknd{} tn) = do
-    case getAnnotKind pk of 
-      Nothing  -> RST.TyNominal loc pol pk tn
-      Just mk -> RST.TyKindAnnot mk $ RST.TyNominal loc pol pk tn  
-  embedTST (TST.TyNominal loc pol (MkEo eo) tn) = RST.TyKindAnnot (CBox eo) $ RST.TyNominal loc pol (MkEo eo) tn
-  embedTST TST.TyNominal{} = error "Nominal type can't have primitive kind"
+  embedTST (TST.TyNominal loc pol pk@(MkPolyKind _ rk) tn) = do
+    RST.TyKindAnnot (CBox rk) $ RST.TyNominal loc pol pk tn  
+  embedTST (TST.TyNominal loc pol pk@(KindVar _) tn) = do
+    RST.TyNominal loc pol pk tn  
   embedTST (TST.TyApp loc pol ty args) = do
     RST.TyApp loc pol (embedTST ty) (embedTST <$> args)
   embedTST (TST.TySyn loc pol tn tp) = 

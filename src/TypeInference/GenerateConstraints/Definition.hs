@@ -68,8 +68,8 @@ data GenerateState = GenerateState
   { uVarCount :: Int
   , kVarCount :: Int
   , constraintSet :: ConstraintSet
-  , usedRecVars :: M.Map RecTVar AnyKind
-  , usedSkolemVars :: M.Map SkolemTVar AnyKind
+  , usedRecVars :: M.Map RecTVar PolyKind
+  , usedSkolemVars :: M.Map SkolemTVar PolyKind
   , usedUniVars :: M.Map UniTVar AnyKind
   }
 
@@ -159,8 +159,7 @@ freshTVars ((Cns,fv,knd):rest) = do
 freshTVarsForTypeParams :: forall pol. PolarityRep pol -> TST.DataDecl -> GenM ([TST.VariantType pol], TST.Bisubstitution TST.SkolemVT)
 freshTVarsForTypeParams rep decl = do
   kindArgs <- case decl.data_kind of
-                    MkPknd knd@MkPolyKind {} -> pure knd.kindArgs
-                    MkEo _ -> pure []
+                    knd@MkPolyKind {} -> pure knd.kindArgs
                     k -> throwOtherError decl.data_loc [ "Wrong kind for data declaration: expected polykind, found " <> T.pack (show k) ]
   let tn = decl.data_name
   (varTypes, vars) <- freshTVars tn kindArgs
@@ -216,9 +215,9 @@ insertSkolemsClass decl = do
   modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM})
   return ()
   where
-    insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar AnyKind -> M.Map SkolemTVar AnyKind
+    insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar PolyKind -> M.Map SkolemTVar PolyKind
     insertSkolems [] mp = mp
-    insertSkolems ((_,tv,CBox eo):rst) mp = insertSkolems rst (M.insert tv (MkEo eo) mp)
+    insertSkolems ((_,tv,CBox eo):rst) mp = insertSkolems rst (M.insert tv (MkPolyKind [] eo) mp)
     insertSkolems ((_,tv,primk):_) _ = error ("Skolem Variable " <> show tv <> " can't have kind " <> show primk)
 
 ---------------------------------------------------------------------------------------------

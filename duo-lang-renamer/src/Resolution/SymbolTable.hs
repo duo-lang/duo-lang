@@ -43,7 +43,7 @@ data BinOpDescr = MkBinOpDescr
 -- | What a TypeName can resolve to during name resolution
 data TypeNameResolve where
   -- | Typename was introduced in a data or codata declaration
-  NominalResult :: RnTypeName -> DataCodata -> IsRefined -> AnyKind -> TypeNameResolve
+  NominalResult :: RnTypeName -> DataCodata -> IsRefined -> PolyKind -> TypeNameResolve
   -- | TypeName was introduced in a type synonym
   SynonymResult :: RnTypeName -> Typ -> TypeNameResolve
 
@@ -153,7 +153,7 @@ createSymbolTable' fp mn  (DataDecl decl) st = do
   forM_ ((\x -> x.sig_name) <$> decl.data_xtors) $ \xtorName -> checkFreshXtorName decl.data_loc xtorName st
   -- Create the default polykind
   let polyKind = case decl.data_kind of
-                    Nothing -> MkEo (case decl.data_polarity of Data -> CBV; Codata -> CBN)
+                    Nothing -> MkPolyKind [] (case decl.data_polarity of Data -> CBV; Codata -> CBN)
                     Just knd -> knd
   let ns = case decl.data_refined of
                Refined -> Refinement

@@ -51,12 +51,9 @@ getXtorKinds loc (xtor:xtors) = do
 getKindDecl ::  TST.DataDecl -> GenM (MonoKind,[MonoKind])
 getKindDecl decl = do
   -- this can never be a kind var
-  case decl.data_kind of
-    MkPknd (MkPolyKind args eo) -> do
-      let argKnds = map (\(_,_,mk) -> mk) args
-      return (CBox eo, argKnds)
-    MkEo eo -> return (CBox eo, [])
-    _ -> throwOtherError defaultLoc ["Data Declaration can't have primitive kind"]
+  let polyknd = decl.data_kind
+  let argKnds = map (\(_,_,mk) -> mk) polyknd.kindArgs
+  return (CBox polyknd.returnKind, argKnds)
 
 checkXtorKind :: Loc -> EvaluationOrder -> TST.XtorSig pol -> GenM () 
 checkXtorKind loc eo xtor = do 
@@ -106,25 +103,17 @@ data DataDeclState = MkDataDeclState
     declTyName :: RnTypeName,
     boundRecVars :: M.Map RecTVar MonoKind,
     refXtors :: ([TST.XtorSig RST.Pos], [TST.XtorSig RST.Neg]),
-    refRecVars :: M.Map RecTVar AnyKind
+    refRecVars :: M.Map RecTVar PolyKind
   }
 
-createDataDeclState :: AnyKind -> RnTypeName -> DataDeclState
-createDataDeclState (MkPknd polyknd) tyn = MkDataDeclState 
+createDataDeclState :: PolyKind -> RnTypeName -> DataDeclState
+createDataDeclState polyknd tyn = MkDataDeclState 
   { declKind = polyknd,
     declTyName = tyn,
     boundRecVars = M.empty, 
     refXtors = ([],[]), 
     refRecVars = M.empty
   }
-createDataDeclState (MkEo eo) tyn = MkDataDeclState
-  { declKind = MkPolyKind [] eo,
-    declTyName = tyn,
-    boundRecVars = M.empty,
-    refXtors = ([],[]),
-    refRecVars = M.empty
-  }
-createDataDeclState _ _ = error "data declaration can't have primitive kind"
 
 type DataDeclM a = (ReaderT (M.Map ModuleName Environment, ()) (StateT DataDeclState (Except (NonEmpty Error)))) a
 
@@ -136,7 +125,7 @@ resolveDataDecl decl env = do
   (decl', _) <- runDataDeclM (annotateDataDecl decl) env (createDataDeclState decl.data_kind decl.data_name)
   return decl' 
 
-addRecVar :: RecTVar -> AnyKind -> DataDeclM () 
+addRecVar :: RecTVar -> PolyKind -> DataDeclM () 
 addRecVar rv pk = modify (\s@MkDataDeclState{refRecVars = recVarMap} -> s {refRecVars = M.insert rv pk recVarMap})
 
 addXtors :: ([TST.XtorSig RST.Pos],[TST.XtorSig RST.Neg]) -> DataDeclM ()
@@ -184,7 +173,7 @@ getKindSkolem polyknd = searchKindArgs polyknd.kindArgs
 annotTy :: RST.Typ pol -> DataDeclM (TST.Typ pol)
 annotTy (RST.TySkolemVar loc pol tv) = do 
   polyknd <- gets (\x -> x.declKind)
-  return $ TST.TySkolemVar loc pol (MkPknd $ getKindSkolem polyknd tv) tv 
+  return $ TST.TySkolemVar loc pol (getKindSkolem polyknd tv) tv 
 -- uni vars should not appear in data declarations
 annotTy (RST.TyUniVar loc _ _) = throwOtherError loc ["UniVar should not appear in data declaration"]
 annotTy (RST.TyRecVar loc pol tv) = do
@@ -304,7 +293,7 @@ annotTy (RST.TyKindAnnot mk ty) = do
 -- 
 computeEmptyRefinementType :: CST.DataCodata
                            -> RnTypeName
-                           -> AnyKind
+                           -> PolyKind
                            -> DataDeclM (RST.Typ Pos, RST.Typ Neg)
 computeEmptyRefinementType CST.Data tn polyknd = do 
   pure (RST.TyDataRefined   defaultLoc PosRep polyknd tn [], RST.TyDataRefined   defaultLoc NegRep polyknd tn [])
@@ -320,7 +309,7 @@ computeEmptyRefinementType CST.Codata tn polyknd = do
 computeFullRefinementType :: CST.DataCodata
                           -> RnTypeName
                           -> ([RST.XtorSig Pos], [RST.XtorSig Neg])
-                          -> AnyKind
+                          -> PolyKind
                           -> DataDeclM (RST.Typ Pos, RST.Typ Neg)
 computeFullRefinementType dc tn (xtorsPos, xtorsNeg) polyknd = do
   -- Define the variable that stands for the recursive occurrences in the translation.
@@ -427,12 +416,10 @@ instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
         skMap <- gets (\x -> x.usedSkolemVars)
         case (M.lookup sk skMap, mmk) of 
           (Nothing, _) -> throwOtherError loc ["Skolem Variable " <> ppPrint sk <> " defined but not used"]
-          (Just (MkPknd pk),Nothing) -> return (sk,pk)
-          (Just (MkEo eo), Nothing) -> return (sk,MkPolyKind [] eo)
-          (Just (MkPknd pk), Just pk') -> do
+          (Just pk,Nothing) -> return (sk,pk)
+          (Just pk, Just pk') -> do
             addConstraint $ KindEq KindConstraint (MkPknd pk) (MkPknd pk')
             return (sk,pk)
-          _ -> throwOtherError loc ["Skolem variable " <> ppPrint sk <> " can't have primitive kind"]
                 
 instance AnnotateKind (RST.VariantType pol) (TST.VariantType pol) where
   annotateKind ::  RST.VariantType pol -> GenM (TST.VariantType pol)
@@ -462,9 +449,9 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     case M.lookup tv skMap of 
       Nothing -> do
         kv <- newKVar
-        let newM = M.insert tv (MkPknd (KindVar kv)) skMap
+        let newM = M.insert tv (KindVar kv) skMap
         modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
-        return (TST.TySkolemVar loc pol (MkPknd (KindVar kv)) tv)
+        return (TST.TySkolemVar loc pol (KindVar kv) tv)
       Just mk -> return (TST.TySkolemVar loc pol mk tv)
 
   annotateKind (RST.TyUniVar loc pol tv) = do 
@@ -482,9 +469,9 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     case M.lookup rv rvMap of 
       Nothing -> do
         kv <- newKVar
-        let newM = M.insert rv (MkPknd (KindVar kv)) rvMap
+        let newM = M.insert rv (KindVar kv) rvMap
         modify (\gs@GenerateState{} -> gs { usedRecVars = newM })
-        return (TST.TyRecVar loc pol (MkPknd (KindVar kv)) rv)
+        return (TST.TyRecVar loc pol (KindVar kv) rv)
       Just pk -> return (TST.TyRecVar loc pol pk rv)
 
   annotateKind (RST.TyData loc pol xtors) = do 
@@ -499,26 +486,15 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     mapM_ (checkXtorKind loc eo) xtors'
     return (TST.TyCodata loc pol eo xtors')
  
-  annotateKind (RST.TyDataRefined loc pol (MkPknd pknd) tyn xtors) = do 
+  annotateKind (RST.TyDataRefined loc pol pknd tyn xtors) = do 
     xtors' <- mapM annotateKind xtors
     mapM_ (checkXtorKind loc pknd.returnKind) xtors'
-    return (TST.TyDataRefined loc pol (MkPknd pknd) tyn xtors')
-  annotateKind (RST.TyDataRefined loc pol (MkEo eo) tyn xtors) = do 
-    xtors' <- mapM annotateKind xtors
-    mapM_ (checkXtorKind loc eo) xtors'
-    return (TST.TyDataRefined loc pol (MkEo eo) tyn xtors')
+    return (TST.TyDataRefined loc pol pknd tyn xtors')
 
-  annotateKind (RST.TyDataRefined loc _ knd _ _) = throwOtherError loc ["Refinement data can't have kind " <> ppPrint knd]
-
-  annotateKind (RST.TyCodataRefined loc pol (MkPknd pknd) tyn xtors) = do
+  annotateKind (RST.TyCodataRefined loc pol pknd tyn xtors) = do
     xtors' <- mapM annotateKind xtors
     mapM_ (checkXtorKind loc pknd.returnKind) xtors'
-    return (TST.TyCodataRefined loc pol (MkPknd pknd) tyn xtors')
-  annotateKind (RST.TyCodataRefined loc pol (MkEo eo) tyn xtors) = do 
-    xtors' <- mapM annotateKind xtors 
-    mapM_ (checkXtorKind loc eo) xtors'
-    return (TST.TyCodataRefined loc pol (MkEo eo) tyn xtors')
-  annotateKind (RST.TyCodataRefined loc _ knd _ _)  = throwOtherError loc ["Refinement codata can't have kind " <> ppPrint knd]
+    return (TST.TyCodataRefined loc pol pknd tyn xtors')
 
   annotateKind (RST.TyApp loc pol ty args) = do 
     ty' <- annotateKind ty 

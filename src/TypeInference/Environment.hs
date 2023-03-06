@@ -19,7 +19,7 @@ import Syntax.TST.Types ( TypeScheme, Typ, XtorSig(..) )
 import Syntax.TST.Program ( DataDecl(..), InstanceDeclaration )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), MethodSig (..), LinearContext)
 import Syntax.CST.Types( PrdCns(..), PrdCnsRep(..))
-import Syntax.CST.Kinds (EvaluationOrder,PolyKind(..),AnyKind(..))
+import Syntax.CST.Kinds (EvaluationOrder,PolyKind(..))
 import Loc ( Loc, defaultLoc )
 import qualified Syntax.RST.Program as RST
 
@@ -204,11 +204,7 @@ lookupXtorKind loc xtorn = do
     f :: Environment -> Maybe EvaluationOrder
     f env = 
       case (find typeContainsXtor (fmap snd env.declEnv),M.lookup xtorn env.xtorEnv) of 
-       (Just decl,_) -> do 
-         case decl.data_kind of 
-           MkPknd (MkPolyKind _ eo) -> Just eo 
-           MkEo eo -> Just eo 
-           _ -> Nothing 
+       (Just decl,_) -> Just (decl.data_kind.returnKind); 
        (_,Just xt) -> Just xt.strxtordecl_evalOrder; 
        (Nothing,Nothing) -> Nothing 
 

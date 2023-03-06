@@ -351,7 +351,7 @@ instance GenConstraints Core.Command TST.Command where
     let peanoKnd = peanoDecl.data_kind
     let cnsTy = TST.getTypeTerm cns'
     addConstraint (SubType (ReadConstraint loc)  (TST.TyNominal defaultLoc PosRep peanoKnd peanoNm) cnsTy)
-    addConstraint $ KindEq KindConstraint peanoKnd (TST.getKind cnsTy)
+    addConstraint $ KindEq KindConstraint (MkPknd peanoKnd) (TST.getKind cnsTy)
     return (TST.Read loc cns')
   genConstraints (Core.Apply loc annot t1 t2) = do
     t1' <- genConstraints t1
