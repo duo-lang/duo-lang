@@ -252,12 +252,13 @@ annotTy (RST.TyApp loc pol ty args) = do
         if all (==True) mksChecked && all (==True) varsChecked then
           return $ TST.TyApp loc pol eo ty' args'
         else 
-          throwOtherError loc ["Applied Argument Kinds don't match kinds of declaration"]
+          throwOtherError loc ["Applied Argument Kinds " <> ppPrint args' <> " don't match kinds of declaration " <> ppPrint (MkPolyKind kndArgs eo)]
     (MkPknd (KindVar _)) -> throwOtherError loc ["Can't have a kind variable in declaration"]
     _ -> throwOtherError loc ["can't apply arguments to monokinded type"]
   where 
     checkMk :: (MonoKind,AnyKind) -> Bool
     checkMk (CBox eo1,MkEo eo2) = eo1 == eo2
+    checkMk (CBox eo1,MkPknd (MkPolyKind _ eo2)) = eo1 == eo2
     checkMk (I64Rep,MkI64) = True
     checkMk (F64Rep,MkF64) = True
     checkMk (CharRep,MkChar)  = True

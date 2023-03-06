@@ -1,12 +1,8 @@
 module Bug;
 
--- | The function type
-codata Fun : (-a : CBV, +b : CBV) -> CBV {
-    Ap(a,return b)
+-- | The type of lists.
+data List : (+a : CBV) -> CBV {
+    Nil,
+    Cons(a, List(a))
 };
 
-type operator -> rightassoc at 0 := Fun;
-
--- | Function composition
-def prd compose :=
-  \f g x => f (g x);
