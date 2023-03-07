@@ -1,8 +1,5 @@
  module Syntax.CST.Kinds where
 
-import Data.Set (Set)
-import Data.Set qualified as S
-
 
 import Data.Text
 import Syntax.CST.Names
