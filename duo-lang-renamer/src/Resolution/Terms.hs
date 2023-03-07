@@ -16,6 +16,7 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..), Arity, PrdCnsRep(..))
 import Syntax.CST.Names
+import Syntax.RST.Names
 import Loc
 import qualified Syntax.LocallyNameless as LN
 import Data.Either (fromLeft, isLeft)

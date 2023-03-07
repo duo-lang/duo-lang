@@ -17,6 +17,7 @@ import Resolution.Definition
 import Resolution.SymbolTable
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (PolarityRep(..), flipPolarityRep)
+import Syntax.RST.Names
 import Syntax.CST.Types
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Kinds
@@ -36,8 +37,6 @@ resolveTypeScheme rep ts = do
         else throwError (MissingVarsInTypeScheme ts.ts_loc)
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
-resolveTyp rep (TyUniVar loc v) =
-    pure $ RST.TyUniVar loc rep v
 resolveTyp rep (TySkolemVar loc v) = do
     recVars <- asks (\x -> x.rr_recVars)
     let vr = skolemToRecRVar v

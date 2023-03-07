@@ -9,11 +9,11 @@ import Syntax.CST.Names
       DocComment,
       FreeVarName,
       Precedence,
-      RnTypeName,
       TyOpName,
       TypeName,
       ModuleName,
       XtorName )
+import Syntax.RST.Names (RnTypeName)
 import Syntax.CST.Kinds
     ( EvaluationOrder, MonoKind, PolyKind )
 import Syntax.CST.Types ( DataCodata, PrdCns(..), PrdCnsRep(..) )

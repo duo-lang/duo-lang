@@ -19,7 +19,8 @@ import Pretty.Common ()
 import Pretty.Types ()
 import Pretty.Terms ()
 import Syntax.CST.Names
-    ( MethodName, ClassName, RnTypeName(rnTnDoc) )
+    ( MethodName, ClassName)
+import Syntax.RST.Names
 import Syntax.CST.Kinds ( MonoKind )
 import Syntax.CST.Types ( PrdCnsRep(..), DataCodata(..), PrdCns(..))
 import Syntax.TST.Terms
