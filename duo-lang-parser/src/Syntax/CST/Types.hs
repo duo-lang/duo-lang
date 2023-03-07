@@ -1,7 +1,7 @@
 module Syntax.CST.Types where
 
 import Syntax.CST.Names
-    ( BinOp, ClassName, SkolemTVar, TypeName, UniTVar, XtorName )
+    ( BinOp, SkolemTVar, TypeName, UniTVar, XtorName )
 import Syntax.CST.Kinds
 import Data.List.NonEmpty (NonEmpty)
 import Loc ( Loc, HasLoc(..))
@@ -99,20 +99,9 @@ linearContextToArity = map f
 data TypeScheme = TypeScheme
   { ts_loc :: Loc
   , ts_vars :: [MaybeKindedSkolem]
-  , ts_constraints :: [Constraint]
   , ts_monotype :: Typ
   }
   deriving Show
 
 instance HasLoc TypeScheme where
   getLoc ts = ts.ts_loc
-
----------------------------------------------------------------------------------
--- Constraints
----------------------------------------------------------------------------------
-
-data Constraint
-  = SubType Typ Typ
-  | TypeClass ClassName SkolemTVar
- deriving Show
-

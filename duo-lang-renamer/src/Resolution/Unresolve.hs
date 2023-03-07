@@ -627,7 +627,6 @@ instance Unresolve (RST.TypeScheme pol) CST.TypeScheme where
     type' <- unresolve ts.ts_monotype
     pure $ CST.TypeScheme  { ts_loc         = ts.ts_loc
                            , ts_vars        = ts.ts_vars
-                           , ts_constraints = []
                            , ts_monotype    = type'
                            }
 
