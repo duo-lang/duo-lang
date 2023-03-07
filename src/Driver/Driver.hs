@@ -29,7 +29,8 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (KVar, PolyKind(..),AnyKind(..),anyToMonoKind)
+import Syntax.CST.Kinds (KVar, PolyKind(..))
+import Syntax.RST.Kinds
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST

@@ -10,6 +10,7 @@ import Syntax.CST.Kinds
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names ( MethodName, SkolemTVar, XtorName )
 import Syntax.RST.Names
+import Syntax.RST.Kinds
 import Loc
 
 ------------------------------------------------------------------------------

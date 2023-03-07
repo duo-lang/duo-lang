@@ -21,6 +21,7 @@ import Syntax.RST.Program qualified as RST
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
+import Syntax.RST.Kinds
 import Syntax.CST.Kinds
 import Syntax.CST.Names
 import Loc (Loc, defaultLoc)

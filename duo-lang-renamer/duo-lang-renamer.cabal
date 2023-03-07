@@ -79,6 +79,7 @@ library
       Syntax.RST.Program
       Syntax.RST.Terms
       Syntax.RST.Types
+      Syntax.RST.Kinds
       Syntax.NMap
       Syntax.LocallyNameless
   other-modules:

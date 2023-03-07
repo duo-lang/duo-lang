@@ -22,7 +22,8 @@ import Syntax.CST.Names
 import Syntax.RST.Names
 import Syntax.CST.Types (Arity, PrdCns(..))      
 import Syntax.CST.Kinds
-    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), KindedSkolem, MaybeKindedSkolem, AnyKind(..))
+    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), MaybeKindedSkolem)
+import Syntax.RST.Kinds
 import Loc ( Loc(..) )
 import Data.Foldable (fold)
 import Data.List (intersperse)
