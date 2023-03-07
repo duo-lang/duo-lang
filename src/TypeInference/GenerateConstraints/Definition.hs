@@ -55,6 +55,7 @@ import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program as RST
 import Syntax.TST.Program as TST
+import Syntax.LocallyNameless (Index)
 import TypeInference.Constraints
 import Loc ( Loc, defaultLoc )
 import Utils ( indexMaybe )

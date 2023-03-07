@@ -10,6 +10,7 @@ import Errors.Renamer
 
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
+import Syntax.LocallyNameless (Index)
 import Syntax.CST.Types (PrdCns)
 import Syntax.RST.Types
 import Loc

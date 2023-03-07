@@ -22,7 +22,7 @@ import Data.Text qualified as T
 import Loc
 import Errors
 import Syntax.CST.Names
-    ( ClassName, FreeVarName, Index, MethodName, XtorName, UniTVar )
+    ( ClassName, FreeVarName, MethodName, XtorName, UniTVar )
 import Syntax.Core.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
 import Syntax.Core.Terms qualified as Core
@@ -35,7 +35,7 @@ import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.TST.Types
 import Data.Bifunctor (Bifunctor(second))
-import Syntax.LocallyNameless (LocallyNameless (..), ShiftDirection(..), Shiftable (..))
+import Syntax.LocallyNameless (LocallyNameless (..), Index, ShiftDirection(..), Shiftable (..))
 import Syntax.NMap (NMap (..), (<¢>))
 
 ---------------------------------------------------------------------------------
