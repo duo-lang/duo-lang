@@ -122,7 +122,8 @@ instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
   embedTST = map embedTST
 
 getAnnotKind :: AnyKind -> Maybe MonoKind
-getAnnotKind (MkPknd (MkPolyKind _ eo)) = Just $ CBox eo
+getAnnotKind (MkPknd (MkPolyKind [] eo)) = Just $ CBox eo
+getAnnotKind (MkPknd MkPolyKind{}) = Nothing
 getAnnotKind (MkEo eo) = Just $ CBox eo
 getAnnotKind (MkPknd (KindVar _)) = Nothing 
 getAnnotKind MkI64 = Just I64Rep 
@@ -145,24 +146,28 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     RST.TyKindAnnot (CBox eo) $ RST.TyData loc pol (map embedTST xtors)
   embedTST (TST.TyCodata loc pol eo xtors) =
     RST.TyKindAnnot (CBox eo) $ RST.TyCodata loc pol (map embedTST xtors)
-  embedTST (TST.TyDataRefined loc pol pk@(MkPolyKind _ rk) tn xtors) =
+  embedTST (TST.TyDataRefined loc pol pk@(MkPolyKind [] rk) tn xtors) =
     RST.TyKindAnnot (CBox rk) $ RST.TyDataRefined loc pol pk tn (map embedTST xtors)
-  embedTST (TST.TyDataRefined loc pol pk@(KindVar _) tn xtors) =
-    RST.TyDataRefined loc pol pk tn (map embedTST xtors)
-  embedTST (TST.TyCodataRefined loc pol pk@(MkPolyKind _ rk) tn xtors) = 
+  embedTST (TST.TyDataRefined loc pol pk tn xtors) =
+    RST.TyDataRefined loc pol pk tn (embedTST <$> xtors)
+  embedTST (TST.TyCodataRefined loc pol pk@(MkPolyKind [] rk) tn xtors) = 
     RST.TyKindAnnot (CBox rk) $ RST.TyCodataRefined loc pol pk tn (map embedTST xtors)
-  embedTST (TST.TyCodataRefined loc pol pk@(KindVar _) tn xtors) = 
-    RST.TyCodataRefined loc pol pk tn (map embedTST xtors)
-  -- if arguments are applied to TyNominal, don't annotate the Kind, otherwise the parser will break after prettyprint
-  embedTST (TST.TyApp loc pol _ (TST.TyNominal loc' pol' polyknd tn) args) = 
-    RST.TyApp loc pol (RST.TyNominal loc' pol' polyknd tn) (embedTST <$> args)
+  embedTST (TST.TyCodataRefined loc pol pk tn xtors) = 
+    RST.TyCodataRefined loc pol pk tn (embedTST <$> xtors)
+-- if arguments are applied to TyNominal or TyXDataRefined, don't annotate the Kind, otherwise the parser will break after prettyprint
+--  embedTST (TST.TyApp loc pol _ (TST.TyNominal loc' pol' polyknd tn) args) = 
+--    RST.TyApp loc pol (RST.TyNominal loc' pol' polyknd tn) (embedTST <$> args)
+--  embedTST (TST.TyApp loc pol _ (TST.TyDataRefined loc' pol' pk tn xtors) args) = 
+--    RST.TyApp loc pol (RST.TyDataRefined loc' pol' pk tn (embedTST <$> xtors)) (embedTST <$> args)
+--  embedTST (TST.TyApp loc pol _ (TST.TyCodataRefined loc' pol' pk tn xtors) args) = 
+--    RST.TyApp loc pol (RST.TyCodataRefined loc' pol' pk tn (embedTST <$> xtors)) (embedTST <$> args)
   -- if thre is no application, kind annotation is needed, otherwise x:(Nat:CBV) := x will break after prettyprint
-  embedTST (TST.TyNominal loc pol pk@(MkPolyKind _ rk) tn) = do
+  embedTST (TST.TyNominal loc pol pk@(MkPolyKind [] rk) tn) = do
     RST.TyKindAnnot (CBox rk) $ RST.TyNominal loc pol pk tn  
-  embedTST (TST.TyNominal loc pol pk@(KindVar _) tn) = do
+  embedTST (TST.TyNominal loc pol pk tn) = do
     RST.TyNominal loc pol pk tn  
-  embedTST (TST.TyApp loc pol eo ty args) = do
-    RST.TyKindAnnot (CBox eo) $ RST.TyApp loc pol (embedTST ty) (embedTST <$> args)
+  embedTST (TST.TyApp loc pol _ ty args) = do
+    RST.TyApp loc pol (embedTST ty) (embedTST <$> args)
   embedTST (TST.TySyn loc pol tn tp) = 
     case getAnnotKind (TST.getKind tp) of 
       Nothing -> RST.TySyn loc pol tn (embedTST tp)
