@@ -32,3 +32,48 @@ peanoNm = MkRnTypeName { rnTnLoc    = defaultLoc
                        , rnTnModule = MkModuleName ["Data"] "Peano" 
                        , rnTnName   = MkTypeName "Nat"
                        }
+
+printName :: PrimName
+printName = MkPrimName "Print"
+
+readName :: PrimName
+readName = MkPrimName "Read"
+
+exitSuccessName :: PrimName
+exitSuccessName = MkPrimName "ExitSuccess"
+
+exitFailureName :: PrimName
+exitFailureName = MkPrimName "ExitFailure"
+
+i64AddName :: PrimName
+i64AddName = MkPrimName "I64Add"
+
+i64SubName :: PrimName
+i64SubName = MkPrimName "I64Sub"
+
+i64MulName :: PrimName
+i64MulName = MkPrimName "I64Mul"
+
+i64DivName :: PrimName
+i64DivName = MkPrimName "I64Div"
+
+i64ModName :: PrimName
+i64ModName = MkPrimName "I64Mod"
+
+f64AddName :: PrimName
+f64AddName = MkPrimName "F64Add"
+
+f64SubName :: PrimName
+f64SubName = MkPrimName "F64Sub"
+
+f64MulName :: PrimName
+f64MulName = MkPrimName "F64Mul"
+
+f64DivName :: PrimName
+f64DivName = MkPrimName "F64Div"
+
+charPrependName :: PrimName
+charPrependName = MkPrimName "CharPrepend"
+
+stringAppendName :: PrimName
+stringAppendName = MkPrimName "StringAppend"

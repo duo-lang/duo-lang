@@ -23,6 +23,7 @@ import Data.List (elemIndex, tails)
 import Data.Text (Text, pack)
 
 import Loc ( Loc, HasLoc(..) )
+import Syntax.RST.Names
 import Syntax.CST.Names
     ( ClassName, FreeVarName, MethodName, XtorName, unFreeVarName, unXtorName )
 import Syntax.CST.Terms qualified as CST
