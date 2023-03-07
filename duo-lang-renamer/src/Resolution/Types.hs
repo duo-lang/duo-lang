@@ -36,8 +36,6 @@ resolveTypeScheme rep ts = do
         else throwError (MissingVarsInTypeScheme ts.ts_loc)
 
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
-resolveTyp rep (TyUniVar loc v) =
-    pure $ RST.TyUniVar loc rep v
 resolveTyp rep (TySkolemVar loc v) = do
     recVars <- asks (\x -> x.rr_recVars)
     let vr = skolemToRecRVar v

@@ -39,8 +39,6 @@ resolveXtors sigs = do
     pure (posSigs, negSigs)
 
 checkVarianceTyp :: Loc -> Variance -> PolyKind -> CST.Typ -> ResolverM ()
-checkVarianceTyp _ _ tv(CST.TyUniVar loc _) =
-  throwError (UnknownResolutionError loc ("The Unification Variable " <> T.pack (show tv) <> " should not appear in the program at this point"))
 checkVarianceTyp _ var polyKind (CST.TySkolemVar loc tVar) =
   case lookupPolyKindVariance tVar polyKind of
     -- The following line does not work correctly if the data declaration contains recursive types in the arguments of an xtor.

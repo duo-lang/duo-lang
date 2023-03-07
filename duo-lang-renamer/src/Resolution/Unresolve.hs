@@ -569,7 +569,7 @@ instance Unresolve (RST.Typ pol) CST.Typ where
   unresolve :: RST.Typ pol -> UnresolveM CST.Typ
   unresolve (runUnresolveM . resugarType -> Just ty) = pure ty
   unresolve (RST.TyUniVar loc _ tv) =
-    pure $ CST.TyUniVar loc tv
+    pure $ CST.TySkolemVar loc (MkSkolemTVar (tv.unUniTVar))
   unresolve (RST.TySkolemVar loc _ tv) =
     pure $ CST.TySkolemVar loc tv
   unresolve (RST.TyRecVar loc _ tv) =
