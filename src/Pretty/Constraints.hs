@@ -9,6 +9,7 @@ import Pretty.Types ()
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Types (Polarity(..), PolarityRep (..))
 import Syntax.CST.Names
+import Syntax.RST.Names
 import TypeInference.Constraints
 import Syntax.CST.Kinds
 

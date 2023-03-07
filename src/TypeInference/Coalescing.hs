@@ -12,6 +12,7 @@ import Data.Text qualified as T
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..),Polarity(..))
 import Syntax.CST.Names
+import Syntax.RST.Names
 import Syntax.CST.Kinds (AnyKind(..))
 import TypeInference.Constraints
 import Loc ( defaultLoc )

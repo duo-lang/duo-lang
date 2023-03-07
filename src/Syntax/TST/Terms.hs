@@ -22,7 +22,7 @@ import Data.Text qualified as T
 import Loc
 import Errors
 import Syntax.CST.Names
-    ( ClassName, FreeVarName, MethodName, XtorName, UniTVar )
+    ( ClassName, FreeVarName, MethodName, XtorName )
 import Syntax.Core.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
 import Syntax.Core.Terms qualified as Core
@@ -31,6 +31,7 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
+import Syntax.RST.Names
 
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.TST.Types

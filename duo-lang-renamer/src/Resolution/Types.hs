@@ -17,6 +17,7 @@ import Resolution.Definition
 import Resolution.SymbolTable
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (PolarityRep(..), flipPolarityRep)
+import Syntax.RST.Names
 import Syntax.CST.Types
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Kinds

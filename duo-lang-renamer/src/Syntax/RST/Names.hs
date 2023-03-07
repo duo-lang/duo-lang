@@ -1,7 +1,14 @@
 module Syntax.RST.Names where
 
+import Data.Text
 import Loc
 import Syntax.CST.Names
+
+newtype RecTVar = MkRecTVar {unRecTVar :: Text} deriving (Eq, Show, Ord)
+newtype UniTVar = MkUniTVar { unUniTVar :: Text } deriving (Eq, Show, Ord)
+
+skolemToRecRVar :: SkolemTVar -> RecTVar
+skolemToRecRVar (MkSkolemTVar n) = MkRecTVar n
 
 -- | Resolved TypeName
 data RnTypeName =
