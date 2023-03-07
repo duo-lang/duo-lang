@@ -75,6 +75,7 @@ library
       Resolution.Terms
       Resolution.Types
       Resolution.Unresolve
+      Syntax.RST.Names
       Syntax.RST.Program
       Syntax.RST.Terms
       Syntax.RST.Types

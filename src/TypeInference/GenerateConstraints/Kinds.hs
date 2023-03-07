@@ -8,6 +8,7 @@ module TypeInference.GenerateConstraints.Kinds
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
+import Syntax.RST.Names
 import Syntax.TST.Types qualified as TST
 import Syntax.TST.Types (getKind)
 import Syntax.CST.Kinds

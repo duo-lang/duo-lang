@@ -12,6 +12,7 @@ import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Terms (PrimitiveOp)
 import Syntax.RST.Types (FlipPol, FlipPrdCns, PolarityRep(..), flipPolarityRep, flipPrdCns)
 import Syntax.RST.Program (PrdCnsToPol)
+import Syntax.RST.Names
 import Syntax.Core.Terms (Pattern(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.TST.Program qualified as TST

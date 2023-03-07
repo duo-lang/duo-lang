@@ -17,11 +17,11 @@ import Syntax.CST.Names
       PrimName(..),
       Precedence(..),
       RecTVar(MkRecTVar),
-      RnTypeName(rnTnName),
       SkolemTVar(MkSkolemTVar),
       TypeName(MkTypeName),
       UniTVar(MkUniTVar),
       XtorName(MkXtorName) )
+import Syntax.RST.Names (RnTypeName(..))
 import Syntax.CST.Types (Arity, PrdCns(..))      
 import Syntax.CST.Kinds
     ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), KindedSkolem, MaybeKindedSkolem, AnyKind(..))

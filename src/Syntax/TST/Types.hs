@@ -8,8 +8,8 @@ import Data.Kind ( Type )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), FlipPol ,PrdCnsFlip)
 import Syntax.CST.Kinds
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
-import Syntax.CST.Names ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
-
+import Syntax.CST.Names ( MethodName, RecTVar, SkolemTVar, UniTVar, XtorName )
+import Syntax.RST.Names ( RnTypeName )
 import Loc
 
 ------------------------------------------------------------------------------

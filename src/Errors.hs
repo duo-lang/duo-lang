@@ -13,6 +13,7 @@ import Syntax.CST.Names
 import Syntax.LocallyNameless (Index)
 import Syntax.CST.Types (PrdCns)
 import Syntax.RST.Types
+import Syntax.RST.Names
 import Loc
 import TypeInference.Constraints (ConstraintInfo)
 
