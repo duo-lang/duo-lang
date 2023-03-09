@@ -8,7 +8,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Syntax.CST.Kinds ( Variance(..),MaybeKindedSkolem, MonoKind(..), PolyKind(..))
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
-    ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
+    ( MethodName, SkolemTVar, XtorName )
+import Syntax.RST.Names
 import Loc ( Loc, defaultLoc, HasLoc(..) )
 
 ------------------------------------------------------------------------------

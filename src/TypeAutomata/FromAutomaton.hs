@@ -5,6 +5,8 @@ module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..), flipPolarityRep)
+import Syntax.RST.Names
+import Syntax.RST.Kinds
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Names

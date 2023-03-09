@@ -22,8 +22,8 @@ import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Types
 import Syntax.CST.Names
-    ( ClassName, FreeVarName, Index, MethodName, XtorName )
-import Syntax.LocallyNameless (LocallyNameless (..), Shiftable (..), ShiftDirection(..))
+    ( ClassName, FreeVarName, MethodName, XtorName )
+import Syntax.LocallyNameless (LocallyNameless (..), Index, Shiftable (..), ShiftDirection(..))
 import Syntax.NMap (NMap (..), (<¢>))
 
 ---------------------------------------------------------------------------------

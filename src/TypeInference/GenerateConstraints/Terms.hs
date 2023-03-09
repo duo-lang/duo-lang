@@ -17,6 +17,8 @@ import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program qualified as RST
 import Syntax.CST.Names
+import Syntax.RST.Names
+import Syntax.RST.Kinds
 import Syntax.CST.Kinds
 import Translate.EmbedTST (EmbedTST(..))
 

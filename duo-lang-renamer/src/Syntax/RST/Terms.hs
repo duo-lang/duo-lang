@@ -24,10 +24,10 @@ import Data.Text (Text, pack)
 
 import Loc ( Loc, HasLoc(..) )
 import Syntax.CST.Names
-    ( ClassName, FreeVarName, Index, MethodName, XtorName, unFreeVarName, unXtorName )
+    ( ClassName, FreeVarName, MethodName, XtorName, unFreeVarName, unXtorName )
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..) )
-import Syntax.LocallyNameless (LocallyNameless (..))
+import Syntax.LocallyNameless (LocallyNameless (..), Index)
 import Syntax.NMap (NMap (..), (<¢>))
 import Syntax.RST.Types ( Typ, Polarity(..) )
 

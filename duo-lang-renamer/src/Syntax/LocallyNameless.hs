@@ -1,5 +1,12 @@
 module Syntax.LocallyNameless where
 
+---------------------------------------------------------------------------------
+-- de Bruijn indices
+---------------------------------------------------------------------------------
+
+-- | Two-level de Bruijn indices.
+type Index = (Int, Int)
+
 class LocallyNameless subst vars a | a -> subst, a -> vars where
   openRec  :: Int   -> subst -> a -> a
   closeRec :: Int   -> vars  -> a -> a

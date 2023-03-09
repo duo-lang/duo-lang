@@ -6,9 +6,10 @@ import Syntax.RST.Program qualified as RST
 import Syntax.CST.Program qualified as CST
 import Syntax.TST.Types ( TopAnnot, Typ, XtorSig)
 import Syntax.RST.Types (Polarity(..))
+import Syntax.RST.Names (RnTypeName)
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..), DataCodata(..))
 import Syntax.CST.Kinds
-import Syntax.CST.Names ( ClassName, DocComment, FreeVarName, ModuleName, RnTypeName )
+import Syntax.CST.Names ( ClassName, DocComment, FreeVarName, ModuleName )
 import Loc ( Loc )
 
 

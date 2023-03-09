@@ -9,6 +9,7 @@ import Data.Text qualified as T
 
 import Resolution.SymbolTable
 import Syntax.CST.Names
+import Syntax.RST.Names
 import Loc
 import Errors.Renamer
 import Control.Monad.Writer

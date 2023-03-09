@@ -1,6 +1,6 @@
 module Xfunc.Xfunc where
 
-import Syntax.CST.Kinds
+import Syntax.RST.Kinds
 import Syntax.TST.Program qualified as TST
 import Data.Set qualified as Set
 

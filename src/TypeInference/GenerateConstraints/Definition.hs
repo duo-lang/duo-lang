@@ -53,7 +53,10 @@ import Syntax.CST.Kinds
 import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program as RST
+import Syntax.RST.Names
+import Syntax.RST.Kinds
 import Syntax.TST.Program as TST
+import Syntax.LocallyNameless (Index)
 import TypeInference.Constraints
 import Loc ( Loc, defaultLoc )
 import Utils ( indexMaybe )
@@ -255,21 +258,7 @@ lookupContext loc rep idx@(i,j) = do
 instantiateTypeScheme :: FreeVarName -> Loc -> TST.TypeScheme pol -> GenM (TST.Typ pol)
 instantiateTypeScheme fv loc ts = do 
   freshVars <- forM ts.ts_vars (\(tv,knd) -> freshTVar (TypeSchemeInstance fv loc) (Just $ MkPknd knd) >>= \ty -> return (tv, ty))
-  -- uncommented for now, as there are problems with variances
-  --mapM_ (addKindConstr loc ts.ts_monotype) freshVars
   pure $ TST.zonk TST.SkolemRep (TST.MkBisubstitution (M.fromList freshVars)) ts.ts_monotype
-  where 
-    addKindConstr :: Loc -> TST.Typ pol -> (SkolemTVar, (TST.Typ Pos, TST.Typ Neg)) -> GenM () 
-    addKindConstr loc ty (_,(typos,tyneg)) =  
-      case (TST.getKind ty, TST.getKind typos, TST.getKind tyneg) of 
-        (MkPknd pk1, MkPknd pk2, MkPknd pk3) -> do
-          addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk2)
-          addConstraint $ KindEq KindConstraint (MkPknd pk1) (MkPknd pk3)
-          return () 
-        (primk1, primk2, primk3) -> 
-          if primk1 == primk2 && primk1 == primk3 then return () 
-          else throwOtherError loc ["Kinds " <> ppPrint (TST.getKind ty) <> " and " <> ppPrint (TST.getKind typos) <> " don't match"]
-        
 
 ---------------------------------------------------------------------------------------------
 -- Adding a constraint

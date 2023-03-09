@@ -10,6 +10,7 @@ import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Terms qualified as CST
+import Syntax.RST.Names
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Terms qualified as RST
@@ -568,7 +569,7 @@ instance Unresolve (RST.Typ pol) CST.Typ where
   unresolve :: RST.Typ pol -> UnresolveM CST.Typ
   unresolve (runUnresolveM . resugarType -> Just ty) = pure ty
   unresolve (RST.TyUniVar loc _ tv) =
-    pure $ CST.TyUniVar loc tv
+    pure $ CST.TySkolemVar loc (MkSkolemTVar (tv.unUniTVar))
   unresolve (RST.TySkolemVar loc _ tv) =
     pure $ CST.TySkolemVar loc tv
   unresolve (RST.TyRecVar loc _ tv) =
@@ -627,7 +628,6 @@ instance Unresolve (RST.TypeScheme pol) CST.TypeScheme where
     type' <- unresolve ts.ts_monotype
     pure $ CST.TypeScheme  { ts_loc         = ts.ts_loc
                            , ts_vars        = ts.ts_vars
-                           , ts_constraints = []
                            , ts_monotype    = type'
                            }
 
