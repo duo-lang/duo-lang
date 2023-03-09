@@ -24,7 +24,7 @@ def rec prd length : forall a. <List | r | Nil, Cons(a,r) >(a) -> Nat :=
     };
 
 --  Append two lists together.
-def rec prd append := --forall a. <List | r1 | Nil, Cons(a,r1) > (a) -> <List | r2 | Nil, Cons(a,r2) > (a) -> <List | r3 | Nil, Cons(a,r3)>(a) :=
+def rec prd append : forall a. <List | r1 | Nil, Cons(a,r1) > (a) -> <List | r2 | Nil, Cons(a,r2) > (a) -> <List | r3 | Nil, Cons(a,r3)>(a) :=
     \xs ys => case xs of {
         Nil => ys,
         Cons(z, zs) => Cons(z, append zs ys)
@@ -38,7 +38,7 @@ def rec prd reverse : forall a. <List | r | Nil, Cons(a,r) >(a) -> <List | r | N
     };
 
 --  Maps a function over all elements of a list.
-def rec prd map := -- forall a b. (a->b) -> <List | r1 | Nil, Cons(a,r2) >(a) -> <List | r2 | Nil, Cons(a,r2) >(b):=
+def rec prd map : forall a b. (a->b) -> <List | r1 | Nil, Cons(a,r1) >(a) -> <List | r2 | Nil, Cons(a,r2) >(b):=
     \f xs => case xs of {
         Nil => Nil,
         Cons(y, ys) => Cons(f y, map f ys)
@@ -55,14 +55,14 @@ def rec prd filter : forall a. (a -> Bool) -> <List | r1 | Nil, Cons(a,r1) >(a) 
     };
 
 --  Right fold over a list.
-def rec prd foldr: forall a b. (a -> b -> b) -> b -> <List | r | Nil, Cons(a,r) >(a) -> b  :=
+def rec prd foldr : forall a b. (a -> b -> b) -> b -> <List | r | Nil, Cons(a,r) >(a) -> b  :=
     \f init xs => case xs of {
         Nil => init,
         Cons(y, ys) => f y (foldr f init ys)
     };
 
 --  Left fold over a list.
-def rec prd foldl:= --forall a b. (b -> a -> b) -> b -> <List | r | Nil, Cons(a,r) >(a) -> b  :=
+def rec prd foldl : forall a b. (b -> a -> b) -> b -> <List | r | Nil, Cons(a,r) >(a) -> b  :=
     \f acc xs => case xs of {
         Nil => acc,
         Cons(y, ys) => foldl f (f acc y) ys
@@ -71,7 +71,7 @@ def rec prd foldl:= --forall a b. (b -> a -> b) -> b -> <List | r | Nil, Cons(a,
 -- Special folds
 
 --  Concat all elements of a list of lists.
-def rec prd concat := -- : forall a. <List | r1 | Nil, Cons(a,r1) >(a) -> <List | r2 | Nil, Cons(a,r2) >(a) :=
+def rec prd concat : forall a. <List | r1 | Nil, Cons(a,r1) >(a) -> <List | r2 | Nil, Cons(a,r2) >(a) :=
     foldr append Nil;
 
 --  Map a function over all the elements of a container and concatenate the resulting lists.
@@ -92,7 +92,7 @@ def rec prd sum : <List | r | Nil, Cons(Nat,r)>(Nat) -> Nat  :=
 
 
 --  Left scan over a list.
-def rec prd scanl:= --: forall a b. (b -> a -> b) -> b -> <List | r1 | Nil, Cons(a,r1) >(a) -> <List | r2 | Nil, Cons(r2,b) >(b) :=
+def rec prd scanl : forall a b. (b -> a -> b) -> b -> <List | r1 | Nil, Cons(a,r1) >(a) -> <List | r2 | Nil, Cons(r2,b) >(b) :=
     \f acc xs => Cons(acc, case xs of {
         Nil => Nil,
         Cons(y,ys) => scanl f (f acc y) ys
