@@ -242,7 +242,7 @@ instance ToHoverMap PrdCnsTerm where
   toHoverMap (PrdTerm tm) = toHoverMap tm
   toHoverMap (CnsTerm tm) = toHoverMap tm
 
-applyToHoverMap :: Range -> AnyKind -> HoverMap
+applyToHoverMap :: Range -> MonoKind -> HoverMap
 applyToHoverMap rng cc = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
 instance ToHoverMap TST.Command where

@@ -64,7 +64,7 @@ evalTermOnce (Print _ prd cmd) = do
   return (Just cmd)
 evalTermOnce (Read _ cns) = do
   tm <- readM
-  return (Just (Apply defaultLoc ApplyAnnotOrig (MkEo CBV) tm cns))
+  return (Just (Apply defaultLoc ApplyAnnotOrig (CBox CBV) tm cns))
 evalTermOnce (Jump _ fv) = do
   cmd <- lookupCommand fv
   return (Just cmd)
@@ -76,7 +76,7 @@ evalTermOnce (Method _ _ _ (InstanceUnresolved _) _ _) = throwEvalError defaultL
 evalTermOnce (Apply _ _ kind prd cns) = evalApplyOnce kind prd cns
 evalTermOnce (PrimOp _ op args) = evalPrimOp op args
 
-evalApplyOnce :: Monad m => AnyKind -> Term Prd -> Term Cns -> EvalM m  (Maybe Command)
+evalApplyOnce :: Monad m => MonoKind -> Term Prd -> Term Cns -> EvalM m  (Maybe Command)
 -- Free variables have to be looked up in the environment.
 evalApplyOnce kind (FreeVar _ PrdRep _ fv) cns = do
   prd <- lookupTerm PrdRep fv
@@ -94,17 +94,17 @@ evalApplyOnce _ prd@(XCase _ _ PrdRep _ _  cases) cns@(Xtor _ _ CnsRep _ _ xt ar
   checkArgs (Apply defaultLoc ApplyAnnotOrig (error "evalApplyOnce: This Kind should never be used") prd cns) argTypes args
   return (Just (LN.open args cmd')) --reduction is just opening
 -- Mu abstractions have to be evaluated while taking care of evaluation order.
-evalApplyOnce (MkEo CBV) (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
+evalApplyOnce (CBox CBV) (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
   return (Just (LN.open (MkSubstitution [CnsTerm cns]) cmd))
-evalApplyOnce MkI64 (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
+evalApplyOnce I64Rep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
   return (Just (LN.open (MkSubstitution [CnsTerm cns]) cmd))
-evalApplyOnce MkF64 (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
+evalApplyOnce F64Rep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
   return (Just (LN.open (MkSubstitution [CnsTerm cns]) cmd))
-evalApplyOnce MkChar (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
+evalApplyOnce CharRep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
   return (Just (LN.open (MkSubstitution [CnsTerm cns]) cmd))
-evalApplyOnce MkString (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
+evalApplyOnce StringRep (MuAbs _ _ PrdRep _ _ cmd) cns@(MuAbs _ _ CnsRep _ _ _) =
   return (Just (LN.open (MkSubstitution [CnsTerm cns]) cmd))
-evalApplyOnce (MkEo CBN) prd@(MuAbs _ _ PrdRep _ _ _) (MuAbs _ _ CnsRep _ _ cmd) =
+evalApplyOnce (CBox CBN) prd@(MuAbs _ _ PrdRep _ _ _) (MuAbs _ _ CnsRep _ _ cmd) =
   return (Just (LN.open (MkSubstitution [PrdTerm prd]) cmd))
 evalApplyOnce _ (MuAbs _ _ PrdRep _ _ cmd) cns =
   return (Just (LN.open (MkSubstitution [CnsTerm cns]) cmd))

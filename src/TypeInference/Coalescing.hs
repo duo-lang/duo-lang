@@ -105,7 +105,6 @@ coalesceType (TyUniVar _ PosRep pk tv) = do
     recVar <- getOrElseUpdateRecVar (tv, Pos)
     case pk of 
       MkPknd pk' -> return (TyRecVar defaultLoc PosRep pk' recVar)
-      MkEo eo -> return (TyRecVar defaultLoc PosRep (MkPolyKind [] eo) recVar)
       primk -> error ("Recursive Variable " <> show recVar <> " can't have primitive kind " <> show primk)
   else do
     vst <- getVariableState tv
@@ -122,7 +121,6 @@ coalesceType (TyUniVar _ PosRep pk tv) = do
   where 
     anyToPoly :: AnyKind -> PolyKind
     anyToPoly (MkPknd pk) = pk
-    anyToPoly (MkEo eo) = MkPolyKind [] eo
     anyToPoly primK = error ("Type Variable can't have primitive kind " <> show primK)
 
 coalesceType (TyUniVar _ NegRep pk tv) = do
@@ -131,7 +129,6 @@ coalesceType (TyUniVar _ NegRep pk tv) = do
     recVar <- getOrElseUpdateRecVar (tv, Neg)
     case pk of 
       MkPknd pk' -> return (TyRecVar defaultLoc NegRep pk' recVar)
-      MkEo eo -> return (TyRecVar defaultLoc NegRep (MkPolyKind [] eo) recVar)
       primk -> error ("Recursive Variable " <> show recVar <> " can't have primitive kind " <> show primk)
   else do
       vst <- getVariableState tv
@@ -148,7 +145,6 @@ coalesceType (TyUniVar _ NegRep pk tv) = do
   where 
     anyToPoly :: AnyKind -> PolyKind
     anyToPoly (MkPknd pk) = pk
-    anyToPoly (MkEo eo) = MkPolyKind [] eo
     anyToPoly primK = error ("Type Variable can't have primitive kind " <> show primK)
 
 coalesceType (TyData loc rep mk xtors) = do

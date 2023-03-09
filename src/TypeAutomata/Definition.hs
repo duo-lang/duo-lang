@@ -177,7 +177,6 @@ data NodeLabel =
 emptyNodeLabel :: Polarity -> AnyKind -> NodeLabel
 emptyNodeLabel _ (MkPknd (KindVar _)) = error "at this point no KindVars should be in the program"
 emptyNodeLabel pol (MkPknd pk)  = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty pk
-emptyNodeLabel pol (MkEo eo)    = MkNodeLabel pol Nothing Nothing S.empty M.empty M.empty (MkPolyKind [] eo)
 emptyNodeLabel pol MkI64        = MkPrimitiveNodeLabel pol I64
 emptyNodeLabel pol MkF64        = MkPrimitiveNodeLabel pol F64
 emptyNodeLabel pol MkString     = MkPrimitiveNodeLabel pol PString

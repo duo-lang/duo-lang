@@ -182,12 +182,12 @@ instance GetKind (Typ pol) where
   getKind (TySkolemVar _ _ pk _)          = MkPknd pk
   getKind (TyUniVar _ _ knd _)            = knd
   getKind (TyRecVar _ _ pk _)             = MkPknd pk 
-  getKind (TyData _ _ eo _ )              = MkEo eo
-  getKind (TyCodata _ _ eo _ )            = MkEo eo
+  getKind (TyData _ _ eo _ )              = MkPknd (MkPolyKind [] eo)
+  getKind (TyCodata _ _ eo _ )            = MkPknd (MkPolyKind [] eo)
   getKind (TyDataRefined _ _ pk _ _)      = MkPknd pk
   getKind (TyCodataRefined _ _ pk _ _)    = MkPknd pk
   getKind (TyNominal _ _ pk _ )           = MkPknd pk
-  getKind (TyApp _ _ eo _ _)              = MkEo eo
+  getKind (TyApp _ _ eo _ _)              = MkPknd (MkPolyKind [] eo)
   getKind (TySyn _ _ _ ty)                = getKind ty
   getKind (TyTop _ knd)                   = knd
   getKind (TyBot _ knd)                   = knd
@@ -414,7 +414,6 @@ instance ZonkKind PolyKind where
   zonkKind bisubst kindV@(KindVar kv) = case M.lookup kv bisubst of
     Nothing -> kindV
     Just (MkPknd pk) -> pk
-    Just (MkEo eo) -> MkPolyKind [] eo
     Just _ -> error "should never happen"
   zonkKind _ pk = pk
 

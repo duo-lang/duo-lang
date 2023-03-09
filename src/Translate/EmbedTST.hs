@@ -124,7 +124,6 @@ instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
 getAnnotKind :: AnyKind -> Maybe MonoKind
 getAnnotKind (MkPknd (MkPolyKind [] eo)) = Just $ CBox eo
 getAnnotKind (MkPknd MkPolyKind{}) = Nothing
-getAnnotKind (MkEo eo) = Just $ CBox eo
 getAnnotKind (MkPknd (KindVar _)) = Nothing 
 getAnnotKind MkI64 = Just I64Rep 
 getAnnotKind MkF64 = Just F64Rep

@@ -45,7 +45,7 @@ getXtorKinds loc (xtor:xtors) = do
   eo <- lookupXtorKind loc nm
   eo' <- getXtorKinds loc xtors
   -- all constructors of a structural type need to have the same return kind
-  addConstraint (KindEq ReturnKindConstraint (MkEo eo) (MkEo eo'))
+  addConstraint (KindEq ReturnKindConstraint (MkPknd (MkPolyKind [] eo)) (MkPknd (MkPolyKind [] eo')))
   return eo
   
 getKindDecl ::  TST.DataDecl -> GenM (MonoKind,[MonoKind])
@@ -59,9 +59,9 @@ checkXtorKind :: Loc -> EvaluationOrder -> TST.XtorSig pol -> GenM ()
 checkXtorKind loc eo xtor = do 
   xtorEo <- lookupXtorKind loc (xtor.sig_name)
   let sigKnds = map TST.getKind (xtor.sig_args)
-  let constrs = map (KindEq ReturnKindConstraint (MkEo xtorEo)) sigKnds
+  let constrs = map (KindEq ReturnKindConstraint (MkPknd (MkPolyKind [] xtorEo))) sigKnds
   mapM_ addConstraint constrs
-  addConstraint $ KindEq ReturnKindConstraint (MkEo xtorEo) (MkEo eo)
+  addConstraint $ KindEq ReturnKindConstraint (MkPknd (MkPolyKind [] xtorEo)) (MkPknd (MkPolyKind [] eo))
   return ()
 
 checkVariance :: (Variance,TST.VariantType pol) -> Bool
@@ -257,8 +257,7 @@ annotTy (RST.TyApp loc pol ty args) = do
     _ -> throwOtherError loc ["can't apply arguments to monokinded type"]
   where 
     checkMk :: (MonoKind,AnyKind) -> Bool
-    checkMk (CBox eo1,MkEo eo2) = eo1 == eo2
-    checkMk (CBox eo1,MkPknd (MkPolyKind _ eo2)) = eo1 == eo2
+    checkMk (CBox eo1,MkPknd (MkPolyKind [] eo2)) = eo1 == eo2
     checkMk (I64Rep,MkI64) = True
     checkMk (F64Rep,MkF64) = True
     checkMk (CharRep,MkChar)  = True

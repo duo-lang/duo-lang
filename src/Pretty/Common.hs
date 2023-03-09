@@ -149,7 +149,6 @@ instance PrettyAnn PolyKind where
 
 instance PrettyAnn AnyKind where 
   prettyAnn (MkPknd pk) = prettyAnn pk
-  prettyAnn (MkEo eo) = prettyAnn eo
   prettyAnn MkI64 = prettyAnn I64Rep
   prettyAnn MkF64 = prettyAnn F64Rep
   prettyAnn MkChar = prettyAnn CharRep

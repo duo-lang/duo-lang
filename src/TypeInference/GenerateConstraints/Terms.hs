@@ -29,6 +29,7 @@ import TypeInference.Environment
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 import Syntax.TST.Terms (Substitution(..))
+import Pretty.Pretty
 
 ---------------------------------------------------------------------------------------------
 -- Substitutions and Linear Contexts
@@ -358,9 +359,18 @@ instance GenConstraints Core.Command TST.Command where
     t2' <- genConstraints t2
     let ty1 = TST.getTypeTerm t1'
     let ty2 = TST.getTypeTerm t2'
+    applyKnd <- anyToMonoKind (TST.getKind ty1)
     addConstraint (SubType (CommandConstraint loc) ty1 ty2)
     addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2)
-    pure (TST.Apply loc annot (TST.getKind ty1) t1' t2')
+    pure (TST.Apply loc annot applyKnd t1' t2')
+    where 
+      anyToMonoKind :: AnyKind -> GenM MonoKind
+      anyToMonoKind (MkPknd (MkPolyKind [] eo)) = return $ CBox eo
+      anyToMonoKind MkI64 = return I64Rep
+      anyToMonoKind MkF64 = return F64Rep
+      anyToMonoKind MkString = return StringRep
+      anyToMonoKind MkChar = return CharRep
+      anyToMonoKind knd = throwOtherError defaultLoc ["Apply can only have monokind, not " <> ppPrint knd]
 
   genConstraints (Core.PrimOp loc op subst) = do
     substInferred <- genConstraints subst

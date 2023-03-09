@@ -26,7 +26,7 @@ import Syntax.CST.Names
 import Syntax.Core.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
 import Syntax.Core.Terms qualified as Core
-import Syntax.CST.Kinds ( AnyKind )
+import Syntax.CST.Kinds ( MonoKind )
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Terms qualified as RST
@@ -189,7 +189,7 @@ data Command where
   -- | A producer applied to a consumer:
   --
   --   p >> c
-  Apply  :: Loc -> ApplyAnnot -> AnyKind -> Term Prd -> Term Cns -> Command
+  Apply  :: Loc -> ApplyAnnot -> MonoKind -> Term Prd -> Term Cns -> Command
   Print  :: Loc -> Term Prd -> Command -> Command
   Read   :: Loc -> Term Cns -> Command
   Jump   :: Loc -> FreeVarName -> Command
