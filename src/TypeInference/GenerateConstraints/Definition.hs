@@ -60,7 +60,6 @@ import Syntax.LocallyNameless (Index)
 import TypeInference.Constraints
 import Loc ( Loc, defaultLoc )
 import Utils ( indexMaybe )
-import Pretty.Pretty
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
