@@ -180,7 +180,7 @@ instance GetCodeActions TST.DataDecl where
   -- If we are not in the correct range, then don't generate code actions.
   getCodeActions _ _ Range {_start = start} decl | not (lookupPos start decl.data_loc) =
     List []
-  getCodeActions id mod _ decl =
+  getCodeActions id _ _ decl =
     let 
       dualize = [ workspaceEditToCodeAction (generateDualizeDeclEdit id decl.data_loc decl) ("Dualize declaration " <> ppPrint decl.data_name) ]
       xfunc = [generateXfuncCodeAction id decl.data_loc decl ]
