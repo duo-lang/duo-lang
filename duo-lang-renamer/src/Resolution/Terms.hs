@@ -305,25 +305,27 @@ casesToNS (tmcase:_) =
       pure ns
     _ -> 
       throwError (UnknownResolutionError defaultLoc "casesToNS called with invalid argument")
+
+
   
 
 -- | Lower a natural number literal.
 resolveNatLit :: Loc -> CST.NominalStructural -> Int -> ResolverM (RST.Term Prd)
-resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep ns (MkXtorName "Z") (RST.MkSubstitution [])
+resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep (RST.cstTorstNS ns Nothing) (MkXtorName "Z") (RST.MkSubstitution [])
 resolveNatLit loc ns n = do
   n' <- resolveNatLit loc ns (n-1)
-  pure $ RST.Xtor loc PrdRep ns (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n'])
+  pure $ RST.Xtor loc PrdRep (RST.cstTorstNS ns Nothing) (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n'])
 
 -- | Lower an application.
 resolveApp :: PrdCnsRep pc -> Loc -> CST.Term -> CST.Term -> ResolverM (RST.Term pc)
 resolveApp PrdRep loc fun arg = do
   fun' <- resolveTerm PrdRep fun
   arg' <- resolveTerm PrdRep arg
-  pure $ RST.Dtor loc PrdRep CST.Nominal (MkXtorName "Ap") fun' (RST.MkSubstitutionI ([RST.PrdTerm arg'],PrdRep,[]))
+  pure $ RST.Dtor loc PrdRep (RST.Nominal Nothing) (MkXtorName "Ap") fun' (RST.MkSubstitutionI ([RST.PrdTerm arg'],PrdRep,[]))
 resolveApp CnsRep loc fun arg = do
   fun' <- resolveTerm CnsRep fun
   arg' <- resolveTerm CnsRep arg
-  pure $ RST.Semi loc CnsRep CST.Nominal (MkXtorName "CoAp")  (RST.MkSubstitutionI ([RST.CnsTerm arg'],CnsRep,[])) fun'
+  pure $ RST.Semi loc CnsRep (RST.Nominal Nothing) (MkXtorName "CoAp")  (RST.MkSubstitutionI ([RST.CnsTerm arg'],CnsRep,[])) fun'
 
 isStarT :: CST.TermOrStar -> Bool
 isStarT CST.ToSStar  = True
@@ -400,7 +402,7 @@ resolveTerm PrdRep (CST.Xtor loc xtor _ty subst) = do
           ExplicitSubst es -> return (map snd es)
           ImplicitSubst {} ->  throwError (UnknownResolutionError loc "The substitution in a constructor call cannot contain implicit arguments")
       pctms <- resolveTerms loc ar subst'
-      pure $ RST.Xtor loc PrdRep ns xtor (RST.MkSubstitution pctms)
+      pure $ RST.Xtor loc PrdRep (RST.cstTorstNS ns Nothing) xtor (RST.MkSubstitution pctms)
     (MethodNameResult _cn _ar) -> throwError (UnknownResolutionError loc "Xtor expected, but found Method")
 resolveTerm CnsRep (CST.Xtor loc xtor _ty subst) = do
   (_, res) <- lookupXtor loc xtor
@@ -415,7 +417,7 @@ resolveTerm CnsRep (CST.Xtor loc xtor _ty subst) = do
           ExplicitSubst es -> return (map snd es)
           ImplicitSubst {} ->  throwError (UnknownResolutionError loc "The substitution in a constructor call cannot contain implicit arguments")
       pctms <- resolveTerms loc ar subst'
-      pure $ RST.Xtor loc CnsRep ns xtor (RST.MkSubstitution pctms)
+      pure $ RST.Xtor loc CnsRep (RST.cstTorstNS ns Nothing) xtor (RST.MkSubstitution pctms)
     (MethodNameResult _cn _ar) -> throwError (UnknownResolutionError loc "Xtor expected, but found Method")
 ---------------------------------------------------------------------------------
 -- Semi / Dtor
@@ -436,13 +438,13 @@ resolveTerm rep (CST.Semi loc xtor subst tm) = do
         CnsRep -> do
           subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
           subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
-          pure $ RST.Semi loc CnsRep ns xtor (RST.MkSubstitutionI (subst1', CnsRep, subst2')) tm'
+          pure $ RST.Semi loc CnsRep (RST.cstTorstNS ns Nothing) xtor (RST.MkSubstitutionI (subst1', CnsRep, subst2')) tm'
     ImplicitSubst subst1 Cns subst2 -> do
       case rep of
         PrdRep -> do
           subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
           subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
-          pure $ RST.Semi loc PrdRep ns xtor (RST.MkSubstitutionI (subst1', PrdRep, subst2')) tm'
+          pure $ RST.Semi loc PrdRep (RST.cstTorstNS ns Nothing) xtor (RST.MkSubstitutionI (subst1', PrdRep, subst2')) tm'
         CnsRep ->
           throwError (UnknownResolutionError loc "Tried to resolve Semi to a producer, but implicit argument stands for a producer")
 resolveTerm rep (CST.Dtor loc xtor tm subst) = do
@@ -461,13 +463,13 @@ resolveTerm rep (CST.Dtor loc xtor tm subst) = do
         CnsRep -> do
           subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
           subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
-          pure $ RST.Dtor loc CnsRep ns xtor tm' (RST.MkSubstitutionI (subst1', CnsRep, subst2'))
+          pure $ RST.Dtor loc CnsRep (RST.cstTorstNS ns Nothing) xtor tm' (RST.MkSubstitutionI (subst1', CnsRep, subst2'))
     ImplicitSubst subst1 Cns subst2 -> do
       case rep of
         PrdRep -> do
           subst1' <- forM subst1 $ uncurry resolvePrdCnsTerm
           subst2' <- forM subst2 $ uncurry resolvePrdCnsTerm
-          pure $ RST.Dtor loc PrdRep ns xtor tm' (RST.MkSubstitutionI (subst1', PrdRep, subst2'))
+          pure $ RST.Dtor loc PrdRep (RST.cstTorstNS ns Nothing) xtor tm' (RST.MkSubstitutionI (subst1', PrdRep, subst2'))
         CnsRep -> do
           throwError (UnknownResolutionError loc "Tried to resolve Dtor to a consumer, but implicit argument stands for consumer")
 ---------------------------------------------------------------------------------
@@ -483,26 +485,26 @@ resolveTerm PrdRep (CST.Cocase loc cases)  = do
   case intermediateCases of
     ExplicitCases explicitCases -> do
       cases' <- mapM resolveCommandCase explicitCases
-      pure $ RST.XCase loc PrdRep ns cases'
+      pure $ RST.XCase loc PrdRep (RST.cstTorstNS ns Nothing) cases'
     ImplicitPrdCases implicitCases -> do
       cases' <- mapM (resolveTermCaseI PrdRep) implicitCases
-      pure $ RST.CocaseI loc PrdRep ns cases'
+      pure $ RST.CocaseI loc PrdRep (RST.cstTorstNS ns Nothing) cases'
     ImplicitCnsCases implicitCases -> do
       cases' <- mapM (resolveTermCaseI CnsRep) implicitCases
-      pure $ RST.CocaseI loc CnsRep ns cases'
+      pure $ RST.CocaseI loc CnsRep (RST.cstTorstNS ns Nothing) cases'
 resolveTerm CnsRep (CST.Case loc cases)  = do
   ns <- casesToNS cases
   intermediateCases <- analyzeCases CST.Data cases
   case intermediateCases of
     ExplicitCases explicitCases -> do
       cases' <- mapM resolveCommandCase explicitCases
-      pure $ RST.XCase loc CnsRep ns cases'
+      pure $ RST.XCase loc CnsRep (RST.cstTorstNS ns Nothing) cases'
     ImplicitPrdCases implicitCases -> do
       cases' <- mapM (resolveTermCaseI PrdRep) implicitCases
-      pure $ RST.CaseI loc PrdRep ns cases'
+      pure $ RST.CaseI loc PrdRep (RST.cstTorstNS ns Nothing) cases'
     ImplicitCnsCases implicitCases -> do
       cases' <- mapM (resolveTermCaseI CnsRep) implicitCases
-      pure $ RST.CaseI loc CnsRep ns cases'
+      pure $ RST.CaseI loc CnsRep (RST.cstTorstNS ns Nothing) cases'
 ---------------------------------------------------------------------------------
 -- CaseOf / CocaseOf
 ---------------------------------------------------------------------------------
@@ -513,7 +515,7 @@ resolveTerm PrdRep (CST.CaseOf loc t cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- mapM (resolveTermCase PrdRep) explicitCases
       t' <- resolveTerm PrdRep t
-      pure $ RST.CaseOf loc PrdRep ns t' cases'
+      pure $ RST.CaseOf loc PrdRep (RST.cstTorstNS ns Nothing) t' cases'
     ImplicitPrdCases _implicitCases ->
       throwError (UnknownResolutionError loc "Cannot resolve case-of with implicit cases to producer.")
     ImplicitCnsCases _implicitCases ->
@@ -525,7 +527,7 @@ resolveTerm PrdRep (CST.CocaseOf loc t cases)  = do
     ExplicitCases explicitCases -> do
       cases' <- mapM (resolveTermCase PrdRep) explicitCases
       t' <- resolveTerm CnsRep t
-      pure $ RST.CocaseOf loc PrdRep ns t' cases'
+      pure $ RST.CocaseOf loc PrdRep (RST.cstTorstNS ns Nothing) t' cases'
     ImplicitPrdCases _implicitCases ->
       throwError (UnknownResolutionError loc "Cannot resolve cocase-of with implicit cases to producer")
     ImplicitCnsCases _implicitCases ->
@@ -537,7 +539,7 @@ resolveTerm CnsRep (CST.CaseOf loc t cases) = do
     ExplicitCases explicitCases -> do
       cases' <- mapM (resolveTermCase CnsRep) explicitCases
       t' <- resolveTerm PrdRep t
-      pure $ RST.CaseOf loc CnsRep ns t' cases'
+      pure $ RST.CaseOf loc CnsRep (RST.cstTorstNS ns Nothing) t' cases'
     ImplicitPrdCases _implicitCases ->
       throwError (UnknownResolutionError loc "Cannot resolve case-of with implicit cases to consumer.")
     ImplicitCnsCases _implicitCases ->
@@ -549,7 +551,7 @@ resolveTerm CnsRep (CST.CocaseOf loc t cases) = do
     ExplicitCases explicitCases -> do
       cases' <- mapM (resolveTermCase CnsRep) explicitCases
       t' <- resolveTerm CnsRep t
-      pure $ RST.CocaseOf loc CnsRep ns t' cases'
+      pure $ RST.CocaseOf loc CnsRep (RST.cstTorstNS ns Nothing) t' cases'
     ImplicitPrdCases _implicitCases ->
       throwError (UnknownResolutionError loc "Cannot resolve cocase-of with implicit cases to consumer")
     ImplicitCnsCases _implicitCases ->

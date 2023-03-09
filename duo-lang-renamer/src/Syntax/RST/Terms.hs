@@ -18,7 +18,9 @@ module Syntax.RST.Terms
   , Overlap 
   , NominalStructural(..)
    -- Functions
-  ,overlap) where
+  ,overlap
+  ,cstTorstNS
+  ,rstTocstNS) where
 
 import Data.List (elemIndex, tails)
 import Data.Text (Text, pack)
@@ -270,10 +272,20 @@ data InstanceCase = MkInstanceCase
 deriving instance Show InstanceCase
 
 data NominalStructural where
-  Nominal :: TypeName -> NominalStructural
+  Nominal :: Maybe TypeName -> NominalStructural
   Structural :: NominalStructural
+  Refinement :: NominalStructural
   deriving (Eq, Ord, Show)
 
+cstTorstNS :: CST.NominalStructural -> Maybe TypeName -> NominalStructural
+cstTorstNS CST.Nominal tn = Nominal tn
+cstTorstNS CST.Structural _= Structural
+cstTorstNS CST.Refinement _ = Refinement
+
+rstTocstNS :: NominalStructural -> CST.NominalStructural
+rstTocstNS (Nominal _)  = CST.Nominal
+rstTocstNS Structural = CST.Structural
+rstTocstNS Refinement = CST.Refinement
 
 
 ---------------------------------------------------------------------------------
