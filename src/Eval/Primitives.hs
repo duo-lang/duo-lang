@@ -11,7 +11,7 @@ import Errors (throwEvalError)
 import Loc
 
 applyPrdToCns :: Monad m => Term Prd -> Term Cns -> EvalM m (Maybe Command)
-applyPrdToCns x k = pure $ Just $ Apply defaultLoc ApplyAnnotOrig (CBox CBV) x k
+applyPrdToCns x k = pure $ Just $ Apply defaultLoc ApplyAnnotOrig (MkPknd (MkPolyKind [] CBV)) x k
 
 evalPrimOp :: Monad m => PrimitiveOp -> Substitution -> EvalM m (Maybe Command)
 -- I64
