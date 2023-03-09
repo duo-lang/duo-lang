@@ -19,6 +19,8 @@ import Pretty.Pretty
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..), Polarity(..), polarityRepToPol, getTypeNames)
 import Translate.EmbedTST
+import Syntax.RST.Names
+import Syntax.RST.Kinds
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.CST.Names

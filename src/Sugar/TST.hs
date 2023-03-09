@@ -27,7 +27,7 @@ import Syntax.TST.Terms
 import Syntax.CST.Names
 import Syntax.Core.Annot
 import Syntax.Core.Terms (Pattern(..))
-import Syntax.CST.Kinds
+import Syntax.RST.Kinds
 import Loc
 import Syntax.TST.Types
 import Syntax.RST.Types (flipPrdCns)

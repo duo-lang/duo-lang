@@ -16,15 +16,14 @@ import Syntax.CST.Names
       ModuleName(MkModuleName),
       PrimName(..),
       Precedence(..),
-      RecTVar(MkRecTVar),
-      RnTypeName(rnTnName),
       SkolemTVar(MkSkolemTVar),
       TypeName(MkTypeName),
-      UniTVar(MkUniTVar),
       XtorName(MkXtorName) )
+import Syntax.RST.Names
 import Syntax.CST.Types (Arity, PrdCns(..))      
 import Syntax.CST.Kinds
-    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), KindedSkolem, MaybeKindedSkolem, AnyKind(..))
+    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), MaybeKindedSkolem)
+import Syntax.RST.Kinds
 import Loc ( Loc(..) )
 import Data.List (intersperse)
 

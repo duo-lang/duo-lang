@@ -2,6 +2,7 @@ module Eval.Primitives where
 
 import Syntax.Core.Annot
 import Syntax.CST.Kinds
+import Syntax.RST.Kinds
 import Syntax.TST.Terms
 import Syntax.RST.Terms (PrimitiveOp(..))
 import Syntax.CST.Types (PrdCns(..))

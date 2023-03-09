@@ -19,8 +19,10 @@ import Pretty.Common ()
 import Pretty.Types ()
 import Pretty.Terms ()
 import Syntax.CST.Names
-    ( MethodName, ClassName, RnTypeName(rnTnDoc) )
-import Syntax.CST.Kinds ( MonoKind,AnyKind )
+    ( MethodName, ClassName)
+import Syntax.RST.Names
+import Syntax.CST.Kinds ( MonoKind )
+import Syntax.RST.Kinds ( AnyKind )
 import Syntax.CST.Types ( PrdCnsRep(..), DataCodata(..), PrdCns(..))
 import Syntax.TST.Terms
     ( Command(Method, Print, Read, Jump, ExitSuccess, ExitFailure,

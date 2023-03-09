@@ -13,6 +13,7 @@ import Loc
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Program (PrdCnsToPol)
+import Syntax.RST.Kinds
 import Syntax.CST.Kinds
 import Syntax.CST.Names
 import Syntax.Core.Annot

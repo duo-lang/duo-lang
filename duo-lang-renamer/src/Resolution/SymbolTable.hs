@@ -14,11 +14,14 @@ import Data.Map qualified as M
 import Data.Set qualified as S
 
 import Errors.Renamer
+    ( ResolutionError(OrphanInstance, TypeNameAlreadyUsed,
+                      XtorNameAlreadyUsed, FreeVarNameAlreadyUsed, TyOpAlreadyUsed) )
 import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CST.Terms
+import Syntax.RST.Names
 import Loc ( Loc )
 
 ---------------------------------------------------------------------------------

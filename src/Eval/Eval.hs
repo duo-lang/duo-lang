@@ -12,6 +12,7 @@ import Data.List.NonEmpty ( NonEmpty )
 import Errors
 import Pretty.Pretty
 import Syntax.CST.Kinds
+import Syntax.RST.Kinds
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.Core.Annot
 import Syntax.Core.Terms (Pattern(..))

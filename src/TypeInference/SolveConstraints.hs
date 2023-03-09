@@ -22,6 +22,8 @@ import TypeInference.Environment (Environment (..))
 import Errors
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))
+import Syntax.RST.Names
+import Syntax.RST.Kinds
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
