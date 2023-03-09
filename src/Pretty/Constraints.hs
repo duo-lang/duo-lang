@@ -9,6 +9,8 @@ import Pretty.Types ()
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Types (Polarity(..), PolarityRep (..))
 import Syntax.CST.Names
+import Syntax.RST.Names
+import Syntax.RST.Kinds
 import TypeInference.Constraints
 import Syntax.CST.Kinds
 
@@ -30,6 +32,8 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn (PrimOpArgsConstraint loc)     = parens ("Primitive operation args constraint at" <+> prettyAnn loc)
   prettyAnn (TypeClassConstraint loc) = parens ("Type class constraint at" <+> prettyAnn loc)
   prettyAnn KindConstraint = parens "Kind Constraint"
+  prettyAnn ReturnKindConstraint = parens "Return Kind Constraint"
+  prettyAnn TypeArgKindConstraint = parens "Type Argument Kind Constraint"
   -- Derived Constraints
   prettyAnn UpperBoundConstraint           = parens "UpperBound"
   prettyAnn LowerBoundConstraint           = parens "LowerBound"

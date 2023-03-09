@@ -22,6 +22,8 @@ import TypeInference.Environment (Environment (..))
 import Errors
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))
+import Syntax.RST.Names
+import Syntax.RST.Kinds
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
@@ -164,19 +166,6 @@ partitionM sets kv = do
     (_:_:_,_) -> throwSolverError defaultLoc ["Kind variable occurs in more than one equivalence class: " <> ppPrint kv]
 
 unifyKinds :: AnyKind -> AnyKind -> SolverM ()
-unifyKinds (MkPknd (MkPolyKind args1 eo1)) (MkPknd (MkPolyKind args2 eo2)) = do
-  if eo1 == eo2
-    then compArgs args1 args2
-    else throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint eo1 <> " and " <> ppPrint eo2]
-  where 
-    compArgs ::[(Variance, SkolemTVar, MonoKind)] ->[(Variance, SkolemTVar, MonoKind)] -> SolverM ()
-    compArgs [] [] = return () 
-    compArgs _ [] = return () --throwSolverError defaultLoc ["Numbers of type arguments don't match"]
-    compArgs [] _ = return () --throwSolverError defaultLoc ["Numbers of type arguments don't match"]
-    compArgs ((var1,sk1,mk1):rst1) ((var2,sk2,mk2):rst2) = 
-      if var1 == var2 && mk1 == mk2 then 
-        compArgs rst1 rst2 
-        else throwSolverError defaultLoc ["Arguments " <> ppPrint var1 <> " " <> ppPrint sk1 <> ":"<> ppPrint mk1 <> " and " <> ppPrint var2 <> " " <> ppPrint sk2 <> ":" <> ppPrint mk2 <> " don't match"]
 unifyKinds (MkPknd (KindVar kv1)) (MkPknd (KindVar kv2)) = 
   if kv1 == kv2 then return () else do
   sets <- getKVars
@@ -202,11 +191,7 @@ unifyKinds (MkPknd (KindVar kv)) kind = do
       unifyKinds kind pk
       return ()
 unifyKinds kind (MkPknd (KindVar kv)) = unifyKinds (MkPknd (KindVar kv)) kind
-unifyKinds MkI64 MkI64 = return () 
-unifyKinds MkF64 MkF64 = return () 
-unifyKinds MkChar MkChar = return () 
-unifyKinds MkString MkString = return () 
-unifyKinds knd1 knd2 = throwSolverError defaultLoc ["Cannot unify incompatible kinds: " <> ppPrint knd1 <> " and " <> ppPrint knd2]
+unifyKinds knd1 knd2 = if knd1 == knd2 then return () else throwSolverError defaultLoc ["Cannot unify Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2]
 
 computeKVarSolution :: KindPolicy
                     -> Maybe (KVar, AnyKind)
@@ -294,7 +279,7 @@ subConstraints :: Constraint ConstraintInfo -> SolverM (SubtypeWitness, [Constra
 -- the kinds of ty1 and ty2 are the same
 -- argi <: argi'
 -- ty1 <: ty2
-subConstraints (SubType info (TyApp _ _ ty1 args1) (TyApp _ _ ty2 args2)) = do
+subConstraints (SubType info (TyApp _ _ eo1 ty1 args1) (TyApp _  _ eo2 ty2 args2)) = if eo1 == eo2 then do
   let 
     f (CovariantType ty1) (CovariantType ty2) = SubType ApplicationSubConstraint ty1 ty2
     f (ContravariantType ty1) (ContravariantType ty2) = SubType ApplicationSubConstraint ty2 ty1
@@ -304,6 +289,8 @@ subConstraints (SubType info (TyApp _ _ ty1 args1) (TyApp _ _ ty2 args2)) = do
   --constraints' <- forM  ctors1 (\x -> checkXtor ctors2 mrv2 loc2 x mrv1 loc1)
   let constrs = constraints ++ constraints
   pure (DataApp ty1 ty2 $ SubVar . void <$> constrs, constrs)
+  else 
+    throwSolverError defaultLoc ["Evaluationorders " <> ppPrint eo1 <> " and " <> ppPrint eo2 <> " don't match"]
 
   
 

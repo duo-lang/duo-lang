@@ -8,6 +8,8 @@ module TypeInference.GenerateConstraints.Kinds
 import Syntax.TST.Program qualified as TST
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
+import Syntax.RST.Names
+import Syntax.RST.Kinds
 import Syntax.TST.Types qualified as TST
 import Syntax.TST.Types (getKind)
 import Syntax.CST.Kinds
@@ -42,11 +44,11 @@ getXtorKinds loc [xtor] = do
   lookupXtorKind loc nm 
 getXtorKinds loc (xtor:xtors) = do 
   let nm = xtor.sig_name
-  mk <- lookupXtorKind loc nm
-  mk' <- getXtorKinds loc xtors
+  eo <- lookupXtorKind loc nm
+  eo' <- getXtorKinds loc xtors
   -- all constructors of a structural type need to have the same return kind
-  addConstraint (KindEq KindConstraint (MkPknd $ MkPolyKind [] mk) (MkPknd $ MkPolyKind [] mk'))
-  return mk
+  addConstraint (KindEq ReturnKindConstraint (MkPknd (MkPolyKind [] eo)) (MkPknd (MkPolyKind [] eo')))
+  return eo
   
 getKindDecl ::  TST.DataDecl -> GenM (MonoKind,[MonoKind])
 getKindDecl decl = do
@@ -57,24 +59,36 @@ getKindDecl decl = do
 
 checkXtorKind :: Loc -> EvaluationOrder -> TST.XtorSig pol -> GenM () 
 checkXtorKind loc eo xtor = do 
-  xtorKnd <- lookupXtorKind loc (xtor.sig_name)
+  xtorEo <- lookupXtorKind loc (xtor.sig_name)
   let sigKnds = map TST.getKind (xtor.sig_args)
-  let constrs = map (KindEq KindConstraint (MkPknd (MkPolyKind [] xtorKnd))) sigKnds
+  let constrs = map (KindEq ReturnKindConstraint (MkPknd (MkPolyKind [] xtorEo))) sigKnds
   mapM_ addConstraint constrs
-  addConstraint $ KindEq KindConstraint (MkPknd $ MkPolyKind [] xtorKnd) (MkPknd $ MkPolyKind [] eo)
+  addConstraint $ KindEq ReturnKindConstraint (MkPknd (MkPolyKind [] xtorEo)) (MkPknd (MkPolyKind [] eo))
   return ()
 
-checkVariantType :: Loc -> (Variance,MonoKind,TST.VariantType pol) -> GenM ()
-checkVariantType _ (Covariant,mk,TST.CovariantType ty) = do
-  let argKnd = TST.getKind ty
-  addConstraint $ KindEq KindConstraint argKnd (monoToAnyKind mk)
-  return ()
-checkVariantType _ (Contravariant,mk,TST.ContravariantType ty) = do
-  let argKnd = TST.getKind ty
-  addConstraint $ KindEq KindConstraint argKnd (monoToAnyKind mk)
-  return ()
-checkVariantType loc (Covariant,_,TST.ContravariantType _) = throwOtherError loc ["Used Contravariant type as covariant type"]
-checkVariantType loc (Contravariant,_,TST.CovariantType _) = throwOtherError loc ["Used Covariant Type as contravariant type"]
+checkVariance :: (Variance,TST.VariantType pol) -> Bool
+checkVariance (Covariant, TST.CovariantType _) = True
+checkVariance (Contravariant, TST.ContravariantType _) = True 
+checkVariance _ = False 
+
+checkVariantTypes :: Loc -> AnyKind -> NonEmpty (TST.VariantType pol) -> GenM EvaluationOrder
+checkVariantTypes loc (MkPknd (MkPolyKind kndArgs eo)) args = 
+  if length kndArgs /= length args then 
+    throwOtherError loc ["Number of Type Arguments does not match declaration"]
+  else do
+    let argsLs = NE.toList args
+    -- check variances
+    let kndVars = map (\(x,_,_) -> x) kndArgs 
+    let varsChecked = zipWith (curry checkVariance) kndVars argsLs
+    if all (==True) varsChecked then do
+      let declKnds = map (\(_,_,z) -> z) kndArgs
+      let argKnds = map TST.getKind argsLs 
+      let kindEqs = zip declKnds argKnds
+      mapM_ (\(x,y) -> addConstraint (KindEq TypeArgKindConstraint y (monoToAnyKind x))) kindEqs
+      return eo
+    else throwOtherError loc ["Variances of applied types don't match"]
+checkVariantTypes loc (MkPknd (KindVar _)) _ = throwOtherError loc ["Polykind of application unclear"]
+checkVariantTypes loc mk _ = throwOtherError loc ["Types can't be applied to type with kind " <> ppPrint mk]
 
 newKVar :: GenM KVar
 newKVar = do
@@ -226,7 +240,33 @@ annotTy (RST.TyCodataRefined loc pol pknd tyn xtors) = do
 annotTy (RST.TyApp loc pol ty args) = do 
   ty' <- annotTy ty 
   args' <- mapM annotVarTy args
-  return $ TST.TyApp loc pol ty' args'
+  let pk = TST.getKind ty'
+  case pk of 
+    (MkPknd (MkPolyKind kndArgs eo)) -> 
+      if length args' /= length kndArgs then
+        throwOtherError loc ["Number of arguments doesn't match declaration"]
+      else do 
+        let declVars = map (\(x,_,_) -> x) kndArgs
+        let declMks = map (\(_,_,z) -> z) kndArgs
+        let argMks = map TST.getKind (NE.toList args')
+        let mksChecked = zipWith (curry checkMk) declMks argMks
+        let varsChecked  = zipWith (curry checkVariance) declVars (NE.toList args')
+        if all (==True) mksChecked && all (==True) varsChecked then
+          return $ TST.TyApp loc pol eo ty' args'
+        else 
+          throwOtherError loc ["Applied Argument Kinds " <> ppPrint args' <> " don't match kinds of declaration " <> ppPrint (MkPolyKind kndArgs eo)]
+    (MkPknd (KindVar _)) -> throwOtherError loc ["Can't have a kind variable in declaration"]
+    _ -> throwOtherError loc ["can't apply arguments to monokinded type"]
+  where 
+    checkMk :: (MonoKind,AnyKind) -> Bool
+    checkMk (CBox eo1,MkPknd (MkPolyKind [] eo2)) = eo1 == eo2
+    checkMk (I64Rep,MkI64) = True
+    checkMk (F64Rep,MkF64) = True
+    checkMk (CharRep,MkChar)  = True
+    checkMk (StringRep,MkString) = True
+    checkMk _ = False
+
+
 annotTy (RST.TyNominal loc pol polyknd tyn) = return $ TST.TyNominal loc pol polyknd tyn
 annotTy (RST.TySyn loc pol tyn ty) =  do 
   ty' <- annotTy ty
@@ -487,47 +527,13 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     mapM_ (checkXtorKind loc pknd.returnKind) xtors'
     return (TST.TyCodataRefined loc pol pknd tyn xtors')
 
-  annotateKind (RST.TyApp _loc' _pol' (RST.TyNominal loc pol pknd tyn) args) = do 
-    if length args /= length pknd.kindArgs then 
-      throwOtherError loc ["Wrong number of arguments of type " <> ppPrint tyn] 
-    else do 
-      args' <- mapM annotateKind args
-      let varArgs = zipWith (curry (\ ((x, _, y), z) -> (x, y, z))) pknd.kindArgs (NE.toList args')
-      mapM_ (checkVariantType loc) varArgs
-      return (TST.TyApp loc pol (TST.TyNominal loc pol pknd tyn) args')
-
   annotateKind (RST.TyApp loc pol ty args) = do 
     ty' <- annotateKind ty 
     args' <- mapM annotateKind args
-    let pk = TST.getKind ty'
-    addArgKindConstrs loc pk args'
-    return $ TST.TyApp loc pol ty' args'
-    where 
-      addArgKindConstrs :: Loc -> AnyKind -> NonEmpty (TST.VariantType pol) -> GenM () 
-      addArgKindConstrs loc (MkPknd (MkPolyKind kndArgs _)) args = do
-        if length kndArgs /= length args then
-          throwOtherError loc ["Number of arguments does not match with PolyKind"]
-        else do
-          -- make sure variances match
-          let declVars = map (\(x,_,_) -> x) kndArgs
-          let argVars = NE.map varTyToVariance args
-          mapM_ (checkVariance loc) (zip declVars (NE.toList argVars))
-          -- make sure kinds match
-          let declKinds = map (\(_,_,x) -> x) kndArgs
-          let argKnds = NE.map TST.getKind args
-          let kindEqs = zip declKinds (NE.toList argKnds)
-          mapM_ (\(x,y) -> addConstraint (KindEq KindConstraint (monoToAnyKind x) y)) kindEqs
-      addArgKindConstrs loc (MkPknd (KindVar kv)) _ = throwOtherError loc ["Can't apply args to kind " <> ppPrint (KindVar kv) <> " (not implemented yet)"]
-      addArgKindConstrs loc knd _ = throwOtherError loc ["Can't apply arguments to kind " <> ppPrint knd]
-      checkVariance :: Loc -> (Variance,Variance) -> GenM ()
-      checkVariance _ (Covariant, Covariant) = return ()
-      checkVariance _ (Contravariant, Contravariant) = return () 
-      checkVariance loc (v1,v2) = throwOtherError loc ["Variances " <> ppPrint v1 <> " and " <> ppPrint v2 <> " don't match"]
-
-      varTyToVariance :: TST.VariantType pol -> Variance
-      varTyToVariance (TST.CovariantType _) = Covariant
-      varTyToVariance (TST.ContravariantType _) = Contravariant
-
+    let pk = TST.getKind ty' 
+    eo <- checkVariantTypes loc pk args'
+    return $ TST.TyApp loc pol eo ty' args'
+    
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
     return $ TST.TyNominal loc pol polyknd tyn
               

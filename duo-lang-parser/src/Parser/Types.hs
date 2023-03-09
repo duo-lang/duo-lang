@@ -290,23 +290,5 @@ typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
   tvars' <- option [] (forallP >> sc >> some (tvarAnnotP <* sc) <* (symbolP SymDot >> sc))
-  let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
-  tConstraints <- option [] (constraintP `sepBy` (symbolP SymComma >> sc) <* (symbolP SymDoubleRightArrow >> sc))
   (monotype, endPos) <- typP
-  pure (TypeScheme (Loc startPos endPos) (fst <$> tvars') tConstraints monotype)
-
-typeClassConstraintP :: Parser (Constraint, SourcePos)
-typeClassConstraintP = try $ do
-  (cname,_) <- classNameP
-  sc
-  (tvar, pos) <- tvarP
-  sc
-  return (TypeClass cname tvar, pos)
-
-subTypeConstraintP :: Parser (Constraint, SourcePos)
-subTypeConstraintP = try $ do
-  t1 <- fst <$> typP
-  symbolP SymSubtype
-  sc
-  (t2, pos) <- typP
-  return (SubType t1 t2, pos)
+  pure (TypeScheme (Loc startPos endPos) (fst <$> tvars') monotype)

@@ -8,7 +8,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Syntax.CST.Kinds ( Variance(..),MaybeKindedSkolem, MonoKind(..), PolyKind(..))
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
-    ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
+    ( MethodName, SkolemTVar, XtorName )
+import Syntax.RST.Names
 import Loc ( Loc, defaultLoc, HasLoc(..) )
 
 ------------------------------------------------------------------------------
@@ -135,7 +136,7 @@ data Typ (pol     :: Polarity) where
   TyCodataRefined :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
   TyNominal       :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName  -> Typ pol
-  TyApp           :: Loc -> PolarityRep pol -> Typ pol -> NonEmpty (VariantType pol) -> Typ pol
+  TyApp           :: Loc -> PolarityRep pol -> Typ pol  -> NonEmpty (VariantType pol) -> Typ pol
   -- | Type synonym
   TySyn           :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | Lattice types

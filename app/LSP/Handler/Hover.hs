@@ -19,8 +19,10 @@ import Pretty.Common ()
 import Pretty.Types ()
 import Pretty.Terms ()
 import Syntax.CST.Names
-    ( MethodName, ClassName, RnTypeName(rnTnDoc) )
+    ( MethodName, ClassName)
+import Syntax.RST.Names
 import Syntax.CST.Kinds ( MonoKind )
+import Syntax.RST.Kinds ( AnyKind )
 import Syntax.CST.Types ( PrdCnsRep(..), DataCodata(..), PrdCns(..))
 import Syntax.TST.Terms
     ( Command(Method, Print, Read, Jump, ExitSuccess, ExitFailure,
@@ -242,7 +244,7 @@ instance ToHoverMap PrdCnsTerm where
   toHoverMap (PrdTerm tm) = toHoverMap tm
   toHoverMap (CnsTerm tm) = toHoverMap tm
 
-applyToHoverMap :: Range -> MonoKind -> HoverMap
+applyToHoverMap :: Range -> AnyKind -> HoverMap
 applyToHoverMap rng cc = M.fromList [(rng, mkHover (ppPrint cc) rng)]
 
 instance ToHoverMap TST.Command where
@@ -365,7 +367,7 @@ instance ToHoverMap (TST.Typ pol) where
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (TST.TyApp loc _ ty args) = 
+  toHoverMap (TST.TyApp loc _ _ ty args) = 
     let 
       hoverTy = toHoverMap ty 
       betw = mkHoverMap loc (T.unlines ["applied to"])

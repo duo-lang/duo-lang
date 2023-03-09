@@ -16,17 +16,15 @@ import Syntax.CST.Names
       ModuleName(MkModuleName),
       PrimName(..),
       Precedence(..),
-      RecTVar(MkRecTVar),
-      RnTypeName(rnTnName),
       SkolemTVar(MkSkolemTVar),
       TypeName(MkTypeName),
-      UniTVar(MkUniTVar),
       XtorName(MkXtorName) )
+import Syntax.RST.Names
 import Syntax.CST.Types (Arity, PrdCns(..))      
 import Syntax.CST.Kinds
-    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), KindedSkolem, MaybeKindedSkolem, AnyKind(..))
+    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), MaybeKindedSkolem)
+import Syntax.RST.Kinds
 import Loc ( Loc(..) )
-import Data.Foldable (fold)
 import Data.List (intersperse)
 
 
@@ -69,7 +67,7 @@ instance PrettyAnn FreeVarName where
   prettyAnn (MkFreeVarName nm) = prettyAnn nm
 
 instance PrettyAnn ModuleName where
-  prettyAnn (MkModuleName p nm) = fold (prettyAnn <$> intersperse "." (p  ++ [nm]))
+  prettyAnn (MkModuleName p nm) = foldMap prettyAnn (intersperse "." (p ++ [nm]))
 
 instance PrettyAnn UniTVar where
   prettyAnn (MkUniTVar tv) = prettyAnn tv

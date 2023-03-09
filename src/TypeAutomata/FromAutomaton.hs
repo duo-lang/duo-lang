@@ -5,6 +5,8 @@ module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..), flipPolarityRep)
+import Syntax.RST.Names
+import Syntax.RST.Kinds
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Names
@@ -213,7 +215,7 @@ nodeToTypeNoCache rep i  = do
             args <- mapM f argNodes 
             case args of 
               [] -> return $ TyDataRefined defaultLoc rep pk tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep (TyDataRefined defaultLoc rep pk tn sig) (arg1:|argRst)
+              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk tn sig) (arg1:|argRst)
         -- Creating ref codata types
         refCodatL <- do
           forM refCodatTypes $ \(tn,(xtors,vars)) -> do
@@ -227,7 +229,7 @@ nodeToTypeNoCache rep i  = do
             args <- mapM f argNodes 
             case args of
               [] -> return $ TyCodataRefined defaultLoc rep pk tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep (TyCodataRefined defaultLoc rep pk tn sig) (arg1:|argRst)
+              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk tn sig) (arg1:|argRst)
         -- Creating Nominal types
         nominals <- do
             forM (S.toList tns) $ \(tn, variances) -> do
@@ -237,7 +239,7 @@ nodeToTypeNoCache rep i  = do
               args <- mapM f argNodes 
               case args of 
                 [] -> pure $ TyNominal defaultLoc rep pk tn
-                (fst:rst) -> pure $ TyApp defaultLoc rep (TyNominal defaultLoc rep pk tn) (fst:|rst)
+                (fst:rst) -> pure $ TyApp defaultLoc rep pk.returnKind (TyNominal defaultLoc rep pk tn) (fst:|rst)
 
         let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
         return $ case rep of

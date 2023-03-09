@@ -25,7 +25,7 @@ import LSP.Definition ( LSPMonad, LSPConfig (..), sendInfo )
 import LSP.MegaparsecToLSP ( locToRange, lookupInRangeMap )
 import Sugar.Desugar (Desugar(..))
 import Syntax.RST.Terms qualified as RST
-import Syntax.CST.Names
+import Syntax.RST.Names
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
 import Translate.EmbedTST(EmbedTST(..))
