@@ -79,7 +79,7 @@ codeActionHandler = requestHandler STextDocumentCodeAction $ \req responder -> d
     Nothing -> do
       sendInfo ("Cache not initialized for: " <> T.pack (show uri))
       responder (Right (List []))
-    Just mod -> responder (Right (getCodeActions ident range mod))
+    Just mod -> responder (Right (getCodeActions ident mod range mod))
 
 
   -- mfile <- getVirtualFile (toNormalizedUri uri)
@@ -119,6 +119,8 @@ workspaceEditToCodeAction edit descr =
 class GetCodeActions a where
   getCodeActions :: TextDocumentIdentifier
                  -- ^ The document in which we are looking for available Code actions.
+                 -> TST.Module
+                 -- ^ The module in which the code action is provided
                  -> Range
                  -- ^ The range where we are looking for available code actions, i.e.
                  --   the position of the mouse pointer.
@@ -128,23 +130,23 @@ class GetCodeActions a where
                  -- ^ The available code actions and commands.
 
 instance GetCodeActions TST.Module where
-  getCodeActions :: TextDocumentIdentifier -> Range -> TST.Module -> List (Command |? CodeAction)
-  getCodeActions id rng mod = mconcat (getCodeActions id rng <$> mod.mod_decls)
+  getCodeActions :: TextDocumentIdentifier -> TST.Module -> Range -> TST.Module -> List (Command |? CodeAction)
+  getCodeActions id tstmod rng mod = mconcat (getCodeActions id tstmod rng <$> mod.mod_decls)
   
 instance GetCodeActions TST.Declaration where
-  getCodeActions :: TextDocumentIdentifier -> Range -> TST.Declaration -> List (Command |? CodeAction)
-  getCodeActions id rng (TST.PrdCnsDecl _ decl)  = getCodeActions id rng decl
-  getCodeActions id rng (TST.CmdDecl decl)       = getCodeActions id rng decl
-  getCodeActions id rng (TST.DataDecl decl)      = getCodeActions id rng decl
-  getCodeActions _ _ _                           = List []
+  getCodeActions :: TextDocumentIdentifier -> TST.Module -> Range -> TST.Declaration -> List (Command |? CodeAction)
+  getCodeActions id mod rng (TST.PrdCnsDecl _ decl)  = getCodeActions id mod rng decl
+  getCodeActions id mod rng (TST.CmdDecl decl)       = getCodeActions id mod rng decl
+  getCodeActions id mod rng (TST.DataDecl decl)      = getCodeActions id mod rng decl
+  getCodeActions _ _ _ _                           = List []
 
 instance GetCodeActions (TST.PrdCnsDeclaration pc) where
-  getCodeActions :: TextDocumentIdentifier -> Range -> TST.PrdCnsDeclaration pc -> List (Command |? CodeAction)
+  getCodeActions :: TextDocumentIdentifier -> TST.Module -> Range -> TST.PrdCnsDeclaration pc -> List (Command |? CodeAction)
   -- If we are not in the correct range, then don't generate code actions.
-  getCodeActions _ Range { _start = start } decl | not (lookupPos start decl.pcdecl_loc) =
+  getCodeActions _ _ Range { _start = start } decl | not (lookupPos start decl.pcdecl_loc) =
     List []
   -- If the type is not already annotated, only generate the code action for annotating the type.
-  getCodeActions id _ decl =
+  getCodeActions id _ _ decl =
     case decl.pcdecl_annot of
       TST.Inferred _ ->
         List [workspaceEditToCodeAction (generateAnnotEdit id decl) ("Annotate type for " <> ppPrint decl.pcdecl_name)]
@@ -159,11 +161,11 @@ instance GetCodeActions (TST.PrdCnsDeclaration pc) where
           List (desugar <> cbvfocus <> cbnfocus <> dualize)
 
 instance GetCodeActions TST.CommandDeclaration where
-  getCodeActions :: TextDocumentIdentifier -> Range -> TST.CommandDeclaration -> List (Command |? CodeAction)
+  getCodeActions :: TextDocumentIdentifier -> TST.Module -> Range -> TST.CommandDeclaration -> List (Command |? CodeAction)
   -- If we are not in the correct range, then don't generate code actions.
-  getCodeActions _ Range { _start = start } decl | not (lookupPos start decl.cmddecl_loc) =
+  getCodeActions _ _ Range { _start = start } decl | not (lookupPos start decl.cmddecl_loc) =
     List []
-  getCodeActions id _ decl=
+  getCodeActions id _ _ decl=
     let
       desugar  = [ workspaceEditToCodeAction (generateCmdDesugarEdit id decl) ("Desugar " <> decl.cmddecl_name.unFreeVarName) | not (isDesugaredCommand decl.cmddecl_cmd)]
       cbvfocus = [ workspaceEditToCodeAction (generateCmdFocusEdit id CBV decl) ("Focus CBV " <> decl.cmddecl_name.unFreeVarName) | isDesugaredCommand decl.cmddecl_cmd, isNothing (isFocused CBV decl.cmddecl_cmd)]
@@ -174,11 +176,11 @@ instance GetCodeActions TST.CommandDeclaration where
       List (desugar <> cbvfocus <> cbnfocus <> dualize <> eval)
 
 instance GetCodeActions TST.DataDecl where
-  getCodeActions :: TextDocumentIdentifier -> Range -> TST.DataDecl -> List (Command |? CodeAction)
+  getCodeActions :: TextDocumentIdentifier -> TST.Module -> Range -> TST.DataDecl -> List (Command |? CodeAction)
   -- If we are not in the correct range, then don't generate code actions.
-  getCodeActions _ Range {_start = start} decl | not (lookupPos start decl.data_loc) =
+  getCodeActions _ _ Range {_start = start} decl | not (lookupPos start decl.data_loc) =
     List []
-  getCodeActions id _ decl =
+  getCodeActions id mod _ decl =
     let 
       dualize = [ workspaceEditToCodeAction (generateDualizeDeclEdit id decl.data_loc decl) ("Dualize declaration " <> ppPrint decl.data_name) ]
       xfunc = [generateXfuncCodeAction id decl.data_loc decl ]
