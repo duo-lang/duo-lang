@@ -8,7 +8,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Syntax.CST.Kinds ( Variance(..),MaybeKindedSkolem, MonoKind(..), PolyKind(..))
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
-    ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
+    ( MethodName, SkolemTVar, XtorName )
+import Syntax.RST.Names
 import Loc ( Loc, defaultLoc, HasLoc(..) )
 
 ------------------------------------------------------------------------------
@@ -131,8 +132,8 @@ data Typ (pol     :: Polarity) where
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData          :: Loc -> PolarityRep pol               -> [XtorSig pol]           -> Typ pol
   TyCodata        :: Loc -> PolarityRep pol               -> [XtorSig (FlipPol pol)] -> Typ pol
-  TyDataRefined   :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName -> Maybe RecTVar -> [XtorSig pol]           -> Typ pol
-  TyCodataRefined :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName -> Maybe RecTVar -> [XtorSig (FlipPol pol)] -> Typ pol
+  TyDataRefined   :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName -> [XtorSig pol]           -> Typ pol
+  TyCodataRefined :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
   TyNominal       :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName  -> Typ pol
   TyApp           :: Loc -> PolarityRep pol -> Typ pol -> NonEmpty (VariantType pol) -> Typ pol
@@ -166,8 +167,8 @@ instance HasLoc (Typ pol) where
   getLoc (TyRecVar loc _ _)                = loc
   getLoc (TyData loc _ _)                  = loc
   getLoc (TyCodata loc _ _)                = loc
-  getLoc (TyDataRefined loc _ _ _ _ _)     = loc
-  getLoc (TyCodataRefined loc _ _ _ _ _)   = loc
+  getLoc (TyDataRefined loc _ _ _ _)     = loc
+  getLoc (TyCodataRefined loc _ _ _ _)   = loc
   getLoc (TyNominal loc _ _ _)             = loc
   getLoc (TyApp loc _ _ _)                 = loc
   getLoc (TySyn loc _ _ _)                 = loc
@@ -199,8 +200,8 @@ getPolarity (TyUniVar _ rep  _)             = rep
 getPolarity (TyRecVar _ rep  _)             = rep
 getPolarity (TyData _ rep _)                = rep
 getPolarity (TyCodata _ rep _)              = rep
-getPolarity (TyDataRefined _ rep _ _ _ _)   = rep
-getPolarity (TyCodataRefined _ rep _ _ _ _) = rep
+getPolarity (TyDataRefined _ rep _ _ _)   = rep
+getPolarity (TyCodataRefined _ rep _ _ _) = rep
 getPolarity (TyNominal _ rep  _ _)          = rep
 getPolarity (TyApp _ rep _ _)               = rep
 getPolarity (TySyn _ rep _ _)               = rep
@@ -237,8 +238,8 @@ instance ReplaceNominal (Typ pol) where
   replaceNominal _ _ _ ty@TyRecVar{}                     = ty
   replaceNominal p n t (TyData loc rep args)             = TyData loc rep (replaceNominal p n t <$> args)
   replaceNominal p n t (TyCodata loc rep args)           = TyCodata loc rep (replaceNominal p n t <$> args)
-  replaceNominal p n t (TyDataRefined loc rep pknd tn rv args)   = TyDataRefined loc rep pknd tn rv (replaceNominal p n t <$> args)
-  replaceNominal p n t (TyCodataRefined loc rep pknd tn rv args) = TyCodataRefined loc rep pknd tn rv (replaceNominal p n t <$> args)
+  replaceNominal p n t (TyDataRefined loc rep pknd tn args)   = TyDataRefined loc rep pknd tn (replaceNominal p n t <$> args)
+  replaceNominal p n t (TyCodataRefined loc rep pknd tn args) = TyCodataRefined loc rep pknd tn (replaceNominal p n t <$> args)
   replaceNominal p n t (TyNominal loc rep pk t')         = if t == t'
                                                            then case rep of { PosRep -> p; NegRep -> n }
                                                            else TyNominal loc rep pk t' 
@@ -313,8 +314,8 @@ instance FreeTVars (Typ pol) where
   freeTVars (TySyn _ _ _ ty)                  = freeTVars ty
   freeTVars (TyData _ _ xtors)                = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ xtors)              = S.unions (freeTVars <$> xtors)
-  freeTVars (TyDataRefined _ _ _ _ _ xtors)   = S.unions (freeTVars <$> xtors)
-  freeTVars (TyCodataRefined _ _ _ _ _ xtors) = S.unions (freeTVars <$> xtors)
+  freeTVars (TyDataRefined _ _ _ _ xtors)   = S.unions (freeTVars <$> xtors)
+  freeTVars (TyCodataRefined _ _ _ _ xtors) = S.unions (freeTVars <$> xtors)
   freeTVars (TyI64 _ _)                       = S.empty
   freeTVars (TyF64 _ _)                       = S.empty
   freeTVars (TyChar _ _)                      = S.empty

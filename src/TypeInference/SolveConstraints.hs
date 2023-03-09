@@ -19,10 +19,12 @@ import Data.Set (Set)
 import Data.Set qualified as S
 import Data.List (partition)
 
-import Driver.Environment (Environment (..))
+import TypeInference.Environment (Environment (..))
 import Errors
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..), Polarity(..))
+import Syntax.RST.Names
+import Syntax.RST.Kinds
 import Pretty.Pretty
 import Pretty.Types ()
 import Pretty.Constraints ()
@@ -356,11 +358,11 @@ subConstraints (SubType _ (TyCodata _ PosRep _ dtors1) (TyCodata _ NegRep _ dtor
 --     {{ Nat :>> < ctors1 > }} <: {{ Nat  :>> < ctors2 > }}   ~>    [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     {{ Nat :>> < ctors1 > }} <: {{ Bool :>> < ctors2 > }}   ~>    FAIL
 --
-subConstraints (SubType _ (TyDataRefined _ PosRep _ tn1 _ ctors1) (TyDataRefined _ NegRep _ tn2 _ ctors2)) | tn1 == tn2 = do
+subConstraints (SubType _ (TyDataRefined _ PosRep _ tn1 ctors1) (TyDataRefined _ NegRep _ tn2 ctors2)) | tn1 == tn2 = do
   constraints <- forM ctors1 (checkXtor ctors2)
   pure (DataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
 
-subConstraints (SubType _ (TyCodataRefined _ PosRep _ tn1 _ dtors1) (TyCodataRefined _ NegRep _ tn2 _ dtors2))  | tn1 == tn2 = do
+subConstraints (SubType _ (TyCodataRefined _ PosRep _ tn1 dtors1) (TyCodataRefined _ NegRep _ tn2 dtors2))  | tn1 == tn2 = do
   constraints <- forM dtors2 (checkXtor dtors1)
   pure (CodataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
 

@@ -9,7 +9,7 @@ import Data.Text qualified as T
 import System.Directory ( makeAbsolute )
 
 
-import Driver.Environment ( Environment, emptyEnvironment )
+import TypeInference.Environment ( Environment, emptyEnvironment )
 import Errors
 import Errors.Renamer
 import Pretty.Pretty

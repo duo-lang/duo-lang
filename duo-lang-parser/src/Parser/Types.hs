@@ -105,7 +105,9 @@ xdataOrRefinementP Data = do
   sc
   case refinementargs of
     Nothing -> pure (TyXData (Loc startPos endPos) Data ctors, endPos)
-    Just (tn, rv) ->  pure (TyXRefined (Loc startPos endPos) Data tn rv ctors, endPos)
+    Just (tn, Nothing) -> pure (TyXRefined (Loc startPos endPos) Data tn ctors, endPos)
+    Just (tn, Just rv) -> pure (TyRec (Loc startPos endPos) rv (TyXRefined (Loc startPos endPos) Data tn ctors),endPos)
+
 xdataOrRefinementP Codata = do
   startPos <- getSourcePos
   symbolP SymBraceLeft
@@ -117,7 +119,8 @@ xdataOrRefinementP Codata = do
   sc
   case refinementargs of
     Nothing -> pure (TyXData (Loc startPos endPos) Codata dtors, endPos)
-    Just (tn, rv) -> pure (TyXRefined (Loc startPos endPos) Codata tn rv dtors, endPos)
+    Just (tn, Nothing) -> pure (TyXRefined (Loc startPos endPos) Codata tn dtors, endPos)
+    Just (tn, Just rv) -> pure (TyRec (Loc startPos endPos) rv (TyXRefined (Loc startPos endPos) Codata tn dtors), endPos)
 
 
 ---------------------------------------------------------------------------------
@@ -287,27 +290,8 @@ typeSchemeP :: Parser TypeScheme
 typeSchemeP = do
   startPos <- getSourcePos
   tvars' <- option [] (forallP >> sc >> some (tvarAnnotP <* sc) <* (symbolP SymDot >> sc))
-  let constraintP = fst <$> (typeClassConstraintP <|> subTypeConstraintP)
-  tConstraints <- option [] (constraintP `sepBy` (symbolP SymComma >> sc) <* (symbolP SymDoubleRightArrow >> sc))
   (monotype, endPos) <- typP
   pure TypeScheme { loc = Loc startPos endPos
                   , vars = fst <$> tvars'
-                  , constraints = tConstraints
                   , monotype = monotype
   }
-
-typeClassConstraintP :: Parser (Constraint, SourcePos)
-typeClassConstraintP = try $ do
-  (cname,_) <- classNameP
-  sc
-  (tvar, pos) <- tvarP
-  sc
-  return (TypeClass cname tvar, pos)
-
-subTypeConstraintP :: Parser (Constraint, SourcePos)
-subTypeConstraintP = try $ do
-  t1 <- fst <$> typP
-  symbolP SymSubtype
-  sc
-  (t2, pos) <- typP
-  return (SubType t1 t2, pos)

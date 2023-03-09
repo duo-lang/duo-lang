@@ -10,6 +10,7 @@ import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Terms qualified as CST
+import Syntax.RST.Names
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Terms qualified as RST
@@ -568,7 +569,7 @@ instance Unresolve (RST.Typ pol) CST.Typ where
   unresolve :: RST.Typ pol -> UnresolveM CST.Typ
   unresolve (runUnresolveM . resugarType -> Just ty) = pure ty
   unresolve (RST.TyUniVar loc _ tv) =
-    pure $ CST.TyUniVar loc tv
+    pure $ CST.TySkolemVar loc (MkSkolemTVar (tv.unUniTVar))
   unresolve (RST.TySkolemVar loc _ tv) =
     pure $ CST.TySkolemVar loc tv
   unresolve (RST.TyRecVar loc _ tv) =
@@ -579,14 +580,12 @@ instance Unresolve (RST.Typ pol) CST.Typ where
   unresolve (RST.TyCodata loc _ xtors) = do
     xtors' <- mapM unresolve xtors
     pure $ CST.TyXData loc CST.Codata xtors'
-  unresolve (RST.TyDataRefined loc _ _ tn mrv xtors) = do
+  unresolve (RST.TyDataRefined loc _ _ tn xtors) = do
     xtors' <- mapM unresolve xtors
-    let rv = fmap embedRecTVar mrv
-    pure $ CST.TyXRefined loc CST.Data tn.rnTnName rv xtors'
-  unresolve (RST.TyCodataRefined loc _ _ tn mrv xtors) = do
+    pure $ CST.TyXRefined loc CST.Data tn.rnTnName xtors'
+  unresolve (RST.TyCodataRefined loc _ _ tn xtors) = do
     xtors' <- mapM unresolve xtors
-    let rv = fmap embedRecTVar mrv
-    pure $ CST.TyXRefined loc CST.Codata tn.rnTnName rv xtors'
+    pure $ CST.TyXRefined loc CST.Codata tn.rnTnName xtors'
   unresolve (RST.TyApp loc _ ty args) = do 
     ty' <- unresolve ty
     args' <- mapM unresolve args
@@ -629,7 +628,6 @@ instance Unresolve (RST.TypeScheme pol) CST.TypeScheme where
     type' <- unresolve ts.ts_monotype
     pure $ CST.TypeScheme  { loc         = ts.ts_loc
                            , vars        = ts.ts_vars
-                           , constraints = []
                            , monotype    = type'
                            }
 

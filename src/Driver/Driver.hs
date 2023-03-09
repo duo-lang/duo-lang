@@ -20,7 +20,7 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Driver.Definition
-import Driver.Environment
+import TypeInference.Environment
 import Driver.DepGraph
 import Errors
 import Errors.Renamer
@@ -29,7 +29,8 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (KVar, PolyKind(..),AnyKind(..),anyToMonoKind)
+import Syntax.CST.Kinds (KVar, PolyKind(..))
+import Syntax.RST.Kinds
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..))
 import Syntax.RST.Program qualified as RST

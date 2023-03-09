@@ -16,6 +16,8 @@ import Syntax.Core.Program qualified as Core
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Names
+import Syntax.RST.Names
+import Syntax.RST.Kinds
 import Syntax.CST.Kinds
 import Translate.EmbedTST (EmbedTST(..))
 
@@ -24,7 +26,7 @@ import TypeInference.GenerateConstraints.Kinds
 import TypeInference.Constraints
 import TypeInference.SolveConstraints (resolveInstanceAnnot)
 import Loc
-import Driver.Environment
+import TypeInference.Environment
 import TypeInference.GenerateConstraints.Primitives (primOps)
 import Syntax.RST.Program (ClassDeclaration(classdecl_kinds))
 import Syntax.TST.Terms (Substitution(..))
@@ -149,8 +151,8 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
     genConstraintsCtxts substTypes xtorSigUpper.sig_args (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
     case rep of
-      PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep decl.data_kind decl.data_name Nothing [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
-      CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep decl.data_kind decl.data_name Nothing [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
+      PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep decl.data_kind decl.data_name [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
+      CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep decl.data_kind decl.data_name [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
   --
   -- Structural pattern and copattern matches:
   --
@@ -244,8 +246,8 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- and greatest type translation.
                         return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
     case rep of
-      PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep decl.data_kind decl.data_name Nothing (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
-      CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep decl.data_kind decl.data_name Nothing (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
+      PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep decl.data_kind decl.data_name (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
+      CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep decl.data_kind decl.data_name (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
   --
   -- Mu and TildeMu abstractions:
   --

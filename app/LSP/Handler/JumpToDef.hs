@@ -25,7 +25,7 @@ import LSP.Definition ( LSPMonad, LSPConfig (..), sendInfo )
 import LSP.MegaparsecToLSP ( locToRange, lookupInRangeMap )
 import Sugar.Desugar (Desugar(..))
 import Syntax.RST.Terms qualified as RST
-import Syntax.CST.Names
+import Syntax.RST.Names
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Program qualified as RST
 import Translate.EmbedTST(EmbedTST(..))
@@ -149,11 +149,11 @@ instance ToJumpMap (RST.Typ pol) where
     M.empty
   toJumpMap RST.TyRecVar {} = 
     M.empty
-  toJumpMap (RST.TyDataRefined loc _ _ tn _ xtors) =
+  toJumpMap (RST.TyDataRefined loc _ _ tn xtors) =
     M.unions (M.fromList [(locToRange loc, toLocation tn)] : (toJumpMap <$> xtors))
   toJumpMap (RST.TyData _ _ xtors) =
     M.unions (toJumpMap <$> xtors)
-  toJumpMap (RST.TyCodataRefined loc _ _ tn _ xtors) =
+  toJumpMap (RST.TyCodataRefined loc _ _ tn xtors) =
     M.unions (M.fromList [(locToRange loc, toLocation tn)] : (toJumpMap <$> xtors))
   toJumpMap (RST.TyCodata _ _ xtors) =
     M.unions (toJumpMap <$> xtors)

@@ -19,7 +19,8 @@ import Pretty.Common ()
 import Pretty.Types ()
 import Pretty.Terms ()
 import Syntax.CST.Names
-    ( MethodName, ClassName, RnTypeName(rnTnDoc) )
+    ( MethodName, ClassName)
+import Syntax.RST.Names
 import Syntax.CST.Kinds ( MonoKind )
 import Syntax.CST.Types ( PrdCnsRep(..), DataCodata(..), PrdCns(..))
 import Syntax.TST.Terms
@@ -329,7 +330,7 @@ instance ToHoverMap (TST.Typ pol) where
                       ]
     in
       M.unions (mkHoverMap loc msg : (toHoverMap <$> xtors))
-  toHoverMap (TST.TyDataRefined loc rep _knd tn _ xtors) =
+  toHoverMap (TST.TyDataRefined loc rep _knd tn xtors) =
     let
       msg = T.unlines [ "#### Refinement datatype"
                       , "- Name: `" <> ppPrint tn <> "`"
@@ -346,7 +347,7 @@ instance ToHoverMap (TST.Typ pol) where
                       ]
     in
       M.unions (mkHoverMap loc msg : (toHoverMap <$> xtors))
-  toHoverMap (TST.TyCodataRefined loc rep _knd tn _ xtors) =
+  toHoverMap (TST.TyCodataRefined loc rep _knd tn xtors) =
     let
       msg = T.unlines [ "#### Refinement codata type"
                       , "- Name: `" <> ppPrint tn <> "`"

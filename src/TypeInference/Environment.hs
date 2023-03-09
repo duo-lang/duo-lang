@@ -1,4 +1,4 @@
-module Driver.Environment where
+module TypeInference.Environment where
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -20,6 +20,7 @@ import Syntax.TST.Program ( DataDecl(..), InstanceDeclaration )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), MethodSig (..), LinearContext)
 import Syntax.CST.Types( PrdCns(..), PrdCnsRep(..))
 import Syntax.CST.Kinds (MonoKind,EvaluationOrder)
+import Syntax.RST.Names
 import Loc ( Loc, defaultLoc )
 
 ---------------------------------------------------------------------------------

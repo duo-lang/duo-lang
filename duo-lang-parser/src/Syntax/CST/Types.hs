@@ -1,7 +1,7 @@
 module Syntax.CST.Types where
 
 import Syntax.CST.Names
-    ( BinOp, ClassName, SkolemTVar, TypeName, UniTVar, XtorName )
+    ( BinOp, SkolemTVar, TypeName, XtorName )
 import Syntax.CST.Kinds
 import Data.List.NonEmpty (NonEmpty)
 import Loc ( Loc, HasLoc(..))
@@ -31,10 +31,9 @@ type Arity = [PrdCns]
 data DataCodata = Data | Codata deriving (Eq, Ord, Show)
 
 data Typ where
-  TyUniVar :: Loc -> UniTVar -> Typ
   TySkolemVar :: Loc -> SkolemTVar -> Typ
   TyXData    :: Loc -> DataCodata             -> [XtorSig] -> Typ
-  TyXRefined :: Loc -> DataCodata -> TypeName -> Maybe SkolemTVar -> [XtorSig] -> Typ
+  TyXRefined :: Loc -> DataCodata -> TypeName -> [XtorSig] -> Typ
   TyNominal :: Loc -> TypeName -> Typ
   TyApp :: Loc -> Typ -> NonEmpty Typ -> Typ
   TyRec :: Loc -> SkolemTVar -> Typ -> Typ
@@ -56,10 +55,9 @@ data Typ where
   deriving (Show, Eq)
 
 instance HasLoc Typ where
-  getLoc (TyUniVar loc _) = loc
   getLoc (TySkolemVar loc _) = loc
   getLoc (TyXData loc _ _) = loc
-  getLoc (TyXRefined loc _ _ _ _) = loc
+  getLoc (TyXRefined loc _ _ _) = loc
   getLoc (TyNominal loc _ ) = loc
   getLoc (TyApp loc _ _) = loc
   getLoc (TyRec loc _ _) = loc
@@ -99,20 +97,9 @@ linearContextToArity = map f
 data TypeScheme = TypeScheme
   { loc :: Loc
   , vars :: [MaybeKindedSkolem]
-  , constraints :: [Constraint]
   , monotype :: Typ
   }
   deriving Show
 
 instance HasLoc TypeScheme where
   getLoc ts = ts.loc
-
----------------------------------------------------------------------------------
--- Constraints
----------------------------------------------------------------------------------
-
-data Constraint
-  = SubType Typ Typ
-  | TypeClass ClassName SkolemTVar
- deriving Show
-

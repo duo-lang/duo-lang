@@ -8,8 +8,9 @@ import Data.Kind ( Type )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), FlipPol ,PrdCnsFlip)
 import Syntax.CST.Kinds
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
-import Syntax.CST.Names ( MethodName, RecTVar, RnTypeName, SkolemTVar, UniTVar, XtorName )
-
+import Syntax.CST.Names ( MethodName, SkolemTVar, XtorName )
+import Syntax.RST.Names
+import Syntax.RST.Kinds
 import Loc
 
 ------------------------------------------------------------------------------
@@ -90,8 +91,8 @@ data Typ (pol :: Polarity) where
   -- | Refinement types are represented by the presence of the TypeName parameter
   TyData          :: Loc -> PolarityRep pol -> EvaluationOrder           -> [XtorSig pol]           -> Typ pol
   TyCodata        :: Loc -> PolarityRep pol -> EvaluationOrder           -> [XtorSig (FlipPol pol)] -> Typ pol
-  TyDataRefined   :: Loc -> PolarityRep pol -> PolyKind   -> RnTypeName  -> Maybe RecTVar -> [XtorSig pol]           -> Typ pol
-  TyCodataRefined :: Loc -> PolarityRep pol -> PolyKind   -> RnTypeName  -> Maybe RecTVar -> [XtorSig (FlipPol pol)] -> Typ pol
+  TyDataRefined   :: Loc -> PolarityRep pol -> PolyKind   -> RnTypeName  -> [XtorSig pol]           -> Typ pol
+  TyCodataRefined :: Loc -> PolarityRep pol -> PolyKind   -> RnTypeName  -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
   TyNominal       :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName -> Typ pol
   TyApp           :: Loc -> PolarityRep pol -> Typ pol -> NonEmpty (VariantType pol) -> Typ pol
@@ -123,8 +124,8 @@ instance HasLoc (Typ pol) where
   getLoc (TyRecVar loc _ _ _)            = loc
   getLoc (TyData loc _ _ _ )             = loc
   getLoc (TyCodata loc _ _ _)            = loc
-  getLoc (TyDataRefined loc _ _ _ _ _)   = loc
-  getLoc (TyCodataRefined loc _ _ _ _ _) = loc
+  getLoc (TyDataRefined loc _ _ _ _)   = loc
+  getLoc (TyCodataRefined loc _ _ _ _) = loc
   getLoc (TyNominal loc _ _ _)           = loc
   getLoc (TyApp loc _ _ _)               = loc
   getLoc (TySyn loc _ _ _)               = loc
@@ -156,8 +157,8 @@ getPolarity (TyUniVar _ rep _ _)             = rep
 getPolarity (TyRecVar _ rep _ _)             = rep
 getPolarity (TyData _ rep _  _)              = rep
 getPolarity (TyCodata _ rep _  _)            = rep
-getPolarity (TyDataRefined _ rep  _ _ _ _)   = rep
-getPolarity (TyCodataRefined _ rep  _ _ _ _) = rep
+getPolarity (TyDataRefined _ rep  _ _ _)   = rep
+getPolarity (TyCodataRefined _ rep  _ _ _) = rep
 getPolarity (TyNominal _ rep _ _)            = rep
 getPolarity (TyApp _ rep _ _)                = rep
 getPolarity (TySyn _ rep _ _)                = rep
@@ -184,8 +185,8 @@ instance GetKind (Typ pol) where
   getKind (TyRecVar _ _ pk _)             = MkPknd pk 
   getKind (TyData _ _ eo _ )              = MkPknd $ MkPolyKind [] eo
   getKind (TyCodata _ _ eo _ )            = MkPknd $ MkPolyKind [] eo
-  getKind (TyDataRefined _ _ pk _ _ _)    = MkPknd pk
-  getKind (TyCodataRefined _ _ pk _ _ _)  = MkPknd pk
+  getKind (TyDataRefined _ _ pk _ _)    = MkPknd pk
+  getKind (TyCodataRefined _ _ pk _ _)  = MkPknd pk
   getKind (TyNominal _ _ pk _ )           = MkPknd pk
   getKind (TyApp _ _ ty _)                = getKind ty
   getKind (TySyn _ _ _ ty)                = getKind ty
@@ -251,8 +252,8 @@ instance FreeTVars (Typ pol) where
   freeTVars (TySyn _ _ _ ty)                   = freeTVars ty
   freeTVars (TyData _  _ _ xtors)              = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ _ xtors)             = S.unions (freeTVars <$> xtors)
-  freeTVars (TyDataRefined _ _ _ _ _ xtors)    = S.unions (freeTVars <$> xtors)
-  freeTVars (TyCodataRefined  _ _ _ _ _ xtors) = S.unions (freeTVars <$> xtors)
+  freeTVars (TyDataRefined _ _ _ _ xtors)    = S.unions (freeTVars <$> xtors)
+  freeTVars (TyCodataRefined  _ _ _ _ xtors) = S.unions (freeTVars <$> xtors)
   freeTVars (TyI64 _ _)                        = S.empty
   freeTVars (TyF64 _ _)                        = S.empty
   freeTVars (TyChar _ _)                       = S.empty
@@ -338,16 +339,16 @@ instance Zonk (Typ pol) where
      TyCodata loc rep knd (zonk UniRep bisubst <$> xtors)
   zonk vt bisubst (TyCodata loc rep mk xtors) =
      TyCodata loc rep mk (zonk vt bisubst <$> xtors)
-  zonk UniRep bisubst (TyDataRefined loc rep pk tn rv xtors) =
+  zonk UniRep bisubst (TyDataRefined loc rep pk tn xtors) =
      let knd = zonkKind (snd bisubst.bisubst_map)  pk in
-     TyDataRefined loc rep knd tn rv (zonk UniRep bisubst <$> xtors)
-  zonk vt bisubst (TyDataRefined loc rep pk tn rv xtors) =
-     TyDataRefined loc rep pk tn rv (zonk vt bisubst <$> xtors)
-  zonk UniRep bisubst (TyCodataRefined loc rep pk tn rv xtors) =
+     TyDataRefined loc rep knd tn (zonk UniRep bisubst <$> xtors)
+  zonk vt bisubst (TyDataRefined loc rep pk tn xtors) =
+     TyDataRefined loc rep pk tn (zonk vt bisubst <$> xtors)
+  zonk UniRep bisubst (TyCodataRefined loc rep pk tn xtors) =
      let knd = zonkKind (snd bisubst.bisubst_map) pk in
-     TyCodataRefined loc rep knd tn rv (zonk UniRep bisubst <$> xtors)
-  zonk vt bisubst (TyCodataRefined loc rep pk tn rv xtors) =
-     TyCodataRefined loc rep pk tn rv (zonk vt bisubst <$> xtors)
+     TyCodataRefined loc rep knd tn (zonk UniRep bisubst <$> xtors)
+  zonk vt bisubst (TyCodataRefined loc rep pk tn xtors) =
+     TyCodataRefined loc rep pk tn (zonk vt bisubst <$> xtors)
   zonk UniRep bisubst (TyNominal loc rep pk tn) = 
     let knd = zonkKind (snd $ bisubst.bisubst_map) pk in
     TyNominal loc rep knd tn 
@@ -438,10 +439,10 @@ instance ZonkKind (Typ pol) where
     TyData loc pol (zonkKind bisubst mk) (zonkKind bisubst <$> xtors)
   zonkKind bisubst (TyCodata loc pol mk xtors) = 
     TyCodata loc pol (zonkKind bisubst mk) (zonkKind bisubst <$> xtors)
-  zonkKind bisubst (TyDataRefined loc pol pk tyn rv xtors) = 
-    TyDataRefined loc pol (zonkKind bisubst pk) tyn rv (zonkKind bisubst <$> xtors)
-  zonkKind bisubst (TyCodataRefined loc pol pk tyn rv xtors) = 
-    TyCodataRefined loc pol (zonkKind bisubst pk) tyn rv (zonkKind bisubst <$> xtors)
+  zonkKind bisubst (TyDataRefined loc pol pk tyn xtors) = 
+    TyDataRefined loc pol (zonkKind bisubst pk) tyn (zonkKind bisubst <$> xtors)
+  zonkKind bisubst (TyCodataRefined loc pol pk tyn xtors) = 
+    TyCodataRefined loc pol (zonkKind bisubst pk) tyn (zonkKind bisubst <$> xtors)
   zonkKind bisubst (TyNominal loc pol pk tyn) = 
     TyNominal loc pol (zonkKind bisubst pk) tyn 
   zonkKind bisubst (TyApp loc pol ty args) = 

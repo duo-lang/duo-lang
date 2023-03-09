@@ -4,7 +4,7 @@ import Data.List (intersperse)
 import Data.Map qualified as M
 import Prettyprinter
 
-import Driver.Environment
+import TypeInference.Environment
 import Pretty.Pretty
 import Pretty.Terms ()
 import Pretty.Types ()

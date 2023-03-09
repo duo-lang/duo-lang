@@ -12,6 +12,8 @@ import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
 import Syntax.RST.Terms (PrimitiveOp)
 import Syntax.RST.Types (FlipPol, FlipPrdCns, PolarityRep(..), flipPolarityRep, flipPrdCns)
 import Syntax.RST.Program (PrdCnsToPol)
+import Syntax.RST.Names
+import Syntax.RST.Kinds (AnyKind(..))
 import Syntax.Core.Terms (Pattern(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.TST.Program qualified as TST
@@ -230,14 +232,14 @@ dualType PosRep (TST.TyCodata loc _ eo xtors) =
   TST.TyData loc NegRep  (dualEvaluationOrder eo) xtors
 dualType NegRep (TST.TyCodata loc _ eo xtors) =
   TST.TyData loc PosRep  (dualEvaluationOrder eo) xtors 
-dualType PosRep (TST.TyDataRefined loc _ pk rn rv xtors) =
-  TST.TyCodataRefined loc NegRep  (dualPolyKind pk) (dualRnTypeName rn) rv xtors
-dualType NegRep (TST.TyDataRefined loc _ pk rn rv xtors) =
-  TST.TyCodataRefined loc PosRep  (dualPolyKind pk) (dualRnTypeName rn) rv xtors
-dualType PosRep (TST.TyCodataRefined loc _ pk rn rv xtors) =
-  TST.TyDataRefined loc NegRep  (dualPolyKind pk) (dualRnTypeName rn) rv xtors
-dualType NegRep (TST.TyCodataRefined loc _ pk rn rv xtors) =
-  TST.TyDataRefined loc PosRep  (dualPolyKind pk) (dualRnTypeName rn) rv xtors
+dualType PosRep (TST.TyDataRefined loc _ pk rn xtors) =
+  TST.TyCodataRefined loc NegRep  (dualPolyKind pk) (dualRnTypeName rn) xtors
+dualType NegRep (TST.TyDataRefined loc _ pk rn xtors) =
+  TST.TyCodataRefined loc PosRep  (dualPolyKind pk) (dualRnTypeName rn) xtors
+dualType PosRep (TST.TyCodataRefined loc _ pk rn xtors) =
+  TST.TyDataRefined loc NegRep  (dualPolyKind pk) (dualRnTypeName rn) xtors
+dualType NegRep (TST.TyCodataRefined loc _ pk rn xtors) =
+  TST.TyDataRefined loc PosRep  (dualPolyKind pk) (dualRnTypeName rn) xtors
 dualType _ (TST.TyFlipPol _ ty) = ty
 
 dualVariantType :: PolarityRep pol -> TST.VariantType pol -> TST.VariantType (FlipPol pol)
