@@ -1,8 +1,8 @@
 module Spec.OverlapCheck where 
 
 import Test.Hspec
-import Syntax.RST.Terms
-import Syntax.CST.Terms(NominalStructural(Nominal))
+import Syntax.RST.Terms hiding (NominalStructural(Nominal))
+import Syntax.CST.Terms(NominalStructural(Nominal)) 
 import Syntax.CST.Types
 import Data.Text (pack, unpack)
 import Data.Maybe (isJust, isNothing)
