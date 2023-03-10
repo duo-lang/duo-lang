@@ -4,6 +4,7 @@ import Data.Set qualified as S
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty)
+import Data.Maybe (fromMaybe)
 import Data.Kind ( Type )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), FlipPol ,PrdCnsFlip)
 import Syntax.CST.Kinds
@@ -425,8 +426,8 @@ instance ZonkKind EvaluationOrder where
   zonkKind _ eo = eo
 
 instance ZonkKind AnyKind where 
-  zonkKind bisubst (MkPknd pk) = MkPknd $ zonkKind bisubst pk
-  zonkKind _ primk = primk
+  zonkKind bisubst knd@(MkPknd (KindVar kv)) = Data.Maybe.fromMaybe knd (M.lookup kv bisubst)
+  zonkKind _ knd = knd
 
 instance ZonkKind (Typ pol) where 
   zonkKind bisubst (TySkolemVar loc rep pk tv) = 

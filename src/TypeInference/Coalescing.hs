@@ -104,26 +104,31 @@ coalesceType (TyRecVar loc rep pk tv) = do
 coalesceType (TyUniVar _ PosRep pk tv) = do
   isInProcess <- inProcess (tv, Pos)
   if isInProcess then do
-    recVar <- getOrElseUpdateRecVar (tv, Pos)
-    case pk of 
-      MkPknd pk' -> return (TyRecVar defaultLoc PosRep pk' recVar)
-      primk -> error ("Recursive Variable " <> show recVar <> " can't have primitive kind " <> show primk)
+   let pk' = case pk of MkPknd pk' -> pk'; knd -> error ("RecVar can't have kind " <> show knd)
+   recVar <- getOrElseUpdateRecVar (tv, Pos)
+   return (TyRecVar defaultLoc PosRep pk' recVar)
   else do
     vst <- getVariableState tv
     let f r = r { r_inProcess =  S.insert (tv, Pos) r.r_inProcess }
     lbs' <- local f $ mapM coalesceType vst.vst_lowerbounds
-    recVarMap <- gets (\x -> x.s_recursive)
-    let knd = anyToPoly pk
-    case M.lookup (tv, Pos) recVarMap of
-      Nothing     -> do
-        newName <- getSkolemVar tv
-        return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep knd newName : lbs')
-      Just recVar -> do
-        return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep knd recVar  : lbs'))
+    case pk of 
+      MkPknd pk' -> do
+        recVarMap <- gets (\x -> x.s_recursive)
+        case M.lookup (tv, Pos) recVarMap of
+          Nothing     -> do
+            newName <- getSkolemVar tv
+            return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk' newName : lbs')
+          Just recVar -> 
+            return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk' recVar  : lbs'))
+      primknd -> return $ mkUnion defaultLoc pk (primKindToPrimTy primknd : lbs')
   where 
-    anyToPoly :: AnyKind -> PolyKind
-    anyToPoly (MkPknd pk) = pk
-    anyToPoly primK = error ("Type Variable can't have primitive kind " <> show primK)
+    primKindToPrimTy :: AnyKind -> Typ Pos
+    primKindToPrimTy MkI64 = TyI64 defaultLoc PosRep 
+    primKindToPrimTy MkF64 = TyF64 defaultLoc PosRep
+    primKindToPrimTy MkChar = TyChar defaultLoc PosRep
+    primKindToPrimTy MkString = TyString defaultLoc PosRep
+    primKindToPrimTy _ = error "impossible (already checked)" 
+
 
 coalesceType (TyUniVar _ NegRep pk tv) = do
   isInProcess <- inProcess (tv, Neg)
@@ -136,18 +141,23 @@ coalesceType (TyUniVar _ NegRep pk tv) = do
       vst <- getVariableState tv
       let f r = r { r_inProcess =  S.insert (tv, Neg) r.r_inProcess }
       ubs' <- local f $ mapM coalesceType vst.vst_upperbounds 
-      recVarMap <- gets (\x -> x.s_recursive)
-      let knd = anyToPoly pk
-      case M.lookup (tv, Neg) recVarMap of
-        Nothing -> do
-          newName <- getSkolemVar tv
-          return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep knd newName : ubs')
-        Just recVar -> do
-          return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep knd recVar  : ubs')) 
+      case pk of 
+        MkPknd pk' -> do
+          recVarMap <- gets (\x -> x.s_recursive)
+          case M.lookup (tv, Neg) recVarMap of
+            Nothing -> do
+              newName <- getSkolemVar tv
+              return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep pk' newName : ubs')
+            Just recVar -> 
+              return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk' recVar  : ubs')) 
+        primknd -> return $ mkInter defaultLoc pk (primKindToPrimTy primknd : ubs')
   where 
-    anyToPoly :: AnyKind -> PolyKind
-    anyToPoly (MkPknd pk) = pk
-    anyToPoly primK = error ("Type Variable can't have primitive kind " <> show primK)
+    primKindToPrimTy :: AnyKind -> Typ Neg
+    primKindToPrimTy MkI64 = TyI64 defaultLoc NegRep 
+    primKindToPrimTy MkF64 = TyF64 defaultLoc NegRep
+    primKindToPrimTy MkChar = TyChar defaultLoc NegRep
+    primKindToPrimTy MkString = TyString defaultLoc NegRep
+    primKindToPrimTy _ = error "impossible (already checked)" 
 
 coalesceType (TyData loc rep mk xtors) = do
     xtors' <- mapM coalesceXtor xtors
