@@ -57,14 +57,28 @@ getKindDecl decl = do
   let argKnds = map (\(_,_,mk) -> mk) polyknd.kindArgs
   return (CBox polyknd.returnKind, argKnds)
 
-checkXtorKind :: Loc -> EvaluationOrder -> TST.XtorSig pol -> GenM () 
-checkXtorKind loc eo xtor = do 
-  xtorEo <- lookupXtorKind loc (xtor.sig_name)
-  let sigKnds = map TST.getKind (xtor.sig_args)
-  let constrs = map (KindEq ReturnKindConstraint (MkPknd (MkPolyKind [] xtorEo))) sigKnds
-  mapM_ addConstraint constrs
-  addConstraint $ KindEq ReturnKindConstraint (MkPknd (MkPolyKind [] xtorEo)) (MkPknd (MkPolyKind [] eo))
-  return ()
+checkXtorKind :: Loc -> Maybe RnTypeName -> TST.XtorSig pol -> GenM () 
+-- refinement type
+checkXtorKind loc (Just tyn) xtor = do 
+  decl <- lookupTypeName loc tyn
+  let declXtor = filter (\x -> x.sig_name == xtor.sig_name) (fst decl.data_xtors)
+  case declXtor of 
+    [] -> throwOtherError loc ["Xtor " <> ppPrint xtor.sig_name <> " not found in environment"]
+    [declXtor] -> do 
+      if length declXtor.sig_args /= length xtor.sig_args then throwOtherError loc ["Number of xtor arguments does not match declaration"]
+      else do 
+        let kindPairs = zip (map TST.getKind declXtor.sig_args) (map TST.getKind xtor.sig_args)
+        let constrs = map (uncurry (KindEq KindConstraint)) kindPairs
+        mapM_ addConstraint constrs
+    _ -> throwOtherError loc ["found multiple declarations for xtor " <> ppPrint xtor.sig_name]
+-- structural type
+checkXtorKind loc Nothing xtor = do 
+  structXtor <- lookupStructuralXtor xtor.sig_name
+  if length structXtor.strxtordecl_arity /= length xtor.sig_args then throwOtherError loc ["Number of xtor arguments does not match declaration"] 
+  else do   
+    let kindPairs = zip (map (monoToAnyKind . snd) structXtor.strxtordecl_arity) (map TST.getKind xtor.sig_args)
+    let constrs = map (uncurry (KindEq KindConstraint)) kindPairs 
+    mapM_ addConstraint constrs
 
 checkVariance :: (Variance,TST.VariantType pol) -> Bool
 checkVariance (Covariant, TST.CovariantType _) = True
@@ -508,23 +522,23 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
   annotateKind (RST.TyData loc pol xtors) = do 
     xtors' <- mapM annotateKind xtors
     eo <- getXtorKinds loc xtors
-    mapM_ (checkXtorKind loc eo) xtors'
+    mapM_ (checkXtorKind loc Nothing) xtors'
     return (TST.TyData loc pol eo xtors')
 
   annotateKind (RST.TyCodata loc pol xtors) = do  
     xtors' <- mapM annotateKind xtors
     eo <- getXtorKinds loc xtors
-    mapM_ (checkXtorKind loc eo) xtors'
+    mapM_ (checkXtorKind loc Nothing) xtors'
     return (TST.TyCodata loc pol eo xtors')
  
   annotateKind (RST.TyDataRefined loc pol pknd tyn xtors) = do 
     xtors' <- mapM annotateKind xtors
-    mapM_ (checkXtorKind loc pknd.returnKind) xtors'
+    mapM_ (checkXtorKind loc (Just tyn)) xtors'
     return (TST.TyDataRefined loc pol pknd tyn xtors')
 
   annotateKind (RST.TyCodataRefined loc pol pknd tyn xtors) = do
     xtors' <- mapM annotateKind xtors
-    mapM_ (checkXtorKind loc pknd.returnKind) xtors'
+    mapM_ (checkXtorKind loc (Just tyn)) xtors'
     return (TST.TyCodataRefined loc pol pknd tyn xtors')
 
   annotateKind (RST.TyApp loc pol ty args) = do 

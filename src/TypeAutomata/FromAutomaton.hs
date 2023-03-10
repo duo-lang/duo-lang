@@ -100,6 +100,13 @@ getNodeKindPk i = do
     Just (MkNodeLabel _ _ _ _ _ _ pk) -> return pk
     _ -> throwAutomatonError defaultLoc ["Recursive Variables can only have kind CBV or CBN"]
 
+getNodeKind :: Node -> AutToTypeM AnyKind
+getNodeKind i = do 
+  gr <- asks (\x -> x.graph)
+  case lab gr i of 
+    Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
+    Just (MkNodeLabel _ _ _ _ _ _ pk) -> return (MkPknd pk)
+    Just MkPrimitiveNodeLabel{ pl_prim = pty } -> pure $ primitiveToAnyKind pty
 
 
 
@@ -132,20 +139,20 @@ argNodesToArgTypes argNodes rep = do
     case ns of
       (Prd, ns) -> do
          typs <- forM ns (nodeToType rep)
-         knds <- mapM getNodeKindPk ns
+         knds <- mapM getNodeKind ns
          knd <- checkTypKinds knds
          pure $ PrdCnsType PrdRep $ case rep of
-                                       PosRep -> mkUnion defaultLoc (MkPknd knd) typs
-                                       NegRep -> mkInter defaultLoc (MkPknd knd) typs
+                                       PosRep -> mkUnion defaultLoc knd typs
+                                       NegRep -> mkInter defaultLoc knd typs
       (Cns, ns) -> do
          typs <- forM ns (nodeToType (flipPolarityRep rep))
-         knds <- mapM getNodeKindPk ns
+         knds <- mapM getNodeKind ns
          knd <- checkTypKinds knds
          pure $ PrdCnsType CnsRep $ case rep of
-                                       PosRep -> mkInter defaultLoc (MkPknd knd) typs
-                                       NegRep -> mkUnion defaultLoc (MkPknd knd) typs
+                                       PosRep -> mkInter defaultLoc knd typs
+                                       NegRep -> mkUnion defaultLoc knd typs
 
-checkTypKinds :: [PolyKind] -> AutToTypeM PolyKind
+checkTypKinds :: [AnyKind] -> AutToTypeM AnyKind
 checkTypKinds [] = throwAutomatonError  defaultLoc [T.pack "Can't get Kind of empty list of types"]
 checkTypKinds (fst:rst) = if all (fst ==) rst then return fst else throwAutomatonError defaultLoc [T.pack "Kinds of intersection types don't match"]
 
