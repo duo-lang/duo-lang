@@ -10,7 +10,6 @@ import Data.Text qualified as T
 import Resolution.SymbolTable
 import Syntax.CST.Names
 import Syntax.RST.Names
-import Syntax.CST.Kinds (PolyKind)
 import Loc
 import Errors.Renamer
 import Control.Monad.Writer
