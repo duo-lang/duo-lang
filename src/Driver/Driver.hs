@@ -46,7 +46,7 @@ import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints)
-import Loc ( Loc, AttachLoc(attachLoc), defaultLoc)
+import Loc ( Loc, AttachLoc(attachLoc), defaultLoc, getLoc)
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program (prdCnsToPol)
@@ -59,6 +59,11 @@ import Translate.InsertInstance (InsertInstance(insertInstance))
 import Syntax.RST.Types qualified as RST
 import TypeAutomata.Intersection (intersectIsEmpty)
 import Data.Bifunctor (Bifunctor(first))
+
+checkPolyKind :: Loc -> TST.Typ pol -> DriverM () 
+checkPolyKind loc ty = case TST.getKind ty of 
+  MkPknd (MkPolyKind (_:_) _) -> throwOtherError loc ["Type " <> ppPrint ty <> " was not fully applied"]
+  _ -> return ()
 
 getAnnotKind :: TST.Typ pol -> Maybe (TST.TypeScheme pol) -> Maybe (KVar, AnyKind)
 getAnnotKind tyInf maybeAnnot = 
@@ -74,6 +79,7 @@ checkKindAnnot (Just tyAnnotated) loc = do
   solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs Nothing env
   let bisubstAnnot = coalesce solverResAnnot
   let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot annotChecked
+  checkPolyKind loc typAnnotZonked.ts_monotype
   return $ Just typAnnotZonked
 
 checkAnnot :: PolarityRep pol
@@ -132,6 +138,7 @@ inferPrdCnsDeclaration mn decl = do
   tmInferred <- liftEitherErrLoc decl.pcdecl_loc (insertInstance instances tmInferred)
   -- 5. Read of the type and generate the resulting type
   let typ = TST.zonk TST.UniRep bisubst (TST.getTypeTerm tmInferred)
+  checkPolyKind (getLoc typ) typ
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
   -- 6. Simplify
   typSimplified <- if infopts.infOptsSimplify then (do
