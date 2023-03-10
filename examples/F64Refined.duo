@@ -1,8 +1,0 @@
-module F64Refined;
-
-refinement data RF64 { 
-  MkRF64(#F64)
-};
-
-def prd f1 : #F64 := 1.0#F64;
-def prd rf2 : <RF64 | MkRF64(#F64) > := MkRF64(f1);
