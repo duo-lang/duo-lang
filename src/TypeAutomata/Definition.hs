@@ -159,6 +159,12 @@ data PrimitiveType =
     | PString
     deriving (Show, Eq, Ord)
     
+primitiveToAnyKind :: PrimitiveType -> AnyKind
+primitiveToAnyKind I64 = MkI64
+primitiveToAnyKind F64 = MkF64
+primitiveToAnyKind PChar = MkChar
+primitiveToAnyKind PString = MkString
+
 data NodeLabel = 
   MkNodeLabel
     { nl_pol :: Polarity
