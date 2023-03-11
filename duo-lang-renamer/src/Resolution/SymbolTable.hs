@@ -20,8 +20,8 @@ import Syntax.CST.Names
 import Syntax.CST.Kinds
 import Syntax.CST.Program
 import Syntax.CST.Types
-import Syntax.CST.Terms
 import Syntax.RST.Names
+import Syntax.RST.Terms qualified as RST
 import Loc ( Loc )
 
 ---------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ data TypeNameResolve where
 -- | What a XtorName can resolve to during name resolution
 data XtorNameResolve where
   -- | Xtor was introduced in a data or codata declaration
-  XtorNameResult :: DataCodata ->  NominalStructural -> Arity -> XtorNameResolve
+  XtorNameResult :: DataCodata ->  RST.NominalStructural -> Arity -> XtorNameResolve
   -- | Xtor was introduced as a method in a class declaration
   MethodNameResult :: ClassName -> Arity -> XtorNameResolve
 
@@ -148,7 +148,7 @@ createSymbolTable' :: MonadError ResolutionError m
 createSymbolTable' _ _ (XtorDecl decl) st = do
   -- Check whether the xtor name is already declared in this module
   checkFreshXtorName decl.strxtordecl_loc decl.strxtordecl_name st
-  let xtorResolve = XtorNameResult decl.strxtordecl_xdata Structural (fst <$> decl.strxtordecl_arity)
+  let xtorResolve = XtorNameResult decl.strxtordecl_xdata RST.Structural (fst <$> decl.strxtordecl_arity)
   pure $ st { xtorNameMap = M.insert decl.strxtordecl_name xtorResolve st.xtorNameMap }
 createSymbolTable' fp mn  (DataDecl decl) st = do
   -- Check whether the TypeName, and the XtorNames, are already declared in this module
@@ -159,8 +159,8 @@ createSymbolTable' fp mn  (DataDecl decl) st = do
                     Nothing -> MkPolyKind [] (case decl.data_polarity of Data -> CBV; Codata -> CBN)
                     Just knd -> knd
   let ns = case decl.data_refined of
-               Refined -> Refinement
-               NotRefined -> Nominal
+               Refined -> RST.Refinement
+               NotRefined -> RST.Nominal Nothing
   let xtors = M.fromList [(xt.sig_name, XtorNameResult decl.data_polarity ns (linearContextToArity xt.sig_args))| xt <- decl.data_xtors]
   let rnTypeName = MkRnTypeName { rnTnLoc = decl.data_loc
                                 , rnTnDoc = decl.data_doc

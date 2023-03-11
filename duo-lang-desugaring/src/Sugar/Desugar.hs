@@ -133,26 +133,26 @@ instance Desugar (RST.Term pc) (Core.Term pc) where
   desugar (RST.FreeVar loc pc fv) =
     Core.FreeVar loc pc fv
   desugar (RST.Xtor loc pc ns xt args) =
-    Core.Xtor loc Core.XtorAnnotOrig pc (RST.rstTocstNS ns) xt (desugar args)
+    Core.Xtor loc Core.XtorAnnotOrig pc ns xt (desugar args)
   desugar (RST.MuAbs loc pc  bs cmd) =
     Core.MuAbs loc Core.MuAnnotOrig pc bs (desugar cmd)
   desugar (RST.XCase loc pc ns cases) =
-    Core.XCase loc Core.MatchAnnotOrig pc (RST.rstTocstNS ns) (desugar <$> cases)
+    Core.XCase loc Core.MatchAnnotOrig pc ns (desugar <$> cases)
   ---------------------------------------------------------------------------------
   -- Syntactic sugar
   ---------------------------------------------------------------------------------
   desugar (RST.Semi loc rep ns xt subst t) =
-    Core.Semi loc rep (RST.rstTocstNS ns) xt (desugar subst) (desugar t)
+    Core.Semi loc rep ns xt (desugar subst) (desugar t)
   desugar (RST.Dtor loc rep ns xt t subst) =
-    Core.Dtor loc rep (RST.rstTocstNS ns) xt (desugar t) (desugar subst)
+    Core.Dtor loc rep ns xt (desugar t) (desugar subst)
   desugar (RST.CaseOf loc rep ns t cases) =
-    Core.CaseOf loc rep (RST.rstTocstNS ns) (desugar t) (desugar <$> cases)
+    Core.CaseOf loc rep ns (desugar t) (desugar <$> cases)
   desugar (RST.CocaseOf loc rep ns t cases) =
-    Core.CocaseOf loc rep (RST.rstTocstNS ns) (desugar t) (desugar <$> cases)
+    Core.CocaseOf loc rep ns (desugar t) (desugar <$> cases)
   desugar (RST.CaseI loc rep ns tmcasesI) =
-    Core.XCaseI loc rep CnsRep (RST.rstTocstNS ns) (desugar <$> tmcasesI)
+    Core.XCaseI loc rep CnsRep ns (desugar <$> tmcasesI)
   desugar (RST.CocaseI loc rep ns cocases) =
-    Core.XCaseI loc rep PrdRep (RST.rstTocstNS ns) (desugar <$> cocases)
+    Core.XCaseI loc rep PrdRep ns (desugar <$> cocases)
   desugar (RST.Lambda loc pc fv tm) =
     Core.Lambda loc pc fv (desugar tm)
   ---------------------------------------------------------------------------------
@@ -176,30 +176,30 @@ instance Desugar (RST.Term pc) (Core.Term pc) where
   embedCore (Core.FreeVar loc rep idx) =
     RST.FreeVar loc rep idx
   embedCore (Core.RawXtor loc rep ns xs subst) =
-    RST.Xtor loc rep (RST.cstTorstNS ns Nothing) xs (embedCore subst)
+    RST.Xtor loc rep ns xs (embedCore subst)
   embedCore (Core.RawMuAbs loc rep b cmd) =
     RST.MuAbs loc rep b (embedCore cmd)
   embedCore (Core.RawCase loc rep ns cases) =
-    RST.XCase loc rep (RST.cstTorstNS ns Nothing) (embedCore <$> cases)
+    RST.XCase loc rep ns (embedCore <$> cases)
   ---------------------------------------------------------------------------------
   -- Syntactic sugar
   ---------------------------------------------------------------------------------
   embedCore (Core.Semi loc rep ns xt subst t ) =
-    RST.Semi loc rep (RST.cstTorstNS ns Nothing) xt (embedCore subst) (embedCore t)
+    RST.Semi loc rep ns xt (embedCore subst) (embedCore t)
   embedCore (Core.Dtor loc rep ns xt t subst) =
-    RST.Dtor loc rep (RST.cstTorstNS ns Nothing) xt (embedCore t) (embedCore subst)
+    RST.Dtor loc rep ns xt (embedCore t) (embedCore subst)
   embedCore (Core.CaseOf loc rep ns t cases) =
-    RST.CaseOf loc rep (RST.cstTorstNS ns Nothing) (embedCore t) (embedCore <$> cases)
+    RST.CaseOf loc rep ns (embedCore t) (embedCore <$> cases)
   embedCore (Core.CocaseOf loc rep ns t cases) =
-    RST.CocaseOf loc rep (RST.cstTorstNS ns Nothing) (embedCore t) (embedCore <$> cases)
+    RST.CocaseOf loc rep ns (embedCore t) (embedCore <$> cases)
   embedCore (Core.XCaseI loc rep CnsRep ns cases) =
-    RST.CaseI loc rep (RST.cstTorstNS ns Nothing) (embedCore <$> cases)
+    RST.CaseI loc rep ns (embedCore <$> cases)
   embedCore (Core.XCaseI loc rep PrdRep ns cases) =
-    RST.CocaseI loc rep (RST.cstTorstNS ns Nothing) (embedCore <$> cases)
+    RST.CocaseI loc rep ns (embedCore <$> cases)
   embedCore (Core.Lambda loc rep fv tm) =
     RST.Lambda loc rep fv (embedCore tm)
   embedCore (Core.XCase loc _ pc ns cases) =
-    RST.XCase loc pc (RST.cstTorstNS ns Nothing) (embedCore <$> cases) -- revisit
+    RST.XCase loc pc ns (embedCore <$> cases) -- revisit
   ---------------------------------------------------------------------------------
   -- Primitive constructs
   ---------------------------------------------------------------------------------

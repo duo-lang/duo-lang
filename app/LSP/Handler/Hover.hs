@@ -34,12 +34,12 @@ import Syntax.TST.Terms
       PrdCnsTerm(..) )
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
-import Syntax.CST.Terms qualified as CST
 import Sugar.TST
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Types (PolarityRep(..))
 import Loc (Loc)
 import Syntax.RST.Program qualified as RST
+import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Program qualified as CST
 import Syntax.RST.Program (StructuralXtorDeclaration(strxtordecl_evalOrder))
 
@@ -108,30 +108,30 @@ freeVarToHoverMap loc ty = mkHoverMap loc msg
                     , "- Type `" <> ppPrint ty <> "`"
                     ]
 
-xtorToHoverMap :: Loc -> PrdCnsRep pc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
+xtorToHoverMap :: Loc -> PrdCnsRep pc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 xtorToHoverMap loc pc ty ns =  mkHoverMap loc msg
   where
     msg :: Text
     msg = case pc of
-      PrdRep -> T.unlines [ "#### " <> ppPrint ns <> " constructor"
+      PrdRep -> T.unlines [ "#### " <> ppPrint (show ns) <> " constructor"
                           , "- **Right-Intro**"
                           , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
-      CnsRep -> T.unlines [ "#### " <> ppPrint ns <> " destructor"
+      CnsRep -> T.unlines [ "#### " <> ppPrint (show ns) <> " destructor"
                           , "- **Left-Intro**"
                           , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
 
-xcaseToHoverMap :: Loc -> PrdCnsRep pc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
+xcaseToHoverMap :: Loc -> PrdCnsRep pc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 xcaseToHoverMap loc pc ty ns = mkHoverMap loc msg
   where
     msg :: Text
     msg = case pc of
-      PrdRep -> T.unlines [ "#### " <> ppPrint ns <> " cocase"
+      PrdRep -> T.unlines [ "#### " <> ppPrint (show ns) <> " cocase"
                           , "- **Right-Intro**"
                           , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
-      CnsRep -> T.unlines [ "#### " <> ppPrint ns <> " case"
+      CnsRep -> T.unlines [ "#### " <> ppPrint (show ns) <> " case"
                           , "- **Left-Intro**"
                           , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
@@ -149,11 +149,11 @@ muAbsToHoverMap loc pc ty = mkHoverMap loc msg
                 ]
 
 
-dtorToHoverMap :: Loc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
+dtorToHoverMap :: Loc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 dtorToHoverMap loc ty ns = mkHoverMap loc msg
   where
     msg :: Text
-    msg = T.unlines [ "#### " <> ppPrint ns <> " destructor application"
+    msg = T.unlines [ "#### " <> ppPrint (show ns) <> " destructor application"
                     , "- **Right-Elim**"
                     , "- Type: `" <> ppPrint ty <> ":"<> ppPrint (TST.getKind ty) <> "`"
                     ]
@@ -168,20 +168,20 @@ lambdaToHoverMap loc ty = mkHoverMap loc msg
                     ]
 
 
-caseToHoverMap :: Loc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
+caseToHoverMap :: Loc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 caseToHoverMap loc ty ns = mkHoverMap loc msg
   where
     msg :: Text
-    msg = T.unlines [ "#### " <> ppPrint ns <> " case-of"
+    msg = T.unlines [ "#### " <> ppPrint (show ns) <> " case-of"
                     , "- **Right-Elim**"
                     , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                     ]
 
-cocaseToHoverMap :: Loc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
+cocaseToHoverMap :: Loc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 cocaseToHoverMap loc ty ns = mkHoverMap loc msg
   where
     msg :: Text
-    msg = T.unlines [ "#### " <> ppPrint ns <> " cocase"
+    msg = T.unlines [ "#### " <> ppPrint (show ns) <> " cocase"
                     , "- **Right-Intro**"
                     , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                     ]

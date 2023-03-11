@@ -6,7 +6,6 @@ module TypeInference.GenerateConstraints.Terms
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
-import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
@@ -18,6 +17,7 @@ import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.CST.Names
 import Syntax.RST.Names
 import Syntax.RST.Kinds
+import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Kinds
 import Translate.EmbedTST (EmbedTST(..))
 
@@ -102,22 +102,22 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
   --
   -- Structural Xtors:
   --
-  genConstraints (Core.Xtor loc annot rep CST.Structural xt subst) = do
+  genConstraints (Core.Xtor loc annot rep RST.Structural xt subst) = do
     inferredSubst <- genConstraints subst
     let substTypes = TST.getTypArgs inferredSubst
     case rep of
       PrdRep -> do
         let rstty = RST.TyData defaultLoc PosRep [RST.MkXtorSig xt (embedTST <$> substTypes)]
         tstty <- annotateKind rstty
-        return $ TST.Xtor loc annot rep tstty CST.Structural xt inferredSubst
+        return $ TST.Xtor loc annot rep tstty RST.Structural xt inferredSubst
       CnsRep -> do 
         let rstty = RST.TyCodata defaultLoc NegRep [RST.MkXtorSig xt (embedTST <$> substTypes)]
         tstty <- annotateKind rstty
-        return $ TST.Xtor loc annot rep tstty CST.Structural xt inferredSubst
+        return $ TST.Xtor loc annot rep tstty RST.Structural xt inferredSubst
   --
   -- Nominal Xtors
   --
-  genConstraints (Core.Xtor loc annot rep CST.Nominal xt subst) = do
+  genConstraints (Core.Xtor loc annot rep (RST.Nominal _) xt subst) = do
     -- First we infer the types of the arguments.
     substInferred <- genConstraints subst
     let substTypes = TST.getTypArgs substInferred
@@ -134,12 +134,12 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     let nomTy rep = TST.TyNominal defaultLoc rep decl.data_kind decl.data_name
     let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep (nomTy rep) (fst:|rst)
     case rep of
-      PrdRep -> return (TST.Xtor loc annot rep (ty PosRep) CST.Nominal xt substInferred)
-      CnsRep -> return (TST.Xtor loc annot rep (ty NegRep)  CST.Nominal xt substInferred)
+      PrdRep -> return (TST.Xtor loc annot rep (ty PosRep) (RST.Nominal Nothing) xt substInferred)
+      CnsRep -> return (TST.Xtor loc annot rep (ty NegRep)  (RST.Nominal Nothing) xt substInferred)
   --
   -- Refinement Xtors
   --
-  genConstraints (Core.Xtor loc annot rep CST.Refinement xt subst) = do
+  genConstraints (Core.Xtor loc annot rep RST.Refinement xt subst) = do
     -- First we infer the types of the arguments.
     substInferred <- genConstraints subst
     let substTypes = TST.getTypArgs substInferred
@@ -151,12 +151,12 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
     genConstraintsCtxts substTypes xtorSigUpper.sig_args (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
     case rep of
-      PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep decl.data_kind decl.data_name [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
-      CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep decl.data_kind decl.data_name [TST.MkXtorSig xt substTypes]) CST.Refinement xt substInferred)
+      PrdRep -> return (TST.Xtor loc annot rep (TST.TyDataRefined   defaultLoc PosRep decl.data_kind decl.data_name [TST.MkXtorSig xt substTypes]) RST.Refinement xt substInferred)
+      CnsRep -> return (TST.Xtor loc annot rep (TST.TyCodataRefined defaultLoc NegRep decl.data_kind decl.data_name [TST.MkXtorSig xt substTypes]) RST.Refinement xt substInferred)
   --
   -- Structural pattern and copattern matches:
   --
-  genConstraints (Core.XCase loc annot rep CST.Structural cases) = do
+  genConstraints (Core.XCase loc annot rep RST.Structural cases) = do
     inferredCases <- forM cases (\(Core.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdcase_cmd) -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
@@ -174,19 +174,19 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
       PrdRep -> do 
         let rstty = RST.TyCodata defaultLoc PosRep (embedTST <$> xtors)
         tstty <- annotateKind rstty
-        return $ TST.XCase loc annot rep tstty CST.Structural (fst <$> inferredCases)
+        return $ TST.XCase loc annot rep tstty RST.Structural (fst <$> inferredCases)
       CnsRep -> do
         let rstty = RST.TyData defaultLoc NegRep (embedTST <$> xtors)
         tstty <- annotateKind rstty
-        return $ TST.XCase loc annot rep tstty CST.Structural (fst <$> inferredCases)
+        return $ TST.XCase loc annot rep tstty RST.Structural (fst <$> inferredCases)
   --
   -- Nominal pattern and copattern matches
   --
-  genConstraints (Core.XCase loc _ _ CST.Nominal []) =
+  genConstraints (Core.XCase loc _ _ (RST.Nominal _) []) =
     -- We know that empty matches cannot be parsed as nominal.
     -- It is therefore safe to pattern match on the head of the xtors in the other cases.
     throwGenError (EmptyNominalMatch loc)
-  genConstraints (Core.XCase loc annot rep CST.Nominal cases@(pmcase:_)) = do
+  genConstraints (Core.XCase loc annot rep (RST.Nominal _) cases@(pmcase:_)) = do
     -- We lookup the data declaration based on the first pattern match case.
     decl <- lookupDataDecl loc (case pmcase.cmdcase_pat of (Core.XtorPat _ xt _) -> xt)
     -- We check that all cases in the pattern match belong to the type declaration.
@@ -210,16 +210,16 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     let nomTy rep = TST.TyNominal defaultLoc rep decl.data_kind decl.data_name
     let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep (nomTy rep) (fst:|rst)
     case rep of
-      PrdRep -> return $ TST.XCase loc annot rep (ty PosRep) CST.Nominal (fst <$> inferredCases)
-      CnsRep -> return $ TST.XCase loc annot rep (ty NegRep) CST.Nominal (fst <$> inferredCases)
+      PrdRep -> return $ TST.XCase loc annot rep (ty PosRep) (RST.Nominal Nothing) (fst <$> inferredCases)
+      CnsRep -> return $ TST.XCase loc annot rep (ty NegRep) (RST.Nominal Nothing) (fst <$> inferredCases)
   --
   -- Refinement pattern and copattern matches
   --
-  genConstraints (Core.XCase loc _ _ CST.Refinement []) =
+  genConstraints (Core.XCase loc _ _ RST.Refinement []) =
     -- We know that empty matches cannot be parsed as Refinement.
     -- It is therefore safe to pattern match on the head of the xtors in the other cases.
     throwGenError (EmptyRefinementMatch loc)
-  genConstraints (Core.XCase loc annot rep CST.Refinement cases@(pmcase:_)) = do
+  genConstraints (Core.XCase loc annot rep RST.Refinement cases@(pmcase:_)) = do
     -- We lookup the data declaration based on the first pattern match case.
     decl <- lookupDataDecl loc (case pmcase.cmdcase_pat of (Core.XtorPat _ xt _) -> xt)
     -- We check that all cases in the pattern match belong to the type declaration.
@@ -246,8 +246,8 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- and greatest type translation.
                         return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
     case rep of
-      PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep decl.data_kind decl.data_name (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
-      CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep decl.data_kind decl.data_name (snd <$> inferredCases)) CST.Refinement (fst <$> inferredCases)
+      PrdRep -> return $ TST.XCase loc annot rep (TST.TyCodataRefined defaultLoc PosRep decl.data_kind decl.data_name (snd <$> inferredCases)) RST.Refinement (fst <$> inferredCases)
+      CnsRep -> return $ TST.XCase loc annot rep (TST.TyDataRefined   defaultLoc NegRep decl.data_kind decl.data_name (snd <$> inferredCases)) RST.Refinement (fst <$> inferredCases)
   --
   -- Mu and TildeMu abstractions:
   --

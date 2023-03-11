@@ -82,7 +82,7 @@ deriving instance Show (SubstitutionI pc)
 type GenericPattern = Either PatternNew StarPattern
 
 data PatternNew where
-  PatXtor     :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> [PatternNew] -> PatternNew
+  PatXtor     :: Loc -> PrdCns -> NominalStructural -> XtorName -> [PatternNew] -> PatternNew
   PatVar      :: Loc -> PrdCns -> FreeVarName -> PatternNew
   PatWildcard :: Loc -> PrdCns -> PatternNew
 
@@ -191,7 +191,7 @@ instance HasLoc PatternNew where
 
 data StarPattern where
   PatStar     :: Loc -> PrdCns -> StarPattern
-  PatXtorStar :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> ([PatternNew],StarPattern,[PatternNew]) -> StarPattern
+  PatXtorStar :: Loc -> PrdCns -> NominalStructural -> XtorName -> ([PatternNew],StarPattern,[PatternNew]) -> StarPattern
 
 deriving instance Eq StarPattern
 deriving instance Show StarPattern
@@ -389,10 +389,10 @@ data Command where
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
   PrimOp :: Loc -> PrimitiveOp -> Substitution -> Command
-  CaseOfCmd :: Loc -> CST.NominalStructural -> Term Prd -> [CmdCase] -> Command
-  CaseOfI :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> Term Prd -> [TermCaseI pc] -> Command
-  CocaseOfCmd :: Loc -> CST.NominalStructural -> Term Cns -> [CmdCase] -> Command
-  CocaseOfI :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
+  CaseOfCmd :: Loc -> NominalStructural -> Term Prd -> [CmdCase] -> Command
+  CaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Prd -> [TermCaseI pc] -> Command
+  CocaseOfCmd :: Loc -> NominalStructural -> Term Cns -> [CmdCase] -> Command
+  CocaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
 
 deriving instance Show Command
 
