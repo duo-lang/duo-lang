@@ -140,19 +140,19 @@ resolveTypeArgs loc _ _ (KindVar _) _ = throwError (UnknownResolutionError loc "
 
 
 resolveXTorSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.XtorSig pol]
-resolveXTorSigs rep sigs = mapM (resolveXTorSig rep) sigs
+resolveXTorSigs rep = mapM (resolveXTorSig rep)
 
 resolveXTorSig :: PolarityRep pol -> XtorSig -> ResolverM (RST.XtorSig pol)
 resolveXTorSig rep (MkXtorSig name ctx) = RST.MkXtorSig name <$> resolveLinearContext rep ctx
 
 resolveMethodSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.MethodSig pol]
-resolveMethodSigs rep sigs = mapM (resolveMethodSig rep) sigs
+resolveMethodSigs rep = mapM (resolveMethodSig rep)
 
 resolveMethodSig :: PolarityRep pol -> XtorSig -> ResolverM (RST.MethodSig pol)
 resolveMethodSig rep (MkXtorSig name ctx) = RST.MkMethodSig (MkMethodName name.unXtorName) <$> resolveLinearContext rep ctx
 
 resolveLinearContext :: PolarityRep pol -> LinearContext -> ResolverM (RST.LinearContext pol)
-resolveLinearContext rep ctx = mapM (resolvePrdCnsTyp rep) ctx
+resolveLinearContext rep = mapM (resolvePrdCnsTyp rep)
 
 resolvePrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> ResolverM (RST.PrdCnsType pol)
 resolvePrdCnsTyp rep (PrdType typ) = RST.PrdCnsType PrdRep <$> resolveTyp rep typ
