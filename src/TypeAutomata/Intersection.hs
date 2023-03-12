@@ -9,7 +9,7 @@ import qualified Data.Set as S
 import Data.Maybe (fromMaybe, isJust)
 import Control.Monad.State
 import qualified Data.Bifunctor as BF
-import Data.List (nub, (\\),intersect)
+import Data.List (nub, (\\))
 
 import Syntax.TST.Types (TypeScheme(..))
 import Data.List.NonEmpty (NonEmpty)
@@ -24,6 +24,7 @@ import TypeAutomata.Utils (typeAutIsEmpty, isEmptyLabel)
 import TypeAutomata.Simplify (printGraph)
 import Pretty.Pretty (ppPrint)
 import qualified Data.Text as T
+import Utils (sequenceMap)
 
 
 -- | Check for two type schemes whether their intersection type automaton is empty.
@@ -78,11 +79,14 @@ intersectLabels (MkNodeLabel pol  data'  codata  nominal  ref_data  ref_codata  
                 (MkNodeLabel pol' data'' codata' nominal' ref_data' ref_codata' kind')
  | pol /= pol' = Nothing
  | kind /= kind' = Nothing
- | otherwise = Just $ MkNodeLabel pol (S.intersection <$> data' <*> data'')
+ | otherwise = do
+    new_ref_data   <- sequenceMap (M.intersectionWith (\(xtors1,vars1) (xtors2, vars2) -> if vars1 == vars2 then Just (S.intersection xtors1 xtors2, vars1) else Nothing) ref_data ref_data')
+    new_ref_codata <- sequenceMap (M.intersectionWith (\(xtors1,vars1) (xtors2, vars2) -> if vars1 == vars2 then Just (S.intersection xtors1 xtors2, vars1) else Nothing) ref_codata ref_codata')
+    pure $ MkNodeLabel pol (S.intersection <$> data' <*> data'')
                                       (S.intersection <$> codata <*> codata')
                                       (S.intersection nominal nominal')
-                                      (M.intersectionWith (\(xtors1,vars1) (xtors2, vars2) -> (S.intersection xtors1 xtors2, vars1 `intersect` vars2)) ref_data ref_data')
-                                      (M.intersectionWith (\(xtors1,vars1) (xtors2, vars2) -> (S.intersection xtors1 xtors2, vars1 `intersect` vars2)) ref_codata ref_codata')
+                                      new_ref_data
+                                      new_ref_codata
                                       kind
 intersectLabels (MkPrimitiveNodeLabel pol prim)
                 (MkPrimitiveNodeLabel pol' prim')

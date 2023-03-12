@@ -14,7 +14,8 @@ module Utils
   , moduleNameToFilePath
   , moduleNameToFullPath
   , listRecursiveDuoFiles
-  , isModuleFile) where
+  , isModuleFile
+  , sequenceMap) where
 
 import Data.Char (isSpace)
 import Data.Foldable (foldl')
@@ -33,6 +34,9 @@ import Control.Monad (forM)
 ----------------------------------------------------------------------------------
 -- Helper Functions
 ----------------------------------------------------------------------------------
+
+sequenceMap :: forall k a. Map k (Maybe a) -> Maybe (Map k a) 
+sequenceMap = M.traverseWithKey (const id) 
 
 intersections :: Ord a => NonEmpty (Set a) -> Set a
 intersections (s :| ss) = foldl' S.intersection s ss
