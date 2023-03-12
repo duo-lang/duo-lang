@@ -2,7 +2,7 @@ module TypeAutomata.Lint
   ( lint
   ) where
 
-import Control.Monad (forM_)
+import Control.Monad ( forM_, when )
 import Control.Monad.Except (MonadError)
 import Data.Graph.Inductive.Graph
 import Data.Graph.Inductive (Gr)
@@ -17,7 +17,6 @@ import Syntax.CST.Names
 import TypeAutomata.Definition
 import Loc ( defaultLoc )
 import Utils ( enumerate )
-import Control.Monad (when)
 
 -- | Check the invariants of the type automaton.
 lint :: MonadError (NonEmpty Error) m

@@ -56,7 +56,6 @@ import Control.Monad.State.Strict (execStateT, StateT)
 import Control.Monad.Writer.Strict (execWriter, WriterT)
 import qualified Data.Aeson as J
 import Eval.Definition (EvalEnv)
-import Data.Foldable (fold)
 import Run (desugarEnv)
 import qualified Data.Map as M
 import Utils (filePathToModuleName)
@@ -400,7 +399,7 @@ evalInModule mn cmd stop = do
       (_, state) <- case res of
                   Left errs -> stop $ unlines $ (\(x :| xs) -> x:xs) $ show <$> errs
                   Right drvEnv -> return drvEnv
-      let compiledEnv :: EvalEnv = focus CBV ((\map -> foldMap desugarEnv (M.elems map)) state.drvEnv)
+      let compiledEnv :: EvalEnv = focus CBV ((foldMap desugarEnv . M.elems) state.drvEnv)
       let foo :: EvalMWrapper (StateT [Int] (WriterT [String] Identity)) (Either (NonEmpty Errors.Error) TST.Command) = eval (TST.Jump defaultLoc cmd) compiledEnv
       return $ execWriter $ flip execStateT [] $ (\x -> x.unEvalMWrapper) foo
 

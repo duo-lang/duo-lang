@@ -162,7 +162,7 @@ overlap l = let pairOverlaps = concat $ zipWith map (map overlapA2 l) (tail (tai
     overlapSubpatterns (p1,xPatterns) (p2,yPatterns) =
       let subPatternsOverlaps = zipWith overlapA2 xPatterns yPatterns
           --Only if all Pairs of Subpatterns truly overlap is an Overlap found.
-          subPatternsOverlap =  if   elem Nothing subPatternsOverlaps
+          subPatternsOverlap =  if   Nothing `elem` subPatternsOverlaps
                                 then Nothing
                                 else concatOverlaps subPatternsOverlaps
       in  case subPatternsOverlap of
