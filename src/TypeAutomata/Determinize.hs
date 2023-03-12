@@ -10,12 +10,10 @@ import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set (Set)
 import Data.Set qualified as S
-import Data.List.NonEmpty (NonEmpty(..))
 import Data.Maybe (mapMaybe, fromMaybe)
 import Data.Foldable (foldl')
 
 import TypeAutomata.Definition
-import Utils (intersections)
 import Syntax.RST.Types ( Polarity(Neg, Pos) )
 import Syntax.CST.Kinds (PolyKind(..))
 
@@ -85,11 +83,11 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
         if combLabel.nl_pol  == pol then
           MkNodeLabel {
             nl_pol = pol,
-            nl_data = mrgDat [xtors | MkNodeLabel _ (Just xtors) _ _ _ _ _ <- [fstLabel,combLabel]],
-            nl_codata = mrgCodat [xtors | MkNodeLabel _ _ (Just xtors) _ _ _ _ <- [fstLabel,combLabel]],
-            nl_nominal = S.unions [tn | MkNodeLabel _ _ _ tn _ _ _ <- [fstLabel, combLabel]],
-            nl_ref_data = mrgRefDat [refs | MkNodeLabel _ _ _ _ refs _ _ <- [fstLabel, combLabel]], 
-            nl_ref_codata = mrgRefCodat [refs | MkNodeLabel _ _ _ _ _ refs _ <- [fstLabel, combLabel]], 
+            nl_data = mrgDat fstLabel.nl_data combLabel.nl_data, 
+            nl_codata = mrgCodat fstLabel.nl_codata combLabel.nl_codata,
+            nl_nominal = S.union fstLabel.nl_nominal combLabel.nl_nominal,
+            nl_ref_data = mrgRefDat fstLabel.nl_ref_data combLabel.nl_ref_data, 
+            nl_ref_codata = mrgRefCodat fstLabel.nl_ref_codata combLabel.nl_ref_codata, 
             nl_kind = MkPolyKind (mrgKindArgs combLabel.nl_kind.kindArgs knd.kindArgs) knd.returnKind
           }
         else
@@ -99,16 +97,27 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
   where
     pol = fstLabel.nl_pol
     knd = fstLabel.nl_kind
-    mrgDat [] = Nothing
-    mrgDat (xtor:xtors) = Just $ case pol of {Pos -> S.unions (xtor:xtors) ; Neg -> intersections (xtor :| xtors) }
-    mrgCodat [] = Nothing
-    mrgCodat (xtor:xtors) = Just $ case pol of {Pos -> intersections (xtor :| xtors); Neg -> S.unions (xtor:xtors)}
-    mrgRefDat refs = case pol of
-      Pos -> M.unionsWith S.union refs
-      Neg -> M.unionsWith S.intersection refs
-    mrgRefCodat refs = case pol of
-      Pos -> M.unionsWith S.intersection refs
-      Neg -> M.unionsWith S.union refs
+
+    mrgDat Nothing Nothing = Nothing
+    mrgDat (Just xtors1) Nothing = Just xtors1
+    mrgDat Nothing (Just xtors2) = Just xtors2
+    mrgDat (Just xtors1) (Just xtors2) = Just $ case pol of {Pos -> S.union xtors1 xtors2; Neg -> S.intersection xtors1 xtors2}
+
+    mrgCodat Nothing Nothing = Nothing
+    mrgCodat (Just xtors1) Nothing = Just xtors1
+    mrgCodat Nothing (Just xtors2) = Just xtors2
+    mrgCodat (Just xtors1) (Just xtors2) = Just $ case pol of {Pos -> S.intersection xtors1 xtors2; Neg -> S.union xtors1 xtors2}
+
+    mrgRefDat refs1 refs2 = 
+      let mrgXtors xtors1 xtors2 = case pol of Pos -> S.union xtors1 xtors2; Neg -> S.intersection xtors1 xtors2
+          checkVars vars1 vars2 = if vars1 == vars2 then vars2 else error "variances don't match"
+          f (xtors1, vars1) (xtors2, vars2) = (mrgXtors xtors1 xtors2, checkVars vars1 vars2)
+      in M.unionWith f refs1 refs2 
+    mrgRefCodat refs1 refs2 = 
+      let mrgXtors xtors1 xtors2 = case pol of Pos -> S.intersection xtors1 xtors2; Neg -> S.union xtors1 xtors2
+          checkVars vars1 vars2 = if vars1 == vars2 then vars1 else error "variances don't match"
+          f (xtors1,vars1) (xtors2,vars2) = (mrgXtors xtors1 xtors2, checkVars vars1 vars2)
+      in M.unionWith f refs1 refs2
     rs_merged = combineNodeLabels rs
     mrgKindArgs [] knds = knds
     mrgKindArgs knds [] = knds

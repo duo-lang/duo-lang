@@ -159,15 +159,21 @@ data PrimitiveType =
     | PString
     deriving (Show, Eq, Ord)
     
+primitiveToAnyKind :: PrimitiveType -> AnyKind
+primitiveToAnyKind I64 = MkI64
+primitiveToAnyKind F64 = MkF64
+primitiveToAnyKind PChar = MkChar
+primitiveToAnyKind PString = MkString
+
 data NodeLabel = 
   MkNodeLabel
     { nl_pol :: Polarity
     , nl_data :: Maybe (Set XtorLabel)
     , nl_codata :: Maybe (Set XtorLabel)
     -- Nominal type names with the arities of type parameters
-    , nl_nominal :: Set (RnTypeName, [Variance])
-    , nl_ref_data :: Map RnTypeName (Set XtorLabel)
-    , nl_ref_codata :: Map RnTypeName (Set XtorLabel)
+    , nl_nominal :: Set (RnTypeName,[Variance])
+    , nl_ref_data :: Map RnTypeName (Set XtorLabel,[Variance])
+    , nl_ref_codata :: Map RnTypeName (Set XtorLabel,[Variance])
     , nl_kind :: PolyKind 
     }
   |
@@ -186,25 +192,28 @@ emptyNodeLabel pol MkChar       = MkPrimitiveNodeLabel pol PChar
 
 singleNodeLabelNominal :: Polarity -> (RnTypeName, [Variance]) ->  PolyKind -> NodeLabel
 singleNodeLabelNominal pol nominal k = MkNodeLabel { nl_pol = pol, nl_data = Nothing, nl_codata = Nothing, nl_nominal = S.singleton nominal, nl_ref_data = M.empty, nl_ref_codata = M.empty, nl_kind = k }
-
-singleNodeLabelXtor :: Polarity -> DataCodata -> Maybe RnTypeName -> Set XtorLabel -> PolyKind -> NodeLabel
-singleNodeLabelXtor pol Data   Nothing   xtors k = MkNodeLabel { nl_pol = pol, nl_data = Just xtors, nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.empty,              nl_ref_codata = M.empty,         nl_kind = k }
-singleNodeLabelXtor pol Codata Nothing   xtors k = MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Just xtors, nl_nominal = S.empty, nl_ref_data = M.empty,              nl_ref_codata = M.empty,         nl_kind = k }
-singleNodeLabelXtor pol Data   (Just tn) xtors k = MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.singleton tn xtors, nl_ref_codata = M.empty,         nl_kind = k }
-singleNodeLabelXtor pol Codata (Just tn) xtors k = MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.empty,              nl_ref_codata = M.singleton tn xtors, nl_kind = k }
+singleNodeLabelXtor :: Polarity -> DataCodata -> Maybe (RnTypeName,[Variance]) -> Set XtorLabel -> PolyKind -> NodeLabel
+singleNodeLabelXtor pol Data   Nothing   xtors k =
+  MkNodeLabel { nl_pol = pol, nl_data = Just xtors, nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.empty,                     nl_ref_codata = M.empty,                     nl_kind = k }
+singleNodeLabelXtor pol Codata Nothing   xtors k = 
+  MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Just xtors, nl_nominal = S.empty, nl_ref_data = M.empty,                     nl_ref_codata = M.empty,                     nl_kind = k }
+singleNodeLabelXtor pol Data   (Just (tn,vars)) xtors k = 
+  MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.singleton tn (xtors,vars), nl_ref_codata = M.empty,                     nl_kind = k }
+singleNodeLabelXtor pol Codata (Just (tn,vars)) xtors k = 
+  MkNodeLabel { nl_pol = pol, nl_data = Nothing,    nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.empty,                     nl_ref_codata = M.singleton tn (xtors,vars), nl_kind = k }
 
 getPolarityNL :: NodeLabel -> Polarity
 getPolarityNL (MkNodeLabel pol _ _ _ _ _ _) = pol
 getPolarityNL (MkPrimitiveNodeLabel pol _) = pol
 
-getKindNL :: NodeLabel -> PolyKind 
+getKindNL :: NodeLabel -> PolyKind
 getKindNL (MkNodeLabel _ _ _ _ _ _ (KindVar _)) = error "at this point no KindVars should be in the program"
 getKindNL (MkNodeLabel _ _ _ _ _ _ pk) = pk
-getKindNL (MkPrimitiveNodeLabel _ _) = error "can't get polykind of primitive type"
---getKindNL (MkPrimitiveNodeLabel _ I64) = I64Rep
---getKindNL (MkPrimitiveNodeLabel _ F64) = F64Rep
---getKindNL (MkPrimitiveNodeLabel _ PChar) = CharRep
---getKindNL (MkPrimitiveNodeLabel _ PString) = StringRep
+getKindNL MkPrimitiveNodeLabel{} = error "can't get polykind of primitive kind"
+--getKindNL (MkPrimitiveNodeLabel _ I64) = MkI64
+--getKindNL (MkPrimitiveNodeLabel _ F64) = MkF64
+--getKindNL (MkPrimitiveNodeLabel _ PChar) = MkChar
+--getKindNL (MkPrimitiveNodeLabel _ PString) = MkString
       
 --------------------------------------------------------------------------------
 -- Edge labels for type automata

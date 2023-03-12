@@ -32,6 +32,8 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn (PrimOpArgsConstraint loc)     = parens ("Primitive operation args constraint at" <+> prettyAnn loc)
   prettyAnn (TypeClassConstraint loc) = parens ("Type class constraint at" <+> prettyAnn loc)
   prettyAnn KindConstraint = parens "Kind Constraint"
+  prettyAnn ReturnKindConstraint = parens "Return Kind Constraint"
+  prettyAnn TypeArgKindConstraint = parens "Type Argument Kind Constraint"
   -- Derived Constraints
   prettyAnn UpperBoundConstraint           = parens "UpperBound"
   prettyAnn LowerBoundConstraint           = parens "LowerBound"
@@ -39,6 +41,8 @@ instance PrettyAnn ConstraintInfo where
   prettyAnn IntersectionUnionSubConstraint = parens "Intersection/Union"
   prettyAnn RecTypeSubConstraint           = parens "muTypeUnfold"
   prettyAnn NominalSubConstraint           = parens "NominalSubConstraint"
+  prettyAnn ApplicationSubConstraint       = parens "ApplicationSubConstraint"
+  prettyAnn RefinementSubConstraint        = parens "RefinementSubConstraint"
   prettyAnn ClassResolutionConstraint      = parens "ClassResolutionConstraint"
 
 
@@ -96,6 +100,7 @@ instance PrettyAnn SubtypeWitness where
   prettyAnn (DataRefined rn ws) = "DataRefined" <> brackets (prettyAnn rn) <> parens (sep $ intersperse "," $ prettyAnn <$> ws)
   prettyAnn (CodataRefined rn ws) = "CodataRefined" <> brackets (prettyAnn rn) <> parens (sep $ intersperse "," $ prettyAnn <$> ws)
   prettyAnn (DataNominal rn ws) = "DataNominal" <> brackets (prettyAnn rn) <> parens (sep $ intersperse "," $ prettyAnn <$> ws)
+  prettyAnn (DataApp typ tyn ws) = "DataApp" <> brackets (prettyAnn typ) <> parens (prettyAnn tyn) <> parens (sep $ intersperse "," $ prettyAnn <$> ws)
   prettyAnn (Refl typ _tyn) = "Refl" <> brackets (prettyAnn typ)
   prettyAnn (UVarL uv tyn) = "UVarL" <> brackets (prettyAnn uv) <> parens (prettyAnn tyn)
   prettyAnn (UVarR uv typ) = "UVarR" <> brackets (prettyAnn uv) <> parens (prettyAnn typ)

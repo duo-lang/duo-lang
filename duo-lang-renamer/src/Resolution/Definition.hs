@@ -10,7 +10,6 @@ import Data.Text qualified as T
 import Resolution.SymbolTable
 import Syntax.CST.Names
 import Syntax.RST.Names
-import Syntax.CST.Kinds (PolyKind)
 import Loc
 import Errors.Renamer
 import Control.Monad.Writer
@@ -20,7 +19,7 @@ import qualified Data.Set as S
 -- Resolver Monad
 ------------------------------------------------------------------------------
 
-data ResolveReader = ResolveReader { rr_modules :: Map ModuleName SymbolTable, rr_recVars :: S.Set RecTVar , rr_ref_recVars :: Map RecTVar (TypeName, PolyKind)}
+data ResolveReader = ResolveReader { rr_modules :: Map ModuleName SymbolTable, rr_recVars :: S.Set RecTVar }
 
 type WarningWriter = Writer [Warning]
 

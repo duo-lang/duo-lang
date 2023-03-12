@@ -1,3 +1,5 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+{-# HLINT ignore "Use mapM_" #-}
 module Resolution.Program (resolveModule, resolveDecl) where
 
 import Control.Monad.Reader
@@ -54,7 +56,7 @@ checkVarianceTyp loc var polyKind (CST.TyXData _loc' dataCodata  xtorSigs) = do
   let var' = var <> case dataCodata of
                       CST.Data   -> Covariant
                       CST.Codata -> Contravariant
-  sequence_ $ checkVarianceXtor loc var' polyKind <$> xtorSigs
+  mapM_ (checkVarianceXtor loc var' polyKind) xtorSigs
 checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn xtorSigs) = do
   let var' = var <> case dataCodata of
                       CST.Data   -> Covariant
@@ -74,12 +76,12 @@ checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) tys)
     go (_:_) []       = throwError (UnknownResolutionError loc ("Type Constructor " <> T.pack (show tyName) <> " is applied to too few arguments"))
 checkVarianceTyp loc _ _ (CST.TyNominal _loc' tyName) = do
   NominalResult _ _ _ polyKnd' <- lookupTypeConstructor loc tyName
-  case polyKnd'.kindArgs of 
-    [] -> return () 
+  case polyKnd'.kindArgs of
+    [] -> return ()
     _ -> throwError (UnknownResolutionError loc ("Type Constructor " <> T.pack (show tyName) <> " is applied to too few arguments"))
 checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyParens _ ty) args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty args)
 checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyKindAnnot _ ty) args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty args)
-checkVarianceTyp loc _ _ CST.TyApp{} = 
+checkVarianceTyp loc _ _ CST.TyApp{} =
   throwError (UnknownResolutionError loc "Types can only be applied to nominal types")
 checkVarianceTyp loc var polyKind (CST.TyRec _loc' _tVar ty) =
   checkVarianceTyp loc var polyKind ty
@@ -148,7 +150,7 @@ resolveDataDecl decl = do
       polyKind <- case decl.kind of
                         Nothing -> pure $ MkPolyKind [] (case decl.data_codata of CST.Data -> CBV; CST.Codata -> CBN)
                         Just knd -> pure knd
-      -- checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
+      checkVarianceDataDecl decl.loc polyKind decl.data_codata decl.xtors
       -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
       let g :: TypeNameResolve -> TypeNameResolve
           g (SynonymResult tn ty) = SynonymResult tn ty

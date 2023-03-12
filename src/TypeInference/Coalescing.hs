@@ -12,8 +12,8 @@ import Data.Text qualified as T
 import Syntax.TST.Types
 import Syntax.RST.Types (PolarityRep(..),Polarity(..))
 import Syntax.CST.Names
-import Syntax.RST.Names
 import Syntax.RST.Kinds (AnyKind(..))
+import Syntax.RST.Names
 import TypeInference.Constraints
 import Loc ( defaultLoc )
 
@@ -103,22 +103,31 @@ coalesceType (TyRecVar loc rep pk tv) = do
 coalesceType (TyUniVar _ PosRep pk tv) = do
   isInProcess <- inProcess (tv, Pos)
   if isInProcess then do
-    recVar <- getOrElseUpdateRecVar (tv, Pos)
-    case pk of 
-      MkPknd pk' -> return (TyRecVar defaultLoc PosRep pk' recVar)
-      primk -> error ("Recursive Variable " <> show recVar <> " can't have primitive kind " <> show primk)
+   let pk' = case pk of MkPknd pk' -> pk'; knd -> error ("RecVar can't have kind " <> show knd)
+   recVar <- getOrElseUpdateRecVar (tv, Pos)
+   return (TyRecVar defaultLoc PosRep pk' recVar)
   else do
     vst <- getVariableState tv
     let f r = r { r_inProcess =  S.insert (tv, Pos) r.r_inProcess }
     lbs' <- local f $ mapM coalesceType vst.vst_lowerbounds
-    recVarMap <- gets (\x -> x.s_recursive)
-    case (pk, M.lookup (tv, Pos) recVarMap) of
-      (MkPknd pk', Nothing)     -> do
-        newName <- getSkolemVar tv
-        return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk' newName : lbs')
-      (MkPknd pk', Just recVar) ->  
-        return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk' recVar  : lbs'))
-      (primk, _) -> error ("Type Variable can't have primitive kind " <> show primk)
+    case pk of 
+      MkPknd pk' -> do
+        recVarMap <- gets (\x -> x.s_recursive)
+        case M.lookup (tv, Pos) recVarMap of
+          Nothing     -> do
+            newName <- getSkolemVar tv
+            return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk' newName : lbs')
+          Just recVar -> 
+            return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk' recVar  : lbs'))
+      primknd -> return $ mkUnion defaultLoc pk (primKindToPrimTy primknd : lbs')
+  where 
+    primKindToPrimTy :: AnyKind -> Typ Pos
+    primKindToPrimTy MkI64 = TyI64 defaultLoc PosRep 
+    primKindToPrimTy MkF64 = TyF64 defaultLoc PosRep
+    primKindToPrimTy MkChar = TyChar defaultLoc PosRep
+    primKindToPrimTy MkString = TyString defaultLoc PosRep
+    primKindToPrimTy _ = error "impossible (already checked)" 
+
 
 coalesceType (TyUniVar _ NegRep pk tv) = do
   isInProcess <- inProcess (tv, Neg)
@@ -131,14 +140,24 @@ coalesceType (TyUniVar _ NegRep pk tv) = do
       vst <- getVariableState tv
       let f r = r { r_inProcess =  S.insert (tv, Neg) r.r_inProcess }
       ubs' <- local f $ mapM coalesceType vst.vst_upperbounds 
-      recVarMap <- gets (\x -> x.s_recursive)
-      case (pk, M.lookup (tv, Neg) recVarMap) of
-        (MkPknd pk', Nothing) -> do
-          newName <- getSkolemVar tv
-          return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep pk' newName : ubs')
-        (MkPknd pk', Just recVar) -> 
-          return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk' recVar  : ubs')) 
-        (primk, _) -> error ("Type Variable can't have primitive kind " <> show primk)
+      case pk of 
+        MkPknd pk' -> do
+          recVarMap <- gets (\x -> x.s_recursive)
+          case M.lookup (tv, Neg) recVarMap of
+            Nothing -> do
+              newName <- getSkolemVar tv
+              return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep pk' newName : ubs')
+            Just recVar -> 
+              return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk' recVar  : ubs')) 
+        primknd -> return $ mkInter defaultLoc pk (primKindToPrimTy primknd : ubs')
+  where 
+    primKindToPrimTy :: AnyKind -> Typ Neg
+    primKindToPrimTy MkI64 = TyI64 defaultLoc NegRep 
+    primKindToPrimTy MkF64 = TyF64 defaultLoc NegRep
+    primKindToPrimTy MkChar = TyChar defaultLoc NegRep
+    primKindToPrimTy MkString = TyString defaultLoc NegRep
+    primKindToPrimTy _ = error "impossible (already checked)" 
+
 coalesceType (TyData loc rep mk xtors) = do
     xtors' <- mapM coalesceXtor xtors
     return (TyData loc rep mk xtors')
@@ -153,10 +172,10 @@ coalesceType (TyCodataRefined loc rep mk tn xtors) = do
     return (TyCodataRefined loc rep mk tn xtors')
 coalesceType (TyNominal loc rep mk tn) = do
     return $ TyNominal loc rep mk tn 
-coalesceType (TyApp loc rep ty args) = do 
-    args' <- mapM coalesceVariantType args
+coalesceType (TyApp loc rep eo ty args) = do 
     ty' <- coalesceType ty
-    return $ TyApp loc rep ty' args'
+    args' <- mapM coalesceVariantType args
+    return $ TyApp loc rep eo ty' args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
 coalesceType (TyTop loc pk) = do 
     pure (TyTop loc pk)
@@ -171,9 +190,11 @@ coalesceType (TyInter loc pk ty1 ty2) = do
   ty2' <- coalesceType ty2
   pure (TyInter loc pk ty1' ty2')
 coalesceType (TyRec loc PosRep tv ty) = do
-    return $ TyRec loc PosRep tv ty
+  ty' <- coalesceType ty
+  return $ TyRec loc PosRep tv ty'
 coalesceType (TyRec loc NegRep tv ty) = do
-    return $ TyRec loc NegRep tv ty
+  ty' <- coalesceType ty
+  return $ TyRec loc NegRep tv ty'
 coalesceType t@TyI64 {} = return t
 coalesceType t@TyF64 {} = return t
 coalesceType t@TyChar {} = return t

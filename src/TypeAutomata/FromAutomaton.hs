@@ -100,6 +100,13 @@ getNodeKindPk i = do
     Just (MkNodeLabel _ _ _ _ _ _ pk) -> return pk
     _ -> throwAutomatonError defaultLoc ["Recursive Variables can only have kind CBV or CBN"]
 
+getNodeKind :: Node -> AutToTypeM AnyKind
+getNodeKind i = do 
+  gr <- asks (\x -> x.graph)
+  case lab gr i of 
+    Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
+    Just (MkNodeLabel _ _ _ _ _ _ pk) -> return (MkPknd pk)
+    Just MkPrimitiveNodeLabel{ pl_prim = pty } -> pure $ primitiveToAnyKind pty
 
 
 
@@ -125,7 +132,6 @@ computeArgNodes outs dc lbl = args
     argFun (n,pc) = (pc, [ node | (EdgeSymbol dc' xt pc' pos, node) <- outs, dc' == dc, xt == lbl.labelName, pc == pc', pos == n])
     args = argFun <$> enumerate lbl.labelArity
 
-
 -- | Takes the output of computeArgNodes and turns the nodes into types.
 argNodesToArgTypes :: [(PrdCns,[Node])] -> PolarityRep pol -> AutToTypeM (LinearContext pol)
 argNodesToArgTypes argNodes rep = do
@@ -133,20 +139,20 @@ argNodesToArgTypes argNodes rep = do
     case ns of
       (Prd, ns) -> do
          typs <- forM ns (nodeToType rep)
-         knds <- mapM getNodeKindPk ns
+         knds <- mapM getNodeKind ns
          knd <- checkTypKinds knds
          pure $ PrdCnsType PrdRep $ case rep of
-                                       PosRep -> mkUnion defaultLoc (MkPknd knd) typs
-                                       NegRep -> mkInter defaultLoc (MkPknd knd) typs
+                                       PosRep -> mkUnion defaultLoc knd typs
+                                       NegRep -> mkInter defaultLoc knd typs
       (Cns, ns) -> do
          typs <- forM ns (nodeToType (flipPolarityRep rep))
-         knds <- mapM getNodeKindPk ns
+         knds <- mapM getNodeKind ns
          knd <- checkTypKinds knds
          pure $ PrdCnsType CnsRep $ case rep of
-                                       PosRep -> mkInter defaultLoc (MkPknd knd) typs
-                                       NegRep -> mkUnion defaultLoc (MkPknd knd) typs
+                                       PosRep -> mkInter defaultLoc knd typs
+                                       NegRep -> mkUnion defaultLoc knd typs
 
-checkTypKinds :: [PolyKind] -> AutToTypeM PolyKind
+checkTypKinds :: [AnyKind] -> AutToTypeM AnyKind
 checkTypKinds [] = throwAutomatonError  defaultLoc [T.pack "Can't get Kind of empty list of types"]
 checkTypKinds (fst:rst) = if all (fst ==) rst then return fst else throwAutomatonError defaultLoc [T.pack "Kinds of intersection types don't match"]
 
@@ -179,6 +185,9 @@ nodeToTypeNoCache rep i  = do
       let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
       let refDatTypes = M.toList refDat -- Unique data ref types
       let refCodatTypes = M.toList refCodat -- Unique codata ref types
+      let adjEdges = lsuc gr i
+      let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
+      let unsafeLookup :: (RnTypeName, Int) -> AutToTypeM (Node,Variance) = \k -> case M.lookup k typeArgsMap of Just x -> pure x; Nothing -> throwOtherError defaultLoc ["Impossible: Cannot loose type arguments in automata"]
       resType <- local (visitNode i) $ do
         -- Creating type variables
         varL <- nodeToTVars rep i
@@ -202,26 +211,33 @@ nodeToTypeNoCache rep i  = do
             return [TyCodata defaultLoc rep pk.returnKind sig]
         -- Creating ref data types
         refDatL <- do
-          forM refDatTypes $ \(tn,xtors) -> do
+          forM refDatTypes $ \(tn,(xtors,vars)) -> do
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Data xt
               argTypes <- argNodesToArgTypes nodes rep
-              return (MkXtorSig xt.labelName argTypes)
-            return $ TyDataRefined defaultLoc rep pk tn sig
+              return (MkXtorSig xt.labelName argTypes) 
+            argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length vars - 1)]]
+            let f (node, Covariant) = CovariantType <$> nodeToType rep node
+                f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
+            args <- mapM f argNodes 
+            case args of 
+              [] -> return $ TyDataRefined defaultLoc rep pk tn sig
+              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk tn sig) (arg1:|argRst)
         -- Creating ref codata types
         refCodatL <- do
-          forM refCodatTypes $ \(tn,xtors) -> do
+          forM refCodatTypes $ \(tn,(xtors,vars)) -> do
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Codata xt
               argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
               return (MkXtorSig xt.labelName argTypes)
-            return $ TyCodataRefined defaultLoc rep pk tn sig
+            argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length vars - 1)]]
+            let f (node, Covariant) = CovariantType <$> nodeToType rep node
+                f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
+            args <- mapM f argNodes 
+            case args of
+              [] -> return $ TyCodataRefined defaultLoc rep pk tn sig
+              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk tn sig) (arg1:|argRst)
         -- Creating Nominal types
-        let adjEdges = lsuc gr i
-        let typeArgsMap :: Map (RnTypeName, Int) (Node, Variance) = M.fromList [((tn, i), (node,var)) | (node, TypeArgEdge tn var i) <- adjEdges]
-        let unsafeLookup :: (RnTypeName, Int) -> AutToTypeM (Node,Variance) = \k -> case M.lookup k typeArgsMap of
-              Just x -> pure x
-              Nothing -> throwOtherError defaultLoc ["Impossible: Cannot loose type arguments in automata"]
         nominals <- do
             forM (S.toList tns) $ \(tn, variances) -> do
               argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length variances - 1)]]
@@ -230,7 +246,7 @@ nodeToTypeNoCache rep i  = do
               args <- mapM f argNodes 
               case args of 
                 [] -> pure $ TyNominal defaultLoc rep pk tn
-                (fst:rst) -> pure $ TyApp defaultLoc rep (TyNominal defaultLoc rep pk tn) (fst:|rst)
+                (fst:rst) -> pure $ TyApp defaultLoc rep pk.returnKind (TyNominal defaultLoc rep pk tn) (fst:|rst)
 
         let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
         return $ case rep of

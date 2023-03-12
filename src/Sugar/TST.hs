@@ -27,7 +27,7 @@ import Syntax.TST.Terms
 import Syntax.CST.Names
 import Syntax.Core.Annot
 import Syntax.Core.Terms (Pattern(..))
-import Syntax.CST.Kinds
+import Syntax.RST.Kinds
 import Loc
 import Syntax.TST.Types
 import Syntax.RST.Types (flipPrdCns)
@@ -100,7 +100,7 @@ pattern CocaseOfI :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> Term Cns ->
 pattern CocaseOfI loc rep ns t cases <-
   Apply loc ApplyAnnotCocaseOfIOuter _ (XCase _ MatchAnnotCocaseOfI (flipPrdCns -> rep) _ ns (map (resugarCmdCase rep) -> cases)) t
 
-pattern RawApply ::  Loc -> MonoKind -> Term Prd -> Term Cns -> Command
+pattern RawApply ::  Loc -> AnyKind -> Term Prd -> Term Cns -> Command
 pattern RawApply loc kind t1 t2 = Apply loc ApplyAnnotOrig kind t1 t2
 
 {-# COMPLETE RawApply, CocaseOfI, CaseOfI, CocaseOfCmd, CaseOfCmd, Print, Read, Jump, ExitSuccess, ExitFailure, PrimOp  #-}
