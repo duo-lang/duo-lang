@@ -316,7 +316,7 @@ inferDecl _mn (Core.ImportDecl decl) = do
 -- SetDecl
 --
 inferDecl _mn (Core.SetDecl decl) =
-  throwOtherError decl.setdecl_loc ["Unknown option: " <> decl.setdecl_option]
+  throwOtherError decl.loc ["Unknown option: " <> decl.option]
 --
 -- TyOpDecl
 --
@@ -362,14 +362,14 @@ inferProgram mod = do
 adjustModulePath :: CST.Module -> FilePath -> Either (NE.NonEmpty Error) CST.Module
 adjustModulePath mod fp =
   let fp'  = fpToList fp
-      mlp  = mod.mod_libpath
+      mlp  = mod.libpath
       mFp  = fpToList mlp
-      mn   = mod.mod_name
+      mn   = mod.name
       mp   = T.unpack <$> mn.mn_path ++ [mn.mn_base]
   in do
     prefix <- reverse <$> dropModulePart (reverse mp) (reverse mFp)
     if prefix `isPrefixOf` fp'
-    then pure mod { CST.mod_libpath = joinPath prefix }
+    then pure mod { CST.libpath = joinPath prefix }
     else throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString mlp) <> " is not compatible with given filepath " <> T.pack fp ]
   where
     fpToList :: FilePath -> [String]
@@ -379,7 +379,7 @@ adjustModulePath mod fp =
     dropModulePart mp mFp =
       case stripPrefix mp mFp of
         Just mFp' -> pure mFp'
-        Nothing   -> throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString mod.mod_name) <> " is not a suffix of path " <> T.pack mod.mod_libpath]
+        Nothing   -> throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString mod.name) <> " is not a suffix of path " <> T.pack mod.libpath]
 
 
 ---------------------------------------------------------------------------------
@@ -434,12 +434,12 @@ runCompilationPlan compilationOrder = do
 inferProgramIO  :: DriverState -- ^ Initial State
                 -> CST.Module
                 -> IO (Either (NonEmpty Error) (Map ModuleName Environment, TST.Module),[Warning])
-inferProgramIO state decls = do
+inferProgramIO state mod = do
   let action :: DriverM TST.Module
       action = do
-        addModule decls
-        runCompilationModule decls.mod_name
-        queryTypecheckedModule decls.mod_name
+        addModule mod
+        runCompilationModule mod.name
+        queryTypecheckedModule mod.name
   res <- execDriverM state action
   case res of
     (Left err, warnings) -> return (Left err, warnings)

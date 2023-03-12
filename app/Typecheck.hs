@@ -26,7 +26,7 @@ runTypecheck flags modId = do
                 mod <- runFileParser fp (moduleP fp) file ErrParser
                 case adjustModulePath mod fp of
                   Right mod -> do
-                      let mn = mod.mod_name
+                      let mn = mod.name
                       addModule mod
                       res <- runCompilationModule mn
                       pure (mn,res)

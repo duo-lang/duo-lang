@@ -75,8 +75,8 @@ instance HasLoc Typ where
 
 
 data XtorSig = MkXtorSig
-  { sig_name :: XtorName
-  , sig_args :: LinearContext
+  { name :: XtorName
+  , args :: LinearContext
   }
   deriving (Show, Eq)
 
@@ -95,11 +95,11 @@ linearContextToArity = map f
 
 
 data TypeScheme = TypeScheme
-  { ts_loc :: Loc
-  , ts_vars :: [MaybeKindedSkolem]
-  , ts_monotype :: Typ
+  { loc :: Loc
+  , vars :: [MaybeKindedSkolem]
+  , monotype :: Typ
   }
   deriving Show
 
 instance HasLoc TypeScheme where
-  getLoc ts = ts.ts_loc
+  getLoc ts = ts.loc
