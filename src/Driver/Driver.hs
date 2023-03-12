@@ -9,7 +9,6 @@ module Driver.Driver
   , adjustModulePath
   ) where
 
-
 import Control.Monad.State
 import Control.Monad.Except
 import Data.List.NonEmpty ( NonEmpty ((:|)) )
@@ -47,7 +46,7 @@ import TypeInference.GenerateConstraints.Terms
     ( GenConstraints(..),
       genConstraintsTermRecursive )
 import TypeInference.SolveConstraints (solveConstraints, solveClassConstraints)
-import Loc ( Loc, AttachLoc(attachLoc), defaultLoc)
+import Loc ( Loc, AttachLoc(attachLoc), defaultLoc, getLoc)
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Program (prdCnsToPol)
@@ -61,21 +60,26 @@ import Syntax.RST.Types qualified as RST
 import TypeAutomata.Intersection (intersectIsEmpty)
 import Data.Bifunctor (Bifunctor(first))
 
+checkPolyKind :: Loc -> TST.Typ pol -> DriverM ()
+checkPolyKind loc ty = case TST.getKind ty of
+  MkPknd (MkPolyKind (_:_) _) -> throwOtherError loc ["Type " <> ppPrint ty <> " was not fully applied"]
+  _ -> return ()
+
 getAnnotKind :: TST.Typ pol -> Maybe (TST.TypeScheme pol) -> Maybe (KVar, AnyKind)
-getAnnotKind tyInf maybeAnnot = 
-  case (TST.getKind tyInf,maybeAnnot) of 
+getAnnotKind tyInf maybeAnnot =
+  case (TST.getKind tyInf,maybeAnnot) of
     (MkPknd (KindVar kv),Just annot) -> Just (kv,TST.getKind annot.ts_monotype)
     _ -> Nothing
 
-checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
-checkKindAnnot Nothing _ = return Nothing
-checkKindAnnot (Just tyAnnotated) loc = do
+checkKindAnnot :: Loc -> RST.TypeScheme pol -> DriverM (TST.TypeScheme pol)
+checkKindAnnot loc tyAnnotated = do
   env <- gets (\x -> x.drvEnv)
   (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
   solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs Nothing env
   let bisubstAnnot = coalesce solverResAnnot
   let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot annotChecked
-  return $ Just typAnnotZonked
+  checkPolyKind loc typAnnotZonked.ts_monotype
+  return typAnnotZonked
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
@@ -119,9 +123,9 @@ inferPrdCnsDeclaration mn decl = do
     ppPrintIO ("" :: T.Text)
     ppPrintIO constraintSet
   -- 2. Solve the constraints.
-  tyAnnotChecked <- checkKindAnnot decl.pcdecl_annot decl.pcdecl_loc
+  tyAnnotChecked <- mapM (checkKindAnnot decl.pcdecl_loc) (decl.pcdecl_annot)
   let tyInf = TST.getTypeTerm tmInferred
-  let annotKind = getAnnotKind tyInf tyAnnotChecked 
+  let annotKind = getAnnotKind tyInf tyAnnotChecked
   solverResult <- liftEitherErrLoc decl.pcdecl_loc $ solveConstraints constraintSet annotKind env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
@@ -133,6 +137,7 @@ inferPrdCnsDeclaration mn decl = do
   tmInferred <- liftEitherErrLoc decl.pcdecl_loc (insertInstance instances tmInferred)
   -- 5. Read of the type and generate the resulting type
   let typ = TST.zonk TST.UniRep bisubst (TST.getTypeTerm tmInferred)
+  checkPolyKind (getLoc typ) typ
   guardVerbose $ putStr "\nInferred type: " >> ppPrintIO typ >> putStrLn ""
   -- 6. Simplify
   typSimplified <- if infopts.infOptsSimplify then (do
@@ -229,7 +234,7 @@ inferInstanceDeclaration mn decl= do
   env <- gets (\x -> x.drvEnv)
   instances <- liftEitherErrLoc decl.instancedecl_loc $ solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
-  instanceInferred <- liftEitherErrLoc decl.instancedecl_loc (insertInstance instances instanceInferred)      
+  instanceInferred <- liftEitherErrLoc decl.instancedecl_loc (insertInstance instances instanceInferred)
   -- Insert inferred instance into environment   
   let f env = env { instanceDeclEnv = M.insert decl.instancedecl_name instanceInferred env.instanceDeclEnv}
   modifyEnvironment mn f
@@ -286,14 +291,9 @@ inferDecl mn (Core.CmdDecl decl) = do
 inferDecl mn (Core.DataDecl decl) = do
   -- Insert into environment
   let loc = decl.data_loc
-  env <- gets (\x -> x.drvEnv)
+  env <- gets (\x->x.drvEnv)
   decl' <- liftEitherErrLoc loc (resolveDataDecl decl env)
-  let xtorArgs = map (\x -> x.sig_args) (fst decl'.data_xtors)
-  let xtorNames = map (\x -> x.sig_name) (fst decl'.data_xtors)
-  let xtorKnds = map (map (anyToMonoKind . TST.getKind)) xtorArgs
-  let retKnd = decl'.data_kind.returnKind
-  let newKindEnv = zip xtorNames (zip (repeat retKnd) xtorKnds)
-  let f env = env { declEnv = (loc, decl') : env.declEnv, kindEnv = M.fromList (newKindEnv ++ M.toList env.kindEnv)}
+  let f env = env { declEnv = (loc, decl') : env.declEnv}
   modifyEnvironment mn f
   pure (TST.DataDecl decl')
 
@@ -302,10 +302,8 @@ inferDecl mn (Core.DataDecl decl) = do
 --
 inferDecl _mn (Core.XtorDecl decl) = do
   -- check constructor kinds
-  let retKnd = decl.strxtordecl_evalOrder
   let xtornm = decl.strxtordecl_name
-  let argKnds = map snd decl.strxtordecl_arity
-  let f env = env { kindEnv = M.insert xtornm (retKnd, argKnds) env.kindEnv}
+  let f env = env { xtorEnv = M.insert xtornm decl env.xtorEnv}
   modifyEnvironment _mn f
   pure (TST.XtorDecl decl)
 --
@@ -371,7 +369,7 @@ adjustModulePath mod fp =
   in do
     prefix <- reverse <$> dropModulePart (reverse mp) (reverse mFp)
     if prefix `isPrefixOf` fp'
-    then pure mod { CST.mod_libpath = joinPath prefix } 
+    then pure mod { CST.mod_libpath = joinPath prefix }
     else throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString mlp) <> " is not compatible with given filepath " <> T.pack fp ]
   where
     fpToList :: FilePath -> [String]
@@ -420,7 +418,7 @@ runCompilationPlan compilationOrder = do
       sts <- getSymbolTables
       let helper :: (a -> a') -> (Either a b, c) -> (Either a' b, c)
           helper f (x,y) = (first f x, y)
-      resolvedDecls <- liftEitherErr(helper (\err -> ErrResolution err :| []) (runResolverM (ResolveReader sts mempty mempty) (resolveModule decls)))
+      resolvedDecls <- liftEitherErr (helper (\err -> ErrResolution err :| []) (runResolverM (ResolveReader sts mempty) (resolveModule decls)))
       -- 4. Desugar the program
       let desugaredProg = desugar resolvedDecls
       -- 5. Infer the declarations

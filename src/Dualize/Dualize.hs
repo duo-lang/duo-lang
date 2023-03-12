@@ -98,7 +98,7 @@ dualCmd :: Command -> DualizeM Command
 dualCmd (Apply _ annot kind prd cns) = do
   t1 <- dualTerm cns
   t2 <- dualTerm prd
-  pure $ Apply defaultLoc (dualApplyAnnot annot) (dualMonoKind kind) t1 t2
+  pure $ Apply defaultLoc (dualApplyAnnot annot) (dualAnyKind kind) t1 t2
 dualCmd (Print loc _ _) =
   throwDualizeError (DualPrint loc "Cannot dualize Print command")
 dualCmd (Read loc _)  =
@@ -173,9 +173,6 @@ dualMuAnnot MuAnnotCocaseOf = MuAnnotCaseOf
 -- Kinds
 ------------------------------------------------------------------------------
 
-dualMonoKind :: MonoKind -> MonoKind
-dualMonoKind mk = mk
-
 dualEvaluationOrder :: EvaluationOrder -> EvaluationOrder 
 dualEvaluationOrder eo = eo
 
@@ -202,8 +199,8 @@ dualType pol (TST.TyRecVar _loc _ pk x) =
   TST.TyRecVar defaultLoc (flipPolarityRep pol) (dualPolyKind pk) x
 dualType pol (TST.TyNominal _ _ kind tn) =
   TST.TyNominal defaultLoc  (flipPolarityRep pol) (dualPolyKind kind) (dualRnTypeName tn)
-dualType pol (TST.TyApp _ _ ty args) = 
-  TST.TyApp defaultLoc (flipPolarityRep pol) (dualType pol ty) (dualVariantType pol <$> args)
+dualType pol (TST.TyApp _ _ eo ty args) = 
+  TST.TyApp defaultLoc (flipPolarityRep pol) (dualEvaluationOrder eo) (dualType pol ty) (dualVariantType pol <$> args)
 dualType pol (TST.TyI64 loc _ ) =
   TST.TyI64 loc (flipPolarityRep pol)
 dualType pol (TST.TyF64 loc _ ) =
@@ -282,7 +279,7 @@ dualDataDecl decl@TST.NominalDecl{} =
                     , data_name = dualRnTypeName decl.data_name
                     , data_polarity = flipDC decl.data_polarity
                     , data_kind = dualPolyKind decl.data_kind
-                    , data_xtors = (dualXtorSig PosRep <$> fst decl.data_xtors,dualXtorSig NegRep <$> snd decl.data_xtors )
+                    , data_xtors = bimap  (map (dualXtorSig PosRep)) (map (dualXtorSig NegRep)) decl.data_xtors
                     }
 dualDataDecl (TST.RefinementDecl data_loc data_doc data_name data_polarity (refinementEmptyPos, refinementEmptyNeg) (refinementFullPos, refinementFullNeg) data_kind (sigsPos,sigsNeg) (sigsPosRefined, sigsNegRefined)) = do
     TST.RefinementDecl { data_loc = data_loc

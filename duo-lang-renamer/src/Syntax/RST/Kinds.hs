@@ -21,14 +21,6 @@ monoToAnyKind F64Rep = MkF64
 monoToAnyKind CharRep = MkChar
 monoToAnyKind StringRep = MkString
 
-anyToMonoKind :: AnyKind -> MonoKind 
-anyToMonoKind (MkPknd (MkPolyKind _ eo)) = CBox eo
-anyToMonoKind MkI64 = I64Rep
-anyToMonoKind MkF64 = F64Rep
-anyToMonoKind MkChar = CharRep
-anyToMonoKind MkString = StringRep
-anyToMonoKind _ = error "should never happen"
-
 allTypeVars :: PolyKind -> Set SkolemTVar
 allTypeVars pk@MkPolyKind{} = S.fromList ((\(_,var,_) -> var) <$> pk.kindArgs)
 allTypeVars (KindVar _) = S.empty

@@ -2,6 +2,7 @@ module Eval.Primitives where
 
 import Syntax.Core.Annot
 import Syntax.CST.Kinds
+import Syntax.RST.Kinds
 import Syntax.TST.Terms
 import Syntax.RST.Terms (PrimitiveOp(..))
 import Syntax.CST.Types (PrdCns(..))
@@ -11,7 +12,7 @@ import Errors (throwEvalError)
 import Loc
 
 applyPrdToCns :: Monad m => Term Prd -> Term Cns -> EvalM m (Maybe Command)
-applyPrdToCns x k = pure $ Just $ Apply defaultLoc ApplyAnnotOrig (CBox CBV) x k
+applyPrdToCns x k = pure $ Just $ Apply defaultLoc ApplyAnnotOrig (MkPknd (MkPolyKind [] CBV)) x k
 
 evalPrimOp :: Monad m => PrimitiveOp -> Substitution -> EvalM m (Maybe Command)
 -- I64

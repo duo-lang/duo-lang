@@ -14,14 +14,15 @@ import Pretty.Types ()
 import Pretty.Pretty
 import Syntax.CST.Names
 import Syntax.TST.Terms ( Command, Term )
-import Syntax.RST.Program ( ClassDeclaration (..), PrdCnsToPol)
-import Syntax.TST.Types ( TypeScheme, Typ, XtorSig(..))
+import Syntax.RST.Program ( ClassDeclaration (..), StructuralXtorDeclaration, PrdCnsToPol )
+import Syntax.TST.Types ( TypeScheme, Typ, XtorSig(..) )
 import Syntax.TST.Program ( DataDecl(..), InstanceDeclaration )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), MethodSig (..), LinearContext)
 import Syntax.CST.Types( PrdCns(..), PrdCnsRep(..))
-import Syntax.CST.Kinds (MonoKind,EvaluationOrder)
+import Syntax.CST.Kinds (EvaluationOrder,PolyKind(..))
 import Syntax.RST.Names
 import Loc ( Loc, defaultLoc )
+import qualified Syntax.RST.Program as RST
 
 ---------------------------------------------------------------------------------
 -- Environment
@@ -35,7 +36,7 @@ data Environment = MkEnvironment
   , instanceDeclEnv :: Map FreeVarName InstanceDeclaration
   , instanceEnv :: Map ClassName (Set (FreeVarName, Typ Pos, Typ Neg))
   , declEnv :: [(Loc,DataDecl)]
-  , kindEnv :: Map XtorName (EvaluationOrder, [MonoKind]) -- for each structural constructor a return kind and list of argument kinds
+  , xtorEnv :: Map XtorName StructuralXtorDeclaration
   }
 
 emptyEnvironment :: Environment
@@ -188,12 +189,34 @@ lookupMethodType loc mn decl NegRep =
     Just msig -> pure msig.msig_args
 
 lookupXtorKind :: EnvReader a m
-             => XtorName -> m (EvaluationOrder,[MonoKind])
-lookupXtorKind xtorn = do
-  let err = ErrOther $ SomeOtherError defaultLoc ("No Kinds for XTor " <> ppPrint xtorn)
-  let f env = M.lookup xtorn env.kindEnv
+             => Loc -> XtorName -> m EvaluationOrder
+lookupXtorKind loc xtorn = do
+  let err = ErrOther $ SomeOtherError loc ("No Kinds for XTor " <> ppPrint xtorn)
   snd <$> findFirstM f err
+  where 
+    containsXtor :: XtorSig Pos -> Bool
+    containsXtor sig = sig.sig_name == xtorn
+    typeContainsXtor :: DataDecl -> Bool
+    typeContainsXtor decl@NominalDecl {} | or (containsXtor <$> fst decl.data_xtors) = True
+                                                      | otherwise = False
+    typeContainsXtor decl@RefinementDecl {} | or (containsXtor <$> fst decl.data_xtors) = True
+                                                      | otherwise = False
 
+    f :: Environment -> Maybe EvaluationOrder
+    f env = 
+      case (find typeContainsXtor (fmap snd env.declEnv),M.lookup xtorn env.xtorEnv) of 
+       (Just decl,_) -> Just (decl.data_kind.returnKind); 
+       (_,Just xt) -> Just xt.strxtordecl_evalOrder; 
+       (Nothing,Nothing) -> Nothing 
+
+
+
+lookupStructuralXtor :: EnvReader a m
+                => XtorName -> m RST.StructuralXtorDeclaration
+lookupStructuralXtor xtorn = do 
+  let err = ErrOther $ SomeOtherError defaultLoc ("Xtor " <> ppPrint xtorn <> " not found in program")
+  let f env = M.lookup xtorn env.xtorEnv
+  snd <$> findFirstM f err
 
 ---------------------------------------------------------------------------------
 -- Run a computation in a locally changed environment.

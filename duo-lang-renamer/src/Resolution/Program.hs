@@ -148,7 +148,7 @@ resolveDataDecl decl = do
       polyKind <- case decl.data_kind of
                         Nothing -> pure $ MkPolyKind [] (case decl.data_polarity of CST.Data -> CBV; CST.Codata -> CBN)
                         Just knd -> pure knd
-      -- checkVarianceDataDecl data_loc polyKind data_polarity data_xtors
+      checkVarianceDataDecl decl.data_loc polyKind decl.data_polarity decl.data_xtors
       -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
       let g :: TypeNameResolve -> TypeNameResolve
           g (SynonymResult tn ty) = SynonymResult tn ty
