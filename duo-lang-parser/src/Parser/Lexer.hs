@@ -42,6 +42,7 @@ import Text.Megaparsec hiding (State)
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Megaparsec.Char.Lexer (decimal, signed, float)
+import Control.Monad (void)
 
 import Parser.Definition
 import Syntax.CST.Names
@@ -204,7 +205,7 @@ operatorP = backtickOperator <|> funOperator <|> otherOperator
 checkTick :: CST.NominalStructural -> Parser ()
 checkTick CST.Nominal = return ()
 checkTick CST.Refinement = return ()
-checkTick CST.Structural = () <$ symbolP SymSingleQuote
+checkTick CST.Structural = void (symbolP SymSingleQuote)
 
 -------------------------------------------------------------------------------------------
 -- Keywords
@@ -432,7 +433,7 @@ instance Show Symbol where
   show SymDoubleCoRightArrow = "=<"
   show SymSimpleRightArrow = "->"
   show SymCommand          = ">>"
-  
+
   show SymSubtype          = "<:"
   show SymImplicit         = "*"
   show SymWildcard         = "_"

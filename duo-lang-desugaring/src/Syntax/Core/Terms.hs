@@ -275,11 +275,11 @@ termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either DesugaringError ()
 termLocallyClosedRec env (BoundVar _ pc idx) = checkIfBound env pc idx
 termLocallyClosedRec _ FreeVar{} = Right ()
 termLocallyClosedRec env (Xtor _ _ _ _ _ subst) = do
-  sequence_ (pctermLocallyClosedRec env <$> subst.unSubstitution)
+  mapM_ (pctermLocallyClosedRec env) (subst.unSubstitution)
 termLocallyClosedRec env (XCase _ _ _ _ cases) = do
   let f cmdcase  = case cmdcase.cmdcase_pat of
                          XtorPat _ _ args -> commandLocallyClosedRec (((\(x,_) -> (x,())) <$> args) : env) cmdcase.cmdcase_cmd
-  sequence_ (f <$> cases)
+  mapM_ f cases
 termLocallyClosedRec env (MuAbs _ _ PrdRep _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
 termLocallyClosedRec env (MuAbs _ _ CnsRep _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
 termLocallyClosedRec _ (PrimLitI64 _ _) = Right ()
@@ -291,11 +291,11 @@ commandLocallyClosedRec :: [[(PrdCns,())]] -> Command -> Either DesugaringError 
 commandLocallyClosedRec _ (ExitSuccess _) = Right ()
 commandLocallyClosedRec _ (ExitFailure _) = Right ()
 commandLocallyClosedRec _ (Jump _ _) = Right ()
-commandLocallyClosedRec env (Method _ _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst.unSubstitution
+commandLocallyClosedRec env (Method _ _ _ _ subst) = mapM_ (pctermLocallyClosedRec env) (subst.unSubstitution)
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
-commandLocallyClosedRec env (PrimOp _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst.unSubstitution
+commandLocallyClosedRec env (PrimOp _ _ subst) = mapM_ (pctermLocallyClosedRec env) (subst.unSubstitution)
 
 termLocallyClosed :: Term pc -> Either DesugaringError ()
 termLocallyClosed = termLocallyClosedRec []
@@ -317,7 +317,7 @@ instance Shiftable (Term pc) where
   shiftRec ShiftUp n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcrep (i + 1, j)
                                                 | otherwise = BoundVar loc pcrep (i    , j)
   shiftRec ShiftDown n (BoundVar loc pcrep (i,j)) | n <= i    = BoundVar loc pcrep (i - 1, j)
-                                                  | otherwise = BoundVar loc pcrep (i    , j)                                        
+                                                  | otherwise = BoundVar loc pcrep (i    , j)
   shiftRec _ _ var@FreeVar {} = var
   shiftRec dir n (Xtor loc annot pcrep ns xt subst) =
     Xtor loc annot pcrep ns xt (shiftRec dir n <¢> subst)

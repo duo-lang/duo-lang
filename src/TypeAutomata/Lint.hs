@@ -17,6 +17,7 @@ import Syntax.CST.Names
 import TypeAutomata.Definition
 import Loc ( defaultLoc )
 import Utils ( enumerate )
+import Control.Monad (when)
 
 -- | Check the invariants of the type automaton.
 lint :: MonadError (NonEmpty Error) m
@@ -60,9 +61,7 @@ lintEpsilonEdges aut = do
   forM_ edges $ \(i,j) -> do
     iPolarity <- getPolarityNL <$> getNodeLabel aut.ta_core.ta_gr i
     jPolarity <- getPolarityNL <$> getNodeLabel aut.ta_core.ta_gr j
-    if iPolarity /= jPolarity
-      then throwAutomatonError defaultLoc ["TypeAutomata Linter: Epsilon Edge connects nodes with different polarity."]
-      else pure ()
+    when (iPolarity /= jPolarity) $ throwAutomatonError defaultLoc ["TypeAutomata Linter: Epsilon Edge connects nodes with different polarity."]
 
 -- | Check that symbol edges connect nodes of the correct polarity.
 lintSymbolEdges :: MonadError (NonEmpty Error) m
@@ -104,6 +103,4 @@ lintXtorArgument :: MonadError (NonEmpty Error) m
                  => [EdgeLabel a] -> XtorName -> PrdCns -> Int -> m ()
 lintXtorArgument outs xn pc i = do
   let filtered = [ () | EdgeSymbol _ xn' pc' i' <- outs, xn == xn', pc == pc', i == i']
-  if null filtered
-    then throwAutomatonError defaultLoc ["TypeAutomata Linter: The Xtor " <> T.pack (show xn) <> " has missing outgoing edge"]
-    else pure ()
+  when (null filtered) $ throwAutomatonError defaultLoc ["TypeAutomata Linter: The Xtor " <> T.pack (show xn) <> " has missing outgoing edge"]

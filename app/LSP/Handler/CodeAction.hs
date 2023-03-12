@@ -124,7 +124,7 @@ class GetCodeActions a where
                  -> Range
                  -- ^ The range where we are looking for available code actions, i.e.
                  --   the position of the mouse pointer.
-                 -> a 
+                 -> a
                  -- ^ The element in which we are searching for available code actions.
                  -> List (Command |? CodeAction)
                  -- ^ The available code actions and commands.
@@ -132,7 +132,7 @@ class GetCodeActions a where
 instance GetCodeActions TST.Module where
   getCodeActions :: TextDocumentIdentifier -> TST.Module -> Range -> TST.Module -> List (Command |? CodeAction)
   getCodeActions id tstmod rng mod = mconcat (getCodeActions id tstmod rng <$> mod.mod_decls)
-  
+
 instance GetCodeActions TST.Declaration where
   getCodeActions :: TextDocumentIdentifier -> TST.Module -> Range -> TST.Declaration -> List (Command |? CodeAction)
   getCodeActions id mod rng (TST.PrdCnsDecl _ decl)  = getCodeActions id mod rng decl
@@ -181,7 +181,7 @@ instance GetCodeActions TST.DataDecl where
   getCodeActions _ _ Range {_start = start} decl | not (lookupPos start decl.data_loc) =
     List []
   getCodeActions id _ _ decl =
-    let 
+    let
       dualize = [ workspaceEditToCodeAction (generateDualizeDeclEdit id decl.data_loc decl) ("Dualize declaration " <> ppPrint decl.data_name) ]
       xfunc = [generateXfuncCodeAction id decl.data_loc decl ]
     in
@@ -400,9 +400,9 @@ evalInModule mn cmd stop = do
       (_, state) <- case res of
                   Left errs -> stop $ unlines $ (\(x :| xs) -> x:xs) $ show <$> errs
                   Right drvEnv -> return drvEnv
-      let compiledEnv :: EvalEnv = focus CBV ((\map -> fold $ desugarEnv <$> M.elems map) state.drvEnv)
+      let compiledEnv :: EvalEnv = focus CBV ((\map -> foldMap desugarEnv (M.elems map)) state.drvEnv)
       let foo :: EvalMWrapper (StateT [Int] (WriterT [String] Identity)) (Either (NonEmpty Errors.Error) TST.Command) = eval (TST.Jump defaultLoc cmd) compiledEnv
-      return $ execWriter $ flip execStateT [] $ (\x -> x.unEvalMWrapper) $ foo
+      return $ execWriter $ flip execStateT [] $ (\x -> x.unEvalMWrapper) foo
 
 addCommentedAbove :: Foldable t => Range -> Uri -> t String -> ApplyWorkspaceEditParams
 addCommentedAbove range uri content =

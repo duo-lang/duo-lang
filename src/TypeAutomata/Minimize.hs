@@ -28,7 +28,7 @@ predsMap gr =
       ns    = nodes gr
 
       preds :: M.Map Node [(Node,EdgeLabelNormal)]
-      preds = M.fromList $ fmap(\n -> (n, lpre gr n)) ns
+      preds = M.fromList $ fmap (\n -> (n, lpre gr n)) ns
 
       getPred :: Node -> EdgeLabelNormal -> Set Node
       getPred n l = S.fromList $ map fst . filter ((== l) . snd) $ fromMaybe [] $ M.lookup n preds
@@ -108,11 +108,11 @@ minimize' preds  alph  (w:ws) rs = minimize' preds alph ws' rs'
                                         in refineRest pre rs (ws'',rs'')
 
     refineWaiting :: [Node] -> [EquivalenceClass] -> [EquivalenceClass]
-    refineWaiting pre ls = concatMap (splitWaiting pre) ls
 
     splitWaiting :: [Node] -> EquivalenceClass -> [EquivalenceClass]
     splitWaiting pre l = let (l1,l2,_,_) = splitSorted pre l
                          in if null l1 || null l2 then [l] else [l1, l2]
+    refineWaiting pre = concatMap (splitWaiting pre)
 
 splitSorted :: (Ord a) => [a] -> [a] -> ([a], [a], Int, Int)
 splitSorted splitter splittee = (reverse inter, reverse diff, ni, nd)
@@ -150,7 +150,7 @@ initialSplit aut = (rest,catMaybes [posMin,negMin])
     distGroups :: [EquivalenceClass]
     distGroups = myGroupBy (equalNodes aut) (nodes aut.ta_gr)
     (posMin,negMin,rest) = getMins $ sort <$> distGroups
-  
+
     getMins :: [EquivalenceClass]
             -> (Maybe EquivalenceClass, Maybe EquivalenceClass, [EquivalenceClass])
     getMins []                  = (Nothing, Nothing, [])
