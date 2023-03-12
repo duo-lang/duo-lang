@@ -60,27 +60,26 @@ import Syntax.RST.Types qualified as RST
 import TypeAutomata.Intersection (intersectIsEmpty)
 import Data.Bifunctor (Bifunctor(first))
 
-checkPolyKind :: Loc -> TST.Typ pol -> DriverM () 
-checkPolyKind loc ty = case TST.getKind ty of 
+checkPolyKind :: Loc -> TST.Typ pol -> DriverM ()
+checkPolyKind loc ty = case TST.getKind ty of
   MkPknd (MkPolyKind (_:_) _) -> throwOtherError loc ["Type " <> ppPrint ty <> " was not fully applied"]
   _ -> return ()
 
 getAnnotKind :: TST.Typ pol -> Maybe (TST.TypeScheme pol) -> Maybe (KVar, AnyKind)
-getAnnotKind tyInf maybeAnnot = 
-  case (TST.getKind tyInf,maybeAnnot) of 
+getAnnotKind tyInf maybeAnnot =
+  case (TST.getKind tyInf,maybeAnnot) of
     (MkPknd (KindVar kv),Just annot) -> Just (kv,TST.getKind annot.ts_monotype)
     _ -> Nothing
 
-checkKindAnnot :: Maybe (RST.TypeScheme pol) -> Loc -> DriverM (Maybe (TST.TypeScheme pol))
-checkKindAnnot Nothing _ = return Nothing
-checkKindAnnot (Just tyAnnotated) loc = do
+checkKindAnnot :: Loc -> RST.TypeScheme pol -> DriverM (TST.TypeScheme pol)
+checkKindAnnot loc tyAnnotated = do
   env <- gets (\x -> x.drvEnv)
   (annotChecked, annotConstrs) <- liftEitherErr $ runGenM loc env (annotateKind tyAnnotated)
   solverResAnnot <- liftEitherErrLoc loc $ solveConstraints annotConstrs Nothing env
   let bisubstAnnot = coalesce solverResAnnot
   let typAnnotZonked = TST.zonk TST.UniRep bisubstAnnot annotChecked
   checkPolyKind loc typAnnotZonked.ts_monotype
-  return $ Just typAnnotZonked
+  return typAnnotZonked
 
 checkAnnot :: PolarityRep pol
            -> TST.TypeScheme pol -- ^ Inferred type
@@ -124,9 +123,9 @@ inferPrdCnsDeclaration mn decl = do
     ppPrintIO ("" :: T.Text)
     ppPrintIO constraintSet
   -- 2. Solve the constraints.
-  tyAnnotChecked <- checkKindAnnot decl.pcdecl_annot decl.pcdecl_loc
+  tyAnnotChecked <- mapM (checkKindAnnot decl.pcdecl_loc) (decl.pcdecl_annot)
   let tyInf = TST.getTypeTerm tmInferred
-  let annotKind = getAnnotKind tyInf tyAnnotChecked 
+  let annotKind = getAnnotKind tyInf tyAnnotChecked
   solverResult <- liftEitherErrLoc decl.pcdecl_loc $ solveConstraints constraintSet annotKind env
   guardVerbose $ ppPrintIO solverResult
   -- 3. Coalesce the result
@@ -235,7 +234,7 @@ inferInstanceDeclaration mn decl= do
   env <- gets (\x -> x.drvEnv)
   instances <- liftEitherErrLoc decl.instancedecl_loc $ solveClassConstraints solverResult bisubst env
   guardVerbose $ ppPrintIO instances
-  instanceInferred <- liftEitherErrLoc decl.instancedecl_loc (insertInstance instances instanceInferred)      
+  instanceInferred <- liftEitherErrLoc decl.instancedecl_loc (insertInstance instances instanceInferred)
   -- Insert inferred instance into environment   
   let f env = env { instanceDeclEnv = M.insert decl.instancedecl_name instanceInferred env.instanceDeclEnv}
   modifyEnvironment mn f
@@ -370,7 +369,7 @@ adjustModulePath mod fp =
   in do
     prefix <- reverse <$> dropModulePart (reverse mp) (reverse mFp)
     if prefix `isPrefixOf` fp'
-    then pure mod { CST.mod_libpath = joinPath prefix } 
+    then pure mod { CST.mod_libpath = joinPath prefix }
     else throwOtherError defaultLoc [ "Module name " <> T.pack (ppPrintString mlp) <> " is not compatible with given filepath " <> T.pack fp ]
   where
     fpToList :: FilePath -> [String]
@@ -419,7 +418,7 @@ runCompilationPlan compilationOrder = do
       sts <- getSymbolTables
       let helper :: (a -> a') -> (Either a b, c) -> (Either a' b, c)
           helper f (x,y) = (first f x, y)
-      resolvedDecls <- liftEitherErr(helper (\err -> ErrResolution err :| []) (runResolverM (ResolveReader sts mempty) (resolveModule decls)))
+      resolvedDecls <- liftEitherErr (helper (\err -> ErrResolution err :| []) (runResolverM (ResolveReader sts mempty) (resolveModule decls)))
       -- 4. Desugar the program
       let desugaredProg = desugar resolvedDecls
       -- 5. Infer the declarations
