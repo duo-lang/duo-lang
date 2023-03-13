@@ -63,33 +63,33 @@ resolveTyp rep (TyXRefined loc Codata tn sigs) = do
     pure $ RST.TyCodataRefined loc rep pknd tn' sigs
 resolveTyp rep (TyNominal loc name) = do
   res <- lookupTypeConstructor loc name
-  case res of 
-    SynonymResult name' typ -> do 
+  case res of
+    SynonymResult name' typ -> do
       typ' <- resolveTyp rep typ
       pure $ RST.TySyn loc rep name' typ'
-    NominalResult rtn _ CST.Refined _ -> 
+    NominalResult rtn _ CST.Refined _ ->
       throwError (UnknownResolutionError loc ("Refined type " <> T.pack (show rtn) <> " cannot be used as a nominal type constructor."))
-    NominalResult name' _ CST.NotRefined polyknd -> 
+    NominalResult name' _ CST.NotRefined polyknd ->
       pure $ RST.TyNominal loc rep polyknd name'
 
 --applied types 
-resolveTyp rep (TyApp loc ty args) = do 
+resolveTyp rep (TyApp loc ty args) = do
    ty' <- resolveTyp rep ty
    let tyns = RST.getTypeNames ty'
-   case tyns of 
+   case tyns of
      [] -> throwError (UnknownResolutionError loc "Types applied to neither Refinement nor Nominal tpye")
-     [tyn] -> do 
+     [tyn] -> do
        res <- lookupTypeConstructor loc tyn.rnTnName
-       case res of 
+       case res of
          SynonymResult _ _ -> throwError (UnknownResolutionError loc "Type synonmys cannot be applied to arguments (yet)")
-         NominalResult _ _ CST.Refined pknd -> do 
-           args' <- resolveArgs loc rep tyn pknd args 
+         NominalResult _ _ CST.Refined pknd -> do
+           args' <- resolveArgs loc rep tyn pknd args
            pure $ RST.TyApp loc rep ty' args'
-         NominalResult _tyn' _ CST.NotRefined pknd -> do 
+         NominalResult _tyn' _ CST.NotRefined pknd -> do
            args' <- resolveArgs loc rep tyn pknd args
            pure $ RST.TyApp loc rep ty' args'
      _ -> throwError (UnknownResolutionError loc "Ambiguous Type Application")
-  where 
+  where
     resolveArgs loc rep tyn pknd args = do
       args' <- resolveTypeArgs loc rep tyn.rnTnName pknd (NE.toList args)
       let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
@@ -135,24 +135,24 @@ resolveTypeArgs loc rep tn pk@MkPolyKind{} args = do
             f :: ((Variance, SkolemTVar, MonoKind), Typ) -> ResolverM (RST.VariantType pol)
             f ((Covariant,_,_),ty) = RST.CovariantType <$> resolveTyp rep ty
             f ((Contravariant,_,_),ty) = RST.ContravariantType <$> resolveTyp (flipPolarityRep rep) ty
-        sequence (f <$> zip pk.kindArgs args)
+        mapM f (zip pk.kindArgs args)
 resolveTypeArgs loc _ _ (KindVar _) _ = throwError (UnknownResolutionError loc "Kind Variables should not be in the program at this point")
 
 
 resolveXTorSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.XtorSig pol]
-resolveXTorSigs rep sigs = sequence $ resolveXTorSig rep <$> sigs
+resolveXTorSigs rep = mapM (resolveXTorSig rep)
 
 resolveXTorSig :: PolarityRep pol -> XtorSig -> ResolverM (RST.XtorSig pol)
 resolveXTorSig rep (MkXtorSig name ctx) = RST.MkXtorSig name <$> resolveLinearContext rep ctx
 
 resolveMethodSigs :: PolarityRep pol -> [XtorSig] -> ResolverM [RST.MethodSig pol]
-resolveMethodSigs rep sigs = sequence $ resolveMethodSig rep <$> sigs
+resolveMethodSigs rep = mapM (resolveMethodSig rep)
 
 resolveMethodSig :: PolarityRep pol -> XtorSig -> ResolverM (RST.MethodSig pol)
 resolveMethodSig rep (MkXtorSig name ctx) = RST.MkMethodSig (MkMethodName name.unXtorName) <$> resolveLinearContext rep ctx
 
 resolveLinearContext :: PolarityRep pol -> LinearContext -> ResolverM (RST.LinearContext pol)
-resolveLinearContext rep ctx = sequence $ resolvePrdCnsTyp rep <$> ctx
+resolveLinearContext rep = mapM (resolvePrdCnsTyp rep)
 
 resolvePrdCnsTyp :: PolarityRep pol -> PrdCnsTyp -> ResolverM (RST.PrdCnsType pol)
 resolvePrdCnsTyp rep (PrdType typ) = RST.PrdCnsType PrdRep <$> resolveTyp rep typ

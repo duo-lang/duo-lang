@@ -1,4 +1,4 @@
-module Spec.OverlapCheck where 
+module Spec.OverlapCheck where
 
 import Test.Hspec
 import Syntax.RST.Terms
@@ -48,7 +48,7 @@ test1 :: [GenericPattern]
 test1 =
   [ Left $ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
     Left $ PatXtor
-      defaultLoc Prd Nominal 
+      defaultLoc Prd Nominal
       (MkXtorName (pack "Branch"))
       [ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y"))],
         PatVar defaultLoc Prd (MkFreeVarName (pack "t2"))
@@ -57,13 +57,13 @@ test1 =
     Right $ PatStar defaultLoc Prd,
     Left $ PatWildcard defaultLoc Prd,
     Left $ PatXtor
-      defaultLoc Prd Nominal 
+      defaultLoc Prd Nominal
       (MkXtorName (pack "Branch"))
       [ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y"))],
         PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "z"))]
       ],
     Right $ PatXtorStar
-      defaultLoc Prd Nominal 
+      defaultLoc Prd Nominal
       (MkXtorName (pack "Branch"))
       ([ PatVar defaultLoc Prd (MkFreeVarName (pack "t1"))], PatStar defaultLoc Prd, []),
     Left $ PatVar defaultLoc Prd (MkFreeVarName (pack "t"))
@@ -109,7 +109,7 @@ test4 = [
 test5 :: [GenericPattern]
 test5 =
   [ Left $ PatXtor
-      defaultLoc Prd Nominal 
+      defaultLoc Prd Nominal
       (MkXtorName (pack "Node"))
       [ PatVar defaultLoc Prd (MkFreeVarName (pack "y")),
         PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Empty")) [],
@@ -117,7 +117,7 @@ test5 =
                                                         PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Empty")) [],
                                                         PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Empty")) []]],
     Left $ PatXtor
-      defaultLoc Prd Nominal 
+      defaultLoc Prd Nominal
       (MkXtorName (pack "Node"))
       [ PatVar defaultLoc Prd (MkFreeVarName (pack "z")),
         PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Empty")) [],
@@ -142,16 +142,16 @@ test6 =
 -- -> Overlap expected between:
 --    (1) and (2) (due to Subpattern Overlap between x and x, (Cons y (Cons z zs)) and (Cons y (Cons z (Cons m ms))))
 test7 :: [GenericPattern]
-test7 = [Left $ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) 
+test7 = [Left $ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons"))
           [ PatVar defaultLoc Prd (MkFreeVarName (pack "x")),
-            PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) 
+            PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons"))
               [ PatVar defaultLoc Prd (MkFreeVarName (pack "y")),
                 PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) [PatVar defaultLoc Prd (MkFreeVarName (pack "z")), PatVar defaultLoc Prd (MkFreeVarName (pack "zs"))]]],
-         Left $ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) 
+         Left $ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons"))
           [PatVar defaultLoc Prd (MkFreeVarName (pack "x")),
-          PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) 
+          PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons"))
             [PatVar defaultLoc Prd (MkFreeVarName (pack "y")),
-            PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) 
+            PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons"))
               [PatVar defaultLoc Prd (MkFreeVarName (pack "z")),
                PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons")) [PatVar defaultLoc Prd (MkFreeVarName (pack "m")), PatVar defaultLoc Prd (MkFreeVarName (pack "ms"))]]]]]
 
@@ -160,17 +160,17 @@ test7 = [Left $ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Cons"))
 -- No Overlap expected.
 test8 :: [GenericPattern]
 test8 = [Left $ PatXtor
-          defaultLoc Prd Nominal 
+          defaultLoc Prd Nominal
           (MkXtorName (pack "Branch"))
           [ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
             PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y"))]
           ],
          Left $ PatXtor
-          defaultLoc Prd Nominal 
+          defaultLoc Prd Nominal
           (MkXtorName (pack "Branch"))
           [ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
-            PatXtor 
-            defaultLoc Prd Nominal 
+            PatXtor
+            defaultLoc Prd Nominal
             (MkXtorName (pack "Branch"))
             [ PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y1"))],
               PatXtor defaultLoc Prd Nominal (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y2"))]
@@ -183,16 +183,16 @@ test8 = [Left $ PatXtor
 
 -- | Helper for readable display of Overlap objects, testing with printOverlap $ overlap test<X>
 printOverlap :: Overlap -> IO ()
-printOverlap (Just msg) = putStrLn $ unpack msg 
-printOverlap Nothing    = putStrLn $ "No Overlap found."
+printOverlap (Just msg) = putStrLn $ unpack msg
+printOverlap Nothing    = putStrLn "No Overlap found."
 
 spec :: Spec
-spec = do 
-  describe "Checking test1 in OverlapCheck.hs for Overlap." $ it "Found Overlap." ((overlap test1) `shouldSatisfy` isJust)
-  describe "Checking test2 in OverlapCheck.hs for Overlap." $ it "Found Overlap." ((overlap test2) `shouldSatisfy` isJust)
-  describe "Checking test3 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." ((overlap test3) `shouldSatisfy` isNothing)
-  describe "Checking test4 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." ((overlap test4) `shouldSatisfy` isNothing)
-  describe "Checking test5 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." ((overlap test5) `shouldSatisfy` isNothing)
-  describe "Checking test6 in OverlapCheck.hs for Overlap." $ it "Found Overlap." ((overlap test6) `shouldSatisfy` isJust)
-  describe "Checking test7 in OverlapCheck.hs for Overlap." $ it "Found Overlap." ((overlap test7) `shouldSatisfy` isJust)
-  describe "Checking test8 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." ((overlap test8) `shouldSatisfy` isNothing)
+spec = do
+  describe "Checking test1 in OverlapCheck.hs for Overlap." $ it "Found Overlap." (overlap test1 `shouldSatisfy` isJust)
+  describe "Checking test2 in OverlapCheck.hs for Overlap." $ it "Found Overlap." (overlap test2 `shouldSatisfy` isJust)
+  describe "Checking test3 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." (overlap test3 `shouldSatisfy` isNothing)
+  describe "Checking test4 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." (overlap test4 `shouldSatisfy` isNothing)
+  describe "Checking test5 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." (overlap test5 `shouldSatisfy` isNothing)
+  describe "Checking test6 in OverlapCheck.hs for Overlap." $ it "Found Overlap." (overlap test6 `shouldSatisfy` isJust)
+  describe "Checking test7 in OverlapCheck.hs for Overlap." $ it "Found Overlap." (overlap test7 `shouldSatisfy` isJust)
+  describe "Checking test8 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." (overlap test8 `shouldSatisfy` isNothing)

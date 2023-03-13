@@ -92,9 +92,7 @@ checkFreshTypeName :: MonadError ResolutionError m
                    -> SymbolTable
                    -> m ()
 checkFreshTypeName loc tn st =
-  if tn `elem` M.keys st.typeNameMap
-  then throwError (TypeNameAlreadyUsed loc tn)
-  else pure ()
+  when (tn `elem` M.keys st.typeNameMap) $ throwError (TypeNameAlreadyUsed loc tn)
 
 checkFreshXtorName :: MonadError ResolutionError m
                    => Loc
@@ -102,9 +100,7 @@ checkFreshXtorName :: MonadError ResolutionError m
                    -> SymbolTable
                    -> m ()
 checkFreshXtorName loc xt st =
-  if xt `elem` M.keys st.xtorNameMap
-  then throwError (XtorNameAlreadyUsed loc xt)
-  else pure ()
+  when (xt `elem` M.keys st.xtorNameMap) $ throwError (XtorNameAlreadyUsed loc xt)
 
 checkFreshFreeVarName :: MonadError ResolutionError m
                    => Loc
@@ -112,9 +108,7 @@ checkFreshFreeVarName :: MonadError ResolutionError m
                    -> SymbolTable
                    -> m ()
 checkFreshFreeVarName loc fv st =
-  if fv `elem` M.keys st.freeVarMap
-  then throwError (FreeVarNameAlreadyUsed loc fv)
-  else pure ()
+  when (fv `elem` M.keys st.freeVarMap) $ throwError (FreeVarNameAlreadyUsed loc fv)
 
 checkFreshTyOpName :: MonadError ResolutionError m
                    => Loc
@@ -122,9 +116,7 @@ checkFreshTyOpName :: MonadError ResolutionError m
                    -> SymbolTable
                    -> m ()
 checkFreshTyOpName loc op st =
-  if op `elem` M.keys st.tyOps
-  then throwError (TyOpAlreadyUsed loc op)
-  else pure ()
+  when (op `elem` M.keys st.tyOps) $ throwError (TyOpAlreadyUsed loc op)
 
 -- | Creating a symbol table for a program.
 -- Throws errors if multiple declarations declare the same name.

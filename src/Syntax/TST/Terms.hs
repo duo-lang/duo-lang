@@ -360,9 +360,9 @@ termLocallyClosedRec :: [[(PrdCns,())]] -> Term pc -> Either Error ()
 termLocallyClosedRec env (BoundVar _ pc _ idx) = checkIfBound env pc idx
 termLocallyClosedRec _ FreeVar {} = Right ()
 termLocallyClosedRec env (Xtor _ _  _ _ _ _ subst) = do
-  sequence_ (pctermLocallyClosedRec env <$> subst.unSubstitution)
+  mapM_ (pctermLocallyClosedRec env) (subst.unSubstitution)
 termLocallyClosedRec env (XCase _ _ _ _ _ cases) = do
-  sequence_ (cmdCaseLocallyClosedRec env <$> cases)
+  mapM_ (cmdCaseLocallyClosedRec env) cases
 termLocallyClosedRec env (MuAbs _ _ PrdRep _ _ cmd) = commandLocallyClosedRec ([(Cns,())] : env) cmd
 termLocallyClosedRec env (MuAbs _ _ CnsRep _ _ cmd) = commandLocallyClosedRec ([(Prd,())] : env) cmd
 -- Primitive constructs  
@@ -383,8 +383,8 @@ commandLocallyClosedRec _ (Jump _ _) = Right ()
 commandLocallyClosedRec env (Print _ t cmd) = termLocallyClosedRec env t >> commandLocallyClosedRec env cmd
 commandLocallyClosedRec env (Read _ cns) = termLocallyClosedRec env cns
 commandLocallyClosedRec env (Apply _ _ _ t1 t2) = termLocallyClosedRec env t1 >> termLocallyClosedRec env t2
-commandLocallyClosedRec env (Method _ _ _ _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst.unSubstitution
-commandLocallyClosedRec env (PrimOp _ _ subst) = sequence_ $ pctermLocallyClosedRec env <$> subst.unSubstitution
+commandLocallyClosedRec env (Method _ _ _ _ _ subst) = mapM_ (pctermLocallyClosedRec env) (subst.unSubstitution)
+commandLocallyClosedRec env (PrimOp _ _ subst) = mapM_ (pctermLocallyClosedRec env) (subst.unSubstitution)
 
 termLocallyClosed :: Term pc -> Either Error ()
 termLocallyClosed = termLocallyClosedRec []
