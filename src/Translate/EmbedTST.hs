@@ -133,15 +133,17 @@ getAnnotKind MkString = Just StringRep
 
 instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST :: TST.Typ pol -> RST.Typ pol
-  embedTST (TST.TySkolemVar loc pol pk tv) =
-    RST.TyKindAnnot (CBox pk.returnKind) $ RST.TySkolemVar loc pol tv
+  embedTST (TST.TySkolemVar loc pol (MkPolyKind [] eo) tv) =
+    RST.TyKindAnnot (CBox eo) $ RST.TySkolemVar loc pol tv
+  embedTST (TST.TySkolemVar loc pol _ tv) = 
+    RST.TySkolemVar loc pol tv
   embedTST (TST.TyUniVar loc pol knd tv) = case getAnnotKind knd of
     Nothing -> RST.TyUniVar loc pol tv
     Just mk -> RST.TyKindAnnot mk $ RST.TyUniVar loc pol tv
-  embedTST (TST.TyRecVar loc pol (MkPolyKind _ rk) tv) =
+  embedTST (TST.TyRecVar loc pol (MkPolyKind [] rk) tv) =
     RST.TyKindAnnot (CBox rk) $ RST.TyRecVar loc pol tv
-  embedTST (TST.TyRecVar loc pol (KindVar _) tv) =
-    RST.TyRecVar loc pol tv
+  embedTST (TST.TyRecVar loc pol _ rv) = 
+    RST.TyRecVar loc pol rv
   embedTST (TST.TyData loc pol eo xtors) =
     RST.TyKindAnnot (CBox eo) $ RST.TyData loc pol (map embedTST xtors)
   embedTST (TST.TyCodata loc pol eo xtors) =
