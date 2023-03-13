@@ -55,13 +55,13 @@ prdCnsDeclarationP doc startPos pc = do
     symbolP SymSemi
     endPos <- getSourcePos
     sc
-    let decl = MkPrdCnsDeclaration { pcdecl_loc = Loc startPos endPos
-                                   , pcdecl_doc = doc
-                                   , pcdecl_pc = pc
-                                   , pcdecl_isRec = isRec
-                                   , pcdecl_name = v
-                                   , pcdecl_annot = annot
-                                   , pcdecl_term = tm
+    let decl = MkPrdCnsDeclaration { loc = Loc startPos endPos
+                                   , doc = doc
+                                   , prd_cns = pc
+                                   , isRecursive = isRec
+                                   , name = v
+                                   , annot = annot
+                                   , term = tm
                                    }
     pure (PrdCnsDecl decl)
 
@@ -79,10 +79,10 @@ cmdDeclarationP doc startPos = do
     symbolP SymSemi
     endPos <- getSourcePos
     sc
-    let decl = MkCommandDeclaration { cmddecl_loc = Loc startPos endPos
-                                    , cmddecl_doc = doc
-                                    , cmddecl_name = v
-                                    , cmddecl_cmd = cmd
+    let decl = MkCommandDeclaration { loc = Loc startPos endPos
+                                    , doc = doc
+                                    , name = v
+                                    , cmd = cmd
                                     }
     pure (CmdDecl decl)
 
@@ -110,9 +110,9 @@ importDeclP doc = do
   symbolP SymSemi
   endPos <- getSourcePos
   sc
-  let decl = MkImportDeclaration { imprtdecl_loc = Loc startPos endPos
-                                 , imprtdecl_doc = doc
-                                 , imprtdecl_module = mn
+  let decl = MkImportDeclaration { loc = Loc startPos endPos
+                                 , doc = doc
+                                 , mod = mn
                                  }
   return (ImportDecl decl)
 
@@ -130,9 +130,9 @@ setDeclP doc = do
   symbolP SymSemi
   endPos <- getSourcePos
   sc
-  let decl = MkSetDeclaration { setdecl_loc = Loc startPos endPos
-                              , setdecl_doc = doc
-                              , setdecl_option = txt
+  let decl = MkSetDeclaration { loc = Loc startPos endPos
+                              , doc = doc
+                              , option = txt
                               }
   return (SetDecl decl)
 
@@ -173,12 +173,12 @@ typeOperatorDeclP doc = do
     symbolP SymSemi
     endPos <- getSourcePos
     sc
-    let decl = MkTyOpDeclaration { tyopdecl_loc = Loc startPos endPos
-                                 , tyopdecl_doc = doc
-                                 , tyopdecl_sym = sym
-                                 , tyopdecl_prec = prec
-                                 , tyopdecl_assoc = assoc
-                                 , tyopdecl_res = tyname
+    let decl = MkTyOpDeclaration { loc = Loc startPos endPos
+                                 , doc = doc
+                                 , symbol = sym
+                                 , precedence = prec
+                                 , associativity = assoc
+                                 , res = tyname
                                  }
     pure (TyOpDecl decl)
 
@@ -200,10 +200,10 @@ tySynP doc = do
     symbolP SymSemi
     endPos <- getSourcePos
     sc
-    let decl = MkTySynDeclaration { tysyndecl_loc = Loc startPos endPos
-                                  , tysyndecl_doc = doc
-                                  , tysyndecl_name = tn
-                                  , tysyndecl_res = ty
+    let decl = MkTySynDeclaration { loc = Loc startPos endPos
+                                  , doc = doc
+                                  , name = tn
+                                  , res = ty
                                   }
     pure (TySynDecl decl)
 
@@ -233,13 +233,13 @@ dataDeclP doc = do
     symbolP SymSemi
     endPos <- getSourcePos
     sc
-    pure $ DataDecl $ MkDataDecl { data_loc = Loc startPos endPos
-                                 , data_doc = doc
-                                 , data_refined = refined
-                                 , data_name = tn
-                                 , data_polarity = dataCodata
-                                 , data_kind = knd
-                                 , data_xtors = combineXtors xtors
+    pure $ DataDecl $ MkDataDecl { loc = Loc startPos endPos
+                                 , doc = doc
+                                 , isRefined = refined
+                                 , name = tn
+                                 , data_codata = dataCodata
+                                 , kind = knd
+                                 , xtors = combineXtors xtors
                                  }
 
 ---------------------------------------------------------------------------------
@@ -264,12 +264,12 @@ xtorDeclarationP doc = do
   symbolP SymSemi
   endPos <- getSourcePos
   sc
-  let decl = MkStructuralXtorDeclaration { strxtordecl_loc = Loc startPos endPos
-                                         , strxtordecl_doc = doc
-                                         , strxtordecl_xdata = dc
-                                         , strxtordecl_name = xt
-                                         , strxtordecl_arity = Data.Maybe.fromMaybe [] args
-                                         , strxtordecl_evalOrder = ret
+  let decl = MkStructuralXtorDeclaration { loc = Loc startPos endPos
+                                         , doc = doc
+                                         , data_codata = dc
+                                         , name = xt
+                                         , arity = Data.Maybe.fromMaybe [] args
+                                         , evalOrder = ret
                                          }
   pure (XtorDecl decl)
 
@@ -356,7 +356,7 @@ moduleP libp = do
   mn <- moduleDeclP
   decls <- many declarationP
   eof
-  pure MkModule { mod_name = mn
-                , mod_libpath = libp
-                , mod_decls = decls
+  pure MkModule { name = mn
+                , libpath = libp
+                , decls = decls
                 }

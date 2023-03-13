@@ -29,6 +29,9 @@ data ConstraintInfo
   | RecursionConstraint        -- ^ Constraint corresponds to typechecking of recursive function.
   | PrimOpArgsConstraint Loc   -- ^ Constraint for checking that args of primitive operation have correct type
   | TypeClassConstraint Loc    -- ^ Constraint for checking that type class instance for type exists.
+  | KindConstraint             -- ^ Constraint for kind equalities
+  | ReturnKindConstraint       -- ^ Constraint for matching return kinds
+  | TypeArgKindConstraint      -- ^ Constraint for type arguments
   -- Derived constraints generated during constraing solving
   | UpperBoundConstraint
   | LowerBoundConstraint
@@ -36,7 +39,8 @@ data ConstraintInfo
   | IntersectionUnionSubConstraint
   | RecTypeSubConstraint
   | NominalSubConstraint
-  | KindConstraint
+  | RefinementSubConstraint
+  | ApplicationSubConstraint
   | ClassResolutionConstraint
   deriving (Show)
 
@@ -77,6 +81,8 @@ data SubtypeWitness
   -- ^ Witness for two refined codata types and subwitnesses for each destructor.
   | DataNominal RnTypeName [SubtypeWitness]
   -- ^ Witness for two nominal (co-)data types and subwitnesses for their arguments.
+  | DataApp (Typ Pos) (Typ Neg) [SubtypeWitness]
+  -- ^ Witness for two applied types and subwitnesses for their arguments.
   | Refl (Typ Pos) (Typ Neg)
   -- ^ Witness for the reflexivity of the subtyping relation. Contains a positive and negative representation of the same type.
   | UVarL UniTVar (Typ Neg)

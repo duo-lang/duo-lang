@@ -87,10 +87,10 @@ analyzeCase :: CST.DataCodata
             -> CST.TermCase
             -> ResolverM SomeIntermediateCase
 analyzeCase dc tmcase = do
-  analyzedPattern <- resolvePattern (case dc of CST.Data -> Prd ; CST.Codata -> Cns) tmcase.tmcase_pat
-  pure $ MkIntermediateCase { icase_loc = tmcase.tmcase_loc
+  analyzedPattern <- resolvePattern (case dc of CST.Data -> Prd ; CST.Codata -> Cns) tmcase.pat
+  pure $ MkIntermediateCase { icase_loc = tmcase.loc
                             , icase_pat = analyzedPattern
-                            , icase_term = tmcase.tmcase_term
+                            , icase_term = tmcase.term
                             }
 
 analyzeCases :: CST.DataCodata
@@ -155,11 +155,11 @@ resolveTermCaseI rep icase = do
 
 resolveInstanceCase :: CST.TermCase -> ResolverM RST.InstanceCase
 resolveInstanceCase tmcase = do
-  (_,xt,pat) <- analyzeInstancePattern tmcase.tmcase_pat
+  (_,xt,pat) <- analyzeInstancePattern tmcase.pat
   let pat' = adjustPat <$> pat
-  cmd' <- resolveCommand tmcase.tmcase_term
-  pure RST.MkInstanceCase { instancecase_loc = tmcase.tmcase_loc
-                          , instancecase_pat = RST.XtorPat tmcase.tmcase_loc xt (second Just <$> pat')
+  cmd' <- resolveCommand tmcase.term
+  pure RST.MkInstanceCase { instancecase_loc = tmcase.loc
+                          , instancecase_pat = RST.XtorPat tmcase.loc xt (second Just <$> pat')
                           , instancecase_cmd = LN.close pat' cmd'
                           }
 
@@ -299,9 +299,9 @@ resolveCommand (CST.CoLambda loc _ _) =
 casesToNS :: [CST.TermCase] -> ResolverM RST.NominalStructural
 casesToNS [] = pure RST.Structural
 casesToNS (tmcase:_) = 
-  case tmcase.tmcase_pat of
-    CST.PatXtor _ tmcase_name _ -> do
-      (_, XtorNameResult _ ns _) <- lookupXtor tmcase.tmcase_loc tmcase_name
+  case tmcase.pat of
+    CST.PatXtor _ name _ -> do
+      (_, XtorNameResult _ ns _) <- lookupXtor tmcase.loc name
       pure ns
     _ -> 
       throwError (UnknownResolutionError defaultLoc "casesToNS called with invalid argument")

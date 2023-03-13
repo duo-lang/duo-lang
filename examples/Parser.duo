@@ -64,7 +64,6 @@ def prd l2 : List(Nat) := Cons(3,Cons(2,Cons(1,Nil)));
 
 def prd parseOne : (Parser:CBV) := lit 1;
  
--- Print Commands don't work (same for all other commented commands)
 def cmd test1 := parseOne >> Parse(l1,print,print) ;
 def cmd test2 := parseOne >> Parse(l2,print,print) ;
 

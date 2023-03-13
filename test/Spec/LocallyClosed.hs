@@ -15,7 +15,7 @@ import Utils (moduleNameToFullPath)
 type Reason = String
 
 pendingFiles :: [(ModuleName, Reason)]
-pendingFiles = [(  MkModuleName [] "ListRefinement" ,"Type Applications to Refinement Types aren't fully implemented yet"), (MkModuleName [] "Refinements", "Type Applications to Refinement Types aren't fully implemented yet")]
+pendingFiles = []
 
 getProducers :: TST.Module -> [(FreeVarName, Term Prd)]
 getProducers mod = go mod.mod_decls []
@@ -70,6 +70,3 @@ spec ((fp, mn), env) = do
                                                     x       -> x 
                                     return (fail,
                                             danglingSpec >> specSequence)
-
-
-

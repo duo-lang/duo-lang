@@ -19,7 +19,7 @@ import Syntax.CST.Names (ModuleName (..))
 type Reason = String
 
 pendingFiles :: [(ModuleName, Reason)]
-pendingFiles = [(  MkModuleName [] "ListRefinement" ,"Type Applications to Refinement Types aren't fully implemented yet"), (MkModuleName [] "Refinements", "Type Applications to Refinement Types aren't fully implemented yet")]
+pendingFiles = []
 
 
 getTypecheckedDecls :: (MonadIO m) => CST.Module -> m (Either (NonEmpty Error) TST.Module)
