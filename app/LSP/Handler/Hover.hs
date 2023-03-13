@@ -506,12 +506,12 @@ instance ToHoverMap RST.StructuralXtorDeclaration where
       argsToStr ((Cns, mk):rst) = "Consumer " <> ppPrint mk <> ", " <> argsToStr rst
 
 instance ToHoverMap CST.ImportDeclaration where
-  toHoverMap decl = mkHoverMap decl.imprtdecl_loc msg
+  toHoverMap decl = mkHoverMap decl.loc msg
     where
       msg = T.unlines [ "#### Module import"]
 
 instance ToHoverMap CST.SetDeclaration where
-  toHoverMap decl = mkHoverMap decl.setdecl_loc msg
+  toHoverMap decl = mkHoverMap decl.loc msg
     where
       msg = T.unlines [ "#### Set option"]
 

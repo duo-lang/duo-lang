@@ -186,10 +186,10 @@ instance PrettyAnn (TST.TypeScheme pol) where
   prettyAnn tys = prettyAnn (embedTST tys)
 
 instance PrettyAnn CST.TypeScheme where
-  prettyAnn ts | null ts.ts_vars =
-    prettyAnn ts.ts_monotype
+  prettyAnn ts | null ts.vars =
+    prettyAnn ts.monotype
   prettyAnn ts =
     forallSymUnicode <+>
-    sep (prettyAnn <$> ts.ts_vars ) <>
+    sep (prettyAnn <$> ts.vars ) <>
     "." <+>
-    prettyAnn ts.ts_monotype
+    prettyAnn ts.monotype

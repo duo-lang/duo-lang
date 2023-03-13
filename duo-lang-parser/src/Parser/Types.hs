@@ -291,4 +291,7 @@ typeSchemeP = do
   startPos <- getSourcePos
   tvars' <- option [] (forallP >> sc >> some (tvarAnnotP <* sc) <* (symbolP SymDot >> sc))
   (monotype, endPos) <- typP
-  pure (TypeScheme (Loc startPos endPos) (fst <$> tvars') monotype)
+  pure TypeScheme { loc = Loc startPos endPos
+                  , vars = fst <$> tvars'
+                  , monotype = monotype
+  }
