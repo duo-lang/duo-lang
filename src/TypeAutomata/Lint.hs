@@ -20,11 +20,10 @@ import Utils ( enumerate )
 
 -- | Check the invariants of the type automaton.
 lint :: MonadError (NonEmpty Error) m
-     => TypeAut' (EdgeLabel a) f pol
+     => TypeAut' EdgeLabel f pol
      -> m ()
 lint aut = do
   lintFlowEdges aut
-  lintEpsilonEdges aut
   lintSymbolEdges aut
   lintStructuralNodes aut
 
@@ -51,20 +50,9 @@ lintFlowEdges aut = do
       Pos -> pure ()
       Neg -> throwAutomatonError defaultLoc ["TypeAutomata Linter: Right endpoint of flowedge is negative"]
 
-
--- | Check that epsilon edges connect nodes of the same polarity.
-lintEpsilonEdges :: MonadError (NonEmpty Error) m
-                 => TypeAut' (EdgeLabel a) f pol -> m ()
-lintEpsilonEdges aut = do
-  let edges = [(i,j) | (i,j,EpsilonEdge _) <- labEdges aut.ta_core.ta_gr]
-  forM_ edges $ \(i,j) -> do
-    iPolarity <- getPolarityNL <$> getNodeLabel aut.ta_core.ta_gr i
-    jPolarity <- getPolarityNL <$> getNodeLabel aut.ta_core.ta_gr j
-    when (iPolarity /= jPolarity) $ throwAutomatonError defaultLoc ["TypeAutomata Linter: Epsilon Edge connects nodes with different polarity."]
-
 -- | Check that symbol edges connect nodes of the correct polarity.
 lintSymbolEdges :: MonadError (NonEmpty Error) m
-                => TypeAut' (EdgeLabel a) f pol -> m ()
+                => TypeAut' EdgeLabel f pol -> m ()
 lintSymbolEdges aut = do
   let edges = [(i,j,dataCodata,prdCns) | (i,j,EdgeSymbol dataCodata _ prdCns _) <- labEdges aut.ta_core.ta_gr]
   forM_ edges $ \(i,j, dataCodata, prdCns) -> do
@@ -79,12 +67,12 @@ lintSymbolEdges aut = do
 
 -- | Check that every structural Xtor has at least one outgoing Symbol Edge for every argument of the Xtor.
 lintStructuralNodes :: MonadError (NonEmpty Error) m
-                    => TypeAut' (EdgeLabel a) f pol -> m ()
+                    => TypeAut' EdgeLabel f pol -> m ()
 lintStructuralNodes aut = forM_ (labNodes aut.ta_core.ta_gr) (lintStructuralNode aut.ta_core.ta_gr)
 
 -- | Collect all the xtors labels of a node and check them.
 lintStructuralNode :: MonadError (NonEmpty Error) m
-                   => Gr NodeLabel (EdgeLabel a) -> LNode NodeLabel -> m ()
+                   => Gr NodeLabel EdgeLabel -> LNode NodeLabel -> m ()
 lintStructuralNode _ (_, MkPrimitiveNodeLabel{}) = pure ()
 lintStructuralNode gr (n, nl) = do
   let toList = maybe [] S.toList
@@ -93,13 +81,13 @@ lintStructuralNode gr (n, nl) = do
 
 -- | Check whether all fields of the Xtor Label have at least one outgoing edge starting from the node.
 lintXtor :: MonadError (NonEmpty Error) m
-         => Gr NodeLabel (EdgeLabel a) -> Node -> XtorLabel -> m ()
+         => Gr NodeLabel EdgeLabel -> Node -> XtorLabel -> m ()
 lintXtor gr n (MkXtorLabel xn arity) = do
   let outs = (\(_,_,x) -> x) <$> out gr n
   forM_ (enumerate arity) $ \(n,pc) -> lintXtorArgument outs xn pc n
 
 lintXtorArgument :: MonadError (NonEmpty Error) m
-                 => [EdgeLabel a] -> XtorName -> PrdCns -> Int -> m ()
+                 => [EdgeLabel] -> XtorName -> PrdCns -> Int -> m ()
 lintXtorArgument outs xn pc i = do
   let filtered = [ () | EdgeSymbol _ xn' pc' i' <- outs, xn == xn', pc == pc', i == i']
   when (null filtered) $ throwAutomatonError defaultLoc ["TypeAutomata Linter: The Xtor " <> T.pack (show xn) <> " has missing outgoing edge"]

@@ -109,7 +109,7 @@ intersectIsEmpty print ty1 ty2 = do
 
 -- | Create  the intersection automaton of two type automata.
 intersectAut :: TypeAutDet pol -> TypeAutDet pol -> TypeAutDet pol
---  intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges $ intersectAutM aut1 aut2
+--  intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize $ intersectAutM aut1 aut2
 intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize $ intersected
   where
     intersected = runIdentity $ evalStateT (intersectAutM aut1 aut2).runIntersect initState

@@ -227,16 +227,12 @@ insertType (TyUnion _ knd ty1 ty2) = do
   insertNode newNode (emptyNodeLabel Pos knd)
   ty1s <- insertType ty1
   ty2s <- insertType ty2
-  --  insertEdges [(newNode, ty1', EpsilonEdge ()) | ty1' <- ty1s]
-  --  insertEdges [(newNode, ty2', EpsilonEdge ()) | ty2' <- ty2s]
   pure $ newNode : (ty1s ++ ty2s)
 insertType (TyInter _ knd ty1 ty2) = do
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel Neg knd)
   ty1s <- insertType ty1
   ty2s <- insertType ty2
-  --  insertEdges [(newNode, ty1', EpsilonEdge ()) | ty1' <- ty1s]
-  --  insertEdges [(newNode, ty2', EpsilonEdge ()) | ty2' <- ty2s]
   pure $ newNode : (ty1s ++ ty2s)
 insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
@@ -245,8 +241,6 @@ insertType (TyRec _ rep rv ty) = do
   let extendEnv PosRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars (M.insert rv (Just newNode, Nothing) tRecVars) 
       extendEnv NegRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars (M.insert rv (Nothing, Just newNode) tRecVars)
   ns <- local (extendEnv rep) (insertType ty)
-  -- CAVEAT: these might not be as easy to remove, since they are not present when doing the recursive `insertType`
-  --  insertEdges [(newNode, n, EpsilonEdge ()) | n <- ns]
   addPredecessorsOf newNode ns
   return $ newNode : ns
 insertType (TyData _  polrep eo xtors)             = pure <$> insertXtors CST.Data   (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
