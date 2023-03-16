@@ -17,7 +17,6 @@ import Errors
 import TypeAutomata.Minimize (minimize)
 import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
 import TypeAutomata.Determinize (determinize)
-import TypeAutomata.RemoveEpsilon (removeEpsilonEdges)
 import TypeAutomata.ToAutomaton (typeToAut)
 import Data.Map (Map)
 import TypeAutomata.Utils (typeAutIsEmpty, isEmptyLabel)
@@ -30,8 +29,8 @@ import Utils (sequenceMap)
 -- | Check for two type schemes whether their intersection type automaton is empty.
 emptyIntersection :: TypeScheme pol -> TypeScheme pol -> Either (NonEmpty Error) Bool
 emptyIntersection ty1 ty2 = do
-  aut1 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty1
-  aut2 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty2
+  aut1 <- minimize . removeAdmissableFlowEdges . determinize <$> typeToAut ty1
+  aut2 <- minimize . removeAdmissableFlowEdges . determinize <$> typeToAut ty2
   checkEmptyIntersection aut1 aut2
 
 
@@ -106,7 +105,7 @@ intersectIsEmpty print ty1 ty2 = do
     _ -> pure False
   where
     tyToMinAut :: TypeScheme pol -> Either (NonEmpty Error) (TypeAutDet pol)
-    tyToMinAut ty = minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty
+    tyToMinAut ty = minimize . removeAdmissableFlowEdges . determinize <$> typeToAut ty
 
 -- | Create  the intersection automaton of two type automata.
 intersectAut :: TypeAutDet pol -> TypeAutDet pol -> TypeAutDet pol
