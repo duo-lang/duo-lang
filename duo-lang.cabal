@@ -137,7 +137,6 @@ library
       TypeAutomata.Intersection
       TypeAutomata.Lint
       TypeAutomata.Minimize
-      TypeAutomata.RemoveEpsilon
       TypeAutomata.RemoveAdmissible
       TypeAutomata.Simplify
       TypeAutomata.Subsume
