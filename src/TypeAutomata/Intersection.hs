@@ -113,7 +113,7 @@ intersectAut :: TypeAutDet pol -> TypeAutDet pol -> TypeAutDet pol
 --  intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges $ intersectAutM aut1 aut2
 intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize $ intersected
   where
-    intersected = runIdentity $ flip evalStateT initState (intersectAutM aut1 aut2).runIntersect
+    intersected = runIdentity $ evalStateT (intersectAutM aut1 aut2).runIntersect initState
     initState = IS { is_nodes = M.empty, is_nodelabels = M.empty, is_edges = M.empty, is_counter = 0, is_todo = [(runIdentity aut1.ta_starts, runIdentity aut2.ta_starts)] }
 
 data IntersectS
@@ -163,7 +163,7 @@ intersectAutM aut1 aut2 = do
       case todos of
         [] -> pure ()
         (todo@(n1,n2):todos') -> flip (>>) go $ if isJust $ todo `M.lookup` cache
-          then modify (\is -> is { is_todo = todos' }) 
+          then modify (\is -> is { is_todo = todos' })
           else do
             let unsafeLab gr n = fromMaybe (error "successor node is not in graph") $ lab gr n
             let l1 = unsafeLab gr1 n1

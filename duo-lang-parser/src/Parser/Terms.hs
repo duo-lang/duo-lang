@@ -300,9 +300,9 @@ termCaseP =  do
   symbolP SymDoubleRightArrow
   sc
   (t, endPos) <- term3P
-  pure CST.MkTermCase { CST.tmcase_loc  = Loc startPos endPos
-                      , CST.tmcase_pat = pat
-                      , CST.tmcase_term  = t
+  pure CST.MkTermCase { loc  = Loc startPos endPos
+                      , pat  = pat
+                      , term = t
                       }
 
 --------------------------------------------------------------------------------------------

@@ -30,26 +30,26 @@ data IsRec where
 
 -- | A toplevel producer or consumer declaration.
 data PrdCnsDeclaration = MkPrdCnsDeclaration
-  { pcdecl_loc :: Loc
+  { loc :: Loc
     -- ^ The source code location of the declaration.
-  , pcdecl_doc :: Maybe DocComment
+  , doc :: Maybe DocComment
     -- ^ The documentation string of the declaration.
-  , pcdecl_pc :: PrdCns
+  , prd_cns :: PrdCns
     -- ^ Whether a producer or consumer is declared.
-  , pcdecl_isRec :: IsRec
+  , isRecursive :: IsRec
     -- ^ Whether the declaration can refer to itself recursively.
-  , pcdecl_name :: FreeVarName
+  , name :: FreeVarName
     -- ^ The name of the producer / consumer.
-  , pcdecl_annot :: Maybe TypeScheme
+  , annot :: Maybe TypeScheme
     -- ^ The type signature.
-  , pcdecl_term :: Term
+  , term :: Term
     -- ^ The term itself.
 }
 
 deriving instance Show PrdCnsDeclaration
 
 instance HasLoc PrdCnsDeclaration where
-  getLoc decl = decl.pcdecl_loc
+  getLoc decl = decl.loc
 
 ---------------------------------------------------------------------------------
 -- Command Declaration
@@ -57,20 +57,20 @@ instance HasLoc PrdCnsDeclaration where
 
 -- | A toplevel command declaration.
 data CommandDeclaration = MkCommandDeclaration
-  { cmddecl_loc :: Loc
+  { loc :: Loc
     -- ^ The source code location of the declaration.
-  , cmddecl_doc :: Maybe DocComment
+  , doc :: Maybe DocComment
     -- ^ The documentation string of the declaration.
-  , cmddecl_name :: FreeVarName
+  , name :: FreeVarName
     -- ^ The name of the command.
-  , cmddecl_cmd :: Term
+  , cmd :: Term
     -- ^ The command itself.
   }
 
 deriving instance Show CommandDeclaration
 
 instance HasLoc CommandDeclaration where
-  getLoc decl = decl.cmddecl_loc
+  getLoc decl = decl.loc
 
 ---------------------------------------------------------------------------------
 -- Structural Xtor Declaration
@@ -80,19 +80,19 @@ instance HasLoc CommandDeclaration where
 -- These declarations are needed for structural data and codata types.
 data StructuralXtorDeclaration = MkStructuralXtorDeclaration
   {
-    strxtordecl_loc :: Loc
+    loc :: Loc
     -- ^ The source code location of the declaration.
-  , strxtordecl_doc :: Maybe DocComment
+  , doc :: Maybe DocComment
     -- ^ The documenation string of the declaration.
-  , strxtordecl_xdata :: DataCodata
+  , data_codata :: DataCodata
     -- ^ Indicates whether a constructor (Data) or destructor (Codata) is declared.
-  , strxtordecl_name :: XtorName
+  , name :: XtorName
     -- ^ The name of the declared constructor or destructor.
-  , strxtordecl_arity :: [(PrdCns, MonoKind)]
+  , arity :: [(PrdCns, MonoKind)]
     -- ^ The arguments of the constructor/destructor.
     -- Each argument can either be a constructor or destructor.
     -- The MonoKind (CBV or CBN) of each argument has to be specified.
-  , strxtordecl_evalOrder :: Maybe EvaluationOrder
+  , evalOrder :: Maybe EvaluationOrder
     -- Optional evaluation order of the structural type to which the
     -- constructor/destructor belongs.
     -- If no evaluation order is indicated, then it will default to CBV for constructors
@@ -102,7 +102,7 @@ data StructuralXtorDeclaration = MkStructuralXtorDeclaration
 deriving instance Show StructuralXtorDeclaration
 
 instance HasLoc StructuralXtorDeclaration where
-  getLoc decl = decl.strxtordecl_loc
+  getLoc decl = decl.loc
 
 ---------------------------------------------------------------------------------
 -- Import Declaration
@@ -110,18 +110,18 @@ instance HasLoc StructuralXtorDeclaration where
 
 -- | A toplevel import statment.
 data ImportDeclaration = MkImportDeclaration
-  { imprtdecl_loc :: Loc
+  { loc :: Loc
     -- ^ The source code location of the import.
-  , imprtdecl_doc :: Maybe DocComment
+  , doc :: Maybe DocComment
     -- ^ The documentation string of the import.
-  , imprtdecl_module :: ModuleName
+  , mod :: ModuleName
     -- ^ The imported module.
   }
 
 deriving instance Show ImportDeclaration
 
 instance HasLoc ImportDeclaration where
-  getLoc decl = decl.imprtdecl_loc
+  getLoc decl = decl.loc
 
 ---------------------------------------------------------------------------------
 -- Set Declaration
@@ -129,18 +129,18 @@ instance HasLoc ImportDeclaration where
 
 -- | A toplevel configuration option.
 data SetDeclaration = MkSetDeclaration
-  { setdecl_loc :: Loc
+  { loc :: Loc
     -- ^ The source code location of the option.
-  , setdecl_doc :: Maybe DocComment
+  , doc :: Maybe DocComment
     -- ^ The documentation string of the option.
-  , setdecl_option :: Text
+  , option :: Text
     -- ^ The option itself.
   }
 
 deriving instance Show SetDeclaration
 
 instance HasLoc SetDeclaration where
-  getLoc decl = decl.setdecl_loc
+  getLoc decl = decl.loc
 
 ---------------------------------------------------------------------------------
 -- Type Operator Declaration
@@ -148,24 +148,24 @@ instance HasLoc SetDeclaration where
 
 -- | A toplevel declaration of a type operator.
 data TyOpDeclaration = MkTyOpDeclaration
-  { tyopdecl_loc :: Loc
+  { loc :: Loc
     -- ^ The source code location of the declaration.
-  , tyopdecl_doc :: Maybe DocComment
+  , doc :: Maybe DocComment
     -- ^ The documentation string of the declaration.
-  , tyopdecl_sym :: TyOpName
+  , symbol :: TyOpName
     -- ^ The symbol used for the type operator.
-  , tyopdecl_prec :: Precedence
+  , precedence :: Precedence
     -- ^ The precedence level of the type operator.
-  , tyopdecl_assoc :: Associativity
+  , associativity :: Associativity
     -- ^ The associativity of the type operator.
-  , tyopdecl_res :: TypeName
+  , res :: TypeName
     -- ^ The typename that the operator should stand for.
   }
 
 deriving instance Show TyOpDeclaration
 
 instance HasLoc TyOpDeclaration where
-  getLoc decl = decl.tyopdecl_loc
+  getLoc decl = decl.loc
 
 ---------------------------------------------------------------------------------
 -- Type Synonym Declaration
@@ -173,66 +173,66 @@ instance HasLoc TyOpDeclaration where
 
 -- | A toplevel declaration of a type synonym.
 data TySynDeclaration = MkTySynDeclaration
-  { tysyndecl_loc :: Loc
+  { loc :: Loc
     -- ^ The source code location of the declaration.
-  , tysyndecl_doc :: Maybe DocComment
+  , doc :: Maybe DocComment
     -- ^ The documentation string of the declaration.
-  , tysyndecl_name :: TypeName
+  , name :: TypeName
     -- ^ The name of the type synonym that is being introduced.
-  , tysyndecl_res :: Typ
+  , res :: Typ
     -- ^ What the type synonym should be replaced with.
   }
 
 deriving instance Show TySynDeclaration
 
 instance HasLoc TySynDeclaration where
-  getLoc decl = decl.tysyndecl_loc
+  getLoc decl = decl.loc
 
 ------------------------------------------------------------------------------
 -- Instance Declaration
 ------------------------------------------------------------------------------
 
 data InstanceDeclaration = MkInstanceDeclaration
-  { instancedecl_loc :: Loc
+  { loc :: Loc
     -- ^ The source code location of the declaration.
-  , instancedecl_doc :: Maybe DocComment
+  , doc :: Maybe DocComment
     -- ^ The documentation string of the declaration.
-  , instancedecl_name :: FreeVarName
+  , instance_name :: FreeVarName
     -- ^ The name of the instance declaration.
-  , instancedecl_class :: ClassName
+  , class_name :: ClassName
     -- ^ The name of the type class the instance is for.
-  , instancedecl_typ :: Typ
+  , typ :: Typ
     -- ^ The type the instance is being defined for.
-  , instancedecl_cases :: [TermCase]
+  , cases :: [TermCase]
     -- ^ The method definitions for the class.
   }
 
 deriving instance Show InstanceDeclaration
 
 instance HasLoc InstanceDeclaration where
-  getLoc decl = decl.instancedecl_loc
+  getLoc decl = decl.loc
 
 ------------------------------------------------------------------------------
 -- Class Declaration
 ------------------------------------------------------------------------------
 
 data ClassDeclaration = MkClassDeclaration
-  { classdecl_loc :: Loc
+  { loc :: Loc
     -- ^ The source code location of the declaration.
-  , classdecl_doc :: Maybe DocComment
+  , doc :: Maybe DocComment
     -- ^ The documentation string of the declaration.
-  , classdecl_name :: ClassName
+  , name :: ClassName
     -- ^ The name of the type class that is being introduced.
-  , classdecl_kinds :: PolyKind
+  , kinds :: PolyKind
     -- ^ The kind of the type class variables.
-  , classdecl_methods :: [XtorSig]
+  , methods :: [XtorSig]
     -- ^ The type class methods and their types.
   }
 
 deriving instance Show ClassDeclaration
 
 instance HasLoc ClassDeclaration where
-  getLoc decl = decl.classdecl_loc
+  getLoc decl = decl.loc
 
 ------------------------------------------------------------------------------
 -- Data Type declarations
@@ -243,26 +243,26 @@ data IsRefined = Refined | NotRefined
 
 -- | A toplevel declaration of a data or codata type.
 data DataDecl = MkDataDecl
-  { data_loc :: Loc
+  { loc :: Loc
     -- ^ The source code location of the declaration.
-  , data_doc :: Maybe DocComment
+  , doc :: Maybe DocComment
     -- ^ The documentation string of the declaration.
-  , data_refined :: IsRefined
+  , isRefined :: IsRefined
     -- ^ Whether an ordinary or a refinement type is declared.
-  , data_name :: TypeName
+  , name :: TypeName
     -- ^ The name of the type. E.g. "List".
-  , data_polarity :: DataCodata
+  , data_codata :: DataCodata
     -- ^ Whether a data or codata type is declared.
-  , data_kind :: Maybe PolyKind
+  , kind :: Maybe PolyKind
     -- ^ The kind of the type constructor.
-  , data_xtors :: [XtorSig]
+  , xtors :: [XtorSig]
     -- The constructors/destructors of the declaration.
   }
 
 deriving instance Show DataDecl
 
 instance HasLoc DataDecl where
-  getLoc decl = decl.data_loc
+  getLoc decl = decl.loc
 
 ---------------------------------------------------------------------------------
 -- Declarations
@@ -290,11 +290,11 @@ instance Show Declaration where
 
 -- | A module which corresponds to a single '*.duo' file.
 data Module = MkModule
-  { mod_name :: ModuleName
+  { name :: ModuleName
     -- ^ The name of the module.
-  , mod_libpath :: FilePath
+  , libpath :: FilePath
     -- ^ The absolute filepath of the library of the module.
-  , mod_decls :: [Declaration]
+  , decls :: [Declaration]
     -- ^ The declarations contained in the module.
   }
 

@@ -15,7 +15,7 @@ module Syntax.RST.Terms
   , InstanceCase(..)
   , Command(..)
   , PrimitiveOp(..)
-  , Overlap 
+  , Overlap
    -- Functions
   ,overlap) where
 
@@ -92,19 +92,19 @@ type Overlap = Maybe OverlapMsg
 -- | Generates the Overlap of Patterns between one another.
 -- For testing purposes, best display via printOverlap $ overlap test<X>...
 overlap :: [GenericPattern] -> Overlap
-overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (tails l))
+overlap l = let pairOverlaps = concat $ zipWith map (map overlapA2 l) (tail (tails l))
             in  concatOverlaps pairOverlaps
   where
     -- | Reduces multiple potential Overlap Messages into one potential Overlap Message.
     concatOverlaps :: [Overlap] -> Overlap
     concatOverlaps xs =
-      let concatRule = \x y -> x <> "\n\n" <> y
+      let concatRule x y = x <> "\n\n" <> y
       in  foldr (liftm2 concatRule) Nothing xs
       where
         liftm2 :: (a -> a -> a) -> Maybe a -> Maybe a -> Maybe a
         liftm2 _ x          Nothing   = x
         liftm2 _ Nothing    y         = y
-        liftm2 f (Just x)   (Just y)  = Just $ (f x y)
+        liftm2 f (Just x)   (Just y)  = Just (f x y)
 
     -- | Generates an Overlap Message for patterns p1 p2.
     overlapMsg :: GenericPattern -> GenericPattern -> OverlapMsg
@@ -115,11 +115,11 @@ overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (t
 
     -- | Readable Conversion of Pattern to Text.
     patternToText :: GenericPattern -> Text
-    patternToText (Left  (PatVar       loc prdcns varName))      = pack(show prdcns) <> pack(" Variable Pattern ") <> pack("'") <> varName.unFreeVarName <> pack("'") <> pack(" in: " ++ (show loc))
-    patternToText (Left  (PatWildcard  loc prdcns))              = pack(show prdcns) <> pack(" Wildcard Pattern in: ") <> pack(show loc)
-    patternToText (Left  (PatXtor      loc prdcns _ xtorName _)) = pack(show prdcns) <> pack(" Xtor Pattern ") <> pack("'") <> xtorName.unXtorName <> pack("'") <> pack(" in: " ++ (show loc))
-    patternToText (Right (PatXtorStar  loc prdcns _ xtorName _)) = pack(show prdcns) <> pack(" Xtor Pattern ") <> pack("'") <> xtorName.unXtorName <> pack("'") <> pack(" in: " ++ (show loc))
-    patternToText (Right (PatStar      loc prdcns))              = pack(show prdcns) <> pack(" Star Pattern in: ") <> pack(show loc)
+    patternToText (Left  (PatVar       loc prdcns varName))      = pack (show prdcns) <> pack " Variable Pattern " <> pack "'" <> varName.unFreeVarName <> pack "'" <> pack (" in: " ++ show loc)
+    patternToText (Left  (PatWildcard  loc prdcns))              = pack (show prdcns) <> pack " Wildcard Pattern in: " <> pack (show loc)
+    patternToText (Left  (PatXtor      loc prdcns _ xtorName _)) = pack (show prdcns) <> pack " Xtor Pattern " <> pack "'" <> xtorName.unXtorName <> pack "'" <> pack (" in: " ++ show loc)
+    patternToText (Right (PatXtorStar  loc prdcns _ xtorName _)) = pack (show prdcns) <> pack " Xtor Pattern " <> pack "'" <> xtorName.unXtorName <> pack "'" <> pack (" in: " ++ show loc)
+    patternToText (Right (PatStar      loc prdcns))              = pack (show prdcns) <> pack " Star Pattern in: " <> pack (show loc)
 
     -- | Determines for 2x Patterns p1 p2 a potential Overlap message on p1 'containing' p2 or p2 'containing' p1.
     overlapA2 :: GenericPattern -> GenericPattern -> Overlap
@@ -128,9 +128,9 @@ overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (t
     -- Xtor Cases: In our current Pattern Syntax, a Xtor Pattern can be constructed as either a Base Pattern or Star Pattern,
     --             meaning that 4 match cases are needed for covering all overlapA2 Xtor Pattern cases.
       -- Case 1: 2x Base De/Constructors
-    overlapA2 p1@(Left (PatXtor _ _ _ xXtorName xBasePatterns)) 
+    overlapA2 p1@(Left (PatXtor _ _ _ xXtorName xBasePatterns))
               p2@(Left (PatXtor _ _ _ yXtorName yBasePatterns)) =
-                if    (xXtorName /= yXtorName)
+                if    xXtorName /= yXtorName
                 then  Nothing
                 else  let xPatterns = map Left xBasePatterns
                           yPatterns = map Left yBasePatterns
@@ -138,20 +138,20 @@ overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (t
       -- Case 2: Base De/Constructor and Star De/Constructor
     overlapA2 p1@(Left  (PatXtor      _ _ _ xXtorName xBasePatterns))
               p2@(Right (PatXtorStar  _ _ _ yXtorName (y1BasePatterns, star, y2BasePatterns))) =
-                if    (xXtorName /= yXtorName)
+                if    xXtorName /= yXtorName
                 then  Nothing
                 else  let xPatterns = map Left xBasePatterns
-                          yPatterns = (map Left y1BasePatterns) ++ ((Right star):(map Left y2BasePatterns))
+                          yPatterns = map Left y1BasePatterns ++ (Right star:map Left y2BasePatterns)
                       in  overlapSubpatterns (p1,xPatterns) (p2,yPatterns)
       -- Case 3: Star De/Constructor and Base De/Constructor -> Reduce to Case 2!
-    overlapA2 p1@(Right (PatXtorStar _ _ _ _ _)) p2@(Left (PatXtor _ _ _ _ _)) = overlapA2 p2 p1
+    overlapA2 p1@(Right (PatXtorStar {})) p2@(Left (PatXtor {})) = overlapA2 p2 p1
       -- Case 4: 2x Star De/Constructors
     overlapA2 p1@(Right (PatXtorStar  _ _ _ xXtorName (x1BasePatterns, xstar, x2BasePatterns)))
-              p2@(Right (PatXtorStar  _ _ _ yXtorName (y1BasePatterns, ystar, y2BasePatterns))) = 
-                if    (xXtorName /= yXtorName)
+              p2@(Right (PatXtorStar  _ _ _ yXtorName (y1BasePatterns, ystar, y2BasePatterns))) =
+                if    xXtorName /= yXtorName
                 then  Nothing
-                else  let xPatterns = (map Left x1BasePatterns) ++ ((Right xstar):(map Left x2BasePatterns))
-                          yPatterns = (map Left y1BasePatterns) ++ ((Right ystar):(map Left y2BasePatterns))
+                else  let xPatterns = map Left x1BasePatterns ++ (Right xstar:map Left x2BasePatterns)
+                          yPatterns = map Left y1BasePatterns ++ (Right ystar:map Left y2BasePatterns)
                       in  overlapSubpatterns (p1,xPatterns) (p2,yPatterns)
     -- All other cases: One of both Patterns is NOT a Xtor Pattern, therefore overlap occures!
     overlapA2 p1 p2 = Just $ overlapMsg p1 p2
@@ -159,17 +159,17 @@ overlap l = let pairOverlaps = concat $ zipWith map (map (overlapA2) l) (tail (t
     -- | For 2 Patterns with their Subpatterns, returns Overlap Message if all Pairs of Subatterns overlap,
     -- | and returns Nothing if at least one Pair of Subpatterns does not overlap 
     overlapSubpatterns ::  (GenericPattern, [GenericPattern]) -> (GenericPattern, [GenericPattern]) -> Overlap
-    overlapSubpatterns (p1,xPatterns) (p2,yPatterns) = 
+    overlapSubpatterns (p1,xPatterns) (p2,yPatterns) =
       let subPatternsOverlaps = zipWith overlapA2 xPatterns yPatterns
           --Only if all Pairs of Subpatterns truly overlap is an Overlap found.
-          subPatternsOverlap =  if   (elem Nothing subPatternsOverlaps) 
-                                then Nothing 
+          subPatternsOverlap =  if   Nothing `elem` subPatternsOverlaps
+                                then Nothing
                                 else concatOverlaps subPatternsOverlaps
       in  case subPatternsOverlap of
             Nothing                       -> Nothing
             (Just subPatternsOverlapMsg)  ->
               Just $
-                (overlapMsg p1 p2)
+                overlapMsg p1 p2
                 <> "due to the all Subpatterns overlapping as follows:\n"
                 <> "--------------------------------->\n"
                 <> subPatternsOverlapMsg
@@ -321,10 +321,10 @@ data Term (pc :: PrdCns) where
   -- cocase { X(xs,*,ys) => cns}
   CaseI   :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> [TermCaseI pc] -> Term Cns
   CocaseI :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> [TermCaseI pc] -> Term Prd
-  
+
   -- \x y z -> t 
-  Lambda  :: Loc  -> PrdCnsRep pc -> FreeVarName -> Term pc  -> Term pc 
-  
+  Lambda  :: Loc  -> PrdCnsRep pc -> FreeVarName -> Term pc  -> Term pc
+
   ---------------------------------------------------------------------------------
   -- Primitive constructs
   ---------------------------------------------------------------------------------
@@ -415,14 +415,14 @@ termOpeningRec k args (Dtor loc rep ns xt t (MkSubstitutionI (args1,pcrep,args2)
     Dtor loc rep ns xt (termOpeningRec k args t) (MkSubstitutionI (args1', pcrep, args2'))
 termOpeningRec k args (CaseOf loc rep ns t cases) =
   CaseOf loc rep ns (termOpeningRec k args t) ((\pmcase -> pmcase { tmcase_term = termOpeningRec (k + 1) args pmcase.tmcase_term }) <$> cases)
-termOpeningRec k args (CocaseOf loc rep ns t tmcases) = 
+termOpeningRec k args (CocaseOf loc rep ns t tmcases) =
   CocaseOf loc rep ns (termOpeningRec k args t) ((\pmcase -> pmcase { tmcase_term = termOpeningRec (k + 1) args pmcase.tmcase_term }) <$> tmcases)
 termOpeningRec k args (CaseI loc pcrep ns tmcasesI) =
   CaseI loc pcrep ns ((\pmcase -> pmcase { tmcasei_term = termOpeningRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI)
 termOpeningRec k args (CocaseI loc pcrep ns cocases) =
   CocaseI loc pcrep ns ((\pmcase -> pmcase { tmcasei_term = termOpeningRec (k + 1) args pmcase.tmcasei_term }) <$> cocases)
-termOpeningRec k args (Lambda loc pcrep ns tm) = 
-  Lambda loc pcrep ns (termOpeningRec (k+1) args tm)  
+termOpeningRec k args (Lambda loc pcrep ns tm) =
+  Lambda loc pcrep ns (termOpeningRec (k+1) args tm)
 -- Primitive constructs
 termOpeningRec _ _ lit@PrimLitI64{} = lit
 termOpeningRec _ _ lit@PrimLitF64{} = lit
@@ -450,11 +450,11 @@ commandOpeningRec k args (PrimOp loc op subst) =
 commandOpeningRec k args (CaseOfCmd loc ns t cmdcases) =
   CaseOfCmd loc ns  (termOpeningRec k args t) $ map (\pmcase -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args pmcase.cmdcase_cmd }) cmdcases
 commandOpeningRec k args (CaseOfI loc pcrep ns t tmcasesI) =
-  CaseOfI loc pcrep ns (termOpeningRec k args t) ((\pmcase -> pmcase { tmcasei_term = termOpeningRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI) 
+  CaseOfI loc pcrep ns (termOpeningRec k args t) ((\pmcase -> pmcase { tmcasei_term = termOpeningRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI)
 commandOpeningRec k args (CocaseOfCmd loc ns t cmdcases) =
   CocaseOfCmd loc ns (termOpeningRec k args t) $ map (\pmcase -> pmcase { cmdcase_cmd = commandOpeningRec (k+1) args pmcase.cmdcase_cmd }) cmdcases
 commandOpeningRec k args (CocaseOfI loc pcrep ns t tmcasesI) =
-  CocaseOfI loc pcrep ns (termOpeningRec k args t) ((\pmcase -> pmcase { tmcasei_term = termOpeningRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI) 
+  CocaseOfI loc pcrep ns (termOpeningRec k args t) ((\pmcase -> pmcase { tmcasei_term = termOpeningRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI)
 
 
 ---------------------------------------------------------------------------------
@@ -481,7 +481,7 @@ termClosingRec k vars (XCase loc pc sn cases) =
 termClosingRec k vars (MuAbs loc pc fv cmd) =
   MuAbs loc pc fv (commandClosingRec (k+1) vars cmd)
 -- Syntactic sugar
-termClosingRec k args (Semi loc rep ns xt (MkSubstitutionI (args1,pcrep,args2)) t) = 
+termClosingRec k args (Semi loc rep ns xt (MkSubstitutionI (args1,pcrep,args2)) t) =
   let
     args1' = pctermClosingRec k args <$> args1
     args2' = pctermClosingRec k args <$> args2
@@ -495,14 +495,14 @@ termClosingRec k args (Dtor loc pc ns xt t (MkSubstitutionI (args1,pcrep,args2))
     Dtor loc pc ns xt (termClosingRec k args t) (MkSubstitutionI (args1', pcrep, args2'))
 termClosingRec k args (CaseOf loc rep ns t cases) =
   CaseOf loc rep ns (termClosingRec k args t) ((\pmcase -> pmcase { tmcase_term = termClosingRec (k + 1) args pmcase.tmcase_term }) <$> cases)
-termClosingRec k args (CocaseOf loc rep ns t tmcases) = 
-  CocaseOf loc rep ns (termClosingRec k args t) ((\pmcase -> pmcase { tmcase_term = termClosingRec (k + 1) args pmcase.tmcase_term }) <$> tmcases) 
-termClosingRec k args (CaseI loc pcrep ns tmcasesI) = 
-  CaseI loc pcrep ns ((\pmcase -> pmcase { tmcasei_term = termClosingRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI) 
+termClosingRec k args (CocaseOf loc rep ns t tmcases) =
+  CocaseOf loc rep ns (termClosingRec k args t) ((\pmcase -> pmcase { tmcase_term = termClosingRec (k + 1) args pmcase.tmcase_term }) <$> tmcases)
+termClosingRec k args (CaseI loc pcrep ns tmcasesI) =
+  CaseI loc pcrep ns ((\pmcase -> pmcase { tmcasei_term = termClosingRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI)
 termClosingRec k args (CocaseI loc pcrep ns cocases) =
   CocaseI loc pcrep ns ((\pmcase -> pmcase { tmcasei_term = termClosingRec (k + 1) args pmcase.tmcasei_term }) <$> cocases)
-termClosingRec k args (Lambda loc pcrep fv tm) = 
-  Lambda loc pcrep fv (termClosingRec (k+1) args tm)  
+termClosingRec k args (Lambda loc pcrep fv tm) =
+  Lambda loc pcrep fv (termClosingRec (k+1) args tm)
 -- Primitive constructs
 termClosingRec _ _ lit@PrimLitI64{} = lit
 termClosingRec _ _ lit@PrimLitF64{} = lit
@@ -530,11 +530,11 @@ commandClosingRec k args (PrimOp ext op subst) =
 commandClosingRec k args (CaseOfCmd loc ns t cmdcases) =
   CaseOfCmd loc ns  (termClosingRec k args t) $ map (\pmcase -> pmcase { cmdcase_cmd = commandClosingRec (k+1) args pmcase.cmdcase_cmd }) cmdcases
 commandClosingRec k args (CaseOfI loc pcrep ns t tmcasesI) =
-  CaseOfI loc pcrep ns (termClosingRec k args t) ((\pmcase -> pmcase { tmcasei_term = termClosingRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI) 
+  CaseOfI loc pcrep ns (termClosingRec k args t) ((\pmcase -> pmcase { tmcasei_term = termClosingRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI)
 commandClosingRec k args (CocaseOfCmd loc ns t cmdcases) =
   CocaseOfCmd loc ns (termClosingRec k args t) $ map (\pmcase -> pmcase { cmdcase_cmd = commandClosingRec (k+1) args pmcase.cmdcase_cmd }) cmdcases
 commandClosingRec k args (CocaseOfI loc pcrep ns t tmcasesI) =
-  CocaseOfI loc pcrep ns (termClosingRec k args t) ((\pmcase -> pmcase { tmcasei_term = termClosingRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI) 
+  CocaseOfI loc pcrep ns (termClosingRec k args t) ((\pmcase -> pmcase { tmcasei_term = termClosingRec (k + 1) args pmcase.tmcasei_term }) <$> tmcasesI)
 
 instance LocallyNameless Substitution [(PrdCns, FreeVarName)] Command where
   openRec  = commandOpeningRec

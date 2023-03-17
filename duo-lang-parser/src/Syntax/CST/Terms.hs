@@ -51,16 +51,16 @@ instance HasLoc Pattern where
 --------------------------------------------------------------------------------------------
 
 data TermCase  = MkTermCase
-  { tmcase_loc  :: Loc
-  , tmcase_pat  :: Pattern
-  , tmcase_term :: Term
+  { loc  :: Loc
+  , pat  :: Pattern
+  , term :: Term
   }
 
 deriving instance Show TermCase
 deriving instance Eq TermCase
 
 instance HasLoc TermCase where
-  getLoc tc = tc.tmcase_loc
+  getLoc tc = tc.loc
 
 --------------------------------------------------------------------------------------------
 -- Terms

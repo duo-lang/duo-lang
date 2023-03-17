@@ -60,9 +60,9 @@ instance PrettyAnn (RST.TermCase pc) where
 
 instance PrettyAnn CST.TermCase where
   prettyAnn tmcase =
-      prettyAnn tmcase.tmcase_pat <+>
+      prettyAnn tmcase.pat <+>
       annSymbol "=>" <+>
-      prettyAnn tmcase.tmcase_term
+      prettyAnn tmcase.term
 
 instance PrettyAnn (RST.TermCaseI pc) where
   prettyAnn termcasei = prettyAnn (runUnresolveM (unresolve termcasei))

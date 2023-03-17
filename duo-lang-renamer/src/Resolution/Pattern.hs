@@ -27,12 +27,12 @@ import Data.Either (isRight, fromLeft, fromRight)
 findAtMostOneRight :: HasLoc b => [Either a b] -> ResolverM (Either [a] ([a],b,[a]))
 findAtMostOneRight args = case break isRight args of
   (pats, []) -> pure $ Left (fromLeft undefined <$> pats)
-  (left_pats, (starpat: right_pats)) ->
+  (left_pats, starpat: right_pats) ->
     case break isRight right_pats of
       (right_pats, []) -> pure $ Right (fromLeft undefined <$> left_pats,fromRight undefined starpat,fromLeft undefined <$> right_pats)
       (_, _:_) -> throwError (UnknownResolutionError (getLoc (fromRight undefined starpat)) "Found more than one star in pattern")
-      
-    
+
+
 
 -- | Annotate every part of the pattern with information on whether it stands for
 -- a producer or consumer.
