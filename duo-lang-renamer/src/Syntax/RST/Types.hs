@@ -136,7 +136,7 @@ data Typ (pol     :: Polarity) where
   TyCodataRefined :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName -> [XtorSig (FlipPol pol)] -> Typ pol
   -- | Nominal types with arguments to type parameters (contravariant, covariant)
   TyNominal       :: Loc -> PolarityRep pol -> PolyKind -> RnTypeName  -> Typ pol
-  TyApp           :: Loc -> PolarityRep pol -> Typ pol  -> NonEmpty (VariantType pol) -> Typ pol
+  TyApp           :: Loc -> PolarityRep pol -> Typ pol  -> RnTypeName -> NonEmpty (VariantType pol) -> Typ pol
   -- | Type synonym
   TySyn           :: Loc -> PolarityRep pol -> RnTypeName -> Typ pol -> Typ pol
   -- | Lattice types
@@ -167,10 +167,10 @@ instance HasLoc (Typ pol) where
   getLoc (TyRecVar loc _ _)                = loc
   getLoc (TyData loc _ _)                  = loc
   getLoc (TyCodata loc _ _)                = loc
-  getLoc (TyDataRefined loc _ _ _ _)     = loc
-  getLoc (TyCodataRefined loc _ _ _ _)   = loc
+  getLoc (TyDataRefined loc _ _ _ _)       = loc
+  getLoc (TyCodataRefined loc _ _ _ _)     = loc
   getLoc (TyNominal loc _ _ _)             = loc
-  getLoc (TyApp loc _ _ _)                 = loc
+  getLoc (TyApp loc _ _ _ _)               = loc
   getLoc (TySyn loc _ _ _)                 = loc
   getLoc (TyBot loc)                       = loc
   getLoc (TyTop loc)                       = loc
@@ -200,10 +200,10 @@ getPolarity (TyUniVar _ rep  _)             = rep
 getPolarity (TyRecVar _ rep  _)             = rep
 getPolarity (TyData _ rep _)                = rep
 getPolarity (TyCodata _ rep _)              = rep
-getPolarity (TyDataRefined _ rep _ _ _)   = rep
-getPolarity (TyCodataRefined _ rep _ _ _) = rep
+getPolarity (TyDataRefined _ rep _ _ _)     = rep
+getPolarity (TyCodataRefined _ rep _ _ _)   = rep
 getPolarity (TyNominal _ rep  _ _)          = rep
-getPolarity (TyApp _ rep _ _)               = rep
+getPolarity (TyApp _ rep _ _ _)             = rep
 getPolarity (TySyn _ rep _ _)               = rep
 getPolarity TyTop {}                        = NegRep
 getPolarity TyBot {}                        = PosRep
@@ -243,7 +243,7 @@ instance ReplaceNominal (Typ pol) where
   replaceNominal p n t (TyNominal loc rep pk t')         = if t == t'
                                                            then case rep of { PosRep -> p; NegRep -> n }
                                                            else TyNominal loc rep pk t' 
-  replaceNominal p n t (TyApp loc rep ty args)           = TyApp loc rep (replaceNominal p n t ty) (replaceNominal p n t <$> args)
+  replaceNominal p n t (TyApp loc rep ty tyn args)       = TyApp loc rep (replaceNominal p n t ty) tyn (replaceNominal p n t <$> args)
   replaceNominal p n t (TySyn loc rep tn ty)             = TySyn loc rep tn (replaceNominal p n t ty)
   replaceNominal _ _ _ ty@TyTop {}                       = ty
   replaceNominal _ _ _ ty@TyBot {}                       = ty
@@ -310,7 +310,7 @@ instance FreeTVars (Typ pol) where
   freeTVars (TyInter _ ty ty')                = S.union (freeTVars ty) (freeTVars ty')
   freeTVars (TyRec _ _ _ t)                   = freeTVars t
   freeTVars TyNominal{}                       = S.empty 
-  freeTVars (TyApp _ _ ty args)               = S.union (freeTVars ty) (foldr S.union S.empty  (freeTVars <$> args))
+  freeTVars (TyApp _ _ ty _ args)             = S.union (freeTVars ty) (foldr S.union S.empty  (freeTVars <$> args))
   freeTVars (TySyn _ _ _ ty)                  = freeTVars ty
   freeTVars (TyData _ _ xtors)                = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ xtors)              = S.unions (freeTVars <$> xtors)
@@ -340,34 +340,3 @@ instance FreeTVars (XtorSig pol) where
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
 generalize ty = TypeScheme defaultLoc (zip (S.toList $ freeTVars ty) (repeat Nothing)) ty
-
--- used to get typename of application
-getTypeNames :: Typ pol -> [RnTypeName]
-getTypeNames TySkolemVar{} = []
-getTypeNames TyUniVar{} = []
-getTypeNames TyRecVar{} = []  
-getTypeNames TyData{} = []
-getTypeNames TyCodata{} = []
-getTypeNames (TyDataRefined _ _ _ tyn _) = [tyn]
-getTypeNames (TyCodataRefined _ _ _ tyn _) = [tyn]
-getTypeNames (TyNominal _ _ _ tyn) = [tyn]
-getTypeNames (TyApp _ _ ty _) = getTypeNames ty
-getTypeNames (TySyn _ _ tyn _) = [tyn]
-getTypeNames TyBot{} = []
-getTypeNames TyTop{} = []
-getTypeNames (TyUnion _ ty1 ty2) = getTypeNames ty1 ++ getTypeNames ty2
-getTypeNames (TyInter _ ty1 ty2) = getTypeNames ty1 ++ getTypeNames ty2
-getTypeNames (TyRec _ _ _ ty) = getTypeNames ty
-getTypeNames TyI64{} = []
-getTypeNames TyF64{} = []
-getTypeNames TyString{} = []
-getTypeNames TyChar{} = [] 
-getTypeNames (TyFlipPol _ ty) = getTypeNames ty
-getTypeNames (TyKindAnnot _ ty) = getTypeNames ty
-
-
-
-
-
-
-

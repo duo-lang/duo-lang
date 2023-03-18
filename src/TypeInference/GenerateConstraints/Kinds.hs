@@ -251,7 +251,7 @@ annotTy (RST.TyCodataRefined loc pol pknd tyn xtors) = do
     let xtors' = (case pol of RST.PosRep -> snd; RST.NegRep -> fst) decl.data_xtors
     return $ TST.TyCodataRefined loc pol pknd tyn xtors'
 
-annotTy (RST.TyApp loc pol ty args) = do 
+annotTy (RST.TyApp loc pol ty tyn args) = do 
   ty' <- annotTy ty 
   args' <- mapM annotVarTy args
   let pk = TST.getKind ty'
@@ -266,7 +266,7 @@ annotTy (RST.TyApp loc pol ty args) = do
         let mksChecked = zipWith (curry checkMk) declMks argMks
         let varsChecked  = zipWith (curry checkVariance) declVars (NE.toList args')
         if all (==True) mksChecked && all (==True) varsChecked then
-          return $ TST.TyApp loc pol eo ty' args'
+          return $ TST.TyApp loc pol eo ty' tyn args'
         else 
           throwOtherError loc ["Applied Argument Kinds " <> ppPrint args' <> " don't match kinds of declaration " <> ppPrint (MkPolyKind kndArgs eo)]
     (MkPknd (KindVar _)) -> throwOtherError loc ["Can't have a kind variable in declaration"]
@@ -541,12 +541,12 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     mapM_ (checkXtorKind loc (Just tyn)) xtors'
     return (TST.TyCodataRefined loc pol pknd tyn xtors')
 
-  annotateKind (RST.TyApp loc pol ty args) = do 
+  annotateKind (RST.TyApp loc pol ty tyn args) = do 
     ty' <- annotateKind ty 
     args' <- mapM annotateKind args
     let pk = TST.getKind ty' 
     eo <- checkVariantTypes loc pk args'
-    return $ TST.TyApp loc pol eo ty' args'
+    return $ TST.TyApp loc pol eo ty' tyn args'
     
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
     return $ TST.TyNominal loc pol polyknd tyn

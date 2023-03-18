@@ -12,7 +12,7 @@ codata Fun : (-a : CBV, +b : CBV) -> CBV {
 
 type operator -> rightassoc at 0 := Fun;
 
-def rec prd tail : forall a. <List | r | Nil, Cons(a,r)>(a) -> <List | r | Nil, Cons(a,r)>(a) := 
+def rec prd tail : forall a. <List | r | Nil, Cons(a,r(a))>(a) -> <List | r | Nil, Cons(a,r(a))>(a) := 
     \xs => case xs of {
         Nil => Nil,
         Cons(z,zs) => zs

@@ -62,7 +62,7 @@ checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn xtorSigs
                       CST.Data   -> Covariant
                       CST.Codata -> Contravariant
   mapM_ (checkVarianceXtor loc var' polyKind) xtorSigs
-checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) tys) = do
+checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) _ tys) = do
 
   NominalResult _ _ _ polyKind' <- lookupTypeConstructor loc tyName
   go ((\(v,_,_) -> v) <$> polyKind'.kindArgs) (NE.toList tys)
@@ -79,8 +79,8 @@ checkVarianceTyp loc _ _ (CST.TyNominal _loc' tyName) = do
   case polyKnd'.kindArgs of
     [] -> return ()
     _ -> throwError (UnknownResolutionError loc ("Type Constructor " <> T.pack (show tyName) <> " is applied to too few arguments"))
-checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyParens _ ty) args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty args)
-checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyKindAnnot _ ty) args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty args)
+checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyParens _ ty) tyn args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty tyn args)
+checkVarianceTyp loc var polyknd (CST.TyApp loc' (CST.TyKindAnnot _ ty) tyn args) = checkVarianceTyp loc var polyknd (CST.TyApp loc' ty tyn args)
 checkVarianceTyp loc _ _ CST.TyApp{} =
   throwError (UnknownResolutionError loc "Types can only be applied to nominal types")
 checkVarianceTyp loc var polyKind (CST.TyRec _loc' _tVar ty) =
