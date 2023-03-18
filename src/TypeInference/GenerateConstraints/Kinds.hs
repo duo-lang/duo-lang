@@ -85,8 +85,8 @@ checkVariance (Covariant, TST.CovariantType _) = True
 checkVariance (Contravariant, TST.ContravariantType _) = True 
 checkVariance _ = False 
 
-checkVariantTypes :: Loc -> AnyKind -> NonEmpty (TST.VariantType pol) -> GenM EvaluationOrder
-checkVariantTypes loc (MkPknd (MkPolyKind kndArgs eo)) args = 
+checkVariantTypes :: Loc -> PolyKind -> NonEmpty (TST.VariantType pol) -> GenM EvaluationOrder
+checkVariantTypes loc (MkPolyKind kndArgs eo) args = 
   if length kndArgs /= length args then 
     throwOtherError loc ["Number of Type Arguments does not match declaration"]
   else do
@@ -101,8 +101,7 @@ checkVariantTypes loc (MkPknd (MkPolyKind kndArgs eo)) args =
       mapM_ (\(x,y) -> addConstraint (KindEq TypeArgKindConstraint y (monoToAnyKind x))) kindEqs
       return eo
     else throwOtherError loc ["Variances of applied types don't match"]
-checkVariantTypes loc (MkPknd (KindVar _)) _ = throwOtherError loc ["Polykind of application unclear"]
-checkVariantTypes loc mk _ = throwOtherError loc ["Types can't be applied to type with kind " <> ppPrint mk]
+checkVariantTypes loc (KindVar _) _ = throwOtherError loc ["Polykind of application unclear"]
 
 newKVar :: GenM KVar
 newKVar = do
@@ -543,9 +542,10 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
 
   annotateKind (RST.TyApp loc pol ty tyn args) = do 
     ty' <- annotateKind ty 
+    decl <- lookupTypeName loc tyn
     args' <- mapM annotateKind args
-    let pk = TST.getKind ty' 
-    eo <- checkVariantTypes loc pk args'
+    eo <- checkVariantTypes loc decl.data_kind args'
+    addConstraint $ KindEq KindConstraint (MkPknd decl.data_kind) (TST.getKind ty')
     return $ TST.TyApp loc pol eo ty' tyn args'
     
   annotateKind (RST.TyNominal loc pol polyknd tyn) = do 
