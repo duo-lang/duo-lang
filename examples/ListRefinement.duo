@@ -17,35 +17,35 @@ def prd z := Cons(S(S(Z)), Nil);
 
 
 --  Computes the length of a list.
-def rec prd length :=
+def rec prd length : forall a. <List | r | Nil, Cons(a,r) >(a) -> Nat:=
     \xs => case xs of {
         Nil => Z,
         Cons(_, xs) => S(length xs)
     };
 
 --  Append two lists together.
-def rec prd append :=
+def rec prd append : forall a. <List | r | Nil, Cons(a,r) >(a) -> <List | r | Nil, Cons(a,r)>(a) -> <List | r | Nil, Cons(a,r) >(a) :=
     \xs ys => case xs of {
         Nil => ys,
         Cons(z, zs) => Cons(z, append zs ys)
     };
 
 --  Reverse order of a list.
-def rec prd reverse :=
+def rec prd reverse : forall a. <List | r | Nil, Cons(a,r) >(a) -> <List | r | Nil, Cons(a,r)>(a):=
     \xs => case xs of {
         Nil => Nil,
         Cons(y, ys) => append (reverse ys) Cons(y, Nil)
     };
 
 --  Maps a function over all elements of a list.
-def rec prd map :=
+def rec prd map := --: forall a b. (a->b) -> <List | r | Nil, Cons(a,r)>(a) -> <List | r | Nil, Cons(b,r)>(b) :=
     \f xs => case xs of {
         Nil => Nil,
         Cons(y, ys) => Cons(f y, map f ys)
     };
 
 --  Filters all predicates satisfying a given predicate.
-def rec prd filter  :=
+def rec prd filter : forall a. (a->Bool) -> <List | r | Nil, Cons(a,r)>(a) -> <List | r | Nil, Cons(a,r)>(a) :=
     \f xs => case xs of {
         Nil => Nil,
         Cons(y, ys) => case (f y) of {
@@ -55,14 +55,14 @@ def rec prd filter  :=
     };
 
 --  Right fold over a list.
-def rec prd foldr :=
+def rec prd foldr : forall a b. (a->b->b) -> b -> <List| r| Nil, Cons(a,r)>(a) -> b :=
     \f init xs => case xs of {
         Nil => init,
         Cons(y, ys) => f y (foldr f init ys)
     };
 
 --  Left fold over a list.
-def rec prd foldl :=
+def rec prd foldl := --: forall a b. (a->b->b) -> b -> <List | r | Nil, Cons(a,r)>(a) -> b :=
     \f acc xs => case xs of {
         Nil => acc,
         Cons(y, ys) => foldl f (f acc y) ys

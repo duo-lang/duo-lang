@@ -1,0 +1,25 @@
+module Bug;
+
+refinement data List : (+a : CBV) -> CBV {
+    Nil,
+    Cons(a, List(a))
+};
+
+-- | The function type
+codata Fun : (-a : CBV, +b : CBV) -> CBV {
+    Ap(a,return b)
+};
+
+type operator -> rightassoc at 0 := Fun;
+
+def rec prd tail : forall a. <List | r | Nil, Cons(a,r)>(a) -> <List | r | Nil, Cons(a,r)>(a) := 
+    \xs => case xs of {
+        Nil => Nil,
+        Cons(z,zs) => zs
+        };
+--  Append two lists together.
+--def rec prd append : forall a. <List | r | Nil, Cons(a,r) >(a) -> <List | r | Nil, Cons(a,r)>(a) -> <List | r | Nil, Cons(a,r) >(a) :=
+--    \xs ys => case xs of {
+--        Nil => ys,
+--        Cons(z, zs) => Cons(z, append zs ys)
+--    };
