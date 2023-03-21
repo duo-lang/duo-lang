@@ -114,11 +114,11 @@ xtorToHoverMap loc pc ty ns =  mkHoverMap loc msg
   where
     msg :: Text
     msg = case pc of
-      PrdRep -> T.unlines [ "#### " <> ppPrint (show ns) <> " constructor"
+      PrdRep -> T.unlines [ "#### " <> ppPrint ns <> " constructor"
                           , "- **Right-Intro**"
                           , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
-      CnsRep -> T.unlines [ "#### " <> ppPrint (show ns) <> " destructor"
+      CnsRep -> T.unlines [ "#### " <> ppPrint ns <> " destructor"
                           , "- **Left-Intro**"
                           , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
@@ -128,11 +128,11 @@ xcaseToHoverMap loc pc ty ns = mkHoverMap loc msg
   where
     msg :: Text
     msg = case pc of
-      PrdRep -> T.unlines [ "#### " <> ppPrint (show ns) <> " cocase"
+      PrdRep -> T.unlines [ "#### " <> ppPrint ns <> " cocase"
                           , "- **Right-Intro**"
                           , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
-      CnsRep -> T.unlines [ "#### " <> ppPrint (show ns) <> " case"
+      CnsRep -> T.unlines [ "#### " <> ppPrint ns <> " case"
                           , "- **Left-Intro**"
                           , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
@@ -154,7 +154,7 @@ dtorToHoverMap :: Loc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 dtorToHoverMap loc ty ns = mkHoverMap loc msg
   where
     msg :: Text
-    msg = T.unlines [ "#### " <> ppPrint (show ns) <> " destructor application"
+    msg = T.unlines [ "#### " <> ppPrint ns <> " destructor application"
                     , "- **Right-Elim**"
                     , "- Type: `" <> ppPrint ty <> ":"<> ppPrint (TST.getKind ty) <> "`"
                     ]
@@ -173,7 +173,7 @@ caseToHoverMap :: Loc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 caseToHoverMap loc ty ns = mkHoverMap loc msg
   where
     msg :: Text
-    msg = T.unlines [ "#### " <> ppPrint (show ns) <> " case-of"
+    msg = T.unlines [ "#### " <> ppPrint ns <> " case-of"
                     , "- **Right-Elim**"
                     , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                     ]
@@ -182,7 +182,7 @@ cocaseToHoverMap :: Loc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 cocaseToHoverMap loc ty ns = mkHoverMap loc msg
   where
     msg :: Text
-    msg = T.unlines [ "#### " <> ppPrint (show ns) <> " cocase"
+    msg = T.unlines [ "#### " <> ppPrint ns <> " cocase"
                     , "- **Right-Intro**"
                     , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                     ]
