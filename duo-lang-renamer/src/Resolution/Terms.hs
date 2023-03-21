@@ -311,10 +311,10 @@ casesToNS (tmcase:_) =
 
 -- | Lower a natural number literal.
 resolveNatLit :: Loc -> CST.NominalStructural -> Int -> ResolverM (RST.Term Prd)
-resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep (RST.cstTorstNS ns Nothing) (MkXtorName "Z") (RST.MkSubstitution [])
+resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep (RST.cstToRstNS ns Nothing) (MkXtorName "Z") (RST.MkSubstitution [])
 resolveNatLit loc ns n = do
   n' <- resolveNatLit loc ns (n-1)
-  pure $ RST.Xtor loc PrdRep (RST.cstTorstNS ns Nothing) (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n'])
+  pure $ RST.Xtor loc PrdRep (RST.cstToRstNS ns Nothing) (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n'])
 
 -- | Lower an application.
 resolveApp :: PrdCnsRep pc -> Loc -> CST.Term -> CST.Term -> ResolverM (RST.Term pc)

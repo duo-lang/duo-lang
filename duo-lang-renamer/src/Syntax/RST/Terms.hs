@@ -19,8 +19,8 @@ module Syntax.RST.Terms
   , NominalStructural(..)
    -- Functions
   ,overlap
-  ,cstTorstNS
-  ,rstTocstNS) where
+  ,cstToRstNS
+  ,rstToCstNS) where
 
 import Data.List (elemIndex, tails)
 import Data.Text (Text, pack)
@@ -277,15 +277,15 @@ data NominalStructural where
   Refinement :: NominalStructural
   deriving (Eq, Ord, Show)
 
-cstTorstNS :: CST.NominalStructural -> Maybe TypeName -> NominalStructural
-cstTorstNS CST.Nominal tn = Nominal tn
-cstTorstNS CST.Structural _= Structural
-cstTorstNS CST.Refinement _ = Refinement
+cstToRstNS :: CST.NominalStructural -> Maybe TypeName -> NominalStructural
+cstToRstNS CST.Nominal tn = Nominal tn
+cstToRstNS CST.Structural _= Structural
+cstToRstNS CST.Refinement _ = Refinement
 
-rstTocstNS :: NominalStructural -> CST.NominalStructural
-rstTocstNS (Nominal _)  = CST.Nominal
-rstTocstNS Structural = CST.Structural
-rstTocstNS Refinement = CST.Refinement
+rstToCstNS :: NominalStructural -> CST.NominalStructural
+rstToCstNS (Nominal _)  = CST.Nominal
+rstToCstNS Structural = CST.Structural
+rstToCstNS Refinement = CST.Refinement
 
 
 ---------------------------------------------------------------------------------

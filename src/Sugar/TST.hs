@@ -205,7 +205,7 @@ extractCmdCase CnsRep [MkCmdCase _ (XtorPat _ (MkXtorName "CoAp") [(Cns,Just fv)
 extractCmdCase _ _ = Nothing
 
 pattern Lambda  :: Loc ->  PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> FreeVarName -> Term pc  -> Term pc
-pattern Lambda loc pc ty fv tm <- XCase loc MatchAnnotLambda pc ty (RST.Nominal Nothing) (extractCmdCase pc -> Just (fv,tm))
+pattern Lambda loc pc ty fv tm <- XCase loc MatchAnnotLambda pc ty (RST.Nominal _) (extractCmdCase pc -> Just (fv,tm))
 
 pattern RawCase ::  Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> RST.NominalStructural -> [CmdCase] -> Term pc
 pattern RawCase loc pc ty ns cases = XCase loc MatchAnnotOrig pc ty ns cases
