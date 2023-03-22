@@ -272,14 +272,16 @@ data InstanceCase = MkInstanceCase
 deriving instance Show InstanceCase
 
 data NominalStructural where
-  Nominal :: Maybe TypeName -> NominalStructural
+  Nominal :: TypeName -> NominalStructural
   Structural :: NominalStructural
   Refinement :: NominalStructural
   deriving (Eq, Ord, Show)
 
-cstToRstNS :: CST.NominalStructural -> Maybe TypeName -> NominalStructural
+
+
+cstToRstNS :: CST.NominalStructural -> TypeName -> NominalStructural
 cstToRstNS CST.Nominal tn = Nominal tn
-cstToRstNS CST.Structural _= Structural
+cstToRstNS CST.Structural _ = Structural
 cstToRstNS CST.Refinement _ = Refinement
 
 rstToCstNS :: NominalStructural -> CST.NominalStructural

@@ -139,8 +139,8 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     else do
       let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep decl.data_kind.returnKind (nomTy rep) (fst:|rst)
       case rep of
-        PrdRep -> return (TST.Xtor loc annot rep (ty PosRep) (RST.Nominal Nothing) xt substInferred)
-        CnsRep -> return (TST.Xtor loc annot rep (ty NegRep) (RST.Nominal Nothing) xt substInferred)
+        PrdRep -> return (TST.Xtor loc annot rep (ty PosRep) (RST.Nominal decl.data_name.rnTnName) xt substInferred)
+        CnsRep -> return (TST.Xtor loc annot rep (ty NegRep) (RST.Nominal decl.data_name.rnTnName) xt substInferred)
   --
   -- Refinement Xtors
   --
@@ -234,8 +234,8 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     else do 
       let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep decl.data_kind.returnKind (nomTy rep) (fst:|rst)
       case rep of
-        PrdRep -> return $ TST.XCase loc annot rep (ty PosRep) (RST.Nominal Nothing) (fst <$> inferredCases)
-        CnsRep -> return $ TST.XCase loc annot rep (ty NegRep) (RST.Nominal Nothing) (fst <$> inferredCases)
+        PrdRep -> return $ TST.XCase loc annot rep (ty PosRep) (RST.Nominal decl.data_name.rnTnName) (fst <$> inferredCases)
+        CnsRep -> return $ TST.XCase loc annot rep (ty NegRep) (RST.Nominal decl.data_name.rnTnName) (fst <$> inferredCases)
   --
   -- Refinement pattern and copattern matches
   --

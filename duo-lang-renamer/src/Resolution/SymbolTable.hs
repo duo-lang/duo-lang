@@ -160,7 +160,7 @@ createSymbolTable' fp mn  (DataDecl decl) st = do
                     Just knd -> knd
   let ns = case decl.isRefined of
                Refined -> RST.Refinement
-               NotRefined -> RST.Nominal Nothing
+               NotRefined -> RST.Nominal decl.name 
   let xtors = M.fromList [(sig.name, XtorNameResult decl.data_codata ns (linearContextToArity sig.args))| sig <- decl.xtors]
   let rnTypeName = MkRnTypeName { rnTnLoc = decl.loc
                                 , rnTnDoc = decl.doc

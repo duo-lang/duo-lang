@@ -311,21 +311,21 @@ casesToNS (tmcase:_) =
 
 -- | Lower a natural number literal.
 resolveNatLit :: Loc -> CST.NominalStructural -> Int -> ResolverM (RST.Term Prd)
-resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep (RST.cstToRstNS ns Nothing) (MkXtorName "Z") (RST.MkSubstitution [])
+resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep (RST.cstToRstNS ns (MkTypeName "Nat")) (MkXtorName "Z") (RST.MkSubstitution [])
 resolveNatLit loc ns n = do
   n' <- resolveNatLit loc ns (n-1)
-  pure $ RST.Xtor loc PrdRep (RST.cstToRstNS ns Nothing) (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n'])
+  pure $ RST.Xtor loc PrdRep (RST.cstToRstNS ns (MkTypeName "Nat")) (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n'])
 
 -- | Lower an application.
 resolveApp :: PrdCnsRep pc -> Loc -> CST.Term -> CST.Term -> ResolverM (RST.Term pc)
 resolveApp PrdRep loc fun arg = do
   fun' <- resolveTerm PrdRep fun
   arg' <- resolveTerm PrdRep arg
-  pure $ RST.Dtor loc PrdRep (RST.Nominal Nothing) (MkXtorName "Ap") fun' (RST.MkSubstitutionI ([RST.PrdTerm arg'],PrdRep,[]))
+  pure $ RST.Dtor loc PrdRep (RST.Nominal (MkTypeName "Fun")) (MkXtorName "Ap") fun' (RST.MkSubstitutionI ([RST.PrdTerm arg'],PrdRep,[]))
 resolveApp CnsRep loc fun arg = do
   fun' <- resolveTerm CnsRep fun
   arg' <- resolveTerm CnsRep arg
-  pure $ RST.Semi loc CnsRep (RST.Nominal Nothing) (MkXtorName "CoAp")  (RST.MkSubstitutionI ([RST.CnsTerm arg'],CnsRep,[])) fun'
+  pure $ RST.Semi loc CnsRep (RST.Nominal (MkTypeName "CoFun")) (MkXtorName "CoAp")  (RST.MkSubstitutionI ([RST.CnsTerm arg'],CnsRep,[])) fun'
 
 isStarT :: CST.TermOrStar -> Bool
 isStarT CST.ToSStar  = True

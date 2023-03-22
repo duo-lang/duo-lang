@@ -65,8 +65,8 @@ natType :: TST.Typ 'Pos
 natType = TST.TyNominal defaultLoc PosRep (MkPolyKind [] CBV) peanoNm
 
 convertInt :: Int -> Term Prd
-convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType (RST.Nominal Nothing) (MkXtorName "Z") $ MkSubstitution []
-convertInt n = Xtor defaultLoc XtorAnnotOrig PrdRep natType (RST.Nominal Nothing) (MkXtorName "S") $ MkSubstitution [PrdTerm $ convertInt (n-1)]
+convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType (RST.Nominal (MkTypeName "Nat")) (MkXtorName "Z") $ MkSubstitution []
+convertInt n = Xtor defaultLoc XtorAnnotOrig PrdRep natType (RST.Nominal (MkTypeName "Nat")) (MkXtorName "S") $ MkSubstitution [PrdTerm $ convertInt (n-1)]
 
 
 readInt :: IO (Term Prd)
