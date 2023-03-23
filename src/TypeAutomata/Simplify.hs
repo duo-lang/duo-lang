@@ -22,7 +22,7 @@ import TypeAutomata.Lint ( lint )
 -- Printing TypeAutomata
 ------------------------------------------------------------------------------
 
-printGraph :: MonadIO m => Bool -> Bool -> String -> TypeAut' EdgeLabelNormal f pol -> m ()
+printGraph :: MonadIO m => Bool -> Bool -> String -> TypeAut' EdgeLabel f pol -> m ()
 printGraph False _ _ _ = pure ()
 printGraph True showId fileName aut = liftIO $ do
   let graphDir = "graphs"

@@ -116,14 +116,14 @@ nodeToTVars rep i = do
   knd <- getNodeKindPk i
   return (TySkolemVar defaultLoc rep knd <$> S.toList (fromJust $ M.lookup i tvMap))
 
-nodeToOuts :: Node -> AutToTypeM [(EdgeLabelNormal, Node)]
+nodeToOuts :: Node -> AutToTypeM [(EdgeLabel, Node)]
 nodeToOuts i = do
   gr <- asks (\x -> x.graph)
   let (_,_,_,outs) = context gr i
   return outs
 
 -- | Compute the Nodes which have to be turned into the argument types for one constructor or destructor.
-computeArgNodes :: [(EdgeLabelNormal, Node)] -- ^ All the outgoing edges of a node.
+computeArgNodes :: [(EdgeLabel, Node)] -- ^ All the outgoing edges of a node.
                 -> CST.DataCodata -- ^ Whether we want to construct a constructor or destructor
                 -> XtorLabel -- ^ The Label of the constructor / destructor
                 -> [(PrdCns,[Node])] -- ^ The nodes which contain the arguments of the constructor / destructor

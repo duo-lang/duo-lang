@@ -1,7 +1,7 @@
 module TypeAutomata.Intersection (emptyIntersection,intersectIsEmpty,intersectAut) where
 
 
-import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), NodeLabel (..), EdgeLabelNormal, TypeAut)
+import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), NodeLabel (..), EdgeLabel, TypeAut)
 import Control.Monad.Identity (Identity(..))
 import Data.Graph.Inductive.Graph (Node, Graph (..), lsuc, lab)
 import qualified Data.Map as M
@@ -49,8 +49,8 @@ data ExploreState
 type ExploreM = StateT ExploreState (Either (NonEmpty Error))
 
 -- | Exhaustively explore the intersection of two graphs and return true if it is empty.
-explore :: Graph gr => gr NodeLabel EdgeLabelNormal
-                    -> gr NodeLabel EdgeLabelNormal
+explore :: Graph gr => gr NodeLabel EdgeLabel
+                    -> gr NodeLabel EdgeLabel
                     -> ExploreM Bool
 explore gr1 gr2 = do
   todos <- gets (\x -> x.todos)
@@ -120,7 +120,7 @@ data IntersectS
        -- ^ map pairs of nodes from original automata to nodes in result automaton
        , is_nodelabels :: Map Node NodeLabel
        -- ^ labels of nodes in result automaton
-       , is_edges :: Map Node [(Node, Node, EdgeLabelNormal)]
+       , is_edges :: Map Node [(Node, Node, EdgeLabel)]
        -- ^ edges going from a result node to pairs of original nodes
        , is_counter :: Node
        -- ^ fresh node ID for result automaton

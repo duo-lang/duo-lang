@@ -225,8 +225,6 @@ data EdgeLabel
   | TypeArgEdge RnTypeName Variance Int
   deriving (Eq, Show, Ord)
 
-type EdgeLabelNormal  = EdgeLabel
-
 --------------------------------------------------------------------------------
 -- Flow edges
 --------------------------------------------------------------------------------
@@ -241,9 +239,9 @@ data TypeAutCore a = TypeAutCore
   { ta_gr :: Gr NodeLabel a
   , ta_flowEdges :: [FlowEdge]
   }
-deriving instance Show (TypeAutCore EdgeLabelNormal)
+deriving instance Show (TypeAutCore EdgeLabel)
 
-type TypeGr = Gr NodeLabel EdgeLabelNormal
+type TypeGr = Gr NodeLabel EdgeLabel
 
 data TypeAut' a f (pol :: Polarity) = TypeAut
   { ta_pol :: PolarityRep pol
@@ -253,8 +251,8 @@ data TypeAut' a f (pol :: Polarity) = TypeAut
 deriving instance Show (TypeAut pol)
 deriving instance Show (TypeAutDet pol)
 
-type TypeAut pol       = TypeAut' EdgeLabelNormal  [] pol
-type TypeAutDet pol    = TypeAut' EdgeLabelNormal  Identity pol
+type TypeAut pol       = TypeAut' EdgeLabel  [] pol
+type TypeAutDet pol    = TypeAut' EdgeLabel  Identity pol
 
 --------------------------------------------------------------------------------
 -- Helper functions
@@ -286,7 +284,7 @@ mapTypeAut f aut = TypeAut
 removeRedundantEdges :: TypeGr -> TypeGr
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
-removeRedundantEdgesCore :: TypeAutCore EdgeLabelNormal -> TypeAutCore EdgeLabelNormal
+removeRedundantEdgesCore :: TypeAutCore EdgeLabel -> TypeAutCore EdgeLabel
 removeRedundantEdgesCore aut = aut { ta_gr = removeRedundantEdges aut.ta_gr }
 
 removeRedundantEdgesAut :: TypeAutDet pol -> TypeAutDet pol
