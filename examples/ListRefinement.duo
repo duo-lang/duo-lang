@@ -38,7 +38,7 @@ def rec prd reverse : forall a. <List | r | Nil, Cons(a,r) >(a) -> <List | r | N
     };
 
 --  Maps a function over all elements of a list.
-def rec prd map := --: forall a b. (a->b) -> <List | r | Nil, Cons(a,r)>(a) -> <List | r | Nil, Cons(b,r)>(b) :=
+def rec prd map : forall a b. (a->b) -> <List | r | Nil, Cons(a,r)>(a) -> <List | r | Nil, Cons(b,r)>(b) :=
     \f xs => case xs of {
         Nil => Nil,
         Cons(y, ys) => Cons(f y, map f ys)
@@ -71,19 +71,19 @@ def rec prd foldl := --: forall a b. (a->b->b) -> b -> <List | r | Nil, Cons(a,r
 -- Special folds
 
 --  Concat all elements of a list of lists.
-def rec prd concat : forall a. <List | r1 | Nil, Cons(a,r1) >(a) -> <List | r2 | Nil, Cons(a,r2) >(a) -> <List | r3 | Nil, Cons(a,r3) > (a) :=
+def rec prd concat := --: forall a. <List | r1 | Nil, Cons(a,r1) >(a) -> <List | r2 | Nil, Cons(a,r2) >(a) -> <List | r3 | Nil, Cons(a,r3) > (a) :=
     foldr append Nil;
 
 --  Map a function over all the elements of a container and concatenate the resulting lists.
-def rec prd concatMap : forall a b. (a -> <List | r1 | Nil, Cons(b,r1) >(b)) -> <List | r2 | Nil, Cons(a,r2) >(a) -> <List | r3 | Nil, Cons(b,r3) >(b) :=
+def rec prd concatMap := -- : forall a b. (a -> <List | r1 | Nil, Cons(b,r1) >(b)) -> <List | r2 | Nil, Cons(a,r2) >(a) -> <List | r3 | Nil, Cons(b,r3) >(b) :=
     \f xs => concat (map f xs);
 
 --  Verify predicate for all elements of a list.
-def rec prd all: forall a. (a -> Bool) -> <List | r | Nil, Cons(a,r) >(a) -> Bool  :=
+def rec prd all := --: forall a. (a -> Bool) -> <List | r | Nil, Cons(a,r) >(a) -> Bool  :=
     \p xs => (foldl and True) (map p xs);
 
 --  Verify predicate for at least one element of a list.
-def rec prd any : forall a. (a -> Bool) -> <List | r | Nil, Cons(a,r) >(a) -> Bool  :=
+def rec prd any := --: forall a. (a -> Bool) -> <List | r | Nil, Cons(a,r) >(a) -> Bool  :=
     \p xs => (foldl or False) (map p xs);
 
 --  Sum up list of natural numbers.
