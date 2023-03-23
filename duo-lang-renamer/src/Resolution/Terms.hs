@@ -59,7 +59,7 @@ data Cases where
 
 starPatternToPrdCns :: RST.StarPattern -> PrdCns
 starPatternToPrdCns (RST.PatStar _ pc) = case pc of Prd -> Cns; Cns -> Prd
-starPatternToPrdCns (RST.PatXtorStar _ _ _ _ ((_, sp,_))) = starPatternToPrdCns sp
+starPatternToPrdCns (RST.PatXtorStar _ _ _ _ (_, sp,_)) = starPatternToPrdCns sp
 
 isExplicitCase :: SomeIntermediateCase -> Bool
 isExplicitCase icase = isLeft icase.icase_pat
@@ -295,7 +295,6 @@ resolveCommand (CST.CoLambda loc _ _) =
   throwError (CmdExpected loc "Command expected, but found cofunction abstraction")
 
 
-
 casesToNS :: [CST.TermCase] -> ResolverM RST.NominalStructural
 casesToNS [] = pure RST.Structural
 casesToNS (tmcase:_) = 
@@ -303,11 +302,8 @@ casesToNS (tmcase:_) =
     CST.PatXtor _ name _ -> do
       (_, XtorNameResult _ ns _) <- lookupXtor tmcase.loc name
       pure ns
-    _ -> 
+    _ ->
       throwError (UnknownResolutionError defaultLoc "casesToNS called with invalid argument")
-
-
-  
 
 -- | Lower a natural number literal.
 resolveNatLit :: Loc -> CST.NominalStructural -> Int -> ResolverM (RST.Term Prd)

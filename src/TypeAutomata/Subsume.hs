@@ -13,7 +13,6 @@ import Syntax.RST.Types (PolarityRep(..), Polarity(..))
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton (typeToAut)
 import TypeAutomata.Determinize (determinize)
-import TypeAutomata.RemoveEpsilon ( removeEpsilonEdges )
 import TypeAutomata.RemoveAdmissible ( removeAdmissableFlowEdges )
 import TypeAutomata.Minimize (minimize)
 import TypeAutomata.Utils (typeAutEqual)
@@ -53,8 +52,8 @@ isSubtype aut1 aut2 = case (startPolarity aut1, startPolarity aut2) of
 
 subsume :: PolarityRep pol -> TypeScheme pol -> TypeScheme pol -> Either (NonEmpty Error) Bool
 subsume polrep ty1 ty2 = do
-  aut1 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty1
-  aut2 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty2
+  aut1 <- minimize . removeAdmissableFlowEdges . determinize <$> typeToAut ty1
+  aut2 <- minimize . removeAdmissableFlowEdges . determinize <$> typeToAut ty2
   case polrep of
     PosRep -> pure (isSubtype aut1 aut2)
     NegRep -> pure (isSubtype aut2 aut1)

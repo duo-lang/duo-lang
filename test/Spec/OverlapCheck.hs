@@ -1,4 +1,4 @@
-module Spec.OverlapCheck where 
+module Spec.OverlapCheck where
 
 import Test.Hspec
 import Syntax.RST.Terms 
@@ -182,16 +182,16 @@ test8 = [Left $ PatXtor
 
 -- | Helper for readable display of Overlap objects, testing with printOverlap $ overlap test<X>
 printOverlap :: Overlap -> IO ()
-printOverlap (Just msg) = putStrLn $ unpack msg 
-printOverlap Nothing    = putStrLn $ "No Overlap found."
+printOverlap (Just msg) = putStrLn $ unpack msg
+printOverlap Nothing    = putStrLn "No Overlap found."
 
 spec :: Spec
-spec = do 
-  describe "Checking test1 in OverlapCheck.hs for Overlap." $ it "Found Overlap." ((overlap test1) `shouldSatisfy` isJust)
-  describe "Checking test2 in OverlapCheck.hs for Overlap." $ it "Found Overlap." ((overlap test2) `shouldSatisfy` isJust)
-  describe "Checking test3 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." ((overlap test3) `shouldSatisfy` isNothing)
-  describe "Checking test4 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." ((overlap test4) `shouldSatisfy` isNothing)
-  describe "Checking test5 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." ((overlap test5) `shouldSatisfy` isNothing)
-  describe "Checking test6 in OverlapCheck.hs for Overlap." $ it "Found Overlap." ((overlap test6) `shouldSatisfy` isJust)
-  describe "Checking test7 in OverlapCheck.hs for Overlap." $ it "Found Overlap." ((overlap test7) `shouldSatisfy` isJust)
-  describe "Checking test8 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." ((overlap test8) `shouldSatisfy` isNothing)
+spec = do
+  describe "Checking test1 in OverlapCheck.hs for Overlap." $ it "Found Overlap." (overlap test1 `shouldSatisfy` isJust)
+  describe "Checking test2 in OverlapCheck.hs for Overlap." $ it "Found Overlap." (overlap test2 `shouldSatisfy` isJust)
+  describe "Checking test3 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." (overlap test3 `shouldSatisfy` isNothing)
+  describe "Checking test4 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." (overlap test4 `shouldSatisfy` isNothing)
+  describe "Checking test5 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." (overlap test5 `shouldSatisfy` isNothing)
+  describe "Checking test6 in OverlapCheck.hs for Overlap." $ it "Found Overlap." (overlap test6 `shouldSatisfy` isJust)
+  describe "Checking test7 in OverlapCheck.hs for Overlap." $ it "Found Overlap." (overlap test7 `shouldSatisfy` isJust)
+  describe "Checking test8 in OverlapCheck.hs for Overlap." $ it "Found no Overlap." (overlap test8 `shouldSatisfy` isNothing)

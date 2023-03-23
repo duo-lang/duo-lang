@@ -13,7 +13,6 @@ import Syntax.TST.Types ( TypeScheme )
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton ( typeToAut )
 import TypeAutomata.FromAutomaton ( autToType )
-import TypeAutomata.RemoveEpsilon ( removeEpsilonEdges )
 import TypeAutomata.Determinize (determinize)
 import TypeAutomata.RemoveAdmissible ( removeAdmissableFlowEdges )
 import TypeAutomata.Minimize ( minimize )
@@ -23,7 +22,7 @@ import TypeAutomata.Lint ( lint )
 -- Printing TypeAutomata
 ------------------------------------------------------------------------------
 
-printGraph :: MonadIO m => Bool -> Bool -> String -> TypeAut' EdgeLabelNormal f pol -> m ()
+printGraph :: MonadIO m => Bool -> Bool -> String -> TypeAut' f pol -> m ()
 printGraph False _ _ _ = pure ()
 printGraph True showId fileName aut = liftIO $ do
   let graphDir = "graphs"
@@ -54,16 +53,13 @@ simplify tys print str = do
     -- Read typescheme into automaton
     typeAut <- liftEither $ typeToAut tys
     lint typeAut
-    -- Remove epsilon edges
-    let typeAutDet = removeEpsilonEdges typeAut
-    lint typeAutDet
-    printGraph print False ("0_typeAut" <> "_" <> str) typeAutDet
+    printGraph print False ("0_typeAut" <> "_" <> str) typeAut
     -- Determinize the automaton
-    let typeAutDet' = determinize typeAutDet
-    lint typeAutDet'
-    printGraph print False ("1_typeAutDet" <> "_"  <> str) typeAutDet'
+    let typeAutDet = determinize typeAut
+    lint typeAutDet
+    printGraph print False ("1_typeAutDet" <> "_"  <> str) typeAutDet
     -- Remove admissable flow edges
-    let typeAutDetAdms = removeAdmissableFlowEdges typeAutDet'
+    let typeAutDetAdms = removeAdmissableFlowEdges typeAutDet
     lint typeAutDetAdms
     printGraph print False ("2_typeAutDetAdms" <> "_"  <> str) typeAutDetAdms
     -- Minimize automaton

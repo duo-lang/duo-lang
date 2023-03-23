@@ -115,7 +115,7 @@ execAdmissable = first (fromMaybe (error "should not happen")) . flip runState A
 liftAM :: Maybe a -> AdmissableM a
 liftAM = AdmissableM . pure
 
-sucWith :: TypeGr -> Node -> EdgeLabelNormal -> AdmissableM Node
+sucWith :: TypeGr -> Node -> EdgeLabel -> AdmissableM Node
 sucWith gr i el = liftAM $ lookup el (map swap (lsuc gr i))
 
 modifyMemo :: (S.Set FlowEdge -> S.Set FlowEdge) -> AdmissableM ()
@@ -138,7 +138,7 @@ isBlacklisted fe = do
   b <- gets (\x -> x.blacklist)
   guard $ fe `S.member` b
 
-subtypeData :: TypeAutCore EdgeLabelNormal -> FlowEdge -> AdmissableM ()
+subtypeData :: TypeAutCore -> FlowEdge -> AdmissableM ()
 subtypeData aut (i,j) = do
   (MkNodeLabel Neg (Just dat1) _ _ _ _ _) <- liftAM $ lab aut.ta_gr i
   (MkNodeLabel Pos (Just dat2) _ _ _ _ _) <- liftAM $ lab aut.ta_gr j
@@ -153,7 +153,7 @@ subtypeData aut (i,j) = do
       m <- sucWith aut.ta_gr j el
       admissableM aut (m,n)
 
-subtypeCodata :: TypeAutCore EdgeLabelNormal -> FlowEdge -> AdmissableM ()
+subtypeCodata :: TypeAutCore -> FlowEdge -> AdmissableM ()
 subtypeCodata aut (i,j) = do
   (MkNodeLabel Neg _ (Just codat1) _ _ _ _) <- liftAM $ lab aut.ta_gr i
   (MkNodeLabel Pos _ (Just codat2) _ _ _ _) <- liftAM $ lab aut.ta_gr j
@@ -168,13 +168,13 @@ subtypeCodata aut (i,j) = do
       m <- sucWith aut.ta_gr j el
       admissableM aut (n,m)
 
-subtypeNominal :: TypeAutCore EdgeLabelNormal -> FlowEdge -> AdmissableM ()
+subtypeNominal :: TypeAutCore -> FlowEdge -> AdmissableM ()
 subtypeNominal aut (i,j) = do
   (MkNodeLabel Neg _ _ nominal1 _  _ _) <- liftAM $ lab aut.ta_gr i
   (MkNodeLabel Pos _ _ nominal2 _  _ _) <- liftAM $ lab aut.ta_gr j
   guard $ not . S.null $ S.intersection nominal1 nominal2
 
-admissableM :: TypeAutCore EdgeLabelNormal -> FlowEdge -> AdmissableM ()
+admissableM :: TypeAutCore -> FlowEdge -> AdmissableM ()
 admissableM aut@TypeAutCore{} e =
   isMemoised e <|>
   isBlacklisted e <|>

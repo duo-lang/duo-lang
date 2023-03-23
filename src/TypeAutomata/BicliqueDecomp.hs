@@ -10,7 +10,7 @@ import Data.Graph.Inductive.PatriciaTree ( Gr )
 import Data.List (intersect)
 import Data.Map (Map)
 import Data.Map qualified as M
-import Data.Maybe ( catMaybes )
+import Data.Maybe ( mapMaybe )
 import Data.Set (Set)
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -54,7 +54,7 @@ computeBicliqueDecomposition flgr = go flgr []
       go :: FlowGraph -> [Biclique] -> [Biclique]
       go flgr acc =
           let
-              bicliques :: [Biclique] = catMaybes $ computeBiclique flgr <$> nodes flgr
+              bicliques :: [Biclique] = mapMaybe (computeBiclique flgr) (nodes flgr)
           in
               case bicliques of
                   [] -> acc
