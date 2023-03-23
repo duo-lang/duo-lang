@@ -159,11 +159,9 @@ instance Eq PolyKind where
     eo1 == eo2 && getVariances args1 == getVariances args2 && getMks args1 == getMks args2
   _ == _ = False 
 
-type MaybeKindedSkolem = (SkolemTVar, Maybe PolyKind)
-
 data TypeScheme = TypeScheme
   { loc :: Loc
-  , vars :: [MaybeKindedSkolem]
+  , vars :: [(SkolemTVar, Maybe PolyKind)]
   , monotype :: Typ
   }
   deriving Show
