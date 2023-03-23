@@ -10,12 +10,11 @@ import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 
-import Syntax.CST.Names ( XtorName, SkolemTVar)
-import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..))
+import Syntax.CST.Names ( XtorName )
+import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..), Variance, PolyKind(..))
 import Syntax.RST.Types ( Polarity, PolarityRep(..))
 import Syntax.RST.Names ( RnTypeName )
 import Syntax.RST.Kinds
-import Syntax.CST.Kinds ( Variance, PolyKind(..))
 
 --------------------------------------------------------------------------------
 -- # Type Automata

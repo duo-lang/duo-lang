@@ -9,7 +9,7 @@ import Driver.Driver ( runCompilationModule )
 import Eval.Definition (EvalEnv)
 import Eval.Eval (eval)
 import Syntax.CST.Names
-import Syntax.CST.Kinds
+import Syntax.CST.Types
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Translate.Focusing (Focus(..) )

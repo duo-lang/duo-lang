@@ -1,11 +1,10 @@
 module Eval.Primitives where
 
 import Syntax.Core.Annot
-import Syntax.CST.Kinds
+import Syntax.CST.Types
 import Syntax.RST.Kinds
 import Syntax.TST.Terms
 import Syntax.RST.Terms (PrimitiveOp(..))
-import Syntax.CST.Types (PrdCns(..))
 
 import Eval.Definition
 import Errors (throwEvalError)

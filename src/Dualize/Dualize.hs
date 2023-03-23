@@ -5,7 +5,6 @@ import Data.Text (Text)
 import Data.Bifunctor ( Bifunctor(bimap) )
 import Data.Functor ( (<&>) )
 
-import Syntax.CST.Kinds
 import Syntax.CST.Names
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
@@ -173,10 +172,10 @@ dualMuAnnot MuAnnotCocaseOf = MuAnnotCaseOf
 -- Kinds
 ------------------------------------------------------------------------------
 
-dualEvaluationOrder :: EvaluationOrder -> EvaluationOrder 
+dualEvaluationOrder :: CST.EvaluationOrder -> CST.EvaluationOrder 
 dualEvaluationOrder eo = eo
 
-dualPolyKind :: PolyKind -> PolyKind 
+dualPolyKind :: CST.PolyKind -> CST.PolyKind 
 dualPolyKind pk = pk 
 
 dualAnyKind :: AnyKind -> AnyKind

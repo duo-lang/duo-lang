@@ -12,7 +12,7 @@ import Syntax.RST.Names
 import Syntax.RST.Kinds
 import Syntax.TST.Types qualified as TST
 import Syntax.TST.Types (getKind)
-import Syntax.CST.Kinds
+import Syntax.CST.Types
 import Syntax.CST.Names 
 import Pretty.Pretty
 import Pretty.Types()

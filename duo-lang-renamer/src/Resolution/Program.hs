@@ -24,7 +24,6 @@ import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Kinds
-import Syntax.CST.Kinds
 import Syntax.CST.Names
 import Loc (Loc, defaultLoc)
 
@@ -43,7 +42,7 @@ resolveXtors sigs = do
     negSigs <- resolveXTorSigs NegRep sigs
     pure (posSigs, negSigs)
 
-checkVarianceTyp :: Loc -> Variance -> PolyKind -> CST.Typ -> ResolverM ()
+checkVarianceTyp :: Loc -> CST.Variance -> CST.PolyKind -> CST.Typ -> ResolverM ()
 checkVarianceTyp _ var polyKind (CST.TySkolemVar loc tVar) =
   case lookupPolyKindVariance tVar polyKind of
     -- The following line does not work correctly if the data declaration contains recursive types in the arguments of an xtor.
@@ -56,20 +55,20 @@ checkVarianceTyp _ var polyKind (CST.TySkolemVar loc tVar) =
                  ))
 checkVarianceTyp loc var polyKind (CST.TyXData _loc' dataCodata  xtorSigs) = do
   let var' = var <> case dataCodata of
-                      CST.Data   -> Covariant
-                      CST.Codata -> Contravariant
+                      CST.Data   -> CST.Covariant
+                      CST.Codata -> CST.Contravariant
   mapM_ (checkVarianceXtor loc var' polyKind) xtorSigs
 checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn _ xtorSigs) = do
   let var' = var <> case dataCodata of
-                      CST.Data   -> Covariant
-                      CST.Codata -> Contravariant
+                      CST.Data   -> CST.Covariant
+                      CST.Codata -> CST.Contravariant
   mapM_ (checkVarianceXtor loc var' polyKind) xtorSigs
 checkVarianceTyp loc var polyKind (CST.TyApp _ (CST.TyNominal _loc' tyName) _ tys) = do
 
   NominalResult _ _ _ polyKind' <- lookupTypeConstructor loc tyName
   go ((\(v,_,_) -> v) <$> polyKind'.kindArgs) (NE.toList tys)
   where
-    go :: [Variance] -> [CST.Typ] -> ResolverM ()
+    go :: [CST.Variance] -> [CST.Typ] -> ResolverM ()
     go [] []          = return ()
     go (v:vs) (t:ts)  = do
       checkVarianceTyp loc (v <> var) polyKind t
@@ -108,19 +107,19 @@ checkVarianceTyp loc var polyKind (CST.TyBinOp _loc' ty _binOp ty') = do
 checkVarianceTyp loc var polyKind (CST.TyParens _loc' ty) = checkVarianceTyp loc var polyKind ty
 checkVarianceTyp loc var polyKind (CST.TyKindAnnot _ ty) = checkVarianceTyp loc var polyKind ty
 
-checkVarianceXtor :: Loc -> Variance -> PolyKind -> CST.XtorSig -> ResolverM ()
+checkVarianceXtor :: Loc -> CST.Variance -> CST.PolyKind -> CST.XtorSig -> ResolverM ()
 checkVarianceXtor loc var polyKind xtor = do
   mapM_ f xtor.args
   where
     f :: CST.PrdCnsTyp -> ResolverM ()
-    f (CST.PrdType ty) = checkVarianceTyp loc (Covariant     <> var) polyKind ty
-    f (CST.CnsType ty) = checkVarianceTyp loc (Contravariant <> var) polyKind ty
+    f (CST.PrdType ty) = checkVarianceTyp loc (CST.Covariant     <> var) polyKind ty
+    f (CST.CnsType ty) = checkVarianceTyp loc (CST.Contravariant <> var) polyKind ty
 
-checkVarianceDataDecl :: Loc -> PolyKind -> CST.DataCodata -> [CST.XtorSig] -> ResolverM ()
+checkVarianceDataDecl :: Loc -> CST.PolyKind -> CST.DataCodata -> [CST.XtorSig] -> ResolverM ()
 checkVarianceDataDecl loc polyKind pol xtors = do
   case pol of
-    CST.Data   -> mapM_ (checkVarianceXtor loc Covariant     polyKind) xtors
-    CST.Codata -> mapM_ (checkVarianceXtor loc Contravariant polyKind) xtors
+    CST.Data   -> mapM_ (checkVarianceXtor loc CST.Covariant     polyKind) xtors
+    CST.Codata -> mapM_ (checkVarianceXtor loc CST.Contravariant polyKind) xtors
 
 resolveDataDecl :: CST.DataDecl -> ResolverM RST.DataDecl
 resolveDataDecl decl = do
@@ -132,7 +131,7 @@ resolveDataDecl decl = do
       NominalResult name' _ _ _ <- lookupTypeConstructor decl.loc decl.name
       -- Default the kind if none was specified:
       let polyKind = case decl.kind of
-                        Nothing -> MkPolyKind [] (case decl.data_codata of CST.Data -> CBV; CST.Codata -> CBN)
+                        Nothing -> CST.MkPolyKind [] (case decl.data_codata of CST.Data -> CST.CBV; CST.Codata -> CST.CBN)
                         Just knd -> knd
       checkVarianceDataDecl decl.loc polyKind decl.data_codata decl.xtors
       xtors' <- resolveXtors decl.xtors
@@ -150,7 +149,7 @@ resolveDataDecl decl = do
       NominalResult name' _ _ _ <- lookupTypeConstructor decl.loc decl.name
       -- Default the kind if none was specified:
       polyKind <- case decl.kind of
-                        Nothing -> pure $ MkPolyKind [] (case decl.data_codata of CST.Data -> CBV; CST.Codata -> CBN)
+                        Nothing -> pure $ CST.MkPolyKind [] (case decl.data_codata of CST.Data -> CST.CBV; CST.Codata -> CST.CBN)
                         Just knd -> pure knd
       checkVarianceDataDecl decl.loc polyKind decl.data_codata decl.xtors
       -- Lower the xtors in the adjusted environment (necessary for lowering xtors of refinement types)
@@ -226,7 +225,7 @@ resolveStructuralXtorDeclaration :: CST.StructuralXtorDeclaration
 resolveStructuralXtorDeclaration decl = do
   let evalOrder = case decl.evalOrder of
                   Just eo -> eo
-                  Nothing -> case decl.data_codata of CST.Data -> CBV; CST.Codata -> CBN
+                  Nothing -> case decl.data_codata of CST.Data -> CST.CBV; CST.Codata -> CST.CBN
   pure $ RST.MkStructuralXtorDeclaration { strxtordecl_loc = decl.loc
                                          , strxtordecl_doc = decl.doc
                                          , strxtordecl_xdata = decl.data_codata
@@ -270,8 +269,8 @@ resolveTySynDeclaration decl = do
 -- Type Class Declaration
 ---------------------------------------------------------------------------------
 
-checkVarianceClassDeclaration :: Loc -> PolyKind -> [CST.XtorSig] -> ResolverM ()
-checkVarianceClassDeclaration loc kinds = mapM_ (checkVarianceXtor loc Covariant kinds)
+checkVarianceClassDeclaration :: Loc -> CST.PolyKind -> [CST.XtorSig] -> ResolverM ()
+checkVarianceClassDeclaration loc kinds = mapM_ (checkVarianceXtor loc CST.Covariant kinds)
 
 resolveMethods :: [CST.XtorSig]
            -> ResolverM ([RST.MethodSig Pos], [RST.MethodSig Neg])
