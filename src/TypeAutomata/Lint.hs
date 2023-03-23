@@ -20,7 +20,7 @@ import Utils ( enumerate )
 
 -- | Check the invariants of the type automaton.
 lint :: MonadError (NonEmpty Error) m
-     => TypeAut' EdgeLabel f pol
+     => TypeAut' f pol
      -> m ()
 lint aut = do
   lintFlowEdges aut
@@ -38,7 +38,7 @@ getNodeLabel gr n = case lab gr n of
 -- 1.) Both nodes are contained in the corresponding graph.
 -- 2.) The left node of the flowedge is negative and the right node is positive.
 lintFlowEdges :: MonadError (NonEmpty Error) m
-              => TypeAut' a f pol  -> m ()
+              => TypeAut' f pol  -> m ()
 lintFlowEdges aut = do
   forM_ aut.ta_core.ta_flowEdges $ \(left,right) -> do
     leftPol <- getPolarityNL <$> getNodeLabel aut.ta_core.ta_gr left
@@ -52,7 +52,7 @@ lintFlowEdges aut = do
 
 -- | Check that symbol edges connect nodes of the correct polarity.
 lintSymbolEdges :: MonadError (NonEmpty Error) m
-                => TypeAut' EdgeLabel f pol -> m ()
+                => TypeAut' f pol -> m ()
 lintSymbolEdges aut = do
   let edges = [(i,j,dataCodata,prdCns) | (i,j,EdgeSymbol dataCodata _ prdCns _) <- labEdges aut.ta_core.ta_gr]
   forM_ edges $ \(i,j, dataCodata, prdCns) -> do
@@ -67,7 +67,7 @@ lintSymbolEdges aut = do
 
 -- | Check that every structural Xtor has at least one outgoing Symbol Edge for every argument of the Xtor.
 lintStructuralNodes :: MonadError (NonEmpty Error) m
-                    => TypeAut' EdgeLabel f pol -> m ()
+                    => TypeAut' f pol -> m ()
 lintStructuralNodes aut = forM_ (labNodes aut.ta_core.ta_gr) (lintStructuralNode aut.ta_core.ta_gr)
 
 -- | Collect all the xtors labels of a node and check them.

@@ -15,16 +15,19 @@ module Syntax.RST.Terms
   , InstanceCase(..)
   , Command(..)
   , PrimitiveOp(..)
-  , Overlap
+  , Overlap 
+  , NominalStructural(..)
    -- Functions
-  ,overlap) where
+  ,overlap
+  ,cstToRstNS
+  ,rstToCstNS) where
 
 import Data.List (elemIndex, tails)
 import Data.Text (Text, pack)
 
 import Loc ( Loc, HasLoc(..) )
 import Syntax.CST.Names
-    ( ClassName, FreeVarName, MethodName, XtorName, unFreeVarName, unXtorName )
+    ( ClassName, FreeVarName, MethodName, XtorName, TypeName, unFreeVarName, unXtorName )
 import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..) )
 import Syntax.LocallyNameless (LocallyNameless (..), Index)
@@ -79,7 +82,7 @@ deriving instance Show (SubstitutionI pc)
 type GenericPattern = Either PatternNew StarPattern
 
 data PatternNew where
-  PatXtor     :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> [PatternNew] -> PatternNew
+  PatXtor     :: Loc -> PrdCns -> NominalStructural -> XtorName -> [PatternNew] -> PatternNew
   PatVar      :: Loc -> PrdCns -> FreeVarName -> PatternNew
   PatWildcard :: Loc -> PrdCns -> PatternNew
 
@@ -188,7 +191,7 @@ instance HasLoc PatternNew where
 
 data StarPattern where
   PatStar     :: Loc -> PrdCns -> StarPattern
-  PatXtorStar :: Loc -> PrdCns -> CST.NominalStructural -> XtorName -> ([PatternNew],StarPattern,[PatternNew]) -> StarPattern
+  PatXtorStar :: Loc -> PrdCns -> NominalStructural -> XtorName -> ([PatternNew],StarPattern,[PatternNew]) -> StarPattern
 
 deriving instance Eq StarPattern
 deriving instance Show StarPattern
@@ -268,6 +271,23 @@ data InstanceCase = MkInstanceCase
 
 deriving instance Show InstanceCase
 
+data NominalStructural where
+  Nominal :: TypeName -> NominalStructural
+  Structural :: NominalStructural
+  Refinement :: NominalStructural
+  deriving (Eq, Ord, Show)
+
+
+
+cstToRstNS :: CST.NominalStructural -> TypeName -> NominalStructural
+cstToRstNS CST.Nominal tn = Nominal tn
+cstToRstNS CST.Structural _ = Structural
+cstToRstNS CST.Refinement _ = Refinement
+
+rstToCstNS :: NominalStructural -> CST.NominalStructural
+rstToCstNS (Nominal _)  = CST.Nominal
+rstToCstNS Structural = CST.Structural
+rstToCstNS Refinement = CST.Refinement
 
 
 ---------------------------------------------------------------------------------
@@ -285,10 +305,10 @@ data Term (pc :: PrdCns) where
   FreeVar :: Loc -> PrdCnsRep pc -> FreeVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  Xtor :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> XtorName -> Substitution -> Term pc
+  Xtor :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XCase :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> [CmdCase] -> Term pc
+  XCase :: Loc -> PrdCnsRep pc -> NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c
@@ -303,25 +323,24 @@ data Term (pc :: PrdCns) where
   --  prd.Dtor(args)
   -- Semi:
   --  C(args).cns
-  Semi :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> XtorName -> SubstitutionI pc -> Term Cns -> Term pc
-  Dtor :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> XtorName -> Term Prd -> SubstitutionI pc -> Term pc
+  Semi :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> SubstitutionI pc -> Term Cns -> Term pc
+  Dtor :: Loc -> PrdCnsRep pc -> NominalStructural -> XtorName -> Term Prd -> SubstitutionI pc -> Term pc
   -- The two dual constructs "CaseOf" and "CocaseOf"
   --
   -- case   prd of { X(xs) => prd }
   -- case   prd of { X(xs) => cns }
   -- cocase cns of { X(xs) => prd }
   -- cocase cns of { X(xs) => cns }
-  CaseOf   :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> Term Prd -> [TermCase pc] -> Term pc
-  CocaseOf :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> Term Cns -> [TermCase pc] -> Term pc
+  CaseOf   :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Prd -> [TermCase pc] -> Term pc
+  CocaseOf :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Cns -> [TermCase pc] -> Term pc
   -- The two dual constructs "CaseI" and "CocaseI"
   --
   -- case   { X(xs,*,ys) => prd}
   -- case   { X(xs,*,ys) => cns}
   -- cocase { X(xs,*,ys) => prd}
   -- cocase { X(xs,*,ys) => cns}
-  CaseI   :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> [TermCaseI pc] -> Term Cns
-  CocaseI :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> [TermCaseI pc] -> Term Prd
-
+  CaseI   :: Loc -> PrdCnsRep pc -> NominalStructural -> [TermCaseI pc] -> Term Cns
+  CocaseI :: Loc -> PrdCnsRep pc -> NominalStructural -> [TermCaseI pc] -> Term Prd
   -- \x y z -> t 
   Lambda  :: Loc  -> PrdCnsRep pc -> FreeVarName -> Term pc  -> Term pc
 
@@ -371,10 +390,10 @@ data Command where
   ExitSuccess :: Loc -> Command
   ExitFailure :: Loc -> Command
   PrimOp :: Loc -> PrimitiveOp -> Substitution -> Command
-  CaseOfCmd :: Loc -> CST.NominalStructural -> Term Prd -> [CmdCase] -> Command
-  CaseOfI :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> Term Prd -> [TermCaseI pc] -> Command
-  CocaseOfCmd :: Loc -> CST.NominalStructural -> Term Cns -> [CmdCase] -> Command
-  CocaseOfI :: Loc -> PrdCnsRep pc -> CST.NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
+  CaseOfCmd :: Loc -> NominalStructural -> Term Prd -> [CmdCase] -> Command
+  CaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Prd -> [TermCaseI pc] -> Command
+  CocaseOfCmd :: Loc -> NominalStructural -> Term Cns -> [CmdCase] -> Command
+  CocaseOfI :: Loc -> PrdCnsRep pc -> NominalStructural -> Term Cns -> [TermCaseI pc] -> Command
 
 deriving instance Show Command
 

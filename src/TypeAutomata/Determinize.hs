@@ -24,18 +24,18 @@ import Syntax.CST.Kinds (PolyKind(..))
 ---------------------------------------------------------------------------------------
 
 -- | A transition function for the powerset construction
-type TransFun = Map (Set Node) [(Set Node, EdgeLabelNormal)]
+type TransFun = Map (Set Node) [(Set Node, EdgeLabel)]
 
 -- | Collect all (unique) outgoing edgelabels from the given set of nodes.
-getAlphabetForNodes :: Gr NodeLabel EdgeLabelNormal -> Set Node -> [EdgeLabelNormal]
+getAlphabetForNodes :: Gr NodeLabel EdgeLabel -> Set Node -> [EdgeLabel]
 getAlphabetForNodes gr ns = nub $ map (\(_,_,b) -> b) (concatMap (out gr) (S.toList ns))
 
 -- | Get all successor nodes from the given set which are connected by the given edgeLabel.
-succsWith :: Gr NodeLabel EdgeLabelNormal -> Set Node -> EdgeLabelNormal -> Set Node
+succsWith :: Gr NodeLabel EdgeLabel -> Set Node -> EdgeLabel -> Set Node
 succsWith gr ns x = S.fromList $ map fst . filter ((==x) . snd) $ concatMap (lsuc gr) (S.toList ns)
 
 determinizeState :: [Set Node]
-                 -> Gr NodeLabel EdgeLabelNormal
+                 -> Gr NodeLabel EdgeLabel
                  -> State TransFun ()
 determinizeState [] _ = pure ()
 determinizeState (ns:rest) gr = do
@@ -50,12 +50,12 @@ determinizeState (ns:rest) gr = do
 
 
 -- | Compute the transition function for the powerset construction.
-transFun :: Gr NodeLabel EdgeLabelNormal
+transFun :: Gr NodeLabel EdgeLabel
                -> Set Node -- ^ Starting states
                -> TransFun
 transFun gr starts = execState (determinizeState [starts] gr) M.empty
 
-type TransFunReindexed = [(Node, Set Node, [(Node, EdgeLabelNormal)])]
+type TransFunReindexed = [(Node, Set Node, [(Node, EdgeLabel)])]
 
 reIndexTransFun :: TransFun -> TransFunReindexed
 reIndexTransFun transFun =
@@ -143,8 +143,8 @@ combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) =
 -- | This function computes the new typegraph and the new starting state.
 -- The nodes for the new typegraph are computed as the indizes of the sets of nodes in the TransFun map.
 newTypeGraph :: TransFunReindexed -- ^ The transition function of the powerset construction.
-             -> Gr NodeLabel EdgeLabelNormal -- ^ The old typegraph with a set of starting states.
-             -> Gr NodeLabel EdgeLabelNormal -- ^ The new typegraph with one starting state.
+             -> Gr NodeLabel EdgeLabel -- ^ The old typegraph with a set of starting states.
+             -> Gr NodeLabel EdgeLabel -- ^ The new typegraph with one starting state.
 newTypeGraph transFun gr =
   let
     nodes = fmap (\(i,ns,_) -> (i, getNewNodeLabel gr ns)) transFun

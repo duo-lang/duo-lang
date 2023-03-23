@@ -12,14 +12,14 @@ import Syntax.RST.Types ( Polarity(..) )
 import TypeAutomata.Definition
 
 
-getAlphabet :: TypeGr -> [EdgeLabelNormal]
+getAlphabet :: TypeGr -> [EdgeLabel]
 getAlphabet gr = nub $ map (\(_,_,b) -> b) (labEdges gr)
 
 -- map a pair of a node and an edge label to the node's predecessors along the label
-type Preds = M.Map (Node,EdgeLabelNormal) (Set Node)
+type Preds = M.Map (Node,EdgeLabel) (Set Node)
 
 -- find all predecessors with connecting edge labelled by specified label
-predsWith :: Preds -> [Node] -> EdgeLabelNormal -> [Node]
+predsWith :: Preds -> [Node] -> EdgeLabel -> [Node]
 predsWith preds ns x = S.toList $ S.unions $ (\n -> fromMaybe S.empty $ M.lookup (n,x) preds) <$> ns
 
 predsMap :: TypeGr -> Preds
@@ -27,16 +27,16 @@ predsMap gr =
   let alph  = getAlphabet gr
       ns    = nodes gr
 
-      preds :: M.Map Node [(Node,EdgeLabelNormal)]
+      preds :: M.Map Node [(Node,EdgeLabel)]
       preds = M.fromList $ fmap (\n -> (n, lpre gr n)) ns
 
-      getPred :: Node -> EdgeLabelNormal -> Set Node
+      getPred :: Node -> EdgeLabel -> Set Node
       getPred n l = S.fromList $ map fst . filter ((== l) . snd) $ fromMaybe [] $ M.lookup n preds
 
-      addCharNode :: EdgeLabelNormal -> Preds -> Node -> Preds
+      addCharNode :: EdgeLabel -> Preds -> Node -> Preds
       addCharNode a m n = M.insert (n,a) (getPred n a) m
 
-      addChar :: Preds -> EdgeLabelNormal -> Preds
+      addChar :: Preds -> EdgeLabel -> Preds
       addChar m a = foldl (addCharNode a) m ns
 
   in  foldl addChar M.empty alph
@@ -84,13 +84,13 @@ predsMap gr =
 
 type EquivalenceClass = [Node]
 
-minimize' :: Preds -> [EdgeLabelNormal] -> [EquivalenceClass] -> [EquivalenceClass] -> [EquivalenceClass]
+minimize' :: Preds -> [EdgeLabel] -> [EquivalenceClass] -> [EquivalenceClass] -> [EquivalenceClass]
 minimize' _preds _alph []     rs = rs
 minimize' preds  alph  (w:ws) rs = minimize' preds alph ws' rs'
   where
     (ws',rs') = refineAllLetters alph (ws, w:rs)
 
-    refineAllLetters :: [EdgeLabelNormal] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
+    refineAllLetters :: [EdgeLabel] -> ([EquivalenceClass], [EquivalenceClass]) -> ([EquivalenceClass], [EquivalenceClass])
     refineAllLetters []       acc = acc
     refineAllLetters (a:alph) (ws,rs) = let pre       = sort $ predsWith preds w a
                                             ws''      = refineWaiting pre ws
@@ -133,18 +133,18 @@ myGroupBy :: (a -> a -> Bool) -> [a] -> [[a]]
 myGroupBy _ [] = []
 myGroupBy p (x:xs) = let (xs1,xs2) = partition (p x) xs in (x:xs1) : myGroupBy p xs2
 
-flowNeighbors :: TypeAutCore EdgeLabelNormal -> Node -> Set Node
+flowNeighbors :: TypeAutCore -> Node -> Set Node
 flowNeighbors aut i =
   S.fromList $ [n | (j,n) <- aut.ta_flowEdges, i == j] ++ [n | (n,j) <- aut.ta_flowEdges, i == j]
 
 -- nodes are considered equal if they have the same label and the same neighbors along flow edges
-equalNodes :: TypeAutCore EdgeLabelNormal -> Node -> Node -> Bool
+equalNodes :: TypeAutCore -> Node -> Node -> Bool
 equalNodes aut i j =
   (lab aut.ta_gr i == lab aut.ta_gr j) && flowNeighbors aut i == flowNeighbors aut j
 
 -- We don't have a direct notion for accepting states, so we unroll the definition of the
 -- minimisation algorithm once
-initialSplit :: TypeAutCore EdgeLabelNormal -> ([EquivalenceClass], [EquivalenceClass])
+initialSplit :: TypeAutCore -> ([EquivalenceClass], [EquivalenceClass])
 initialSplit aut = (rest,catMaybes [posMin,negMin])
   where
     distGroups :: [EquivalenceClass]
@@ -177,7 +177,7 @@ getLabelPol nl@MkNodeLabel{} = nl.nl_pol
 getLabelPol nl@MkPrimitiveNodeLabel{} = nl.pl_pol
 
 -- generate a function that maps each node to the representative of its respective equivalence class
-genMinimizeFun :: TypeAutCore EdgeLabelNormal -> (Node -> Node)
+genMinimizeFun :: TypeAutCore -> (Node -> Node)
 genMinimizeFun aut = getNewNode
   where
     preds        = predsMap aut.ta_gr

@@ -65,8 +65,8 @@ patternIToSubst (RST.XtorPatI _loc _xt (as1,(),as2)) = RST.MkSubstitution (f <$>
 ---------------------------------------------------------------------------------
 
 isNumSTermRST :: RST.Term pc -> Maybe Int
-isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "Z") (RST.MkSubstitution [])) = Just 0
-isNumSTermRST (RST.Xtor _ PrdRep CST.Nominal (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n])) = fmap (+1) (isNumSTermRST n)
+isNumSTermRST (RST.Xtor _ PrdRep (RST.Nominal _) (MkXtorName "Z") (RST.MkSubstitution [])) = Just 0
+isNumSTermRST (RST.Xtor _ PrdRep (RST.Nominal _) (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n])) = fmap (+1) (isNumSTermRST n)
 isNumSTermRST _ = Nothing
 
 instance Unresolve RST.PrimitiveOp PrimName where

@@ -41,15 +41,15 @@ import Utils ( enumerate )
 -- mapped to a pair `(n,m)`
 data LookupEnv = LookupEnv { tSkolemVarEnv :: Map SkolemTVar (Node,Node) , tRecVarEnv :: Map RecTVar (Maybe Node, Maybe Node) }
 
-type TTA a = StateT (TypeAutCore EdgeLabelNormal) (ReaderT LookupEnv (Except (NonEmpty Error))) a
+type TTA a = StateT TypeAutCore (ReaderT LookupEnv (Except (NonEmpty Error))) a
 
-runTypeAut :: TypeAutCore EdgeLabelNormal
+runTypeAut :: TypeAutCore
            -- ^ The initial TypeAutomaton to start the computation.
            -> LookupEnv
            -- ^ The initial lookup environment.
            -> TTA a
            -- ^ The computation to run.
-           -> Either (NonEmpty Error) (a, TypeAutCore EdgeLabelNormal)
+           -> Either (NonEmpty Error) (a, TypeAutCore)
 runTypeAut graph lookupEnv f = runExcept (runReaderT (runStateT f graph) lookupEnv)
 
 
@@ -64,7 +64,7 @@ createNodes tvars = createNode <$> createPairs tvars
     createPairs tvs = (\i -> (tvs !! i, 2 * i, 2 * i + 1)) <$> [0..length tvs - 1]
 
 
-initialize :: [KindedSkolem] -> (TypeAutCore EdgeLabelNormal, LookupEnv)
+initialize :: [KindedSkolem] -> (TypeAutCore, LookupEnv)
 initialize tvars =
   let
     nodes = createNodes tvars
@@ -81,7 +81,7 @@ initialize tvars =
 -- | An alternative to `runTypeAut` where the initial state is constructed from a list of Tvars.
 runTypeAutTvars :: [KindedSkolem]
                 -> TTA a
-                -> Either (NonEmpty Error) (a, TypeAutCore EdgeLabelNormal)
+                -> Either (NonEmpty Error) (a, TypeAutCore)
 runTypeAutTvars tvars m = do
   let (aut, env) = initialize tvars
   runTypeAut aut env m
@@ -98,7 +98,7 @@ modifyGraph f = modify go
 insertNode :: Node -> NodeLabel -> TTA ()
 insertNode node nodelabel = modifyGraph (G.insNode (node, nodelabel))
 
-insertEdges :: [(Node,Node,EdgeLabelNormal)] -> TTA ()
+insertEdges :: [(Node,Node,EdgeLabel)] -> TTA ()
 insertEdges edges = modifyGraph (G.insEdges edges)
 
 newNodeM :: TTA Node
