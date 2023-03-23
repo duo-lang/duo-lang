@@ -61,7 +61,7 @@ instance PrettyAnn EdgeLabel where
   prettyAnn (RefineEdge tn) = prettyAnn tn
   prettyAnn (TypeArgEdge tn v i) = "TypeArg" <> parens (prettyAnn tn <> " , " <> prettyAnn v <> " , " <> pretty i)
 
-typeAutToDot :: Bool -> TypeAut' EdgeLabel f pol -> DotGraph Node
+typeAutToDot :: Bool -> TypeAut' f pol -> DotGraph Node
 typeAutToDot showId aut =
     let
       grWithFlow = insEdges [(i,j,FlowEdge) | (i,j) <- aut.ta_core.ta_flowEdges] aut.ta_core.ta_gr

@@ -34,7 +34,7 @@ import Data.List.NonEmpty (NonEmpty((:|)))
 
 
 -- | Generate a graph consisting only of the flow_edges of the type automaton.
-genFlowGraph :: TypeAutCore a -> FlowGraph
+genFlowGraph :: TypeAutCore -> FlowGraph
 genFlowGraph aut = mkGraph [(n,()) | n <- nodes aut.ta_gr] [(i,j,()) | (i,j) <- aut.ta_flowEdges]
 
 initializeFromAutomaton :: TypeAutDet pol -> AutToTypeState

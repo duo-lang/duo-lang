@@ -133,18 +133,18 @@ myGroupBy :: (a -> a -> Bool) -> [a] -> [[a]]
 myGroupBy _ [] = []
 myGroupBy p (x:xs) = let (xs1,xs2) = partition (p x) xs in (x:xs1) : myGroupBy p xs2
 
-flowNeighbors :: TypeAutCore EdgeLabel -> Node -> Set Node
+flowNeighbors :: TypeAutCore -> Node -> Set Node
 flowNeighbors aut i =
   S.fromList $ [n | (j,n) <- aut.ta_flowEdges, i == j] ++ [n | (n,j) <- aut.ta_flowEdges, i == j]
 
 -- nodes are considered equal if they have the same label and the same neighbors along flow edges
-equalNodes :: TypeAutCore EdgeLabel -> Node -> Node -> Bool
+equalNodes :: TypeAutCore -> Node -> Node -> Bool
 equalNodes aut i j =
   (lab aut.ta_gr i == lab aut.ta_gr j) && flowNeighbors aut i == flowNeighbors aut j
 
 -- We don't have a direct notion for accepting states, so we unroll the definition of the
 -- minimisation algorithm once
-initialSplit :: TypeAutCore EdgeLabel -> ([EquivalenceClass], [EquivalenceClass])
+initialSplit :: TypeAutCore -> ([EquivalenceClass], [EquivalenceClass])
 initialSplit aut = (rest,catMaybes [posMin,negMin])
   where
     distGroups :: [EquivalenceClass]
@@ -177,7 +177,7 @@ getLabelPol nl@MkNodeLabel{} = nl.nl_pol
 getLabelPol nl@MkPrimitiveNodeLabel{} = nl.pl_pol
 
 -- generate a function that maps each node to the representative of its respective equivalence class
-genMinimizeFun :: TypeAutCore EdgeLabel -> (Node -> Node)
+genMinimizeFun :: TypeAutCore -> (Node -> Node)
 genMinimizeFun aut = getNewNode
   where
     preds        = predsMap aut.ta_gr

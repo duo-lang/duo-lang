@@ -235,24 +235,24 @@ type FlowEdge = (Node, Node)
 -- Type Automata
 --------------------------------------------------------------------------------
 
-data TypeAutCore a = TypeAutCore
-  { ta_gr :: Gr NodeLabel a
+data TypeAutCore = TypeAutCore
+  { ta_gr :: Gr NodeLabel EdgeLabel
   , ta_flowEdges :: [FlowEdge]
   }
-deriving instance Show (TypeAutCore EdgeLabel)
+deriving instance Show TypeAutCore
 
 type TypeGr = Gr NodeLabel EdgeLabel
 
-data TypeAut' a f (pol :: Polarity) = TypeAut
+data TypeAut' f (pol :: Polarity) = TypeAut
   { ta_pol :: PolarityRep pol
   , ta_starts :: f Node
-  , ta_core :: TypeAutCore a
+  , ta_core :: TypeAutCore
   }
 deriving instance Show (TypeAut pol)
 deriving instance Show (TypeAutDet pol)
 
-type TypeAut pol       = TypeAut' EdgeLabel  [] pol
-type TypeAutDet pol    = TypeAut' EdgeLabel  Identity pol
+type TypeAut pol       = TypeAut' [] pol
+type TypeAutDet pol    = TypeAut' Identity pol
 
 --------------------------------------------------------------------------------
 -- Helper functions
@@ -266,7 +266,7 @@ instance Nubable [] where
   nub = nubOrd
 
 
-mapTypeAutCore :: Ord a => (Node -> Node) -> TypeAutCore a -> TypeAutCore a
+mapTypeAutCore :: (Node -> Node) -> TypeAutCore -> TypeAutCore
 mapTypeAutCore f aut = TypeAutCore
   { ta_gr = mkGraph (nub [(f i, a) | (i,a) <- labNodes aut.ta_gr])
             (nub [(f i , f j, b) | (i,j,b) <- labEdges aut.ta_gr])
@@ -274,7 +274,7 @@ mapTypeAutCore f aut = TypeAutCore
   }
 
 -- Maps a function on nodes over a type automaton
-mapTypeAut :: (Ord a, Functor f, Nubable f) => (Node -> Node) -> TypeAut' a f pol -> TypeAut' a f pol
+mapTypeAut :: (Functor f, Nubable f) => (Node -> Node) -> TypeAut' f pol -> TypeAut' f pol
 mapTypeAut f aut = TypeAut
   { ta_pol = aut.ta_pol
   , ta_starts = nub (f <$> aut.ta_starts)
@@ -284,7 +284,7 @@ mapTypeAut f aut = TypeAut
 removeRedundantEdges :: TypeGr -> TypeGr
 removeRedundantEdges = gmap (\(ins,i,l,outs) -> (nub ins, i, l, nub outs))
 
-removeRedundantEdgesCore :: TypeAutCore EdgeLabel -> TypeAutCore EdgeLabel
+removeRedundantEdgesCore :: TypeAutCore -> TypeAutCore
 removeRedundantEdgesCore aut = aut { ta_gr = removeRedundantEdges aut.ta_gr }
 
 removeRedundantEdgesAut :: TypeAutDet pol -> TypeAutDet pol
