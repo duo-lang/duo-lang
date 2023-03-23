@@ -30,7 +30,7 @@ import Pretty.Constraints ()
 import TypeInference.Constraints
 import Loc
 import Syntax.CST.Names
-import Syntax.CST.Types ( PrdCnsRep(..), KVar, PolyKind(..), EvaluationOrder(..))
+import Syntax.CST.Types ( PrdCnsRep(..), PolyKind(..), EvaluationOrder(..))
 import Data.Either (isRight)
 
 ------------------------------------------------------------------------------

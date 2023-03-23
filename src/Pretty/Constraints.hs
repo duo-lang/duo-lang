@@ -11,7 +11,6 @@ import Syntax.RST.Types (Polarity(..), PolarityRep (..))
 import Syntax.CST.Names
 import Syntax.RST.Names
 import Syntax.RST.Kinds
-import Syntax.CST.Types (KVar)
 import TypeInference.Constraints
 
 ---------------------------------------------------------------------------------

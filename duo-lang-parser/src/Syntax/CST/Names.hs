@@ -29,6 +29,9 @@ newtype FreeVarName = MkFreeVarName { unFreeVarName :: Text }
 
 newtype SkolemTVar = MkSkolemTVar { unSkolemTVar :: Text} deriving (Eq,Show,Ord)
 
+-- | A Kind Variable that is used for inferred kinds
+newtype KVar = MkKVar { unKVar :: Text } deriving (Show, Eq, Ord)
+
 -- | Name of a type class. Starts with an uppercase letter.
 newtype ClassName = MkClassName { unClassName :: Text } deriving (Eq, Show, Ord)
 
