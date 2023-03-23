@@ -1,7 +1,7 @@
 module TypeAutomata.Intersection (emptyIntersection,intersectIsEmpty,intersectAut) where
 
 
-import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), NodeLabel (..), EdgeLabelNormal, TypeAut)
+import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), NodeLabel (..), EdgeLabel, TypeAut)
 import Control.Monad.Identity (Identity(..))
 import Data.Graph.Inductive.Graph (Node, Graph (..), lsuc, lab)
 import qualified Data.Map as M
@@ -17,7 +17,6 @@ import Errors
 import TypeAutomata.Minimize (minimize)
 import TypeAutomata.RemoveAdmissible (removeAdmissableFlowEdges)
 import TypeAutomata.Determinize (determinize)
-import TypeAutomata.RemoveEpsilon (removeEpsilonEdges)
 import TypeAutomata.ToAutomaton (typeToAut)
 import Data.Map (Map)
 import TypeAutomata.Utils (typeAutIsEmpty, isEmptyLabel)
@@ -30,8 +29,8 @@ import Utils (sequenceMap)
 -- | Check for two type schemes whether their intersection type automaton is empty.
 emptyIntersection :: TypeScheme pol -> TypeScheme pol -> Either (NonEmpty Error) Bool
 emptyIntersection ty1 ty2 = do
-  aut1 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty1
-  aut2 <- minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty2
+  aut1 <- minimize . removeAdmissableFlowEdges . determinize <$> typeToAut ty1
+  aut2 <- minimize . removeAdmissableFlowEdges . determinize <$> typeToAut ty2
   checkEmptyIntersection aut1 aut2
 
 
@@ -50,8 +49,8 @@ data ExploreState
 type ExploreM = StateT ExploreState (Either (NonEmpty Error))
 
 -- | Exhaustively explore the intersection of two graphs and return true if it is empty.
-explore :: Graph gr => gr NodeLabel EdgeLabelNormal
-                    -> gr NodeLabel EdgeLabelNormal
+explore :: Graph gr => gr NodeLabel EdgeLabel
+                    -> gr NodeLabel EdgeLabel
                     -> ExploreM Bool
 explore gr1 gr2 = do
   todos <- gets (\x -> x.todos)
@@ -106,11 +105,11 @@ intersectIsEmpty print ty1 ty2 = do
     _ -> pure False
   where
     tyToMinAut :: TypeScheme pol -> Either (NonEmpty Error) (TypeAutDet pol)
-    tyToMinAut ty = minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges <$> typeToAut ty
+    tyToMinAut ty = minimize . removeAdmissableFlowEdges . determinize <$> typeToAut ty
 
 -- | Create  the intersection automaton of two type automata.
 intersectAut :: TypeAutDet pol -> TypeAutDet pol -> TypeAutDet pol
---  intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize . removeEpsilonEdges $ intersectAutM aut1 aut2
+--  intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize $ intersectAutM aut1 aut2
 intersectAut aut1 aut2 = minimize . removeAdmissableFlowEdges . determinize $ intersected
   where
     intersected = runIdentity $ evalStateT (intersectAutM aut1 aut2).runIntersect initState
@@ -121,7 +120,7 @@ data IntersectS
        -- ^ map pairs of nodes from original automata to nodes in result automaton
        , is_nodelabels :: Map Node NodeLabel
        -- ^ labels of nodes in result automaton
-       , is_edges :: Map Node [(Node, Node, EdgeLabelNormal)]
+       , is_edges :: Map Node [(Node, Node, EdgeLabel)]
        -- ^ edges going from a result node to pairs of original nodes
        , is_counter :: Node
        -- ^ fresh node ID for result automaton

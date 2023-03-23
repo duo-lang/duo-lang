@@ -54,21 +54,21 @@ instance PrettyAnn NodeLabel where
         refTns -> Just $ intercalateX "; " $ (\(tn, (xtors,vars)) -> braces $ mempty <+>
           prettyAnn tn <+> pipeSym <+> printCodat xtors <+> "@" <+> prettyAnn vars <+> mempty) <$> refTns
 
-instance PrettyAnn (EdgeLabel a) where
+instance PrettyAnn EdgeLabel where
   prettyAnn (EdgeSymbol _ xt Prd i) = prettyAnn xt <> parens (pretty i)
   prettyAnn (EdgeSymbol _ xt Cns i) = prettyAnn xt <> brackets (pretty i)
-  prettyAnn (EpsilonEdge _) = "e"
+  prettyAnn FlowEdge = "e"
   prettyAnn (RefineEdge tn) = prettyAnn tn
   prettyAnn (TypeArgEdge tn v i) = "TypeArg" <> parens (prettyAnn tn <> " , " <> prettyAnn v <> " , " <> pretty i)
 
-typeAutToDot :: Bool -> TypeAut' (EdgeLabel a) f pol -> DotGraph Node
+typeAutToDot :: Bool -> TypeAut' f pol -> DotGraph Node
 typeAutToDot showId aut =
     let
-      grWithFlow = insEdges [(i,j,EpsilonEdge (error "Never forced")) | (i,j) <- aut.ta_core.ta_flowEdges] aut.ta_core.ta_gr
+      grWithFlow = insEdges [(i,j,FlowEdge) | (i,j) <- aut.ta_core.ta_flowEdges] aut.ta_core.ta_gr
     in
       graphToDot (typeAutParams showId) grWithFlow
 
-typeAutParams :: Bool -> GraphvizParams Node NodeLabel (EdgeLabel a) () NodeLabel
+typeAutParams :: Bool -> GraphvizParams Node NodeLabel EdgeLabel () NodeLabel
 typeAutParams showId = defaultParams
   { fmtNode = \(n,nl) ->
     [ style filled
@@ -76,7 +76,7 @@ typeAutParams showId = defaultParams
     , textLabel (pack ((if showId then show n <> ": " else "") <> ppPrintString (nl :: NodeLabel)))]
   , fmtEdge = \(_,_,elM) -> case elM of
                               el@EdgeSymbol {} -> regularEdgeStyle el
-                              (EpsilonEdge _) -> flowEdgeStyle
+                              FlowEdge -> flowEdgeStyle
                               RefineEdge tn -> refEdgeStyle tn
                               el@TypeArgEdge {} -> typeArgEdgeStyle el
   }
