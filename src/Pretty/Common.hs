@@ -20,7 +20,8 @@ import Syntax.CST.Names
       TypeName(MkTypeName),
       XtorName(MkXtorName) )
 import Syntax.RST.Names
-import Syntax.CST.Types (Arity, PrdCns(..), EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), MaybeKindedSkolem)      
+import Syntax.CST.Names
+import Syntax.CST.Types (Arity, PrdCns(..), EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), MaybeKindedSkolem)      
 import Syntax.RST.Kinds
 import Loc ( Loc(..) )
 import Data.List (intersperse)

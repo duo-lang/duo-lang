@@ -30,7 +30,7 @@ import Resolution.Definition
 import Syntax.CST.Names
 import Syntax.RST.Kinds
 import Syntax.CST.Program qualified as CST
-import Syntax.CST.Types ( PrdCnsRep(..), KVar, PolyKind(..))
+import Syntax.CST.Types ( PrdCnsRep(..), PolyKind(..))
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST

@@ -51,7 +51,7 @@ import Errors.Renamer
 import Syntax.RST.Types qualified as RST
 import Syntax.TST.Types qualified as TST
 import Syntax.CST.Names
-import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..), PolyKind(..), Variance(..), MonoKind(..), KVar(..))
+import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..), PolyKind(..), Variance(..), MonoKind(..))
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program as RST
 import Syntax.RST.Names

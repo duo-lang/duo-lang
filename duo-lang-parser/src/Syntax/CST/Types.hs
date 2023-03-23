@@ -1,10 +1,9 @@
 module Syntax.CST.Types where
 
 import Syntax.CST.Names
-    ( BinOp, SkolemTVar, TypeName, XtorName )
+    ( BinOp, SkolemTVar, TypeName, XtorName, KVar )
 import Data.List.NonEmpty (NonEmpty)
 import Loc ( Loc, HasLoc(..))
-import Data.Text (Text)
 
 ---------------------------------------------------------------------------------
 -- Producer / Consumer
@@ -22,13 +21,41 @@ data PrdCnsRep pc where
 deriving instance Show (PrdCnsRep pc)
 deriving instance Eq (PrdCnsRep pc)
 
+---------------------------------------------------------------------------------
+-- Variance
+---------------------------------------------------------------------------------
+
+data Variance = Covariant | Contravariant
+  deriving (Eq, Show, Ord)
+
+instance Semigroup Variance where
+  Covariant <> v         = v
+  v         <> Covariant = v
+  _         <> _         = Covariant
+
+---------------------------------------------------------------------------------
+-- Evaluation Order
+---------------------------------------------------------------------------------
+
+-- | An evaluation order is either call-by-value or call-by-name.
+data EvaluationOrder = CBV | CBN
+  deriving (Show, Eq, Ord)
+
+---------------------------------------------------------------------------------
+-- Arity
+---------------------------------------------------------------------------------
+
 type Arity = [PrdCns]
+
+---------------------------------------------------------------------------------
+-- DataCodata
+---------------------------------------------------------------------------------
+
+data DataCodata = Data | Codata deriving (Eq, Ord, Show)
 
 ---------------------------------------------------------------------------------
 -- Parse Types
 ---------------------------------------------------------------------------------
-
-data DataCodata = Data | Codata deriving (Eq, Ord, Show)
 
 data Typ where
   TySkolemVar :: Loc -> SkolemTVar -> Typ
@@ -102,44 +129,6 @@ linearContextToArity = map f
     f (CnsType _) = Cns
 
 
-data TypeScheme = TypeScheme
-  { loc :: Loc
-  , vars :: [MaybeKindedSkolem]
-  , monotype :: Typ
-  }
-  deriving Show
-
-instance HasLoc TypeScheme where
-  getLoc ts = ts.loc
-
----------------------------------------------------------------------------------
--- Variance
----------------------------------------------------------------------------------
-
-data Variance = Covariant | Contravariant
-  deriving (Eq, Show, Ord)
-
-instance Semigroup Variance where
-  Covariant <> v         = v
-  v         <> Covariant = v
-  _         <> _         = Covariant
-
----------------------------------------------------------------------------------
--- Evaluation Order
----------------------------------------------------------------------------------
-
--- | An evaluation order is either call-by-value or call-by-name.
-data EvaluationOrder = CBV | CBN
-  deriving (Show, Eq, Ord)
-
----------------------------------------------------------------------------------
--- Kind Variables
----------------------------------------------------------------------------------
-
--- | A Kind Variable that is used for inferred kinds
-newtype KVar = MkKVar { unKVar :: Text }
-  deriving (Show, Eq, Ord)
-
 ---------------------------------------------------------------------------------
 -- MonoKind
 ---------------------------------------------------------------------------------
@@ -153,12 +142,12 @@ data MonoKind
   | StringRep
   deriving (Show, Eq, Ord)
 
-type MaybeKindedSkolem = (SkolemTVar, Maybe PolyKind)
+
 
 
 
 ------------------------------------------------------------------------------
--- Kinds
+-- PolyKinds and TypeSchemes
 ------------------------------------------------------------------------------
 
 data PolyKind =
@@ -167,8 +156,8 @@ data PolyKind =
              }
   | KindVar KVar 
 
-deriving instance (Show PolyKind)
-deriving instance (Ord PolyKind)
+deriving instance Show PolyKind
+deriving instance Ord PolyKind
 instance Eq PolyKind where 
   KindVar kv1 == KindVar kv2 = kv1 == kv2
   MkPolyKind args1 eo1 == MkPolyKind args2 eo2 = 
@@ -177,3 +166,15 @@ instance Eq PolyKind where
     in 
     eo1 == eo2 && getVariances args1 == getVariances args2 && getMks args1 == getMks args2
   _ == _ = False 
+
+type MaybeKindedSkolem = (SkolemTVar, Maybe PolyKind)
+
+data TypeScheme = TypeScheme
+  { loc :: Loc
+  , vars :: [MaybeKindedSkolem]
+  , monotype :: Typ
+  }
+  deriving Show
+
+instance HasLoc TypeScheme where
+  getLoc ts = ts.loc
