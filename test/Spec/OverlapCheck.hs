@@ -5,7 +5,7 @@ import Syntax.RST.Terms
 import Syntax.CST.Types
 import Data.Text (pack, unpack)
 import Data.Maybe (isJust, isNothing)
-import Syntax.CST.Names (FreeVarName (MkFreeVarName), XtorName (MkXtorName))
+import Syntax.CST.Names (FreeVarName (MkFreeVarName), XtorName (MkXtorName), TypeName (MkTypeName))
 import Loc (defaultLoc)
 
 -----------------------------------------------------------
@@ -45,24 +45,24 @@ import Loc (defaultLoc)
 --    (7) and (8)
 test1 :: [GenericPattern]
 test1 =
-  [ Left $ PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
+  [ Left $ PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
     Left $ PatXtor
-      defaultLoc Prd (Nominal Nothing) 
+      defaultLoc Prd (Nominal (MkTypeName "")) 
       (MkXtorName (pack "Branch"))
-      [ PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y"))],
+      [ PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y"))],
         PatVar defaultLoc Prd (MkFreeVarName (pack "t2"))
       ],
     Left $ PatVar defaultLoc Prd (MkFreeVarName (pack "x")),
     Right $ PatStar defaultLoc Prd,
     Left $ PatWildcard defaultLoc Prd,
     Left $ PatXtor
-      defaultLoc Prd (Nominal Nothing) 
+      defaultLoc Prd (Nominal (MkTypeName "")) 
       (MkXtorName (pack "Branch"))
-      [ PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y"))],
-        PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "z"))]
+      [ PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y"))],
+        PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "z"))]
       ],
     Right $ PatXtorStar
-      defaultLoc Prd (Nominal Nothing) 
+      defaultLoc Prd (Nominal (MkTypeName "")) 
       (MkXtorName (pack "Branch"))
       ([ PatVar defaultLoc Prd (MkFreeVarName (pack "t1"))], PatStar defaultLoc Prd, []),
     Left $ PatVar defaultLoc Prd (MkFreeVarName (pack "t"))
@@ -87,8 +87,8 @@ test2 :: [GenericPattern]
 test2 =
   [ Left $ PatVar defaultLoc Prd (MkFreeVarName (pack "m")),
     Right $ PatStar defaultLoc Prd,
-    Left $ PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Nothing")) [],
-    Left $ PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Maybe")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
+    Left $ PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Nothing")) [],
+    Left $ PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Maybe")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
     Left $ PatWildcard defaultLoc Prd
   ]
 
@@ -108,19 +108,19 @@ test4 = [
 test5 :: [GenericPattern]
 test5 =
   [ Left $ PatXtor
-      defaultLoc Prd (Nominal Nothing) 
+      defaultLoc Prd (Nominal (MkTypeName "")) 
       (MkXtorName (pack "Node"))
       [ PatVar defaultLoc Prd (MkFreeVarName (pack "y")),
-        PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Empty")) [],
-        PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Node")) [ PatVar defaultLoc Prd (MkFreeVarName (pack "z")),
-                                                        PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Empty")) [],
-                                                        PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Empty")) []]],
+        PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Empty")) [],
+        PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Node")) [ PatVar defaultLoc Prd (MkFreeVarName (pack "z")),
+                                                        PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Empty")) [],
+                                                        PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Empty")) []]],
     Left $ PatXtor
-      defaultLoc Prd (Nominal Nothing) 
+      defaultLoc Prd (Nominal (MkTypeName "")) 
       (MkXtorName (pack "Node"))
       [ PatVar defaultLoc Prd (MkFreeVarName (pack "z")),
-        PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Empty")) [],
-        PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Empty")) []]]
+        PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Empty")) [],
+        PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Empty")) []]]
 
 -- (1) x
 -- (2) z
@@ -141,38 +141,38 @@ test6 =
 -- -> Overlap expected between:
 --    (1) and (2) (due to Subpattern Overlap between x and x, (Cons y (Cons z zs)) and (Cons y (Cons z (Cons m ms))))
 test7 :: [GenericPattern]
-test7 = [Left $ PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Cons")) 
+test7 = [Left $ PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Cons")) 
           [ PatVar defaultLoc Prd (MkFreeVarName (pack "x")),
-            PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Cons")) 
+            PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Cons")) 
               [ PatVar defaultLoc Prd (MkFreeVarName (pack "y")),
-                PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Cons")) [PatVar defaultLoc Prd (MkFreeVarName (pack "z")), PatVar defaultLoc Prd (MkFreeVarName (pack "zs"))]]],
-         Left $ PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Cons")) 
+                PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Cons")) [PatVar defaultLoc Prd (MkFreeVarName (pack "z")), PatVar defaultLoc Prd (MkFreeVarName (pack "zs"))]]],
+         Left $ PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Cons")) 
           [PatVar defaultLoc Prd (MkFreeVarName (pack "x")),
-          PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Cons")) 
+          PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Cons")) 
             [PatVar defaultLoc Prd (MkFreeVarName (pack "y")),
-            PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Cons")) 
+            PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Cons")) 
               [PatVar defaultLoc Prd (MkFreeVarName (pack "z")),
-               PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Cons")) [PatVar defaultLoc Prd (MkFreeVarName (pack "m")), PatVar defaultLoc Prd (MkFreeVarName (pack "ms"))]]]]]
+               PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Cons")) [PatVar defaultLoc Prd (MkFreeVarName (pack "m")), PatVar defaultLoc Prd (MkFreeVarName (pack "ms"))]]]]]
 
 -- (1) Branch (Leaf x) (Leaf y)
 -- (2) Branch (Leaf x) (Branch (Leaf y1) (Leaf y2))
 -- No Overlap expected.
 test8 :: [GenericPattern]
 test8 = [Left $ PatXtor
-          defaultLoc Prd (Nominal Nothing) 
+          defaultLoc Prd (Nominal (MkTypeName "")) 
           (MkXtorName (pack "Branch"))
-          [ PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
-            PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y"))]
+          [ PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
+            PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y"))]
           ],
          Left $ PatXtor
-          defaultLoc Prd (Nominal Nothing) 
+          defaultLoc Prd (Nominal (MkTypeName "")) 
           (MkXtorName (pack "Branch"))
-          [ PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
+          [ PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "x"))],
             PatXtor 
-            defaultLoc Prd (Nominal Nothing) 
+            defaultLoc Prd (Nominal (MkTypeName "")) 
             (MkXtorName (pack "Branch"))
-            [ PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y1"))],
-              PatXtor defaultLoc Prd (Nominal Nothing) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y2"))]
+            [ PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y1"))],
+              PatXtor defaultLoc Prd (Nominal (MkTypeName "")) (MkXtorName (pack "Leaf")) [PatVar defaultLoc Prd (MkFreeVarName (pack "y2"))]
             ]
           ]]
 
