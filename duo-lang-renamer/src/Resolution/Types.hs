@@ -10,6 +10,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Data.List.NonEmpty qualified as NE
+import Data.Map qualified as M
 
 import Errors.Renamer
 import Resolution.Definition
@@ -73,31 +74,42 @@ resolveTyp rep (TyNominal loc name) = do
       pure $ RST.TyNominal loc rep polyknd name'
 
 --applied types 
-resolveTyp rep (TyApp loc ty args) = do
-   ty' <- resolveTyp rep ty
-   let tyns = RST.getTypeNames ty'
-   case tyns of
-     [] -> throwError (UnknownResolutionError loc "Types applied to neither Refinement nor Nominal tpye")
-     [tyn] -> do
-       res <- lookupTypeConstructor loc tyn.rnTnName
-       case res of
-         SynonymResult _ _ -> throwError (UnknownResolutionError loc "Type synonmys cannot be applied to arguments (yet)")
-         NominalResult _ _ CST.Refined pknd -> do
-           args' <- resolveArgs loc rep tyn pknd args
-           pure $ RST.TyApp loc rep ty' args'
-         NominalResult _tyn' _ CST.NotRefined pknd -> do
-           args' <- resolveArgs loc rep tyn pknd args
-           pure $ RST.TyApp loc rep ty' args'
-     _ -> throwError (UnknownResolutionError loc "Ambiguous Type Application")
+resolveTyp rep (TyApp loc ty (Just tyn) args) = do 
+  ty' <- resolveTyp rep ty 
+  res <- lookupTypeConstructor loc tyn
+  case res of 
+    SynonymResult _ _ -> throwError (UnknownResolutionError loc "Type synonmys cannot be applied to arguments (yet)")
+    NominalResult nm _ CST.Refined pknd -> do
+      args' <- resolveArgs loc rep nm pknd args
+      pure $ RST.TyApp loc rep ty' nm args'
+    NominalResult nm _ CST.NotRefined pknd -> do 
+      args' <- resolveArgs loc rep nm pknd args 
+      pure $ RST.TyApp loc rep ty' nm args'
   where
     resolveArgs loc rep tyn pknd args = do
       args' <- resolveTypeArgs loc rep tyn.rnTnName pknd (NE.toList args)
       let args'' = case args' of [] -> error "can't happen"; (fst:rst) -> fst:|rst
       return args''
 
+resolveTyp rep (TyApp loc ty Nothing args) = do 
+  case ty of 
+    TySkolemVar _ sk -> do 
+      tynMap <- asks (\x -> x.rr_recVarTyNames) 
+      case M.lookup sk tynMap of 
+        Nothing -> throwError (UnknownResolutionError loc "Application of recursive variable outside of Nominal or Refinement Type")
+        Just tyn -> resolveTyp rep (TyApp loc ty (Just tyn) args)
+    _ -> do
+      let tyn = getTypeName ty
+      case tyn of 
+        Nothing -> throwError (UnknownResolutionError loc "Applications only allowed for nominal and refinement types")
+        Just tyn' -> resolveTyp rep (TyApp loc ty (Just tyn') args)
+    
 resolveTyp rep (TyRec loc v typ) = do
         let vr = skolemToRecRVar v
-        local (\r -> r { rr_recVars = S.insert vr $ r.rr_recVars  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
+        let tyn = getTypeName typ
+        case tyn of 
+          Nothing -> local (\r -> r { rr_recVars = S.insert vr $ r.rr_recVars  } ) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
+          Just tyn' -> local (\r -> r { rr_recVars = S.insert vr $ r.rr_recVars, rr_recVarTyNames = M.insert v tyn' r.rr_recVarTyNames }) $ RST.TyRec loc rep vr <$> resolveTyp rep typ
 
 -- Lattice types    
 resolveTyp PosRep (TyTop loc) =
@@ -181,7 +193,7 @@ desugaring loc NegRep InterDesugaring tl tr = do
 desugaring loc PosRep InterDesugaring _ _ =
     throwError (IntersectionInPosPolarity loc)
 desugaring loc rep (NominalDesugaring tyname) tl tr = do
-    resolveTyp rep (TyApp loc (TyNominal loc tyname) (tl:|[tr]))
+    resolveTyp rep (TyApp loc (TyNominal loc tyname) (Just tyname) (tl:|[tr]))
 
 -- | Operator precedence parsing
 -- Transforms "TyBinOpChain" into "TyBinOp"'s while nesting nodes

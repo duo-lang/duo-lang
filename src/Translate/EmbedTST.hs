@@ -168,8 +168,8 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
     RST.TyKindAnnot (CBox rk) $ RST.TyNominal loc pol pk tn  
   embedTST (TST.TyNominal loc pol pk tn) = do
     RST.TyNominal loc pol pk tn  
-  embedTST (TST.TyApp loc pol _ ty args) = do
-    RST.TyApp loc pol (embedTST ty) (embedTST <$> args)
+  embedTST (TST.TyApp loc pol _ ty tyn args) = do
+    RST.TyApp loc pol (embedTST ty) tyn (embedTST <$> args)
   embedTST (TST.TySyn loc pol tn tp) = 
     case getAnnotKind (TST.getKind tp) of 
       Nothing -> RST.TySyn loc pol tn (embedTST tp)

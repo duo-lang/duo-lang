@@ -10,16 +10,10 @@ refinement data List : (+a : CBV) -> CBV {
     Cons(a, List(a))
 };
 
---structural 
---forall a. (rec rl. <N, C(a,rl)>) -> (rec rl. <N, C(a,rl)>) -> (rec rl. <N, C(a,rl)>)
---nominal
---forall a. List(a) -> List(a) -> List(a)
-def rec prd append : forall a. <List | r1 | Nil, Cons(a,r1) >(a) -> <List | r2 | Nil, Cons(a,r2) > (a) -> <List | r3 | Nil, Cons(a,r3)>(a) :=
-    \xs ys => case xs of {
-        Nil => ys,
-        Cons(z, zs) => Cons(z, append zs ys)
-    };
 
-def rec prd t1 : ∀ (t2 : CBV) (t0 : CBV) (t0 : CBV) (t2 : CBV) (t2 : CBV) (t1 : ( +a : CBV ) -> CBV) (t1 : ( +a : CBV ) -> CBV). (< List | Cons( (((t0:CBV) ∧ (t2:CBV)):CBV), ((rec r9.< List | Cons( (((t0:CBV) ∧ (t2:CBV)):CBV) , (r9:CBV) ) , Nil >( (((t0:CBV) ∧ (t2:CBV)):CBV) )):CBV)) , Nil>( (⊤:CBV) ) -> (((t1:CBV) ∧ < List | Cons( (t2:CBV), ((rec r13.< List | Cons( (t2:CBV), (r13:CBV)) , Nil>( (t2:CBV) )):CBV) ) , Nil>( (t2:CBV) )) -> ((t1:CBV) ∨ < List |Cons( (t0:CBV), ((rec r14.< List |Cons( (t0:CBV), (r14:CBV))>( (t2:CBV) )):CBV))>( (t2:CBV) )))) := t1;
 
-def rec prd t2 : forall a. <List | r1 | Nil, Cons(a,r1) >(a) -> <List | r2 | Nil, Cons(a,r2) > (a) -> <List | r3 | Nil, Cons(a,r3)>(a) := t1;
+def rec prd tail : forall a. <List | r | Nil, Cons(a,r(a))>(a) -> <List | r | Nil, Cons(a,r(a))>(a) := 
+    \xs => case xs of {
+        Nil => Nil,
+        Cons(z,zs) => zs
+        };

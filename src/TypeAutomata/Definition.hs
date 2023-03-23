@@ -9,7 +9,6 @@ import Data.Map qualified as M
 import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
-import Data.Void
 
 import Syntax.CST.Names ( XtorName )
 import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..))
@@ -219,15 +218,14 @@ getKindNL MkPrimitiveNodeLabel{} = error "can't get polykind of primitive kind"
 -- Edge labels for type automata
 --------------------------------------------------------------------------------
 
-data EdgeLabel a
+data EdgeLabel
   = EdgeSymbol DataCodata XtorName PrdCns Int
-  | EpsilonEdge a
+  | FlowEdge
   | RefineEdge RnTypeName
   | TypeArgEdge RnTypeName Variance Int
   deriving (Eq, Show, Ord)
 
-type EdgeLabelNormal  = EdgeLabel Void
-type EdgeLabelEpsilon = EdgeLabel ()
+type EdgeLabelNormal  = EdgeLabel
 
 --------------------------------------------------------------------------------
 -- Flow edges
@@ -244,10 +242,8 @@ data TypeAutCore a = TypeAutCore
   , ta_flowEdges :: [FlowEdge]
   }
 deriving instance Show (TypeAutCore EdgeLabelNormal)
-deriving instance Show (TypeAutCore EdgeLabelEpsilon)
 
 type TypeGr = Gr NodeLabel EdgeLabelNormal
-type TypeGrEps = Gr NodeLabel EdgeLabelEpsilon
 
 data TypeAut' a f (pol :: Polarity) = TypeAut
   { ta_pol :: PolarityRep pol
@@ -256,13 +252,9 @@ data TypeAut' a f (pol :: Polarity) = TypeAut
   }
 deriving instance Show (TypeAut pol)
 deriving instance Show (TypeAutDet pol)
-deriving instance Show (TypeAutEps pol)
-deriving instance Show (TypeAutEpsDet pol)
 
 type TypeAut pol       = TypeAut' EdgeLabelNormal  [] pol
 type TypeAutDet pol    = TypeAut' EdgeLabelNormal  Identity pol
-type TypeAutEps pol    = TypeAut' EdgeLabelEpsilon [] pol
-type TypeAutEpsDet pol = TypeAut' EdgeLabelEpsilon Identity pol
 
 --------------------------------------------------------------------------------
 -- Helper functions

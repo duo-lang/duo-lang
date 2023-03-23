@@ -137,7 +137,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     if length args /= length decl.data_kind.kindArgs then
       throwOtherError loc ["Nominal Type " <> ppPrint decl.data_name <> " was not fully applied"]
     else do
-      let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep decl.data_kind.returnKind (nomTy rep) (fst:|rst)
+      let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep decl.data_kind.returnKind (nomTy rep) decl.data_name (fst:|rst)
       case rep of
         PrdRep -> return (TST.Xtor loc annot rep (ty PosRep) CST.Nominal xt substInferred)
         CnsRep -> return (TST.Xtor loc annot rep (ty NegRep)  CST.Nominal xt substInferred)
@@ -167,12 +167,12 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                    let refTy = TST.TyDataRefined   defaultLoc PosRep decl.data_kind decl.data_name [TST.MkXtorSig xt substTypes']
                    case args of
                      [] -> refTy 
-                     (fst:rst) -> TST.TyApp defaultLoc PosRep decl.data_kind.returnKind refTy (fst:|rst) 
+                     (fst:rst) -> TST.TyApp defaultLoc PosRep decl.data_kind.returnKind refTy decl.data_name (fst:|rst) 
                  CnsRep -> do
                    let refTy = TST.TyCodataRefined defaultLoc NegRep decl.data_kind  decl.data_name [TST.MkXtorSig xt substTypes']
                    case args of 
                      [] -> refTy 
-                     (fst:rst) -> TST.TyApp defaultLoc NegRep decl.data_kind.returnKind refTy (fst:|rst)
+                     (fst:rst) -> TST.TyApp defaultLoc NegRep decl.data_kind.returnKind refTy decl.data_name (fst:|rst)
       return $ TST.Xtor loc annot rep ty CST.Refinement xt substInferred
   --
   -- Structural pattern and copattern matches:
@@ -232,7 +232,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     if length args /= length decl.data_kind.kindArgs then 
       throwOtherError loc ["Nominal Type " <> ppPrint decl.data_name <> " was not fully applied"]
     else do 
-      let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep decl.data_kind.returnKind (nomTy rep) (fst:|rst)
+      let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep decl.data_kind.returnKind (nomTy rep) decl.data_name (fst:|rst)
       case rep of
         PrdRep -> return $ TST.XCase loc annot rep (ty PosRep) CST.Nominal (fst <$> inferredCases)
         CnsRep -> return $ TST.XCase loc annot rep (ty NegRep) CST.Nominal (fst <$> inferredCases)
@@ -279,7 +279,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
         else do 
           let xtors = TST.zonk TST.SkolemRep tyParamsMapNeg . snd <$> inferredCases
           let refTy = TST.TyDataRefined defaultLoc NegRep decl.data_kind decl.data_name xtors
-          let ty = case argsNeg of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc NegRep decl.data_kind.returnKind refTy (fst:|rst)
+          let ty = case argsNeg of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc NegRep decl.data_kind.returnKind refTy decl.data_name (fst:|rst)
           return $ TST.XCase loc annot rep ty CST.Refinement (fst <$> inferredCases)
       PrdRep -> do
         if length argsPos /= length decl.data_kind.kindArgs then
@@ -287,7 +287,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
         else do
           let xtors = TST.zonk TST.SkolemRep tyParamsMapPos . snd <$> inferredCases
           let refTy = TST.TyCodataRefined defaultLoc PosRep decl.data_kind decl.data_name xtors
-          let ty = case argsPos of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc PosRep decl.data_kind.returnKind refTy (fst:|rst)
+          let ty = case argsPos of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc PosRep decl.data_kind.returnKind refTy decl.data_name (fst:|rst)
           return $ TST.XCase loc annot rep ty CST.Refinement (fst <$> inferredCases)
   --
   -- Mu and TildeMu abstractions:
