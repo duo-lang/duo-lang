@@ -126,17 +126,17 @@ linearContextToArity = map f
 ---------------------------------------------------------------------------------
 
 -- | A MonoKind is a kind which classifies inhabitated types.
-data MonoKind
-  = CBox EvaluationOrder  -- ^ Boxed CBV/CBN
-  | I64Rep
-  | F64Rep
-  | CharRep
-  | StringRep
-  deriving (Show, Eq, Ord)
+data MonoKind where
+  CBox :: EvaluationOrder -> MonoKind
+  -- ^ Boxed CBV/CBN
+  I64Rep :: MonoKind
+  F64Rep :: MonoKind
+  CharRep :: MonoKind
+  StringRep :: MonoKind
 
-
-
-
+deriving instance Show MonoKind
+deriving instance Eq MonoKind
+deriving instance Ord MonoKind
 
 ------------------------------------------------------------------------------
 -- PolyKinds and TypeSchemes
