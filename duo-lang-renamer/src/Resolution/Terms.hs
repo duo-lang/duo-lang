@@ -295,10 +295,9 @@ resolveCommand (CST.CoLambda loc _ _) =
   throwError (CmdExpected loc "Command expected, but found cofunction abstraction")
 
 
-
-casesToNS :: [CST.TermCase] -> ResolverM CST.NominalStructural
-casesToNS [] = pure CST.Structural
-casesToNS (tmcase:_) =
+casesToNS :: [CST.TermCase] -> ResolverM RST.NominalStructural
+casesToNS [] = pure RST.Structural
+casesToNS (tmcase:_) = 
   case tmcase.pat of
     CST.PatXtor _ name _ -> do
       (_, XtorNameResult _ ns _) <- lookupXtor tmcase.loc name
@@ -306,24 +305,23 @@ casesToNS (tmcase:_) =
     _ ->
       throwError (UnknownResolutionError defaultLoc "casesToNS called with invalid argument")
 
-
 -- | Lower a natural number literal.
 resolveNatLit :: Loc -> CST.NominalStructural -> Int -> ResolverM (RST.Term Prd)
-resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep ns (MkXtorName "Z") (RST.MkSubstitution [])
+resolveNatLit loc ns 0 = pure $ RST.Xtor loc PrdRep (RST.cstToRstNS ns (MkTypeName "Nat")) (MkXtorName "Z") (RST.MkSubstitution [])
 resolveNatLit loc ns n = do
   n' <- resolveNatLit loc ns (n-1)
-  pure $ RST.Xtor loc PrdRep ns (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n'])
+  pure $ RST.Xtor loc PrdRep (RST.cstToRstNS ns (MkTypeName "Nat")) (MkXtorName "S") (RST.MkSubstitution [RST.PrdTerm n'])
 
 -- | Lower an application.
 resolveApp :: PrdCnsRep pc -> Loc -> CST.Term -> CST.Term -> ResolverM (RST.Term pc)
 resolveApp PrdRep loc fun arg = do
   fun' <- resolveTerm PrdRep fun
   arg' <- resolveTerm PrdRep arg
-  pure $ RST.Dtor loc PrdRep CST.Nominal (MkXtorName "Ap") fun' (RST.MkSubstitutionI ([RST.PrdTerm arg'],PrdRep,[]))
+  pure $ RST.Dtor loc PrdRep (RST.Nominal (MkTypeName "Fun")) (MkXtorName "Ap") fun' (RST.MkSubstitutionI ([RST.PrdTerm arg'],PrdRep,[]))
 resolveApp CnsRep loc fun arg = do
   fun' <- resolveTerm CnsRep fun
   arg' <- resolveTerm CnsRep arg
-  pure $ RST.Semi loc CnsRep CST.Nominal (MkXtorName "CoAp")  (RST.MkSubstitutionI ([RST.CnsTerm arg'],CnsRep,[])) fun'
+  pure $ RST.Semi loc CnsRep (RST.Nominal (MkTypeName "CoFun")) (MkXtorName "CoAp")  (RST.MkSubstitutionI ([RST.CnsTerm arg'],CnsRep,[])) fun'
 
 isStarT :: CST.TermOrStar -> Bool
 isStarT CST.ToSStar  = True

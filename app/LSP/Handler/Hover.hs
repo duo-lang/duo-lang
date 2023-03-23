@@ -35,12 +35,12 @@ import Syntax.TST.Terms
       PrdCnsTerm(..) )
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
-import Syntax.CST.Terms qualified as CST
 import Sugar.TST
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Types (PolarityRep(..))
 import Loc (Loc)
 import Syntax.RST.Program qualified as RST
+import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Program qualified as CST
 import Syntax.RST.Program (StructuralXtorDeclaration(strxtordecl_evalOrder))
 
@@ -109,7 +109,7 @@ freeVarToHoverMap loc ty = mkHoverMap loc msg
                     , "- Type `" <> ppPrint ty <> "`"
                     ]
 
-xtorToHoverMap :: Loc -> PrdCnsRep pc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
+xtorToHoverMap :: Loc -> PrdCnsRep pc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 xtorToHoverMap loc pc ty ns =  mkHoverMap loc msg
   where
     msg :: Text
@@ -123,7 +123,7 @@ xtorToHoverMap loc pc ty ns =  mkHoverMap loc msg
                           , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                           ]
 
-xcaseToHoverMap :: Loc -> PrdCnsRep pc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
+xcaseToHoverMap :: Loc -> PrdCnsRep pc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 xcaseToHoverMap loc pc ty ns = mkHoverMap loc msg
   where
     msg :: Text
@@ -150,7 +150,7 @@ muAbsToHoverMap loc pc ty = mkHoverMap loc msg
                 ]
 
 
-dtorToHoverMap :: Loc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
+dtorToHoverMap :: Loc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 dtorToHoverMap loc ty ns = mkHoverMap loc msg
   where
     msg :: Text
@@ -169,7 +169,7 @@ lambdaToHoverMap loc ty = mkHoverMap loc msg
                     ]
 
 
-caseToHoverMap :: Loc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
+caseToHoverMap :: Loc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 caseToHoverMap loc ty ns = mkHoverMap loc msg
   where
     msg :: Text
@@ -178,7 +178,7 @@ caseToHoverMap loc ty ns = mkHoverMap loc msg
                     , "- Type: `" <> ppPrint ty <> ":" <> ppPrint (TST.getKind ty) <> "`"
                     ]
 
-cocaseToHoverMap :: Loc -> TST.Typ pol -> CST.NominalStructural -> HoverMap
+cocaseToHoverMap :: Loc -> TST.Typ pol -> RST.NominalStructural -> HoverMap
 cocaseToHoverMap loc ty ns = mkHoverMap loc msg
   where
     msg :: Text
