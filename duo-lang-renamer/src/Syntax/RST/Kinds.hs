@@ -3,7 +3,7 @@ module Syntax.RST.Kinds where
 import Data.Set (Set)
 import Data.Set qualified as S
 
-import Syntax.CST.Kinds
+import Syntax.CST.Types
 import Syntax.CST.Names
 
 --either polykind or primitive kind

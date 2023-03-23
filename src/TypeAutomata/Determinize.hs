@@ -15,7 +15,7 @@ import Data.Foldable (foldl')
 
 import TypeAutomata.Definition
 import Syntax.RST.Types ( Polarity(Neg, Pos) )
-import Syntax.CST.Kinds (PolyKind(..))
+import Syntax.CST.Types (PolyKind(..))
 
 ---------------------------------------------------------------------------------------
 -- First step of determinization:

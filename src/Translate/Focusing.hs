@@ -11,10 +11,9 @@ import Syntax.RST.Types (PolarityRep(..))
 import Syntax.RST.Terms qualified as RST
 import Loc
 import Syntax.CST.Terms qualified as CST
-import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..), EvaluationOrder(..), PolyKind(..))
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.RST.Kinds
-import Syntax.CST.Kinds
 import Syntax.CST.Names
 import Syntax.Core.Annot
 import qualified Syntax.LocallyNameless as LN

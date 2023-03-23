@@ -14,14 +14,12 @@ import Text.Megaparsec.Char (eol)
 
 import Parser.Common
 import Parser.Definition
-import Parser.Kinds
 import Parser.Lexer
 import Parser.Terms
 import Parser.Types
 import Syntax.CST.Program
 import Syntax.CST.Types
 import Syntax.CST.Names
-import Syntax.CST.Kinds (EvaluationOrder(..),PolyKind(..))
 import Loc
 
 

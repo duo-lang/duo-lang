@@ -22,9 +22,8 @@ import Translate.EmbedTST
 import Syntax.RST.Names
 import Syntax.RST.Kinds
 import Syntax.CST.Types qualified as CST
-import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
+import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..), PolyKind(..), Variance(..))
 import Syntax.CST.Names
-import Syntax.CST.Kinds
 import TypeAutomata.Definition
 import Loc ( defaultLoc )
 import Utils ( enumerate )

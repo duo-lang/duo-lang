@@ -71,13 +71,11 @@ library
       Loc
       Parser.Common
       Parser.Definition
-      Parser.Kinds
       Parser.Lexer
       Parser.Parser
       Parser.Program
       Parser.Terms
       Parser.Types
-      Syntax.CST.Kinds
       Syntax.CST.Names
       Syntax.CST.Program
       Syntax.CST.Terms

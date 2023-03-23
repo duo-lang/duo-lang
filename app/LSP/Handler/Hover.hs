@@ -21,9 +21,8 @@ import Pretty.Terms ()
 import Syntax.CST.Names
     ( MethodName, ClassName)
 import Syntax.RST.Names
-import Syntax.CST.Kinds ( MonoKind )
 import Syntax.RST.Kinds ( AnyKind )
-import Syntax.CST.Types ( PrdCnsRep(..), DataCodata(..), PrdCns(..))
+import Syntax.CST.Types ( PrdCnsRep(..), DataCodata(..), PrdCns(..), MonoKind)
 import Syntax.TST.Terms
     ( Command(Method, Print, Read, Jump, ExitSuccess, ExitFailure,
               PrimOp),
