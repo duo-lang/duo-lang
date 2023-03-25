@@ -12,8 +12,14 @@ refinement data List : (+a : CBV) -> CBV {
 
 
 
-def rec prd tail : forall a. <List | r | Nil, Cons(a,r(a))>(a) -> <List | r | Nil, Cons(a,r(a))>(a) := 
-    \xs => case xs of {
-        Nil => Nil,
-        Cons(z,zs) => zs
-        };
+--def rec prd tail : forall a. <List | r | Nil, Cons(a,r(a))>(a) -> <List | r | Nil, Cons(a,r(a))>(a) := 
+--    \xs => case xs of {
+--        Nil => Nil,
+--       Cons(z,zs) => zs
+--        };
+
+def rec prd append : forall a. < List | r | Nil, Cons(a,r(a))>(a) -> <List | r | Nil, Cons(a,r(a))>(a) := 
+  \xs ys => case xs of {
+        Nil => ys,
+        Cons(z,zs) => Cons(z,append zs ys)
+};

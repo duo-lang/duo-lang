@@ -6,6 +6,7 @@ module TypeInference.GenerateConstraints.Terms
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List.NonEmpty qualified as NE 
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
@@ -53,14 +54,17 @@ genConstraintsCtxts ctx1 ctx2 info | length ctx1 /= length ctx2 = do
   loc <- asks ((\x -> x.location) . snd)
   throwGenError (LinearContextsUnequalLength loc info ctx1 ctx2)
 genConstraintsCtxts [] [] _ = return ()
+
 genConstraintsCtxts ((TST.PrdCnsType PrdRep ty1) : rest1) (TST.PrdCnsType PrdRep ty2 : rest2) info = do
   addConstraint $ SubType info ty1 ty2
   addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2)
   genConstraintsCtxts rest1 rest2 info
+
 genConstraintsCtxts ((TST.PrdCnsType CnsRep ty1) : rest1) (TST.PrdCnsType CnsRep ty2 : rest2) info = do
   addConstraint $ SubType info ty2 ty1
   addConstraint $ KindEq KindConstraint (TST.getKind ty1) (TST.getKind ty2)
   genConstraintsCtxts rest1 rest2 info
+
 genConstraintsCtxts (TST.PrdCnsType PrdRep _:_) (TST.PrdCnsType CnsRep _:_) info = do
   loc <- asks ((\x -> x.location) . snd)
   throwGenError (LinearContextIncompatibleTypeMode loc Prd info)
@@ -154,11 +158,11 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     xtorSigUpper <- lookupXtorSigUpper loc xt
     -- generate Constraints for applied types (if there are any)
     (args, tyParamsMap) <- freshTVarsForTypeParams (prdCnsToPol rep) decl
-    let substTypes' = TST.zonk TST.SkolemRep tyParamsMap substTypes
-    let sig_args'' = TST.zonk TST.SkolemRep tyParamsMap xtorSigUpper.sig_args
+    let sig_args' = TST.zonk TST.SkolemRep tyParamsMap xtorSigUpper.sig_args
+    substTypes' <- mapM replaceUniVars (zip substTypes sig_args')
     -- Then we generate constraints between the inferred types of the substitution
     -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
-    genConstraintsCtxts substTypes' sig_args'' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
+    genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
     if length args /= length decl.data_kind.kindArgs then
       throwOtherError loc ["Refinement Type " <> ppPrint decl.data_name <> " was not fully applied"]
     else do
@@ -174,6 +178,33 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                      [] -> refTy 
                      (fst:rst) -> TST.TyApp defaultLoc NegRep decl.data_kind.returnKind refTy decl.data_name (fst:|rst)
       return $ TST.Xtor loc annot rep ty RST.Refinement xt substInferred
+      where 
+        replaceUniVars :: (TST.PrdCnsType pol,TST.PrdCnsType pol1) -> GenM (TST.PrdCnsType pol)
+        replaceUniVars (TST.PrdCnsType PrdRep _,TST.PrdCnsType CnsRep _) = error "can't happen"
+        replaceUniVars (TST.PrdCnsType CnsRep _,TST.PrdCnsType PrdRep _) = error "can't happen"
+        replaceUniVars (TST.PrdCnsType PrdRep ty1,TST.PrdCnsType PrdRep ty2) = case (ty1, ty2) of 
+          (TST.TyUniVar loc pol _ _, TST.TyApp _ _ eo _ tyn args) -> do 
+            let argKnds = TST.getKind <$> args
+            let vars =  (\case  TST.CovariantType _ -> Covariant;  TST.ContravariantType _ -> Contravariant) <$> args
+            uVars <- mapM (freshTVar TypeClassResolution) (Just <$> argKnds)
+            let newArgs =  argToVarTy pol <$> NE.zip uVars vars
+            return $ TST.PrdCnsType PrdRep (TST.TyApp loc pol eo ty1 tyn newArgs)
+          _ -> return $ TST.PrdCnsType PrdRep ty1
+        replaceUniVars (TST.PrdCnsType CnsRep ty1,TST.PrdCnsType CnsRep ty2) = case (ty1,ty2) of 
+          (TST.TyUniVar loc pol _ _ , TST.TyApp _ _ eo _ tyn args) -> do
+            let argKnds = TST.getKind <$> args
+            let vars =  (\case  TST.CovariantType _ -> Covariant;  TST.ContravariantType _ -> Contravariant) <$> args
+            uVars <- mapM (freshTVar TypeClassResolution) (Just <$> argKnds)
+            let newArgs =  argToVarTy pol <$> NE.zip uVars vars
+            return $ TST.PrdCnsType CnsRep (TST.TyApp loc pol eo ty1 tyn newArgs)
+          _ -> return $ TST.PrdCnsType CnsRep ty1
+
+        argToVarTy :: PolarityRep pol -> ((TST.Typ Pos,TST.Typ Neg),Variance) -> TST.VariantType pol
+        argToVarTy PosRep ((ty,_),Covariant)     = TST.CovariantType ty
+        argToVarTy PosRep ((_,ty),Contravariant) = TST.ContravariantType ty 
+        argToVarTy NegRep ((ty,_),Contravariant) = TST.ContravariantType ty
+        argToVarTy NegRep ((_,ty),Covariant)     = TST.CovariantType ty
+
   --
   -- Structural pattern and copattern matches:
   --
