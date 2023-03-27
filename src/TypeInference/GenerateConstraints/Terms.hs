@@ -6,7 +6,6 @@ module TypeInference.GenerateConstraints.Terms
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
-import Data.List.NonEmpty qualified as NE 
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
@@ -178,33 +177,6 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                      [] -> refTy 
                      (fst:rst) -> TST.TyApp defaultLoc NegRep decl.data_kind.returnKind refTy decl.data_name (fst:|rst)
       return $ TST.Xtor loc annot rep ty RST.Refinement xt substInferred
-      where 
-        replaceUniVars :: (TST.PrdCnsType pol,TST.PrdCnsType pol1) -> GenM (TST.PrdCnsType pol)
-        replaceUniVars (TST.PrdCnsType PrdRep _,TST.PrdCnsType CnsRep _) = error "can't happen"
-        replaceUniVars (TST.PrdCnsType CnsRep _,TST.PrdCnsType PrdRep _) = error "can't happen"
-        replaceUniVars (TST.PrdCnsType PrdRep ty1,TST.PrdCnsType PrdRep ty2) = case (ty1, ty2) of 
-          (TST.TyUniVar loc pol _ _, TST.TyApp _ _ eo _ tyn args) -> do 
-            let argKnds = TST.getKind <$> args
-            let vars =  (\case  TST.CovariantType _ -> Covariant;  TST.ContravariantType _ -> Contravariant) <$> args
-            uVars <- mapM (freshTVar TypeClassResolution) (Just <$> argKnds)
-            let newArgs =  argToVarTy pol <$> NE.zip uVars vars
-            return $ TST.PrdCnsType PrdRep (TST.TyApp loc pol eo ty1 tyn newArgs)
-          _ -> return $ TST.PrdCnsType PrdRep ty1
-        replaceUniVars (TST.PrdCnsType CnsRep ty1,TST.PrdCnsType CnsRep ty2) = case (ty1,ty2) of 
-          (TST.TyUniVar loc pol _ _ , TST.TyApp _ _ eo _ tyn args) -> do
-            let argKnds = TST.getKind <$> args
-            let vars =  (\case  TST.CovariantType _ -> Covariant;  TST.ContravariantType _ -> Contravariant) <$> args
-            uVars <- mapM (freshTVar TypeClassResolution) (Just <$> argKnds)
-            let newArgs =  argToVarTy pol <$> NE.zip uVars vars
-            return $ TST.PrdCnsType CnsRep (TST.TyApp loc pol eo ty1 tyn newArgs)
-          _ -> return $ TST.PrdCnsType CnsRep ty1
-
-        argToVarTy :: PolarityRep pol -> ((TST.Typ Pos,TST.Typ Neg),Variance) -> TST.VariantType pol
-        argToVarTy PosRep ((ty,_),Covariant)     = TST.CovariantType ty
-        argToVarTy PosRep ((_,ty),Contravariant) = TST.ContravariantType ty 
-        argToVarTy NegRep ((ty,_),Contravariant) = TST.ContravariantType ty
-        argToVarTy NegRep ((_,ty),Covariant)     = TST.CovariantType ty
-
   --
   -- Structural pattern and copattern matches:
   --
@@ -295,11 +267,13 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         xtorUpper <- lookupXtorSigUpper loc xt 
                         let lowerBound' = xtorLower.sig_args
                         let upperBound' = xtorUpper.sig_args
-                        genConstraintsCtxts lowerBound' uvarsNeg (PatternMatchConstraint loc)
-                        genConstraintsCtxts uvarsPos upperBound' (PatternMatchConstraint loc)
+                        uvarsNeg' <- mapM replaceUniVars (zip uvarsNeg lowerBound')
+                        uvarsPos' <- mapM replaceUniVars (zip uvarsPos upperBound')
+                        genConstraintsCtxts lowerBound' uvarsNeg' (PatternMatchConstraint loc)
+                        genConstraintsCtxts uvarsPos' upperBound' (PatternMatchConstraint loc)
                         -- For the type, we return the unification variables which are now bounded by the least
                         -- and greatest type translation.
-                        return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg))
+                        return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt uvarsNeg'))
     -- Generate fresh unification variables for type parameters
     (argsPos, tyParamsMapPos) <- freshTVarsForTypeParams PosRep decl
     (argsNeg, tyParamsMapNeg) <- freshTVarsForTypeParams NegRep decl
