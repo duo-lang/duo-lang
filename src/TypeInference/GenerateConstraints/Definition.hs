@@ -189,34 +189,51 @@ replaceUniVars :: (TST.PrdCnsType pol,TST.PrdCnsType pol1) -> GenM (TST.PrdCnsTy
 replaceUniVars (TST.PrdCnsType PrdRep _,TST.PrdCnsType CnsRep _) = error "can't happen"
 replaceUniVars (TST.PrdCnsType CnsRep _,TST.PrdCnsType PrdRep _) = error "can't happen"
 replaceUniVars (TST.PrdCnsType PrdRep ty1,TST.PrdCnsType PrdRep ty2) = case (ty1, ty2) of 
-  (TST.TyUniVar loc pol _ _, TST.TyApp _ _ eo _ tyn args) -> do 
+  (TST.TyUniVar loc pol knd uv, TST.TyApp _ _ eo _ tyn args) -> do 
     let argKnds = TST.getKind <$> args
     let vars =  (\case  TST.CovariantType _ -> Covariant;  TST.ContravariantType _ -> Contravariant) <$> args
     uVars <- mapM (freshTVar TypeClassResolution) (Just <$> argKnds)
-    let newArgs =  argToVarTy pol <$> NE.zip uVars vars
-    return $ TST.PrdCnsType PrdRep (TST.TyApp loc pol eo ty1 tyn newArgs)
+    let newArgsPos =  argToVarTy PosRep <$> NE.zip uVars vars
+    let newArgsNeg =  argToVarTy NegRep <$> NE.zip uVars vars
+    (newUVarPos, newUVarNeg) <- freshTVar TypeClassResolution (Just knd)
+    let newTyPos = TST.TyApp loc PosRep eo newUVarPos tyn newArgsPos
+    let newTyNeg = TST.TyApp loc NegRep eo newUVarNeg tyn newArgsNeg
+    case pol of 
+      PosRep -> do
+        addConstraint $ SubType ApplicationSubConstraint ty1 newTyNeg
+        addConstraint $ SubType ApplicationSubConstraint newTyPos (TST.TyUniVar loc NegRep knd uv)
+        return $ TST.PrdCnsType PrdRep newTyPos
+      NegRep -> do
+        addConstraint $ SubType ApplicationSubConstraint newTyPos ty1
+        addConstraint $ SubType ApplicationSubConstraint (TST.TyUniVar loc PosRep knd uv) newTyNeg
+        return $ TST.PrdCnsType PrdRep newTyNeg
   _ -> return $ TST.PrdCnsType PrdRep ty1
-  where 
-    argToVarTy :: PolarityRep pol -> ((TST.Typ Pos,TST.Typ Neg),Variance) -> TST.VariantType pol
-    argToVarTy PosRep ((ty,_),Covariant)     = TST.CovariantType ty
-    argToVarTy PosRep ((_,ty),Contravariant) = TST.ContravariantType ty 
-    argToVarTy NegRep ((ty,_),Contravariant) = TST.ContravariantType ty
-    argToVarTy NegRep ((_,ty),Covariant)     = TST.CovariantType ty
 replaceUniVars (TST.PrdCnsType CnsRep ty1,TST.PrdCnsType CnsRep ty2) = case (ty1,ty2) of 
-  (TST.TyUniVar loc pol _ _ , TST.TyApp _ _ eo _ tyn args) -> do
+  (TST.TyUniVar loc pol knd uv, TST.TyApp _ _ eo _ tyn args) -> do
     let argKnds = TST.getKind <$> args
     let vars =  (\case  TST.CovariantType _ -> Covariant;  TST.ContravariantType _ -> Contravariant) <$> args
     uVars <- mapM (freshTVar TypeClassResolution) (Just <$> argKnds)
-    let newArgs =  argToVarTy pol <$> NE.zip uVars vars
-    return $ TST.PrdCnsType CnsRep (TST.TyApp loc pol eo ty1 tyn newArgs)
+    let newArgsPos =  argToVarTy PosRep <$> NE.zip uVars vars
+    let newArgsNeg =  argToVarTy NegRep <$> NE.zip uVars vars
+    (newUVarPos, newUVarNeg) <- freshTVar TypeClassResolution (Just knd)
+    let newTyPos = TST.TyApp loc PosRep eo newUVarPos tyn newArgsPos
+    let newTyNeg = TST.TyApp loc NegRep eo newUVarNeg tyn newArgsNeg
+    case pol of 
+      PosRep -> do
+        addConstraint $ SubType ApplicationSubConstraint ty1 newTyNeg
+        addConstraint $ SubType ApplicationSubConstraint newTyPos (TST.TyUniVar loc NegRep knd uv)
+        return $ TST.PrdCnsType CnsRep newTyPos
+      NegRep -> do
+        addConstraint $ SubType ApplicationSubConstraint newTyPos ty1
+        addConstraint $ SubType ApplicationSubConstraint (TST.TyUniVar loc PosRep knd uv) newTyNeg
+        return $ TST.PrdCnsType CnsRep newTyNeg
   _ -> return $ TST.PrdCnsType CnsRep ty1
-  where 
-    argToVarTy :: PolarityRep pol -> ((TST.Typ Pos,TST.Typ Neg),Variance) -> TST.VariantType pol
-    argToVarTy PosRep ((ty,_),Covariant)     = TST.CovariantType ty
-    argToVarTy PosRep ((_,ty),Contravariant) = TST.ContravariantType ty 
-    argToVarTy NegRep ((ty,_),Contravariant) = TST.ContravariantType ty
-    argToVarTy NegRep ((_,ty),Covariant)     = TST.CovariantType ty
 
+argToVarTy :: PolarityRep pol -> ((TST.Typ Pos,TST.Typ Neg),Variance) -> TST.VariantType pol
+argToVarTy PosRep ((ty,_),Covariant)     = TST.CovariantType ty
+argToVarTy PosRep ((_,ty),Contravariant) = TST.ContravariantType ty 
+argToVarTy NegRep ((ty,_),Contravariant) = TST.ContravariantType ty
+argToVarTy NegRep ((_,ty),Covariant)     = TST.CovariantType ty
 
 createMethodSubst :: Loc -> ClassDeclaration -> GenM (TST.Bisubstitution TST.SkolemVT, [UniTVar])
 createMethodSubst loc decl =
