@@ -1,5 +1,5 @@
 module TypeInference.Coalescing ( coalesce ) where
-
+import Debug.Trace 
 import Control.Monad.State
 import Control.Monad.Reader
 import Data.Maybe (fromMaybe)
@@ -116,6 +116,7 @@ coalesceType (TyUniVar _ PosRep pk tv) = do
         case M.lookup (tv, Pos) recVarMap of
           Nothing     -> do
             newName <- getSkolemVar tv
+            trace ("creating skolem var " <> show newName <> " for univar " <> show tv) $ pure ()
             return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk' newName : lbs')
           Just recVar ->
             return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk' recVar  : lbs'))
@@ -146,6 +147,7 @@ coalesceType (TyUniVar _ NegRep pk tv) = do
           case M.lookup (tv, Neg) recVarMap of
             Nothing -> do
               newName <- getSkolemVar tv
+              trace ("creating skolem var " <> show newName <> " for univar " <> show tv) $ pure ()
               return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep pk' newName : ubs')
             Just recVar ->
               return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk' recVar  : ubs'))
