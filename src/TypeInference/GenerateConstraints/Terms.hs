@@ -161,7 +161,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     substTypes' <- mapM replaceUniVars (zip substTypes sig_args')
     -- Then we generate constraints between the inferred types of the substitution
     -- and the translations of the types we looked up, i.e. the types declared in the XtorSig.
-    genConstraintsCtxts substTypes sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
+    genConstraintsCtxts substTypes' sig_args' (case rep of { PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc })
     if length args /= length decl.data_kind.kindArgs then
       throwOtherError loc ["Refinement Type " <> ppPrint decl.data_name <> " was not fully applied"]
     else do
