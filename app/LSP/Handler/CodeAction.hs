@@ -62,7 +62,7 @@ import Utils (filePathToModuleName)
 import System.Directory (makeRelativeToCurrentDirectory)
 import Data.IORef (readIORef)
 import Data.Functor.Identity(Identity)
-import qualified Xfunc.Xfunc as Xfunc
+import Xfunc.Xfunc qualified as Xfunc
 
 ---------------------------------------------------------------------------------
 -- Provide CodeActions
@@ -179,10 +179,10 @@ instance GetCodeActions TST.DataDecl where
   -- If we are not in the correct range, then don't generate code actions.
   getCodeActions _ _ Range {_start = start} decl | not (lookupPos start decl.data_loc) =
     List []
-  getCodeActions id _ _ decl =
+  getCodeActions id mod _ decl =
     let
       dualize = [ workspaceEditToCodeAction (generateDualizeDeclEdit id decl.data_loc decl) ("Dualize declaration " <> ppPrint decl.data_name) ]
-      xfunc = [generateXfuncCodeAction id decl.data_loc decl ]
+      xfunc = [generateXfuncCodeAction id decl.data_loc decl mod]
     in
       List (dualize <> xfunc)
 ---------------------------------------------------------------------------------
@@ -251,11 +251,16 @@ generateDualizeDeclEdit (TextDocumentIdentifier uri) loc decl =
 -- Provide Re-/Defunctionalize Actions 
 ---------------------------------------------------------------------------------
 
-generateXfuncCodeAction:: TextDocumentIdentifier -> Loc -> TST.DataDecl -> (Command |? CodeAction)
-generateXfuncCodeAction (TextDocumentIdentifier _) _ decl =
+generateXfuncCodeAction:: TextDocumentIdentifier -> Loc -> TST.DataDecl -> TST.Module -> (Command |? CodeAction)
+generateXfuncCodeAction (TextDocumentIdentifier uri) loc decl mod =
   let
     transformable = Xfunc.transformable decl
     descr = "Xfunc (co)datatype" <> ppPrint decl.data_name
+    replacement = ppPrint (Xfunc.getNewXtors mod decl)
+    edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
+    wsEdit = WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
+                  , _documentChanges = Nothing
+                  , _changeAnnotations = Nothing }
   in
     if transformable then
       InR $ CodeAction { _title = descr
@@ -263,7 +268,7 @@ generateXfuncCodeAction (TextDocumentIdentifier _) _ decl =
                    , _diagnostics = Nothing
                    , _isPreferred = Nothing
                    , _disabled = Nothing
-                   , _edit = Nothing
+                   , _edit = Just wsEdit
                    , _command = Nothing
                    , _xdata = Nothing
                    }
