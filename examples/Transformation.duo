@@ -8,7 +8,7 @@ data List : CBV {
     Nil,
     Cons(Nat,List)
 };
-
+[MuAbs, CoList, CoList, error, error]
 
 
 def rec prd index : List -> Nat -> Maybe(Nat) :=
@@ -29,20 +29,6 @@ codata CoList : CBV {
 def prd nil : CoList := cocase {
     Index(n,*) => Nothing
 };
-
-def prd oneElemList : ((Nat:CBV) -> ((CoList:CBV) -> (CoList:CBV))) := cocase {
-   Ap(x1,k1) => 
-      (cocase {
-         Ap(x2,k2) => 
-            (cocase {
-               Index(x3,k3) => 
-                  (mu k4.((x3) >> case {Z() => (Just( x1 )) >> k4, S(x4) => (Just( 0 )) >> k4}))
-                  >>
-                  k3})
-            >>
-            k2})
-      >>
-      k1};
 
 def rec prd cons : Nat -> CoList -> CoList := \head tail => cocase {
     Index(n,*) => case n of {
