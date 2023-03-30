@@ -10,10 +10,10 @@ refinement data List : (+a : CBV) -> CBV {
     Cons(a, List(a))
 };
 
---data ListNom : (+a :CBV) -> CBV {
---  NilNom,
---  ConsNom(a,ListNom(a))
---};
+data ListNom : (+a :CBV) -> CBV {
+  NilNom,
+  ConsNom(a,ListNom(a))
+};
 
 --def rec prd tailNom := 
 --  \xs => case xs of {

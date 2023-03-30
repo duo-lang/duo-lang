@@ -2,7 +2,7 @@ module TypeInference.GenerateConstraints.Terms
   ( GenConstraints(..)
   , genConstraintsTermRecursive
   ) where
-
+import Debug.Trace
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -156,11 +156,13 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- Since we infer refinement types, we have to look up the translated xtorSig.
     decl <- lookupDataDecl loc xt
     xtorSigUpper <- lookupXtorSigUpper loc xt 
+--    trace ("getTypeArgsRef for xtor " <> ppPrintString xt) $ pure ()
     (uvarsPos,uvarsNeg,tyParamsMap) <- getTypeArgsRef decl
     let sig_args' = TST.zonk TST.SkolemRep tyParamsMap xtorSigUpper.sig_args
     substTypes' <- getSubstTypesRef substTypes sig_args' (uvarsPos,uvarsNeg)
     let cstrInfo = case rep of PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc
     -- Then we generate constraints between the inferred types of the substitution
+--    trace ("generating constraints " <> ppPrintString substTypes' <> " <: " <> ppPrintString sig_args') $ pure ()
     genConstraintsCtxts substTypes' sig_args' cstrInfo
     let newXtorSig = [TST.MkXtorSig xt substTypes']
     case rep of 
@@ -256,11 +258,12 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- We check that all cases in the pattern match belong to the type declaration.
     checkCorrectness loc ((\cs -> case cs.cmdcase_pat of Core.XtorPat _ xt _ -> xt) <$> cases) decl
     -- Generate fresh unification variables for type parameters
+--    trace "getTypeArgsRef for xcase" $ pure ()
     (tyArgsPos,tyArgsNeg,tyParamsMap) <- getTypeArgsRef decl
     inferredCases <- forM cases (\(Core.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdcase_cmd) -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
-                        (substTypesPos,substTypesNeg) <- freshTVarsXCaseRef loc xt (tyArgsPos,tyArgsNeg) args
+                        (substTypesPos,substTypesNeg) <- freshTVarsXCaseRef loc xt (tyArgsPos,tyArgsNeg,tyParamsMap) args
                         -- Check the command in the context extended with the positive unification variables
                         cmdInferred <- withContext substTypesPos (genConstraints cmdcase_cmd)
                         -- We have to bound the unification variables with the lower and upper bounds generated
