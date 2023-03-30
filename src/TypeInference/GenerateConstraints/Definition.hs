@@ -10,6 +10,7 @@ module TypeInference.GenerateConstraints.Definition
   , freshTVarsForTypeParams
   , getTypeArgsRef
   , getSubstTypesRef
+  , freshTVarsXCaseRef 
   , paramsMap
   , createMethodSubst
   , insertSkolemsClass
@@ -35,8 +36,6 @@ module TypeInference.GenerateConstraints.Definition
   , initialState
   , initialReader
 ) where
-import Debug.Trace 
-import Pretty.Pretty
 
 import Control.Monad.Except
 import Control.Monad.Reader
@@ -187,7 +186,7 @@ freshTVarsForTypeParams rep decl = do
       (Contravariant, PosRep) -> pure (TST.ContravariantType tyNeg : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, NegRep) -> pure (TST.ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
-
+-- these functins are specific to refinement types as they require handling type arguments differently
 getTypeArgsRef :: TST.DataDecl -> GenM ([TST.VariantType Pos], [TST.VariantType Neg],TST.Bisubstitution TST.SkolemVT)
 getTypeArgsRef decl =  do 
   let kndArgs = decl.data_kind.kindArgs
@@ -200,40 +199,93 @@ getTypeArgsRef decl =  do
   let varsNeg = (\(_,x,_,_) -> x) <$> vars
   let uvs = (\(_,_,x,y) -> (x,y)) <$> vars
   return (varsPos,varsNeg,paramsMap kndArgs uvs)
+
 replaceUniVarRef :: TST.PrdCnsType pol -> TST.PrdCnsType pol1 -> (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg)) -> GenM (TST.PrdCnsType pol)
 replaceUniVarRef (TST.PrdCnsType PrdRep _) (TST.PrdCnsType CnsRep _) _ = error "Can't happen"
 replaceUniVarRef (TST.PrdCnsType CnsRep _) (TST.PrdCnsType PrdRep _) _ = error "Can't happen"
 replaceUniVarRef pc1@(TST.PrdCnsType PrdRep ty1) (TST.PrdCnsType PrdRep ty2) tyArgs = case (ty1,ty2) of 
-  (TST.TyUniVar loc pol knd _,TST.TyApp _ _ eo ty tyn _) -> do
+  (TST.TyUniVar loc pol knd uv,TST.TyApp _ _ eo ty tyn _) -> do
     (uvarPos,uvarNeg) <- freshTVar TypeClassResolution (Just $ TST.getKind ty)
     addConstraint $ KindEq ReturnKindConstraint knd (MkPknd (MkPolyKind [] eo))
     let newTyPos = TST.TyApp loc PosRep eo uvarPos tyn (fst tyArgs)
     let newTyNeg = TST.TyApp loc NegRep eo uvarNeg tyn (snd tyArgs)
     case pol of 
       PosRep -> do 
-        addConstraint $ SubType ApplicationSubConstraint ty1 newTyNeg
+        let ty1Neg = TST.TyUniVar loc NegRep knd uv
+        addConstraint $ SubType ClassResolutionConstraint newTyPos ty1Neg
         return (TST.PrdCnsType PrdRep newTyPos)
       NegRep -> do
-        addConstraint $ SubType ApplicationSubConstraint newTyPos ty1
+        let ty1Pos = TST.TyUniVar loc PosRep knd uv
+        addConstraint $ SubType ClassResolutionConstraint ty1Pos newTyNeg
         return (TST.PrdCnsType PrdRep newTyNeg)
   _ -> return pc1
-   
-
 replaceUniVarRef pc1@(TST.PrdCnsType CnsRep ty1) (TST.PrdCnsType CnsRep ty2) tyArgs = case (ty1,ty2) of 
-  (TST.TyUniVar loc pol knd _,TST.TyApp _ _ eo ty tyn _) -> do
+  (TST.TyUniVar loc pol knd uv,TST.TyApp _ _ eo ty tyn _) -> do
     (uvarPos,uvarNeg) <- freshTVar TypeClassResolution (Just $ TST.getKind ty)
     addConstraint $ KindEq ReturnKindConstraint knd (MkPknd (MkPolyKind [] eo))
     let newTyPos = TST.TyApp loc PosRep eo uvarPos tyn (fst tyArgs)
     let newTyNeg = TST.TyApp loc NegRep eo uvarNeg tyn (snd tyArgs)
     case pol of 
       PosRep -> do 
-        addConstraint $ SubType ApplicationSubConstraint ty1 newTyNeg
+        let ty1Neg = TST.TyUniVar loc NegRep knd uv
+        addConstraint $ SubType ClassResolutionConstraint newTyPos ty1Neg
         return (TST.PrdCnsType CnsRep newTyPos)
       NegRep -> do
-        addConstraint $ SubType ApplicationSubConstraint newTyPos ty1
+        let ty1Pos = TST.TyUniVar loc PosRep knd uv
+        addConstraint $ SubType ClassResolutionConstraint ty1Pos newTyNeg
         return (TST.PrdCnsType CnsRep newTyNeg)
   _ -> return pc1
 
+freshTVarsXCaseRef :: Loc -> XtorName -> ([TST.VariantType Pos], [TST.VariantType Neg]) -> [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
+freshTVarsXCaseRef loc xt ([],[]) args = do 
+  xtor <- lookupXtorSig loc xt PosRep
+  let argKnds = map TST.getKind xtor.sig_args
+  let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, z))) args argKnds
+  freshTVars tVarArgs
+freshTVarsXCaseRef _ _ ([],_) _ = error "impossible"
+freshTVarsXCaseRef _ _ (_,[]) _ = error "impossible"
+freshTVarsXCaseRef loc xt (fstPos:rstPos, fstNeg:rstNeg) args = do 
+  xtor <- lookupXtorSig loc xt PosRep
+  let tyArgs = (fstPos :| rstPos, fstNeg :| rstNeg)
+  prdCnsTys <- forM (zip args xtor.sig_args) (freshTVarRef loc tyArgs)
+  return (fst <$> prdCnsTys,snd <$> prdCnsTys)
+  where 
+    freshTVarRef :: Loc -> (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg)) -> ((PrdCns,Maybe FreeVarName),TST.PrdCnsType pol) -> GenM (TST.PrdCnsType Pos,TST.PrdCnsType Neg)
+    freshTVarRef loc _ ((Prd,_),TST.PrdCnsType CnsRep _) = throwOtherError loc ["Xtor argument has to be consumer, was producer"]
+    freshTVarRef loc _ ((Cns,_),TST.PrdCnsType PrdRep _) = throwOtherError loc ["Xtor argument has to be consumer, was producer"]
+    freshTVarRef _ argTys ((Prd,fv),TST.PrdCnsType PrdRep ty) = case ty of 
+      TST.TyApp loc' _ eo ty tyn _ -> do
+        (tyPos, tyNeg) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just (TST.getKind ty))
+        let newTyPos = TST.TyApp loc' PosRep eo tyPos tyn (fst argTys)
+        let newTyNeg = TST.TyApp loc' NegRep eo tyNeg tyn (snd argTys)
+        return (TST.PrdCnsType PrdRep newTyPos, TST.PrdCnsType PrdRep newTyNeg) 
+      _ -> do
+        let knd = TST.getKind ty
+        (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just knd)
+        return (TST.PrdCnsType PrdRep tp,TST.PrdCnsType PrdRep tn)
+    freshTVarRef _ argTys ((Cns,fv),TST.PrdCnsType CnsRep ty) = case ty of 
+      TST.TyApp loc' _ eo ty tyn _ -> do 
+        (tyPos, tyNeg) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just (TST.getKind ty))
+        let newTyPos = TST.TyApp loc' PosRep eo tyPos tyn (fst argTys)
+        let newTyNeg = TST.TyApp loc' NegRep eo tyNeg tyn (snd argTys)
+        return (TST.PrdCnsType CnsRep newTyNeg, TST.PrdCnsType CnsRep newTyPos)
+      _ -> do 
+        let knd = TST.getKind ty 
+        (tp,tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just knd)
+        return (TST.PrdCnsType CnsRep tn, TST.PrdCnsType CnsRep tp)
+    
+
+--  (lctxtP, lctxtN) <- freshTVars rest
+--  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just knd)
+--  return (TST.PrdCnsType PrdRep tp:lctxtP, TST.PrdCnsType PrdRep tn:lctxtN)
+--freshTVars ((Cns,fv,knd):rest) = do
+--  (lctxtP, lctxtN) <- freshTVars rest
+--  (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just knd)
+--  return (TST.PrdCnsType CnsRep tn:lctxtP, TST.PrdCnsType CnsRep tp:lctxtN)
+
+                        --let argKnds = map TST.getKind xtor.sig_args
+                        --let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, z))) args argKnds
+                        --(uvarsPos, uvarsNeg) <- freshTVars tVarArgs
  
 
 getSubstTypesRef :: [TST.PrdCnsType pol] -> [TST.PrdCnsType pol1] -> ([TST.VariantType Pos], [TST.VariantType Neg]) -> GenM [TST.PrdCnsType pol]
