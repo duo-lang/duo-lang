@@ -140,8 +140,8 @@ isBlacklisted fe = do
 
 subtypeData :: TypeAutCore -> FlowEdge -> AdmissableM ()
 subtypeData aut (i,j) = do
-  (MkNodeLabel Neg (Just dat1) _ _ _ _ _) <- liftAM $ lab aut.ta_gr i
-  (MkNodeLabel Pos (Just dat2) _ _ _ _ _) <- liftAM $ lab aut.ta_gr j
+  MkNodeLabel {nl_pol = Neg, nl_data = Just dat1} <- liftAM $ lab aut.ta_gr i
+  MkNodeLabel {nl_pol = Pos, nl_data = Just dat2} <- liftAM $ lab aut.ta_gr j
   -- Check that all constructors in dat1 are also in dat2.
   forM_ (S.toList dat1) $ \xt -> guard (xt `S.member` dat2)
   -- Check arguments of each constructor of dat1.
@@ -155,8 +155,8 @@ subtypeData aut (i,j) = do
 
 subtypeCodata :: TypeAutCore -> FlowEdge -> AdmissableM ()
 subtypeCodata aut (i,j) = do
-  (MkNodeLabel Neg _ (Just codat1) _ _ _ _) <- liftAM $ lab aut.ta_gr i
-  (MkNodeLabel Pos _ (Just codat2) _ _ _ _) <- liftAM $ lab aut.ta_gr j
+  MkNodeLabel {nl_pol = Neg, nl_codata = Just codat1} <- liftAM $ lab aut.ta_gr i
+  MkNodeLabel {nl_pol = Pos, nl_codata = Just codat2} <- liftAM $ lab aut.ta_gr j
   -- Check that all destructors of codat2 are also in codat1.
   forM_ (S.toList codat2) $ \xt -> guard (xt `S.member` codat1)
   -- Check arguments of all destructors of codat2.
@@ -170,8 +170,8 @@ subtypeCodata aut (i,j) = do
 
 subtypeNominal :: TypeAutCore -> FlowEdge -> AdmissableM ()
 subtypeNominal aut (i,j) = do
-  (MkNodeLabel Neg _ _ nominal1 _  _ _) <- liftAM $ lab aut.ta_gr i
-  (MkNodeLabel Pos _ _ nominal2 _  _ _) <- liftAM $ lab aut.ta_gr j
+  (MkNodeLabel {nl_pol = Neg, nl_nominal = nominal1} <- liftAM $ lab aut.ta_gr i
+  (MkNodeLabel {nl_pol = Pos, nl_nominal = nominal2} <- liftAM $ lab aut.ta_gr j
   guard $ not . S.null $ S.intersection nominal1 nominal2
 
 admissableM :: TypeAutCore -> FlowEdge -> AdmissableM ()
