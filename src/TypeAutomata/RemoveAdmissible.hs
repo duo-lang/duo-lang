@@ -5,7 +5,7 @@ module TypeAutomata.RemoveAdmissible
 import Control.Applicative ((<|>))
 import Control.Monad (guard, forM_)
 import Data.Graph.Inductive.Graph
-import Data.Maybe (fromMaybe, catMaybes, mapMaybe)
+import Data.Maybe (fromMaybe,  mapMaybe)
 import Data.Set qualified as S
 import Data.Tuple (swap)
 
@@ -184,7 +184,7 @@ subtypeRefinementData aut (i,j) = do
   let typs1 = M.keys dat1
   let typs2 = M.keys dat2
   -- (t1 /\ t2 /\ ...) :<: (t'1 \/ t'2 \/ ...)   <==> ∃ i,j, ti = t'j /\ ...
-  let commonTypes = intersect typs1 typs2
+  let commonTypes =  typs1 `intersect` typs2
   guard $ not . null $ commonTypes
   -- ... forall C(xi) ∈ ti, C(yi) ∈ t'j /\ xi :<: yi
   let ctors1 = S.unions $ fst <$> mapMaybe (`M.lookup` dat1) commonTypes
@@ -203,7 +203,7 @@ subtypeRefinementCodata aut (i,j) = do
   let typs1 = M.keys codat1
   let typs2 = M.keys codat2
   -- (t1 /\ t2 /\ ...) :<: (t'1 \/ t'2 \/ ...)   <==> ∃ i,j, ti = t'j /\ ...
-  let commonTypes = intersect typs1 typs2
+  let commonTypes = typs1 `intersect` typs2
   guard $ not . null $ commonTypes
   -- ... forall C(xi) ∈ ti, C(yi) ∈ t'j /\ xi :<: yi
   let dtors2 = S.unions $ fst <$> mapMaybe (`M.lookup` codat2) commonTypes

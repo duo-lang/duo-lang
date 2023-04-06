@@ -1,7 +1,5 @@
 module TypeInference.Coalescing ( coalesce ) where
 
-import Debug.Trace 
-import Pretty.Pretty 
 import Control.Monad.State
 import Control.Monad.Reader
 import Data.Maybe (fromMaybe)
