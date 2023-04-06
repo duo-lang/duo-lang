@@ -256,7 +256,7 @@ generateXfuncCodeAction (TextDocumentIdentifier uri) loc decl mod =
   let
     transformable = Xfunc.transformable decl
     descr = "Xfunc (co)datatype" <> ppPrint decl.data_name
-    replacement = ppPrint (Xfunc.getNewXtors mod decl)
+    replacement = ppPrint (Xfunc.xFuncDataDecl mod decl)
     edit = TextEdit {_range = locToEndRange loc, _newText = T.pack "\n" `T.append` replacement }
     wsEdit = WorkspaceEdit { _changes = Just (Map.singleton uri (List [edit]))
                   , _documentChanges = Nothing

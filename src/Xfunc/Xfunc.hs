@@ -1,19 +1,17 @@
-module Xfunc.Xfunc (transformable) where
+module Xfunc.Xfunc (transformable, xFuncDataDecl) where
 
-import Data.Bifunctor ( Bifunctor(bimap) )
 
-import Syntax.CST.Types (PrdCnsRep (PrdRep,CnsRep))
+
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Names qualified as CST
 import Syntax.RST.Kinds qualified as RST
 import Syntax.RST.Terms qualified as RST
-import Syntax.RST.Types (PolarityRep (PosRep,NegRep), Polarity(Pos,Neg), FlipPrdCns, PrdCnsFlip)
-import Syntax.RST.Program (PrdCnsToPol)
+import Syntax.RST.Types qualified as RST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Types qualified as TST
-import Data.Set qualified as Set
 import qualified Syntax.RST.Names as TST
+import Data.Set qualified as Set
 
 
 ----------------------------
@@ -27,12 +25,13 @@ flipDC :: CST.DataCodata -> CST.DataCodata
 flipDC CST.Data = CST.Codata 
 flipDC CST.Codata = CST.Data 
 
--- filters for PrdCnsDeclarations
+-- filters for Prd or Cns Declarations
 filterDecls ::  CST.PrdCnsRep pc -> [TST.Declaration] -> [TST.PrdCnsDeclaration pc]
 filterDecls CST.PrdRep ((TST.PrdCnsDecl CST.PrdRep decl):rest)  = decl : filterDecls CST.PrdRep rest
 filterDecls CST.CnsRep ((TST.PrdCnsDecl CST.CnsRep decl):rest)  = decl : filterDecls CST.CnsRep rest
 filterDecls pc (_:rest) = filterDecls pc rest
 filterDecls _ [] = []
+
 
 -- filters for PrdCnsDeclarations that (co-)pattern match on the given (co-)data type
 getPrdCns :: [TST.PrdCnsDeclaration pc] -> TST.RnTypeName -> [TST.PrdCnsDeclaration pc]
@@ -40,33 +39,36 @@ getPrdCns (decl@(TST.MkPrdCnsDeclaration _ _ _ _ _ _ (TST.XCase _ _ _ _ (RST.Nom
 getPrdCns _ _ = []
 
 
-getNewConstructors :: TST.PrdCnsDeclaration CST.Prd -> TST.XtorSig Pos
-getNewConstructors (TST.MkPrdCnsDeclaration loc _ CST.PrdRep _ name (TST.Annotated (TST.TypeScheme _ _ typ)) _) = TST.MkXtorSig (CST.MkXtorName name.unFreeVarName) [TST.PrdCnsType CST.PrdRep typ]
-getNewConstructors (TST.MkPrdCnsDeclaration loc _ CST.PrdRep _ name (TST.Inferred (TST.TypeScheme _ _ typ)) _) = TST.MkXtorSig (CST.MkXtorName name.unFreeVarName) [TST.PrdCnsType CST.PrdRep typ]
+getNewXtors :: TST.PrdCnsDeclaration pc -> TST.XtorSig RST.Pos
+getNewXtors (TST.MkPrdCnsDeclaration _ _ CST.PrdRep _ name (TST.Annotated (TST.TypeScheme _ _ typ)) _) = TST.MkXtorSig (CST.MkXtorName name.unFreeVarName) [TST.PrdCnsType CST.PrdRep typ]
+getNewXtors (TST.MkPrdCnsDeclaration _ _ CST.PrdRep _ name (TST.Inferred (TST.TypeScheme _ _ typ)) _) = TST.MkXtorSig (CST.MkXtorName name.unFreeVarName) [TST.PrdCnsType CST.PrdRep typ]
+getNewXtors (TST.MkPrdCnsDeclaration _ _ CST.CnsRep _ name (TST.Annotated (TST.TypeScheme _ _ typ)) _) = TST.MkXtorSig (CST.MkXtorName name.unFreeVarName) [TST.PrdCnsType CST.CnsRep typ]
+getNewXtors (TST.MkPrdCnsDeclaration _ _ CST.CnsRep _ name (TST.Inferred (TST.TypeScheme _ _ typ)) _) = TST.MkXtorSig (CST.MkXtorName name.unFreeVarName) [TST.PrdCnsType CST.CnsRep typ]
 
--- getNewDestructors :: TST.PrdCnsDeclaration CST.Cns -> [TST.XtorSig (PrdCnsToPol CST.Cns)]
--- getNewDestructors (TST.MkPrdCnsDeclaration loc _ CST.CnsRep _ name (TST.Annotated (TST.TypeScheme _ _ typ)) _) = [TST.MkXtorSig (CST.MkXtorName name.unFreeVarName) [TST.PrdCnsType CST.CnsRep typ]]
--- getNewDenstructors (TST.MkPrdCnsDeclaration loc _ CST.CnsRep _ name (TST.Inferred (TST.TypeScheme _ _ typ)) _) = [TST.MkXtorSig (CST.MkXtorName name.unFreeVarName) [TST.PrdCnsType CST.CnsRep typ]]
 
-constructNewDataDecl :: [TST.PrdCnsDeclaration CST.Prd] -> TST.DataDecl -> TST.DataDecl
+
+constructNewDataDecl :: [TST.PrdCnsDeclaration pc] -> TST.DataDecl -> TST.DataDecl
 constructNewDataDecl prdcns oldDecl@(TST.NominalDecl _ _ _ CST.Codata _ _) = TST.NominalDecl {  data_loc = oldDecl.data_loc,
                                                                                                 data_doc = oldDecl.data_doc,
                                                                                                 data_name = oldDecl.data_name,
                                                                                                 data_polarity = flipDC oldDecl.data_polarity,
                                                                                                 data_kind = oldDecl.data_kind,
-                                                                                                data_xtors = (getNewConstructors <$> prdcns , [])          
+                                                                                                data_xtors = (getNewXtors <$> prdcns , [])          
 }
 constructNewDataDecl prdcns oldDecl@(TST.NominalDecl _ _ _ CST.Data _ _) = TST.NominalDecl {  data_loc = oldDecl.data_loc,
                                                                                                 data_doc = oldDecl.data_doc,
                                                                                                 data_name = oldDecl.data_name,
                                                                                                 data_polarity = flipDC oldDecl.data_polarity,
                                                                                                 data_kind = oldDecl.data_kind,
-                                                                                                data_xtors = oldDecl.data_xtors            
+                                                                                                data_xtors = (getNewXtors <$> prdcns, [])           
 }
 constructNewDataDecl _ _ = undefined
 
+
 xFuncDataDecl :: TST.Module -> TST.DataDecl -> TST.DataDecl
-xFuncDataDecl mod decl = undefined
+xFuncDataDecl mod decl@(TST.NominalDecl _ _ _ CST.Codata _ _) = constructNewDataDecl (getPrdCns (filterDecls CST.PrdRep mod.mod_decls) decl.data_name) decl
+xFuncDataDecl mod decl@(TST.NominalDecl _ _ _ CST.Data _ _) = constructNewDataDecl (getPrdCns (filterDecls CST.CnsRep mod.mod_decls) decl.data_name) decl
+xFuncDataDecl _ _ = undefined
 
 ---------------------------
 
@@ -75,5 +77,5 @@ transformable :: TST.DataDecl -> Bool
 transformable decl = Set.size (RST.allTypeVars (decl.data_kind)) == 0
 
 -- xfunc a (co)datatype in a module
-xfunc :: TST.Module -> TST.DataDecl -> TST.Module
-xfunc = undefined
+-- xfunc :: TST.Module -> TST.DataDecl -> TST.Module
+-- xfunc = undefined

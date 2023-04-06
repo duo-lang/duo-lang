@@ -10,13 +10,15 @@ data Nat {
     S(Nat)
 };
 
+
 data Bool {
     True,
     False
 };
 
+
 -- typ passt nicht 
-def cns ifThenElse := \k =< case {
+def cns ifThenElse : CoFun(Nat,Bool) := \k =< case {
     True => Z >> k,
     False => S(Z) >> k
 };
@@ -25,6 +27,9 @@ def cns ifThenElse := \k =< case {
 codata CoBool {
     IfThenElse(return Nat)
 };
+
+
+
 
 def prd true : (CoBool:CBN) := cocase {IfThenElse(k) => Z >> k};
 def prd false : CoBool := cocase {IfThenElse(*) => S(Z)};
