@@ -5,7 +5,7 @@ module TypeAutomata.RemoveAdmissible
 import Control.Applicative ((<|>))
 import Control.Monad (guard, forM_)
 import Data.Graph.Inductive.Graph
-import Data.Maybe (fromMaybe)
+import Data.Maybe (fromMaybe, catMaybes, mapMaybe)
 import Data.Set qualified as S
 import Data.Tuple (swap)
 
@@ -16,6 +16,8 @@ import Control.Monad.State.Strict (MonadState (get, put), modify, gets, State, r
 import GHC.Base (Alternative)
 import qualified GHC.Base as A (empty)
 import Data.Bifunctor (first)
+import qualified Data.Map.Strict as M
+import Data.List (intersect)
 
 ----------------------------------------------------------------------------------------
 -- Removal of admissible flow edges.
@@ -170,9 +172,49 @@ subtypeCodata aut (i,j) = do
 
 subtypeNominal :: TypeAutCore -> FlowEdge -> AdmissableM ()
 subtypeNominal aut (i,j) = do
-  (MkNodeLabel {nl_pol = Neg, nl_nominal = nominal1} <- liftAM $ lab aut.ta_gr i
-  (MkNodeLabel {nl_pol = Pos, nl_nominal = nominal2} <- liftAM $ lab aut.ta_gr j
+  MkNodeLabel {nl_pol = Neg, nl_nominal = nominal1} <- liftAM $ lab aut.ta_gr i
+  MkNodeLabel {nl_pol = Pos, nl_nominal = nominal2} <- liftAM $ lab aut.ta_gr j
+  -- (t1 /\ t2 /\ ...) :<: (t'1 \/ t'2 \/ ...)   <==> ∃ i,j, ti = t'j
   guard $ not . S.null $ S.intersection nominal1 nominal2
+
+subtypeRefinementData :: TypeAutCore -> FlowEdge -> AdmissableM ()
+subtypeRefinementData aut (i,j) = do
+  MkNodeLabel {nl_pol = Neg, nl_ref_data = dat1} <- liftAM $ lab aut.ta_gr i
+  MkNodeLabel {nl_pol = Pos, nl_ref_data = dat2} <- liftAM $ lab aut.ta_gr j
+  let typs1 = M.keys dat1
+  let typs2 = M.keys dat2
+  -- (t1 /\ t2 /\ ...) :<: (t'1 \/ t'2 \/ ...)   <==> ∃ i,j, ti = t'j /\ ...
+  let commonTypes = intersect typs1 typs2
+  guard $ not . null $ commonTypes
+  -- ... forall C(xi) ∈ ti, C(yi) ∈ t'j /\ xi :<: yi
+  let ctors1 = S.unions $ fst <$> mapMaybe (`M.lookup` dat1) commonTypes
+  forM_ ((\x -> x.labelName) <$> S.toList ctors1) $ \xt -> do
+    forM_ [(n,el) | (n, el@(EdgeSymbol Data xt' Prd _)) <- lsuc aut.ta_gr i, xt == xt'] $ \(n,el) -> do
+      m <- sucWith aut.ta_gr j el
+      admissableM aut (n,m)
+    forM_ [(n,el) | (n, el@(EdgeSymbol Data xt' Cns _)) <- lsuc aut.ta_gr i, xt == xt'] $ \(n,el) -> do
+      m <- sucWith aut.ta_gr j el
+      admissableM aut (m,n)
+
+subtypeRefinementCodata :: TypeAutCore -> FlowEdge -> AdmissableM ()
+subtypeRefinementCodata aut (i,j) = do
+  MkNodeLabel {nl_pol = Neg, nl_ref_codata = codat1} <- liftAM $ lab aut.ta_gr i
+  MkNodeLabel {nl_pol = Pos, nl_ref_codata = codat2} <- liftAM $ lab aut.ta_gr j
+  let typs1 = M.keys codat1
+  let typs2 = M.keys codat2
+  -- (t1 /\ t2 /\ ...) :<: (t'1 \/ t'2 \/ ...)   <==> ∃ i,j, ti = t'j /\ ...
+  let commonTypes = intersect typs1 typs2
+  guard $ not . null $ commonTypes
+  -- ... forall C(xi) ∈ ti, C(yi) ∈ t'j /\ xi :<: yi
+  let dtors2 = S.unions $ fst <$> mapMaybe (`M.lookup` codat2) commonTypes
+  forM_ ((\x -> x.labelName) <$> S.toList dtors2) $ \xt -> do
+    forM_ [(n,el) | (n, el@(EdgeSymbol Codata xt' Prd _)) <- lsuc aut.ta_gr i, xt == xt'] $ \(n,el) -> do
+      m <- sucWith aut.ta_gr j el
+      admissableM aut (m,n)
+    forM_ [(n,el) | (n, el@(EdgeSymbol Codata xt' Cns _)) <- lsuc aut.ta_gr i, xt == xt'] $ \(n,el) -> do
+      m <- sucWith aut.ta_gr j el
+      admissableM aut (n,m)
+
 
 admissableM :: TypeAutCore -> FlowEdge -> AdmissableM ()
 admissableM aut@TypeAutCore{} e =
@@ -182,6 +224,8 @@ admissableM aut@TypeAutCore{} e =
         subtypeData aut e <|>
           subtypeCodata aut e <|>
           subtypeNominal aut e <|>
+          subtypeRefinementData aut e <|>
+          subtypeRefinementCodata aut e <|>
           blacklistFE e
 
 removeAdmissableFlowEdges :: TypeAutDet pol -> TypeAutDet pol
