@@ -23,6 +23,11 @@ def rec prd length : forall a. <List | r | Nil, Cons(a,r(a)) >(a) -> Nat:=
         Cons(_, xs) => S(length xs)
     };
 
+def rec prd tail : forall a. <List | r | Cons(a,r(a))>(a) -> <List | r | Nil, Cons(a,r(a))>(a) := 
+    \xs => case xs of {
+       Cons(z,zs) => zs
+        };
+
 --  Append two lists together.
 def rec prd append : forall a. <List | r | Nil, Cons(a,r(a)) >(a) -> <List | r | Nil, Cons(a,r(a))>(a) -> <List | r | Nil, Cons(a,r(a)) >(a) :=
    \xs ys => case xs of {
