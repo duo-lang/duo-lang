@@ -1,42 +1,35 @@
 module Transformation;
 
-import Data.Peano;
-import Data.Maybe;
-import Data.Bool;
+-- import Data.Peano;
+-- import Data.Maybe;
+import Data.Cofunction;
+import Codata.Function;
 
-data List : CBV {
-    Nil,
-    Cons(Nat,List)
-};
-[MuAbs, CoList, CoList, error, error]
-
-
-def rec prd index : List -> Nat -> Maybe(Nat) :=
-    \l n => case l of {
-        Nil => Nothing,
-        Cons(head, tail) => case n of {
-            Z => Just(head),
-            S(num) => index tail num
-        }
-    };
-
-
-
-codata CoList : CBV {
-    Index(Nat, return Maybe(Nat))
+data Nat {
+    Z,
+    S(Nat)
 };
 
-def prd nil : CoList := cocase {
-    Index(n,*) => Nothing
+data Bool {
+    True,
+    False
 };
 
-def rec prd cons : Nat -> CoList -> CoList := \head tail => cocase {
-    Index(n,*) => case n of {
-        Z => Just(head),
-        S(num) => tail.Index(num,*)
-    }
+-- typ passt nicht 
+def cns ifThenElse := \k =< case {
+    True => Z >> k,
+    False => S(Z) >> k
 };
 
---examples
-def prd listWithData := Cons(1, Cons(2, Cons(3,Nil)));
-def prd listWithCodata := cons 1 (cons 2 (cons 3 nil));
+
+codata CoBool {
+    IfThenElse(return Nat)
+};
+
+def prd true : (CoBool:CBN) := cocase {IfThenElse(k) => Z >> k};
+def prd false : CoBool := cocase {IfThenElse(*) => S(Z)};
+
+--def cmd withData := #Print(ifThenElse True, #ExitSuccess);
+def cmd withCodata := #Print(true.IfThenElse(*),#ExitSuccess);
+
+def cmd main := withCodata;
