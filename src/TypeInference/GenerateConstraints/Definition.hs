@@ -177,9 +177,9 @@ freshTVarsForTypeParams rep decl = do
    freshTVars :: RnTypeName -> [(Variance, SkolemTVar, MonoKind)] -> GenM ([TST.VariantType pol],[(TST.Typ Pos, TST.Typ Neg)])
    freshTVars _ [] = pure ([],[])
    freshTVars tn ((variance,tv,mk) : vs) = do
-    let pk = case mk of CBox eo -> MkPolyKind [] eo; _ -> error "not implemented"
+    let pk = monoToAnyKind mk 
     (vartypes,vs') <- freshTVars tn vs
-    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv) (Just (MkPknd pk))
+    (tyPos, tyNeg) <- freshTVar (TypeParameter tn tv) (Just pk)
     case (variance, rep) of
       (Covariant, PosRep)     -> pure (TST.CovariantType tyPos     : vartypes, (tyPos, tyNeg) : vs')
       (Covariant, NegRep)     -> pure (TST.CovariantType tyNeg     : vartypes, (tyPos, tyNeg) : vs')
