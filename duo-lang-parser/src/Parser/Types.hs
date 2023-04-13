@@ -83,14 +83,17 @@ nominalTypeP = do
 -- Structural Types and Refinement Types
 ---------------------------------------------------------------------------------
 
-refinementArgsP :: Parser (Maybe (TypeName, Maybe SkolemTVar))
+refinementArgsP :: Parser (Maybe (TypeName, Maybe SkolemTVar, [SkolemTVar]))
 refinementArgsP = optional $ try $ do
   (tn,_) <- typeNameP
+  sc
+  argVars <- optional $ parensP (tvarP `sepBy` (sc >> symbolP SymComma >> sc))
+  let argVars' = case argVars of Nothing -> []; Just (args,_) -> fst <$> args
   sc
   symbolP SymPipe
   sc
   rv <- optional $ tvarP <* (sc >> symbolP SymPipe >> sc)
-  pure (tn,fst <$> rv)
+  pure (tn,fst <$> rv, argVars')
 
 
 xdataOrRefinementP :: DataCodata -> Parser (Typ, SourcePos)
@@ -105,8 +108,8 @@ xdataOrRefinementP Data = do
   sc
   case refinementargs of
     Nothing -> pure (TyXData (Loc startPos endPos) Data ctors, endPos)
-    Just (tn, Nothing) -> pure (TyXRefined (Loc startPos endPos) Data tn ctors, endPos)
-    Just (tn, Just rv) -> pure (TyRec (Loc startPos endPos) rv (TyXRefined (Loc startPos endPos) Data tn ctors),endPos)
+    Just (tn, Nothing, argVars) -> pure (TyXRefined (Loc startPos endPos) Data tn argVars ctors, endPos)
+    Just (tn, Just rv, argVars) -> pure (TyRec (Loc startPos endPos) rv (TyXRefined (Loc startPos endPos) Data tn argVars ctors),endPos)
 
 xdataOrRefinementP Codata = do
   startPos <- getSourcePos
@@ -119,8 +122,8 @@ xdataOrRefinementP Codata = do
   sc
   case refinementargs of
     Nothing -> pure (TyXData (Loc startPos endPos) Codata dtors, endPos)
-    Just (tn, Nothing) -> pure (TyXRefined (Loc startPos endPos) Codata tn dtors, endPos)
-    Just (tn, Just rv) -> pure (TyRec (Loc startPos endPos) rv (TyXRefined (Loc startPos endPos) Codata tn dtors), endPos)
+    Just (tn, Nothing, argVars) -> pure (TyXRefined (Loc startPos endPos) Codata tn argVars dtors, endPos)
+    Just (tn, Just rv, argVars) -> pure (TyRec (Loc startPos endPos) rv (TyXRefined (Loc startPos endPos) Codata tn argVars dtors), endPos)
 
 
 ---------------------------------------------------------------------------------

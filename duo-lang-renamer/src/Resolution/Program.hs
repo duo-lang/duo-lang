@@ -59,7 +59,7 @@ checkVarianceTyp loc var polyKind (CST.TyXData _loc' dataCodata  xtorSigs) = do
                       CST.Data   -> Covariant
                       CST.Codata -> Contravariant
   mapM_ (checkVarianceXtor loc var' polyKind) xtorSigs
-checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn xtorSigs) = do
+checkVarianceTyp loc var polyKind (CST.TyXRefined _loc' dataCodata  _tn _ xtorSigs) = do
   let var' = var <> case dataCodata of
                       CST.Data   -> Covariant
                       CST.Codata -> Contravariant

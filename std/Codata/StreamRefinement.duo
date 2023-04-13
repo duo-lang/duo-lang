@@ -14,14 +14,14 @@ refinement codata Stream : (+a : CBV) -> CBV {
 };
 
 -- | Map a function over a stream.
-def rec prd streamMap : forall a b. (a -> b) -> { Stream | r | Head(return a), Tail(return r(a)) }(a) -> { Stream | r1 |  Head(return b), Tail(return r1(b)) }(b) :=
+def rec prd streamMap : forall a b. (a -> b) -> { Stream(a) | r | Head(return a), Tail(return r(a)) }(a) -> { Stream(a) | r1 |  Head(return b), Tail(return r1(b)) }(b) :=
   \f s => cocase {
     Head(*) => f (s.Head(*)),
     Tail(*) => streamMap f (s.Tail(*))
 };
 
 -- | Filter elements of a stream.
-def rec prd streamFilter : forall a. (a -> <Bool | True, False>) -> { Stream | r | Head(return a), Tail(return r(a)) }(a) -> {Stream | r | Head(return a), Tail(return(r(a))) }(a) :=
+def rec prd streamFilter : forall a. (a -> <Bool | True, False>) -> { Stream(a) | r | Head(return a), Tail(return r(a)) }(a) -> {Stream(a) | r | Head(return a), Tail(return(r(a))) }(a) :=
    \p s => cocase {
      Head(*) =>  case p (s.Head(*)) of {
        True => s.Head(*),
@@ -31,40 +31,40 @@ def rec prd streamFilter : forall a. (a -> <Bool | True, False>) -> { Stream | r
    };
 
  -- | Interleave two streams.
-def rec prd interleave : forall a. { Stream | r | Head(return a), Tail(return r(a)) }(a) -> { Stream | r | Head(return a), Tail(return r(a)) }(a) -> { Stream | r | Head(return a), Tail(return r(a)) }(a) :=
+def rec prd interleave : forall a. { Stream(a) | r | Head(return a), Tail(return r(a)) }(a) -> { Stream(a) | r | Head(return a), Tail(return r(a)) }(a) -> { Stream(a) | r | Head(return a), Tail(return r(a)) }(a) :=
    \s t => cocase {
      Head(*) => s.Head(*),
      Tail(*) => interleave t (s.Tail(*))
    };
 
 -- | Zip two streams to a stream of pairs.
-def rec prd zip : forall a b.  { Stream | r | Head(return a), Tail(return r(a)) }(a) -> { Stream | r | Head(return b), Tail(return r(b)) }(b) -> { Stream | r | Head(return <Tensor | MkTensor(a, b)>(a,b)), Tail(return r(<Tensor | MkTensor(a, b)>(a,b))) }(<Tensor | MkTensor(a,b)>(a, b)) :=
+def rec prd zip : forall a b.  { Stream(a) | r | Head(return a), Tail(return r(a)) }(a) -> { Stream(a) | r | Head(return b), Tail(return r(b)) }(b) -> { Stream(a) | r | Head(return <Tensor(a,b) | MkTensor(a, b)>(a,b)), Tail(return r(<Tensor(a,b) | MkTensor(a, b)>(a,b))) }(<Tensor(a,b) | MkTensor(a,b)>(a, b)) :=
    \s t => cocase {
      Head(*) => MkTensor(s.Head(*), t.Head(*)),
      Tail(*) => zip (s.Tail(*)) (t.Tail(*))
    };
 
 -- | Take n elements of a stream.
-def rec prd take : forall a. <Nat | r | Z,S(r)> -> { Stream | r1 | Head(return a), Tail(return r1(a)) }(a) -> <List | r2 | Nil, Cons(a,r2(a))>(a) :=
+def rec prd take : forall a. <Nat | r | Z,S(r)> -> { Stream(a) | r1 | Head(return a), Tail(return r1(a)) }(a) -> <List(a) | r2 | Nil, Cons(a,r2(a))>(a) :=
    \n s => case n of {
      Z => Nil,
      S(n) => Cons(s.Head(*), take n (s.Tail(*)))
    };
 
 -- | Return a constant stream for the given element.
-def rec prd constStream : forall a. a -> { Stream | r1 | Head(return a), Tail(return r1(a)) }(a) :=
+def rec prd constStream : forall a. a -> { Stream(a) | r1 | Head(return a), Tail(return r1(a)) }(a) :=
   \x => cocase {
     Head(*) => x,
     Tail(*) => constStream x
  };
 
 -- | Return a stream of repeated applications of f to x.
-def rec prd iterate : forall a. (a -> a) -> a -> { Stream | r1 | Head(return a), Tail(return r1(a)) }(a):=
+def rec prd iterate : forall a. (a -> a) -> a -> { Stream(a) | r1 | Head(return a), Tail(return r1(a)) }(a):=
   \f x => cocase {
     Head(*) => x,
     Tail(*) => iterate f (f x)
   };
 
 -- | Return a stream starting with natural number n.
-def prd from : <Nat | r | Z,S(r)> -> { Stream | r1 | Head(return <Nat | r2 | Z,S(r2)>), Tail(return r1(<Nat | r2 | Z, S(r2)>)) }(<Nat | r2| Z, S(r2)>) :=
+def prd from : <Nat | r | Z,S(r)> -> { Stream(a) | r1 | Head(return <Nat | r2 | Z,S(r2)>), Tail(return r1(<Nat | r2 | Z, S(r2)>)) }(<Nat | r2| Z, S(r2)>) :=
   iterate (\n => S(n));

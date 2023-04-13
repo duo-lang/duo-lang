@@ -36,6 +36,17 @@ resolveTypeScheme rep ts = do
     then pure (RST.TypeScheme ts.loc ts.vars monotype)
         else throwError (MissingVarsInTypeScheme ts.loc)
 
+replacePolyKind :: Loc -> PolyKind -> [SkolemTVar] -> ResolverM PolyKind
+replacePolyKind loc (MkPolyKind args eo) argVars = if length args == length argVars then do
+  let args' = replaceArgs <$> zip argVars args
+  return $ MkPolyKind args' eo 
+  else 
+    throwError (UnknownResolutionError loc "Not enough arguments defined for polykind")
+  where 
+    replaceArgs :: (SkolemTVar,(Variance,SkolemTVar, MonoKind)) -> (Variance,SkolemTVar,MonoKind)
+    replaceArgs (skNew,(var,_,mk)) = (var,skNew,mk)
+replacePolyKind _ pk _ = return pk 
+
 resolveTyp :: PolarityRep pol -> Typ -> ResolverM (RST.Typ pol)
 resolveTyp rep (TySkolemVar loc v) = do
     recVars <- asks (\x -> x.rr_recVars)
@@ -49,19 +60,21 @@ resolveTyp rep (TyXData loc Data sigs) = do
     sigs <- resolveXTorSigs rep sigs
     pure $ RST.TyData loc rep sigs
 -- Refinement Data
-resolveTyp rep (TyXRefined loc Data tn sigs) = do
+resolveTyp rep (TyXRefined loc Data tn argVars sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs rep sigs
-    pure $ RST.TyDataRefined loc rep pknd tn' sigs
+    pk <- replacePolyKind loc pknd argVars
+    pure $ RST.TyDataRefined loc rep pk tn' sigs
 -- Nominal Codata
 resolveTyp rep (TyXData loc Codata sigs) = do
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
     pure $ RST.TyCodata loc rep sigs
 -- Refinement Codata
-resolveTyp rep (TyXRefined loc Codata tn sigs) = do
+resolveTyp rep (TyXRefined loc Codata tn argVars sigs) = do
     NominalResult tn' _ _ pknd <- lookupTypeConstructor loc tn
     sigs <- resolveXTorSigs (flipPolarityRep rep) sigs
-    pure $ RST.TyCodataRefined loc rep pknd tn' sigs
+    pk <- replacePolyKind loc pknd argVars
+    pure $ RST.TyCodataRefined loc rep pk tn' sigs
 resolveTyp rep (TyNominal loc name) = do
   res <- lookupTypeConstructor loc name
   case res of
