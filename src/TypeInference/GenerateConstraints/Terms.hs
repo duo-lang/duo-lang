@@ -158,8 +158,8 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     xtorSigUpper <- lookupXtorSigUpper loc xt 
     (uvarsPos,uvarsNeg,tyParamsMap) <- getTypeArgsRef decl
     let sig_args' = TST.zonk TST.SkolemRep tyParamsMap xtorSigUpper.sig_args
-    substTypes' <- getSubstTypesRef substTypes sig_args' (uvarsPos,uvarsNeg)
     let cstrInfo = case rep of PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc
+    substTypes' <- getSubstTypesRef substTypes sig_args' (uvarsPos,uvarsNeg) cstrInfo
     -- Then we generate constraints between the inferred types of the substitution
     genConstraintsCtxts substTypes' sig_args' cstrInfo
     let newXtorSig = [TST.MkXtorSig xt substTypes']

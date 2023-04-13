@@ -200,35 +200,35 @@ getTypeArgsRef decl =  do
   let uvs = (\(_,_,x,y) -> (x,y)) <$> vars
   return (varsPos,varsNeg,paramsMap kndArgs uvs)
 
-replaceUniVarRef :: TST.PrdCnsType pol -> TST.PrdCnsType pol1 -> (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg)) -> GenM (TST.PrdCnsType pol)
-replaceUniVarRef (TST.PrdCnsType PrdRep _) (TST.PrdCnsType CnsRep _) _ = error "Can't happen"
-replaceUniVarRef (TST.PrdCnsType CnsRep _) (TST.PrdCnsType PrdRep _) _ = error "Can't happen"
-replaceUniVarRef pc1@(TST.PrdCnsType PrdRep ty1) (TST.PrdCnsType PrdRep ty2) tyArgs = case (ty1,ty2) of 
+replaceUniVarRef :: TST.PrdCnsType pol -> TST.PrdCnsType pol1 -> (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg)) -> ConstraintInfo -> GenM (TST.PrdCnsType pol)
+replaceUniVarRef (TST.PrdCnsType PrdRep _) (TST.PrdCnsType CnsRep _) _ _ = error "Can't happen"
+replaceUniVarRef (TST.PrdCnsType CnsRep _) (TST.PrdCnsType PrdRep _) _ _ = error "Can't happen"
+replaceUniVarRef pc1@(TST.PrdCnsType PrdRep ty1) (TST.PrdCnsType PrdRep ty2) tyArgs info = case (ty1,ty2) of 
   (TST.TyUniVar loc pol knd _,TST.TyApp _ _ eo ty tyn _) -> do
-    (uvarPos,uvarNeg) <- freshTVar TypeClassResolution (Just $ TST.getKind ty)
+    (uvarPos,uvarNeg) <- freshTVar (RefinementArgument loc) (Just $ TST.getKind ty)
     addConstraint $ KindEq ReturnKindConstraint knd (MkPknd (MkPolyKind [] eo))
     let newTyPos = TST.TyApp loc PosRep eo uvarPos tyn (fst tyArgs)
     let newTyNeg = TST.TyApp loc NegRep eo uvarNeg tyn (snd tyArgs)
     case pol of 
       PosRep -> do 
-        addConstraint $ SubType ClassResolutionConstraint ty1 newTyNeg
+        addConstraint $ SubType info ty1 newTyNeg
         return (TST.PrdCnsType PrdRep newTyPos)
       NegRep -> do
-        addConstraint $ SubType ClassResolutionConstraint newTyPos ty1
+        addConstraint $ SubType info newTyPos ty1
         return (TST.PrdCnsType PrdRep newTyNeg)
   _ -> return pc1
-replaceUniVarRef pc1@(TST.PrdCnsType CnsRep ty1) (TST.PrdCnsType CnsRep ty2) tyArgs = case (ty1,ty2) of 
+replaceUniVarRef pc1@(TST.PrdCnsType CnsRep ty1) (TST.PrdCnsType CnsRep ty2) tyArgs info = case (ty1,ty2) of 
   (TST.TyUniVar loc pol knd _,TST.TyApp _ _ eo ty tyn _) -> do
-    (uvarPos,uvarNeg) <- freshTVar TypeClassResolution (Just $ TST.getKind ty)
+    (uvarPos,uvarNeg) <- freshTVar (RefinementArgument loc) (Just $ TST.getKind ty)
     addConstraint $ KindEq ReturnKindConstraint knd (MkPknd (MkPolyKind [] eo))
     let newTyPos = TST.TyApp loc PosRep eo uvarPos tyn (fst tyArgs)
     let newTyNeg = TST.TyApp loc NegRep eo uvarNeg tyn (snd tyArgs)
     case pol of 
       PosRep -> do 
-        addConstraint $ SubType ClassResolutionConstraint ty1 newTyNeg
+        addConstraint $ SubType info ty1 newTyNeg
         return (TST.PrdCnsType CnsRep newTyPos)
       NegRep -> do
-        addConstraint $ SubType ClassResolutionConstraint newTyPos ty1
+        addConstraint $ SubType info newTyPos ty1
         return (TST.PrdCnsType CnsRep newTyNeg)
   _ -> return pc1
 
@@ -284,10 +284,10 @@ freshTVarsXCaseRef loc xt (fstPos:rstPos, fstNeg:rstNeg,tyParamsMap) args = do
         return (TST.PrdCnsType CnsRep tn, TST.PrdCnsType CnsRep tp)
  
 
-getSubstTypesRef :: [TST.PrdCnsType pol] -> [TST.PrdCnsType pol1] -> ([TST.VariantType Pos], [TST.VariantType Neg]) -> GenM [TST.PrdCnsType pol]
-getSubstTypesRef substTypes _ ([],[]) = return substTypes 
-getSubstTypesRef substTypes sig_args (fstPos:rstPos,fstNeg:rstNeg) = forM (zip substTypes sig_args) (\(x,y) -> replaceUniVarRef x y (fstPos :| rstPos, fstNeg :| rstNeg))
-getSubstTypesRef _ _ _ = error "impossible (there are always the same amount of positive and negative univars"
+getSubstTypesRef :: [TST.PrdCnsType pol] -> [TST.PrdCnsType pol1] -> ([TST.VariantType Pos], [TST.VariantType Neg]) -> ConstraintInfo -> GenM [TST.PrdCnsType pol]
+getSubstTypesRef substTypes _ ([],[]) _ = return substTypes 
+getSubstTypesRef substTypes sig_args (fstPos:rstPos,fstNeg:rstNeg) info = forM (zip substTypes sig_args) (\(x,y) -> replaceUniVarRef x y (fstPos :| rstPos, fstNeg :| rstNeg) info)
+getSubstTypesRef _ _ _ _ = error "impossible (there are always the same amount of positive and negative univars"
 
 createMethodSubst :: Loc -> ClassDeclaration -> GenM (TST.Bisubstitution TST.SkolemVT, [UniTVar])
 createMethodSubst loc decl =
