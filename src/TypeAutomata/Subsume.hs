@@ -1,5 +1,4 @@
 module TypeAutomata.Subsume ( subsume ) where
-
 import Data.Graph.Inductive.Graph
 
 import Data.List.NonEmpty (NonEmpty)

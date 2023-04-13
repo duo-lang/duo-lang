@@ -15,7 +15,6 @@ import Data.Foldable (foldl')
 
 import TypeAutomata.Definition
 import Syntax.RST.Types ( Polarity(Neg, Pos) )
-import Syntax.CST.Kinds (PolyKind(..))
 
 ---------------------------------------------------------------------------------------
 -- First step of determinization:
@@ -79,7 +78,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
   case rs_merged of
     pr@MkPrimitiveNodeLabel{} -> error ("Tried to combine primitive type" <> show pr <> " and algebraic type " <> show fstLabel)
     combLabel@MkNodeLabel{} ->
-      if combLabel.nl_kind.returnKind == knd.returnKind then 
+      if combLabel.nl_kind == knd then 
         if combLabel.nl_pol  == pol then
           MkNodeLabel {
             nl_pol = pol,
@@ -88,7 +87,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
             nl_nominal = S.union fstLabel.nl_nominal combLabel.nl_nominal,
             nl_ref_data = mrgRefDat fstLabel.nl_ref_data combLabel.nl_ref_data, 
             nl_ref_codata = mrgRefCodat fstLabel.nl_ref_codata combLabel.nl_ref_codata, 
-            nl_kind = MkPolyKind (mrgKindArgs combLabel.nl_kind.kindArgs knd.kindArgs) knd.returnKind
+            nl_kind = knd
           }
         else
           error "Tried to combine node labels of different polarity!"
@@ -119,9 +118,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
           f (xtors1,vars1) (xtors2,vars2) = (mrgXtors xtors1 xtors2, checkVars vars1 vars2)
       in M.unionWith f refs1 refs2
     rs_merged = combineNodeLabels rs
-    mrgKindArgs [] knds = knds
-    mrgKindArgs knds [] = knds
-    mrgKindArgs (knd1:knds1) knds2 = if knd1 `elem` knds2 then mrgKindArgs knds1 knds2 else knd1:mrgKindArgs knds1 knds2
+
 combineNodeLabels [fstLabel@MkPrimitiveNodeLabel{}] = fstLabel
 combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) =
   case rs_merged of

@@ -1,0 +1,11 @@
+module Bug;
+
+
+refinement data List : (+a : CBV) -> CBV {
+    Nil,
+    Cons(a, List(a))
+};
+
+
+def prd x : <List(b)|Nil>(Bot) := Nil;
+

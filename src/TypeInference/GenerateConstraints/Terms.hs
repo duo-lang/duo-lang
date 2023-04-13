@@ -161,7 +161,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     let cstrInfo = case rep of PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc
     substTypes' <- getSubstTypesRef substTypes sig_args' (uvarsPos,uvarsNeg) cstrInfo
     -- Then we generate constraints between the inferred types of the substitution
-    genConstraintsCtxts substTypes' sig_args' cstrInfo
+    genConstraintsCtxts substTypes' xtorSigUpper.sig_args cstrInfo
     let newXtorSig = [TST.MkXtorSig xt substTypes']
     case rep of 
       PrdRep -> do 
