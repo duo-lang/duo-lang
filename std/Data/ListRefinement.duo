@@ -1,7 +1,7 @@
-module ListRefinement;
+module Data.ListRefinement;
 
-import Data.Peano;
-import Data.Bool;
+import Data.PeanoRefinement;
+import Data.BoolRefinement;
 import Codata.Function;
 
 refinement data List : (+a : CBV) -> CBV {
@@ -17,7 +17,7 @@ def prd z := Cons(S(S(Z)), Nil);
 
 
 --  Computes the length of a list.
-def rec prd length : forall a. <List | r | Nil, Cons(a,r(a)) >(a) -> Nat:=
+def rec prd length : forall a. <List | r | Nil, Cons(a,r(a)) >(a) -> <Nat | r2 | Z, S(r2)>:=
     \xs => case xs of {
         Nil => Z,
         Cons(_, xs) => S(length xs)
@@ -50,7 +50,7 @@ def rec prd map : forall a b. (a->b) -> <List | r | Nil, Cons(a,r(a))>(a) -> <Li
     };
 
 --  Filters all predicates satisfying a given predicate.
-def rec prd filter : forall a. (a->Bool) -> <List | r | Nil, Cons(a,r(a))>(a) -> <List | r | Nil, Cons(a,r(a))>(a) :=
+def rec prd filter : forall a. (a-><Bool| True, False>) -> <List | r | Nil, Cons(a,r(a))>(a) -> <List | r | Nil, Cons(a,r(a))>(a) :=
     \f xs => case xs of {
         Nil => Nil,
         Cons(y, ys) => case (f y) of {
@@ -67,7 +67,7 @@ def rec prd foldr : forall a b. (a->b->b) -> b -> <List| r| Nil, Cons(a,r(a))>(a
     };
 
 --  Left fold over a list.
-def rec prd foldl := --: forall a b. (a->b->b) -> b -> <List | r | Nil, Cons(a,r)>(a) -> b :=
+def rec prd foldl : forall a b. (b->a->b) -> b -> <List | r | Nil, Cons(a,r(a))>(a) -> b :=
     \f acc xs => case xs of {
         Nil => acc,
         Cons(y, ys) => foldl f (f acc y) ys
@@ -76,23 +76,23 @@ def rec prd foldl := --: forall a b. (a->b->b) -> b -> <List | r | Nil, Cons(a,r
 -- Special folds
 
 --  Concat all elements of a list of lists.
-def rec prd concat := --: forall a. <List | r1 | Nil, Cons(a,r1) >(a) -> <List | r2 | Nil, Cons(a,r2) >(a) -> <List | r3 | Nil, Cons(a,r3) > (a) :=
-    foldr append Nil;
+--def rec prd concat : forall a. <List | r1 | Nil, Cons(a,r1(a)) >(a) -> <List | r2 | Nil, Cons(a,r2(a)) >(a) -> <List | r3 | Nil, Cons(a,r3(a)) > (a) :=
+--    foldr append Nil;
 
 --  Map a function over all the elements of a container and concatenate the resulting lists.
-def rec prd concatMap := -- : forall a b. (a -> <List | r1 | Nil, Cons(b,r1) >(b)) -> <List | r2 | Nil, Cons(a,r2) >(a) -> <List | r3 | Nil, Cons(b,r3) >(b) :=
-    \f xs => concat (map f xs);
+--def rec prd concatMap := -- : forall a b. (a -> <List | r1 | Nil, Cons(b,r1) >(b)) -> <List | r2 | Nil, Cons(a,r2) >(a) -> <List | r3 | Nil, Cons(b,r3) >(b) :=
+--    \f xs => concat (map f xs);
 
 --  Verify predicate for all elements of a list.
-def rec prd all := --: forall a. (a -> Bool) -> <List | r | Nil, Cons(a,r) >(a) -> Bool  :=
+def rec prd all : forall a. (a -> <Bool|True,False>) -> <List | r | Nil, Cons(a,r) >(a) -> <Bool | True, False> :=
     \p xs => (foldl and True) (map p xs);
 
 --  Verify predicate for at least one element of a list.
-def rec prd any := --: forall a. (a -> Bool) -> <List | r | Nil, Cons(a,r) >(a) -> Bool  :=
+def rec prd any : forall a. (a -> <Bool | True, False>) -> <List | r | Nil, Cons(a,r) >(a) -> <Bool | True, False>  :=
     \p xs => (foldl or False) (map p xs);
 
 --  Sum up list of natural numbers.
-def rec prd sum : <List | r | Nil, Cons(Nat,r)>(Nat) -> Nat  :=
+def rec prd sum : <List | r | Nil, Cons(<Nat | r2 | Z, S(r2)>,r)>(<Nat | r2 | Z, S(r2)>) -> <Nat | r | Z, S(r)> :=
     foldl add Z;
 
 

@@ -1,0 +1,18 @@
+module Data.TensorRefinement;
+
+import Codata.Function;
+
+-- | Conjunction as a data type.
+refinement data Tensor : (+a : CBV, +b : CBV) -> CBV {
+    MkTensor(a, b)
+};
+
+type operator ⊗ leftassoc at 5 := Tensor;
+
+-- | First projection on Tensor.
+def prd fst : forall a. <Tensor | MkTensor(a,Top)> (a,Top) -> a :=
+  \p => case p of { MkTensor(x,_) => x};
+
+-- | Second projection on Tensor
+def prd snd : forall a. <Tensor | MkTensor(Top,a)> (Top,a) -> a :=
+  \p => case p of { MkTensor(_,y) => y};
