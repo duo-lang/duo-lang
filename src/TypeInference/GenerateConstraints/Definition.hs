@@ -192,7 +192,6 @@ getTypeArgsRef decl =  do
   let kndArgs = decl.data_kind.kindArgs
   vars <- forM kndArgs (\ (var, sk, mk) -> do 
     (uvarPos, uvarNeg) <- freshTVar (TypeParameter decl.data_name sk) (Just (monoToAnyKind mk))
---    trace ("generated " <> ppPrintString uvarPos) $ pure ()
     case var of
       Covariant -> return (TST.CovariantType uvarPos, TST.CovariantType uvarNeg, uvarPos,uvarNeg)
       Contravariant -> return (TST.ContravariantType uvarNeg, TST.ContravariantType uvarPos,uvarPos,uvarNeg))
