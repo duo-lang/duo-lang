@@ -244,8 +244,8 @@ insertType (TyRec _ rep rv ty) = do
   return $ newNode : ns
 insertType (TyData _  polrep eo xtors)             = pure <$> insertXtors CST.Data   (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
 insertType (TyCodata _ polrep eo  xtors)           = pure <$> insertXtors CST.Codata (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
-insertType (TyDataRefined _ polrep pk mtn xtors)   = pure <$> insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) pk xtors
-insertType (TyCodataRefined _ polrep pk mtn xtors) = pure <$> insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) pk xtors
+insertType (TyDataRefined _ polrep pk _ mtn xtors)   = pure <$> insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) pk xtors
+insertType (TyCodataRefined _ polrep pk _ mtn xtors) = pure <$> insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) pk xtors
 insertType (TySyn _ _ _ ty) = insertType ty
 
 insertType (TyApp _ _ _ ty tyn args) = do 

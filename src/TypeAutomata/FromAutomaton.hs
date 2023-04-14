@@ -231,8 +231,8 @@ nodeToTypeNoCache rep i  = do
                   argTypes <- argNodesToArgTypes nodes rep rep (Just (tn,args1:|argsRst))
                   return (MkXtorSig xt.labelName argTypes)             
             case args of 
-              [] -> return $ TyDataRefined defaultLoc rep pk tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk tn sig) tn (arg1:|argRst)
+              [] -> return $ TyDataRefined defaultLoc rep pk [] tn sig
+              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk [] tn sig) tn (arg1:|argRst)
         -- Creating ref codata types
         refCodatL <- do
           forM refCodatTypes $ \(tn,(xtors,vars)) -> do
@@ -250,8 +250,8 @@ nodeToTypeNoCache rep i  = do
                   argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep (Just (tn, args1:|argsRst))
                   return (MkXtorSig xt.labelName argTypes)
             case args of
-              [] -> return $ TyCodataRefined defaultLoc rep pk tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk tn sig) tn (arg1:|argRst)
+              [] -> return $ TyCodataRefined defaultLoc rep pk [] tn sig
+              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk [] tn sig) tn (arg1:|argRst)
         -- Creating Nominal types
         nominals <- do
             forM (S.toList tns) $ \(tn, variances) -> do

@@ -229,14 +229,14 @@ dualType PosRep (TST.TyCodata loc _ eo xtors) =
   TST.TyData loc NegRep  (dualEvaluationOrder eo) xtors
 dualType NegRep (TST.TyCodata loc _ eo xtors) =
   TST.TyData loc PosRep  (dualEvaluationOrder eo) xtors 
-dualType PosRep (TST.TyDataRefined loc _ pk rn xtors) =
-  TST.TyCodataRefined loc NegRep  (dualPolyKind pk) (dualRnTypeName rn) xtors
-dualType NegRep (TST.TyDataRefined loc _ pk rn xtors) =
-  TST.TyCodataRefined loc PosRep  (dualPolyKind pk) (dualRnTypeName rn) xtors
-dualType PosRep (TST.TyCodataRefined loc _ pk rn xtors) =
-  TST.TyDataRefined loc NegRep  (dualPolyKind pk) (dualRnTypeName rn) xtors
-dualType NegRep (TST.TyCodataRefined loc _ pk rn xtors) =
-  TST.TyDataRefined loc PosRep  (dualPolyKind pk) (dualRnTypeName rn) xtors
+dualType PosRep (TST.TyDataRefined loc _ pk argVars rn xtors) =
+  TST.TyCodataRefined loc NegRep  (dualPolyKind pk) argVars (dualRnTypeName rn) xtors
+dualType NegRep (TST.TyDataRefined loc _ pk argVars rn xtors) =
+  TST.TyCodataRefined loc PosRep  (dualPolyKind pk) argVars (dualRnTypeName rn) xtors
+dualType PosRep (TST.TyCodataRefined loc _ pk argVars rn xtors) =
+  TST.TyDataRefined loc NegRep  (dualPolyKind pk) argVars (dualRnTypeName rn) xtors
+dualType NegRep (TST.TyCodataRefined loc _ pk argVars rn xtors) =
+  TST.TyDataRefined loc PosRep  (dualPolyKind pk) argVars (dualRnTypeName rn) xtors
 dualType _ (TST.TyFlipPol _ ty) = ty
 
 dualVariantType :: PolarityRep pol -> TST.VariantType pol -> TST.VariantType (FlipPol pol)

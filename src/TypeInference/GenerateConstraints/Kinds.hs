@@ -228,27 +228,27 @@ annotTy (RST.TyCodata loc pol xtors) = do
     compXtorKinds [mk] = Just mk
     compXtorKinds (xtor1:xtor2:rst) = if xtor1==xtor2 then compXtorKinds (xtor2:rst) else Nothing
 
-annotTy (RST.TyDataRefined loc pol pknd _ tyn xtors) = do 
+annotTy (RST.TyDataRefined loc pol pknd argVars tyn xtors) = do 
   tyn' <- gets (\x -> x.declTyName)
   if tyn == tyn' then do 
     let xtorNames = map (\x->x.sig_name) xtors
     xtors' <- getXtors pol xtorNames
-    return $ TST.TyDataRefined loc pol pknd tyn xtors'
+    return $ TST.TyDataRefined loc pol pknd argVars tyn xtors'
   else do 
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) decl.data_xtors
-    return $ TST.TyDataRefined loc pol pknd tyn xtors'
+    return $ TST.TyDataRefined loc pol pknd argVars tyn xtors'
 
-annotTy (RST.TyCodataRefined loc pol pknd _  tyn xtors) = do 
+annotTy (RST.TyCodataRefined loc pol pknd argVars tyn xtors) = do 
   tyn' <- gets (\x -> x.declTyName)
   if tyn == tyn' then do 
     let xtorNames = map (\x->x.sig_name) xtors
     xtors' <- getXtors (RST.flipPolarityRep pol) xtorNames
-    return $ TST.TyCodataRefined loc pol pknd tyn xtors'
+    return $ TST.TyCodataRefined loc pol pknd argVars tyn xtors'
   else do 
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> snd; RST.NegRep -> fst) decl.data_xtors
-    return $ TST.TyCodataRefined loc pol pknd tyn xtors'
+    return $ TST.TyCodataRefined loc pol pknd argVars tyn xtors'
 
 annotTy (RST.TyApp loc pol ty tyn args) = do 
   ty' <- annotTy ty 
@@ -305,14 +305,14 @@ annotTy (RST.TyInter loc ty1 ty2) = do
   else 
     throwOtherError loc ["Kinds " <> ppPrint knd1 <> " and " <> ppPrint knd2 <> " of union are not compatible"]
 annotTy (RST.TyRec loc pol rv ty) = case ty of 
-  RST.TyDataRefined loc' pol' pknd _ tyn xtors -> do 
+  RST.TyDataRefined loc' pol' pknd argVars tyn xtors -> do 
     addRecVar rv pknd
     xtors' <- mapM annotXtor xtors
-    return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' pknd tyn xtors')
-  RST.TyCodataRefined loc' pol' pknd _ tyn xtors -> do
+    return $ TST.TyRec loc pol rv (TST.TyDataRefined loc' pol' pknd argVars tyn xtors')
+  RST.TyCodataRefined loc' pol' pknd argVars tyn xtors -> do
     addRecVar rv pknd
     xtors' <- mapM annotXtor xtors
-    return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' pknd tyn xtors')
+    return $ TST.TyRec loc pol rv (TST.TyCodataRefined loc' pol' pknd argVars tyn xtors')
   _ -> throwOtherError loc ["TyRec can only appear inside Refinement Declarations"]
 
 annotTy (RST.TyI64 loc pol) = return $ TST.TyI64 loc pol
@@ -530,15 +530,15 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     mapM_ (checkXtorKind loc Nothing) xtors'
     return (TST.TyCodata loc pol eo xtors')
  
-  annotateKind (RST.TyDataRefined loc pol pknd _ tyn xtors) = do 
+  annotateKind (RST.TyDataRefined loc pol pknd argVars tyn xtors) = do 
     xtors' <- mapM annotateKind xtors
     mapM_ (checkXtorKind loc (Just tyn)) xtors'
-    return (TST.TyDataRefined loc pol pknd tyn xtors')
+    return (TST.TyDataRefined loc pol pknd argVars tyn xtors')
 
-  annotateKind (RST.TyCodataRefined loc pol pknd _ tyn xtors) = do
+  annotateKind (RST.TyCodataRefined loc pol pknd argVars tyn xtors) = do
     xtors' <- mapM annotateKind xtors
     mapM_ (checkXtorKind loc (Just tyn)) xtors'
-    return (TST.TyCodataRefined loc pol pknd tyn xtors')
+    return (TST.TyCodataRefined loc pol pknd argVars tyn xtors')
 
   annotateKind (RST.TyApp loc pol ty tyn args) = do 
     ty' <- annotateKind ty 

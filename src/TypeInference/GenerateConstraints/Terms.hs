@@ -165,11 +165,11 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     let newXtorSig = [TST.MkXtorSig xt substTypes']
     case rep of 
       PrdRep -> do 
-        let refTy = TST.TyDataRefined defaultLoc PosRep decl.data_kind decl.data_name newXtorSig
+        let refTy = TST.TyDataRefined defaultLoc PosRep decl.data_kind [] decl.data_name newXtorSig
         let ty = getAppTy PosRep decl.data_kind.returnKind decl.data_name (uvarsPos,uvarsNeg) refTy
         return $ TST.Xtor loc annot rep ty RST.Refinement xt substInferred
       CnsRep -> do
-        let refTy = TST.TyCodataRefined defaultLoc NegRep decl.data_kind decl.data_name newXtorSig
+        let refTy = TST.TyCodataRefined defaultLoc NegRep decl.data_kind [] decl.data_name newXtorSig
         let ty = getAppTy NegRep decl.data_kind.returnKind decl.data_name (uvarsPos,uvarsNeg) refTy
         return $ TST.Xtor loc annot rep ty RST.Refinement xt substInferred
     where 
@@ -279,11 +279,11 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt substTypesNeg))
     case rep of
       CnsRep -> do
-        let refTy = TST.TyDataRefined defaultLoc NegRep decl.data_kind decl.data_name (snd <$> inferredCases)
+        let refTy = TST.TyDataRefined defaultLoc NegRep decl.data_kind [] decl.data_name (snd <$> inferredCases)
         let ty = case tyArgsNeg of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc NegRep decl.data_kind.returnKind refTy decl.data_name (fst:|rst)
         return $ TST.XCase loc annot rep ty RST.Refinement (fst <$> inferredCases)
       PrdRep -> do
-        let refTy = TST.TyCodataRefined defaultLoc PosRep decl.data_kind decl.data_name (snd <$> inferredCases)
+        let refTy = TST.TyCodataRefined defaultLoc PosRep decl.data_kind [] decl.data_name (snd <$> inferredCases)
         let ty = case tyArgsPos of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc PosRep decl.data_kind.returnKind refTy decl.data_name (fst:|rst)
         return $ TST.XCase loc annot rep ty RST.Refinement (fst <$> inferredCases)
   --

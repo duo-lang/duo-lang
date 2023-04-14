@@ -164,12 +164,12 @@ coalesceType (TyData loc rep mk xtors) = do
 coalesceType (TyCodata loc rep mk xtors) = do
     xtors' <- mapM coalesceXtor xtors
     return (TyCodata loc rep mk xtors')
-coalesceType (TyDataRefined loc rep mk tn xtors) = do
+coalesceType (TyDataRefined loc rep pk argVars tn xtors) = do
     xtors' <- mapM coalesceXtor xtors
-    return (TyDataRefined loc rep mk tn xtors')
-coalesceType (TyCodataRefined loc rep mk tn xtors) = do
+    return (TyDataRefined loc rep pk argVars tn xtors')
+coalesceType (TyCodataRefined loc rep pk argVars tn xtors) = do
     xtors' <- mapM coalesceXtor xtors
-    return (TyCodataRefined loc rep mk tn xtors')
+    return (TyCodataRefined loc rep pk argVars tn xtors')
 coalesceType (TyNominal loc rep mk tn) = do
     return $ TyNominal loc rep mk tn
 coalesceType (TyApp loc rep eo ty tyn args) = do
