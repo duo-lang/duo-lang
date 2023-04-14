@@ -85,7 +85,7 @@ deriving instance Show (MethodSig pol)
 
 
 data Typ (pol :: Polarity) where
-  TySkolemVar     :: Loc -> PolarityRep pol -> PolyKind -> SkolemTVar -> Typ pol
+  TySkolemVar     :: Loc -> PolarityRep pol -> AnyKind -> SkolemTVar -> Typ pol
   TyUniVar        :: Loc -> PolarityRep pol -> AnyKind -> UniTVar -> Typ pol
   TyRecVar        :: Loc -> PolarityRep pol -> PolyKind -> RecTVar -> Typ pol
   -- | We have to duplicate TyStructData and TyStructCodata here due to restrictions of the deriving mechanism of Haskell.
@@ -181,7 +181,7 @@ instance GetKind PolyKind where
   getKind = MkPknd
 
 instance GetKind (Typ pol) where 
-  getKind (TySkolemVar _ _ pk _)          = MkPknd pk
+  getKind (TySkolemVar _ _ knd _)          = knd
   getKind (TyUniVar _ _ knd _)            = knd
   getKind (TyRecVar _ _ pk _)             = MkPknd pk 
   getKind (TyData _ _ eo _ )              = MkPknd (MkPolyKind [] eo)
@@ -236,7 +236,7 @@ deriving instance Show (TopAnnot Neg)
 
 -- | Typeclass for computing free type variables
 class FreeTVars (a :: Type) where
-  freeTVars :: a -> Set (SkolemTVar, PolyKind)
+  freeTVars :: a -> Set (SkolemTVar, AnyKind)
 
 instance FreeTVars (Typ pol) where
   freeTVars (TySkolemVar _ _ knd tv)           = S.singleton (tv,knd)
@@ -281,7 +281,14 @@ instance FreeTVars (XtorSig pol) where
 
 -- | Generalize over all free type variables of a type.
 generalize :: Typ pol -> TypeScheme pol
-generalize ty = TypeScheme defaultLoc (S.toList $ freeTVars ty) ty
+generalize ty = do 
+  let freeVars = S.toList $ freeTVars ty
+  TypeScheme defaultLoc (filterVars freeVars)  ty
+  where 
+    filterVars :: [(SkolemTVar, AnyKind)] -> [(SkolemTVar, PolyKind)]
+    filterVars [] = []
+    filterVars ((sk,MkPknd pk):rst) = (sk,pk) : filterVars rst
+    filterVars ((_,_):rst) = filterVars rst
 
 
 ------------------------------------------------------------------------------

@@ -12,8 +12,8 @@ import Syntax.Core.Terms qualified as Core
 import Syntax.Core.Program qualified as Core
 
 import Data.Bifunctor (bimap, second)
-import Syntax.CST.Kinds (PolyKind(..), MonoKind(..))
-import Syntax.RST.Kinds (AnyKind(..))
+import Syntax.CST.Kinds (PolyKind(..), MonoKind(..), MaybeKindedSkolem)
+import Syntax.RST.Kinds (AnyKind(..),KindedSkolem)
 
 ---------------------------------------------------------------------------------
 -- A typeclass for embedding TST.X into Core.X
@@ -116,7 +116,7 @@ instance EmbedTST (TST.VariantType pol) (RST.VariantType pol) where
 instance EmbedTST (TST.TypeScheme pol) (RST.TypeScheme pol) where
   embedTST :: TST.TypeScheme pol -> RST.TypeScheme pol
   embedTST TST.TypeScheme {ts_loc = loc, ts_vars = tyvars, ts_monotype = mt} =
-    RST.TypeScheme {ts_loc = loc, ts_vars = map (Data.Bifunctor.second Just) tyvars,  ts_monotype = embedTST mt}
+    RST.TypeScheme {ts_loc = loc, ts_vars = second Just <$> tyvars,  ts_monotype = embedTST mt}
 
 instance EmbedTST (TST.LinearContext pol) (RST.LinearContext pol) where
   embedTST :: TST.LinearContext pol-> RST.LinearContext pol
@@ -133,10 +133,9 @@ getAnnotKind MkString = Just StringRep
 
 instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST :: TST.Typ pol -> RST.Typ pol
-  embedTST (TST.TySkolemVar loc pol (MkPolyKind [] eo) tv) =
-    RST.TyKindAnnot (CBox eo) $ RST.TySkolemVar loc pol tv
-  embedTST (TST.TySkolemVar loc pol _ tv) = 
-    RST.TySkolemVar loc pol tv
+  embedTST (TST.TySkolemVar loc pol knd tv) = case getAnnotKind knd of 
+    Nothing -> RST.TySkolemVar loc pol tv
+    Just mk -> RST.TyKindAnnot mk $ RST.TySkolemVar loc pol tv
   embedTST (TST.TyUniVar loc pol knd tv) = case getAnnotKind knd of
     Nothing -> RST.TyUniVar loc pol tv
     Just mk -> RST.TyKindAnnot mk $ RST.TyUniVar loc pol tv

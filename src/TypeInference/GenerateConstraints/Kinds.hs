@@ -120,6 +120,7 @@ data DataDeclState = MkDataDeclState
     declKind :: PolyKind,
     declTyName :: RnTypeName,
     boundRecVars :: M.Map RecTVar MonoKind,
+    boundSkolemVars :: M.Map SkolemTVar MonoKind,
     refXtors :: ([TST.XtorSig RST.Pos], [TST.XtorSig RST.Neg]),
     refRecVars :: M.Map RecTVar PolyKind
   }
@@ -129,6 +130,7 @@ createDataDeclState polyknd tyn = MkDataDeclState
   { declKind = polyknd,
     declTyName = tyn,
     boundRecVars = M.empty, 
+    boundSkolemVars = M.empty,
     refXtors = ([],[]), 
     refRecVars = M.empty
   }
@@ -145,6 +147,9 @@ resolveDataDecl decl env = do
 
 addRecVar :: RecTVar -> PolyKind -> DataDeclM () 
 addRecVar rv pk = modify (\s@MkDataDeclState{refRecVars = recVarMap} -> s {refRecVars = M.insert rv pk recVarMap})
+
+addSkolemVar :: SkolemTVar -> MonoKind -> DataDeclM () 
+addSkolemVar sk mk = modify (\s@MkDataDeclState{boundSkolemVars = skolemMap} -> s {boundSkolemVars = M.insert sk mk skolemMap})
 
 addXtors :: ([TST.XtorSig RST.Pos],[TST.XtorSig RST.Neg]) -> DataDeclM ()
 addXtors newXtors =  modify (\s@MkDataDeclState{refXtors = xtors} -> 
@@ -190,8 +195,12 @@ getKindSkolem polyknd = searchKindArgs polyknd.kindArgs
 
 annotTy :: RST.Typ pol -> DataDeclM (TST.Typ pol)
 annotTy (RST.TySkolemVar loc pol tv) = do 
-  polyknd <- gets (\x -> x.declKind)
-  return $ TST.TySkolemVar loc pol (getKindSkolem polyknd tv) tv 
+  skMap <- gets (\x -> x.boundSkolemVars)
+  case M.lookup tv skMap of 
+    Nothing -> do 
+      polyknd <- gets (\x -> x.declKind)
+      return $ TST.TySkolemVar loc pol (MkPknd $ getKindSkolem polyknd tv) tv 
+    Just mk -> return $ TST.TySkolemVar loc pol (monoToAnyKind mk) tv
 -- uni vars should not appear in data declarations
 annotTy (RST.TyUniVar loc _ _) = throwOtherError loc ["UniVar should not appear in data declaration"]
 annotTy (RST.TyRecVar loc pol tv) = do
@@ -230,6 +239,8 @@ annotTy (RST.TyCodata loc pol xtors) = do
 
 annotTy (RST.TyDataRefined loc pol pknd argVars tyn xtors) = do 
   tyn' <- gets (\x -> x.declTyName)
+  let skKinds = (\(_,_,x) -> x) <$> pknd.kindArgs 
+  addSkolems loc argVars skKinds
   if tyn == tyn' then do 
     let xtorNames = map (\x->x.sig_name) xtors
     xtors' <- getXtors pol xtorNames
@@ -238,9 +249,17 @@ annotTy (RST.TyDataRefined loc pol pknd argVars tyn xtors) = do
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) decl.data_xtors
     return $ TST.TyDataRefined loc pol pknd argVars tyn xtors'
+  where 
+    addSkolems :: Loc -> [SkolemTVar] -> [MonoKind] -> DataDeclM () 
+    addSkolems loc argVars knds = if length argVars /= length knds then 
+      forM_ (zip argVars knds) (uncurry addSkolemVar)
+     else
+        throwOtherError loc ["not enough skolem variables bound in refinement type"]
 
 annotTy (RST.TyCodataRefined loc pol pknd argVars tyn xtors) = do 
   tyn' <- gets (\x -> x.declTyName)
+  let skKinds = (\(_,_,x) -> x) <$> pknd.kindArgs 
+  addSkolems loc argVars skKinds
   if tyn == tyn' then do 
     let xtorNames = map (\x->x.sig_name) xtors
     xtors' <- getXtors (RST.flipPolarityRep pol) xtorNames
@@ -249,6 +268,12 @@ annotTy (RST.TyCodataRefined loc pol pknd argVars tyn xtors) = do
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> snd; RST.NegRep -> fst) decl.data_xtors
     return $ TST.TyCodataRefined loc pol pknd argVars tyn xtors'
+  where 
+    addSkolems :: Loc -> [SkolemTVar] -> [MonoKind] -> DataDeclM () 
+    addSkolems loc argVars knds = if length argVars /= length knds then 
+      forM_ (zip argVars knds) (uncurry addSkolemVar)
+     else
+        throwOtherError loc ["not enough skolem variables bound in refinement type"]
 
 annotTy (RST.TyApp loc pol ty tyn args) = do 
   ty' <- annotTy ty 
@@ -495,8 +520,8 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
         kv <- newKVar
         let newM = M.insert tv (KindVar kv) skMap
         modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
-        return (TST.TySkolemVar loc pol (KindVar kv) tv)
-      Just mk -> return (TST.TySkolemVar loc pol mk tv)
+        return (TST.TySkolemVar loc pol (MkPknd $ KindVar kv) tv)
+      Just pk -> return (TST.TySkolemVar loc pol (MkPknd pk) tv)
 
   annotateKind (RST.TyUniVar loc pol tv) = do 
     uniMap <- gets (\x -> x.usedUniVars)
