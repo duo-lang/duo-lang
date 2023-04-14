@@ -252,8 +252,16 @@ instance FreeTVars (Typ pol) where
   freeTVars (TySyn _ _ _ ty)                   = freeTVars ty
   freeTVars (TyData _  _ _ xtors)              = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ _ xtors)             = S.unions (freeTVars <$> xtors)
-  freeTVars (TyDataRefined _ _ _ _ xtors)    = S.unions (freeTVars <$> xtors)
-  freeTVars (TyCodataRefined  _ _ _ _ xtors) = S.unions (freeTVars <$> xtors)
+  freeTVars (TyDataRefined _ _ pk _ xtors)    = do 
+    let freeVars = S.unions (freeTVars <$> xtors)
+    let pkVars = allTypeVars pk
+    let f (sk,_) = sk `notElem` pkVars
+    S.filter f freeVars 
+  freeTVars (TyCodataRefined  _ _ pk _ xtors) = do
+    let freeVars = S.unions (freeTVars <$> xtors)
+    let pkVars = allTypeVars pk
+    let f (sk,_) = sk `notElem` pkVars
+    S.filter f freeVars 
   freeTVars (TyI64 _ _)                        = S.empty
   freeTVars (TyF64 _ _)                        = S.empty
   freeTVars (TyChar _ _)                       = S.empty

@@ -2,7 +2,7 @@ module TypeInference.GenerateConstraints.Terms
   ( GenConstraints(..)
   , genConstraintsTermRecursive
   ) where
-
+import Debug.Trace
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -261,6 +261,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
                         (substTypesPos,substTypesNeg) <- freshTVarsXCaseRef loc xt (tyArgsPos,tyArgsNeg,tyParamsMap) args
+                        trace ("generated (inferredcases) " <> show substTypesPos ) $ pure ( )
                         -- Check the command in the context extended with the positive unification variables
                         cmdInferred <- withContext substTypesPos (genConstraints cmdcase_cmd)
                         -- We have to bound the unification variables with the lower and upper bounds generated
@@ -269,10 +270,10 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- Then we generate constraints between the inferred types of the substitution
                         xtorLower <- lookupXtorSigLower loc xt
                         xtorUpper <- lookupXtorSigUpper loc xt 
-                        let lowerBound = TST.zonk TST.SkolemRep tyParamsMap xtorLower.sig_args
-                        let upperBound = TST.zonk TST.SkolemRep tyParamsMap xtorUpper.sig_args
-                        genConstraintsCtxts lowerBound substTypesNeg (PatternMatchConstraint loc)
-                        genConstraintsCtxts substTypesPos upperBound (PatternMatchConstraint loc)
+--                        let lowerBound = TST.zonk TST.SkolemRep tyParamsMap xtorLower.sig_args
+--                        let upperBound = TST.zonk TST.SkolemRep tyParamsMap xtorUpper.sig_args
+                        genConstraintsCtxts xtorLower.sig_args substTypesNeg (PatternMatchConstraint loc)
+                        genConstraintsCtxts substTypesPos xtorUpper.sig_args (PatternMatchConstraint loc)
                         -- For the type, we return the unification variables which are now bounded by the least
                         -- and greatest type translation.
                         return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt substTypesNeg))

@@ -36,7 +36,7 @@ module TypeInference.GenerateConstraints.Definition
   , initialState
   , initialReader
 ) where
-
+import Debug.Trace
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -206,6 +206,7 @@ replaceUniVarRef (TST.PrdCnsType CnsRep _) (TST.PrdCnsType PrdRep _) _ _ = error
 replaceUniVarRef pc1@(TST.PrdCnsType PrdRep ty1) (TST.PrdCnsType PrdRep ty2) tyArgs info = case (ty1,ty2) of 
   (TST.TyUniVar loc pol knd _,TST.TyApp _ _ eo ty tyn _) -> do
     (uvarPos,uvarNeg) <- freshTVar (RefinementArgument loc) (Just $ TST.getKind ty)
+    trace ("generated " <> show uvarPos) $ pure ()
     addConstraint $ KindEq ReturnKindConstraint knd (MkPknd (MkPolyKind [] eo))
     let newTyPos = TST.TyApp loc PosRep eo uvarPos tyn (fst tyArgs)
     let newTyNeg = TST.TyApp loc NegRep eo uvarNeg tyn (snd tyArgs)
@@ -253,6 +254,7 @@ freshTVarsXCaseRef loc xt (fstPos:rstPos, fstNeg:rstNeg,tyParamsMap) args = do
     freshTVarRef _ argTys ((Prd,fv),TST.PrdCnsType PrdRep ty) = case ty of 
       TST.TyApp loc' _ eo ty tyn _ -> do
         (tyPos, tyNeg) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just (TST.getKind ty))
+        trace ("generated in freshTVarRef " <>show tyPos) $ pure ()
         let newTyPos = TST.TyApp loc' PosRep eo tyPos tyn (fst argTys)
         let newTyNeg = TST.TyApp loc' NegRep eo tyNeg tyn (snd argTys)
         return (TST.PrdCnsType PrdRep newTyPos, TST.PrdCnsType PrdRep newTyNeg) 
@@ -262,6 +264,12 @@ freshTVarsXCaseRef loc xt (fstPos:rstPos, fstNeg:rstNeg,tyParamsMap) args = do
       uvNeg@(TST.TyUniVar loc NegRep knd uv) -> do 
         let uvPos = TST.TyUniVar loc PosRep knd uv 
         return (TST.PrdCnsType PrdRep uvPos, TST.PrdCnsType PrdRep uvNeg)
+      skPos@(TST.TySkolemVar loc PosRep pk sk) -> do 
+        let skNeg = TST.TySkolemVar loc NegRep pk sk
+        return (TST.PrdCnsType PrdRep skPos, TST.PrdCnsType PrdRep skNeg)
+      skNeg@(TST.TySkolemVar loc NegRep pk sk) -> do 
+        let skPos = TST.TySkolemVar loc PosRep pk sk
+        return (TST.PrdCnsType PrdRep skPos, TST.PrdCnsType PrdRep skNeg)
       _ -> do
         let knd = TST.getKind ty
         (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just knd)
@@ -278,6 +286,12 @@ freshTVarsXCaseRef loc xt (fstPos:rstPos, fstNeg:rstNeg,tyParamsMap) args = do
       uvNeg@(TST.TyUniVar loc NegRep knd uv) -> do 
         let uvPos = TST.TyUniVar loc PosRep knd uv 
         return (TST.PrdCnsType CnsRep uvNeg, TST.PrdCnsType CnsRep uvPos)
+      skPos@(TST.TySkolemVar loc PosRep pk sk) -> do 
+        let skNeg = TST.TySkolemVar loc NegRep pk sk
+        return (TST.PrdCnsType CnsRep skNeg, TST.PrdCnsType CnsRep skPos)
+      skNeg@(TST.TySkolemVar loc NegRep pk sk) -> do 
+        let skPos = TST.TySkolemVar loc PosRep pk sk
+        return (TST.PrdCnsType CnsRep skNeg, TST.PrdCnsType CnsRep skPos)
       _ -> do 
         let knd = TST.getKind ty 
         (tp,tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just knd)

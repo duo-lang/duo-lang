@@ -10,6 +10,7 @@ import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
 import Syntax.CST.Names
     ( MethodName, SkolemTVar, XtorName )
 import Syntax.RST.Names
+import Syntax.RST.Kinds (allTypeVars)
 import Loc ( Loc, defaultLoc, HasLoc(..) )
 
 ------------------------------------------------------------------------------
@@ -314,8 +315,8 @@ instance FreeTVars (Typ pol) where
   freeTVars (TySyn _ _ _ ty)                  = freeTVars ty
   freeTVars (TyData _ _ xtors)                = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ xtors)              = S.unions (freeTVars <$> xtors)
-  freeTVars (TyDataRefined _ _ _ _ xtors)   = S.unions (freeTVars <$> xtors)
-  freeTVars (TyCodataRefined _ _ _ _ xtors) = S.unions (freeTVars <$> xtors)
+  freeTVars (TyDataRefined _ _ pk _ xtors)   = S.difference (S.unions (freeTVars <$> xtors)) (allTypeVars pk)
+  freeTVars (TyCodataRefined _ _ pk _ xtors) = S.difference (S.unions (freeTVars <$> xtors)) (allTypeVars pk)
   freeTVars (TyI64 _ _)                       = S.empty
   freeTVars (TyF64 _ _)                       = S.empty
   freeTVars (TyChar _ _)                      = S.empty

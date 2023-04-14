@@ -1,5 +1,5 @@
 module TypeAutomata.ToAutomaton ( typeToAut ) where 
-
+import Debug.Trace
 import Control.Monad.Except ( runExcept, Except )
 import Control.Monad.Reader
     ( ReaderT(..), asks, MonadReader(..) )
@@ -250,9 +250,18 @@ insertType (TySyn _ _ _ ty) = insertType ty
 
 insertType (TyApp _ _ _ ty tyn args) = do 
   argNodes <- mapM insertVariantType args
-  tyNodes <- insertType ty
+  let argVars = S.toList $ allTypeVars (case getKind ty of MkPknd pk -> pk; _ -> error "impossible application")
+  tyNodes <-  local (extendEnv (NE.toList argNodes) argVars) (insertType ty)
   insertEdges (concatMap (\(i,(ns,variance)) -> [(tyNode, n, TypeArgEdge tyn variance i) | tyNode <- tyNodes, n <- ns]) $ enumerate (NE.toList argNodes))
   return tyNodes
+  where 
+    extendEnv :: [([Node],Variance)] -> [SkolemTVar] -> LookupEnv -> LookupEnv
+    extendEnv argNodes skolems (LookupEnv tSkolemVars tRecVars) = do 
+      let nodes = head <$> (fst <$> argNodes)
+      let newSks = zip skolems nodes 
+      let f (sk,node) = M.insert sk (node,node) 
+      let newSkolems = foldr f tSkolemVars newSks 
+      LookupEnv newSkolems  tRecVars 
 
 insertType (TyNominal _ rep pk@(MkPolyKind args _) tn) = do
   let pol = polarityRepToPol rep 
@@ -299,7 +308,7 @@ addPredecessorsOf n ns = modifyGraph addPreds
 
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either (NonEmpty Error) (TypeAut pol)
-typeToAut ts = do
+typeToAut ts = do 
   (start, aut) <- runTypeAutTvars ts.ts_vars (insertType ts.ts_monotype)
   return TypeAut { ta_pol = getPolarity ts.ts_monotype
                  , ta_starts = start

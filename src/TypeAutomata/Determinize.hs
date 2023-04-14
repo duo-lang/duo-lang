@@ -1,5 +1,5 @@
 module TypeAutomata.Determinize ( determinize ) where
-
+import Debug.Trace
 import Control.Monad.State
     ( execState, State, MonadState(get), modify )
 import Data.Functor.Identity ( Identity(Identity) )
@@ -15,6 +15,7 @@ import Data.Foldable (foldl')
 
 import TypeAutomata.Definition
 import Syntax.RST.Types ( Polarity(Neg, Pos) )
+import Syntax.CST.Kinds (PolyKind(..))
 
 ---------------------------------------------------------------------------------------
 -- First step of determinization:
@@ -78,7 +79,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
   case rs_merged of
     pr@MkPrimitiveNodeLabel{} -> error ("Tried to combine primitive type" <> show pr <> " and algebraic type " <> show fstLabel)
     combLabel@MkNodeLabel{} ->
-      if combLabel.nl_kind == knd then 
+      if combLabel.nl_kind.returnKind == knd.returnKind then 
         if combLabel.nl_pol  == pol then
           MkNodeLabel {
             nl_pol = pol,
@@ -109,7 +110,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
 
     mrgRefDat refs1 refs2 = 
       let mrgXtors xtors1 xtors2 = case pol of Pos -> S.union xtors1 xtors2; Neg -> S.intersection xtors1 xtors2
-          checkVars vars1 vars2 = if vars1 == vars2 then vars2 else error "variances don't match"
+          checkVars vars1 vars2 = if vars1 == vars2  || null vars1 then vars2 else if null vars2 then vars1 else error "variances don't match"
           f (xtors1, vars1) (xtors2, vars2) = (mrgXtors xtors1 xtors2, checkVars vars1 vars2)
       in M.unionWith f refs1 refs2 
     mrgRefCodat refs1 refs2 = 
