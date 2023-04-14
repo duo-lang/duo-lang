@@ -187,7 +187,7 @@ freshTVarsForTypeParams rep decl = do
       (Contravariant, NegRep) -> pure (TST.ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
 -- these functins are specific to refinement types as they require handling type arguments differently
-getTypeArgsRef :: TST.DataDecl -> GenM ([TST.VariantType Pos], [TST.VariantType Neg],TST.Bisubstitution TST.SkolemVT)
+getTypeArgsRef :: TST.DataDecl -> GenM ([TST.VariantType Pos], [TST.VariantType Neg])
 getTypeArgsRef decl =  do 
   let kndArgs = decl.data_kind.kindArgs
   vars <- forM kndArgs (\ (var, sk, mk) -> do 
@@ -197,8 +197,7 @@ getTypeArgsRef decl =  do
       Contravariant -> return (TST.ContravariantType uvarNeg, TST.ContravariantType uvarPos,uvarPos,uvarNeg))
   let varsPos = (\(x,_,_,_) -> x) <$> vars
   let varsNeg = (\(_,x,_,_) -> x) <$> vars
-  let uvs = (\(_,_,x,y) -> (x,y)) <$> vars
-  return (varsPos,varsNeg,paramsMap kndArgs uvs)
+  return (varsPos,varsNeg)
 
 replaceUniVarRef :: TST.PrdCnsType pol -> TST.PrdCnsType pol1 -> (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg)) -> ConstraintInfo -> GenM (TST.PrdCnsType pol)
 replaceUniVarRef (TST.PrdCnsType PrdRep _) (TST.PrdCnsType CnsRep _) _ _ = error "Can't happen"
@@ -233,19 +232,19 @@ replaceUniVarRef pc1@(TST.PrdCnsType CnsRep ty1) (TST.PrdCnsType CnsRep ty2) tyA
         return (TST.PrdCnsType CnsRep newTyNeg)
   _ -> return pc1
 
-freshTVarsXCaseRef :: Loc -> XtorName -> ([TST.VariantType Pos], [TST.VariantType Neg],TST.Bisubstitution TST.SkolemVT) -> [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
-freshTVarsXCaseRef loc xt ([],[],_) args = do 
+freshTVarsXCaseRef :: Loc -> XtorName -> ([TST.VariantType Pos], [TST.VariantType Neg]) -> [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
+freshTVarsXCaseRef loc xt ([],[]) args = do 
   xtor <- lookupXtorSig loc xt PosRep
   let argKnds = map TST.getKind xtor.sig_args
   let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, z))) args argKnds
   freshTVars tVarArgs
-freshTVarsXCaseRef _ _ ([],_,_) _ = error "impossible"
-freshTVarsXCaseRef _ _ (_,[],_) _ = error "impossible"
-freshTVarsXCaseRef loc xt (fstPos:rstPos, fstNeg:rstNeg,tyParamsMap) args = do 
+freshTVarsXCaseRef _ _ ([],_) _ = error "impossible"
+freshTVarsXCaseRef _ _ (_,[]) _ = error "impossible"
+freshTVarsXCaseRef loc xt (fstPos:rstPos, fstNeg:rstNeg) args = do 
   xtor <- lookupXtorSig loc xt PosRep
-  let xtor' = TST.zonk TST.SkolemRep tyParamsMap xtor
+--  let xtor' = TST.zonk TST.SkolemRep tyParamsMap xtor
   let tyArgs = (fstPos :| rstPos, fstNeg :| rstNeg)
-  prdCnsTys <- forM (zip args xtor'.sig_args) (freshTVarRef loc tyArgs)
+  prdCnsTys <- forM (zip args xtor.sig_args) (freshTVarRef loc tyArgs)
   return (fst <$> prdCnsTys,snd <$> prdCnsTys)
   where 
     freshTVarRef :: Loc -> (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg)) -> ((PrdCns,Maybe FreeVarName),TST.PrdCnsType pol) -> GenM (TST.PrdCnsType Pos,TST.PrdCnsType Neg)
