@@ -205,7 +205,7 @@ replaceUniVarRef (TST.PrdCnsType CnsRep _) (TST.PrdCnsType PrdRep _) _ _ = error
 replaceUniVarRef pc1@(TST.PrdCnsType PrdRep ty1) (TST.PrdCnsType PrdRep ty2) tyArgs info = case (ty1,ty2) of 
   (TST.TyUniVar loc pol knd _,TST.TyApp _ _ eo ty tyn _) -> do
     (uvarPos,uvarNeg) <- freshTVar (RefinementArgument loc) (Just $ TST.getKind ty)
-    trace ("generated " <> show uvarPos) $ pure ()
+--    trace ("generated " <> show uvarPos) $ pure ()
     addConstraint $ KindEq ReturnKindConstraint knd (MkPknd (MkPolyKind [] eo))
     let newTyPos = TST.TyApp loc PosRep eo uvarPos tyn (fst tyArgs)
     let newTyNeg = TST.TyApp loc NegRep eo uvarNeg tyn (snd tyArgs)
@@ -253,7 +253,7 @@ freshTVarsXCaseRef loc xt (fstPos:rstPos, fstNeg:rstNeg) args = do
     freshTVarRef _ argTys ((Prd,fv),TST.PrdCnsType PrdRep ty) = case ty of 
       TST.TyApp loc' _ eo ty tyn _ -> do
         (tyPos, tyNeg) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just (TST.getKind ty))
-        trace ("generated in freshTVarRef " <>show tyPos) $ pure ()
+--        trace ("generated in freshTVarRef " <>show tyPos) $ pure ()
         let newTyPos = TST.TyApp loc' PosRep eo tyPos tyn (fst argTys)
         let newTyNeg = TST.TyApp loc' NegRep eo tyNeg tyn (snd argTys)
         return (TST.PrdCnsType PrdRep newTyPos, TST.PrdCnsType PrdRep newTyNeg) 

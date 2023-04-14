@@ -240,18 +240,20 @@ annotTy (RST.TyCodata loc pol xtors) = do
 annotTy (RST.TyDataRefined loc pol pknd argVars tyn xtors) = do 
   tyn' <- gets (\x -> x.declTyName)
   let skKinds = (\(_,_,x) -> x) <$> pknd.kindArgs 
-  addSkolems loc argVars skKinds
   if tyn == tyn' then do 
+    let skolems = (\(_,x,_) -> x) <$> pknd.kindArgs
+    addSkolems loc skolems skKinds
     let xtorNames = map (\x->x.sig_name) xtors
     xtors' <- getXtors pol xtorNames
-    return $ TST.TyDataRefined loc pol pknd argVars tyn xtors'
+    return $ TST.TyDataRefined loc pol pknd skolems tyn xtors'
   else do 
+    addSkolems loc argVars skKinds
     decl <- lookupTypeName loc tyn
     let xtors' = (case pol of RST.PosRep -> fst; RST.NegRep -> snd) decl.data_xtors
     return $ TST.TyDataRefined loc pol pknd argVars tyn xtors'
   where 
     addSkolems :: Loc -> [SkolemTVar] -> [MonoKind] -> DataDeclM () 
-    addSkolems loc argVars knds = if length argVars /= length knds then 
+    addSkolems loc argVars knds = if length argVars == length knds then 
       forM_ (zip argVars knds) (uncurry addSkolemVar)
      else
         throwOtherError loc ["not enough skolem variables bound in refinement type"]
@@ -270,7 +272,7 @@ annotTy (RST.TyCodataRefined loc pol pknd argVars tyn xtors) = do
     return $ TST.TyCodataRefined loc pol pknd argVars tyn xtors'
   where 
     addSkolems :: Loc -> [SkolemTVar] -> [MonoKind] -> DataDeclM () 
-    addSkolems loc argVars knds = if length argVars /= length knds then 
+    addSkolems loc argVars knds = if length argVars == length knds then 
       forM_ (zip argVars knds) (uncurry addSkolemVar)
      else
         throwOtherError loc ["not enough skolem variables bound in refinement type"]

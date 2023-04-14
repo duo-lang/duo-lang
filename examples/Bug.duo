@@ -17,6 +17,11 @@ refinement data Nat {
     S(Nat)
 };
 
+data Bool : CBV {
+    True,
+    False
+};
+
 def prd tail : forall a. <List(b) | r | Cons(b,r(b)) > (a) -> <List(b) | r | Cons(b,r(b))>(a) := 
     \xs => case xs of { 
         Cons(_,ys) => ys

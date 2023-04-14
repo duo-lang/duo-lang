@@ -1,4 +1,5 @@
 module TypeAutomata.Determinize ( determinize ) where
+
 import Control.Monad.State
     ( execState, State, MonadState(get), modify )
 import Data.Functor.Identity ( Identity(Identity) )
@@ -87,7 +88,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
             nl_nominal = S.union fstLabel.nl_nominal combLabel.nl_nominal,
             nl_ref_data = mrgRefDat fstLabel.nl_ref_data combLabel.nl_ref_data, 
             nl_ref_codata = mrgRefCodat fstLabel.nl_ref_codata combLabel.nl_ref_codata, 
-            nl_kind = MkPolyKind (S.toList $ (S.fromList combLabel.nl_kind.kindArgs) `S.union` S.fromList knd.kindArgs) knd.returnKind
+            nl_kind = MkPolyKind (mrgKindArgs combLabel.nl_kind.kindArgs knd.kindArgs) knd.returnKind
           }
         else
           error "Tried to combine node labels of different polarity!"
@@ -109,7 +110,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
 
     mrgRefDat refs1 refs2 = 
       let mrgXtors xtors1 xtors2 = case pol of Pos -> S.union xtors1 xtors2; Neg -> S.intersection xtors1 xtors2
-          checkVars vars1 vars2 = if vars1 == vars2  || null vars1 then vars2 else if null vars2 then vars1 else error "variances don't match"
+          checkVars vars1 vars2 = if vars1 == vars2 then vars2 else error "variances don't match"
           f (xtors1, vars1) (xtors2, vars2) = (mrgXtors xtors1 xtors2, checkVars vars1 vars2)
       in M.unionWith f refs1 refs2 
     mrgRefCodat refs1 refs2 = 
@@ -118,7 +119,9 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
           f (xtors1,vars1) (xtors2,vars2) = (mrgXtors xtors1 xtors2, checkVars vars1 vars2)
       in M.unionWith f refs1 refs2
     rs_merged = combineNodeLabels rs
-
+    mrgKindArgs [] knds = knds
+    mrgKindArgs knds [] = knds
+    mrgKindArgs (knd1:knds1) knds2 = if knd1 `elem` knds2 then mrgKindArgs knds1 knds2 else knd1:mrgKindArgs knds1 knds2
 combineNodeLabels [fstLabel@MkPrimitiveNodeLabel{}] = fstLabel
 combineNodeLabels (fstLabel@MkPrimitiveNodeLabel{}:rs) =
   case rs_merged of
