@@ -75,7 +75,7 @@ data GenerateState = GenerateState
   , kVarCount :: Int
   , constraintSet :: ConstraintSet
   , usedRecVars :: M.Map RecTVar PolyKind
-  , usedSkolemVars :: M.Map SkolemTVar PolyKind
+  , usedSkolemVars :: M.Map SkolemTVar AnyKind
   , usedUniVars :: M.Map UniTVar AnyKind
   }
 
@@ -338,9 +338,9 @@ insertSkolemsClass decl = do
   modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM})
   return ()
   where
-    insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar PolyKind -> M.Map SkolemTVar PolyKind
+    insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar AnyKind -> M.Map SkolemTVar AnyKind
     insertSkolems [] mp = mp
-    insertSkolems ((_,tv,CBox eo):rst) mp = insertSkolems rst (M.insert tv (MkPolyKind [] eo) mp)
+    insertSkolems ((_,tv,CBox eo):rst) mp = insertSkolems rst (M.insert tv (MkPknd $ MkPolyKind [] eo) mp)
     insertSkolems ((_,tv,primk):_) _ = error ("Skolem Variable " <> show tv <> " can't have kind " <> show primk)
 
 ---------------------------------------------------------------------------------------------

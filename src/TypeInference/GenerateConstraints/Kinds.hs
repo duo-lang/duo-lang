@@ -365,9 +365,11 @@ computeEmptyRefinementType :: CST.DataCodata
                            -> PolyKind
                            -> DataDeclM (RST.Typ Pos, RST.Typ Neg)
 computeEmptyRefinementType CST.Data tn polyknd = do 
-  pure (RST.TyDataRefined   defaultLoc PosRep polyknd [] tn [], RST.TyDataRefined   defaultLoc NegRep polyknd [] tn [])
+  let argVars = (\(_,x,_) -> x) <$> polyknd.kindArgs
+  pure (RST.TyDataRefined   defaultLoc PosRep polyknd argVars tn [], RST.TyDataRefined   defaultLoc NegRep polyknd argVars tn [])
 computeEmptyRefinementType CST.Codata tn polyknd = do 
-  pure (RST.TyCodataRefined defaultLoc PosRep polyknd [] tn [], RST.TyCodataRefined defaultLoc NegRep polyknd [] tn [])
+  let argVars = (\(_,x,_) -> x) <$> polyknd.kindArgs
+  pure (RST.TyCodataRefined defaultLoc PosRep polyknd argVars tn [], RST.TyCodataRefined defaultLoc NegRep polyknd argVars tn [])
 
 -- | Given the polarity (data/codata), the name and the constructors/destructors of a type, compute the
 -- full refinement of that type.
@@ -388,13 +390,14 @@ computeFullRefinementType dc tn (xtorsPos, xtorsNeg) polyknd = do
   -- Replace all the recursive occurrences of the type by the variable "α" in the constructors/destructors.
   let xtorsReplacedPos :: [RST.XtorSig Pos] = RST.replaceNominal recVarPos recVarNeg tn <$> xtorsPos
   let xtorsReplacedNeg :: [RST.XtorSig Neg] = RST.replaceNominal recVarPos recVarNeg tn <$> xtorsNeg
+  let argVars = (\(_,x,_) -> x) <$> polyknd.kindArgs
   -- Assemble the 
   let fullRefinementTypePos :: RST.Typ Pos = case dc of
-                   CST.Data   -> RST.TyRec defaultLoc PosRep recVar (RST.TyDataRefined   defaultLoc PosRep polyknd [] tn xtorsReplacedPos)
-                   CST.Codata -> RST.TyRec defaultLoc PosRep recVar (RST.TyCodataRefined defaultLoc PosRep polyknd [] tn xtorsReplacedNeg)
+                   CST.Data   -> RST.TyRec defaultLoc PosRep recVar (RST.TyDataRefined   defaultLoc PosRep polyknd argVars tn xtorsReplacedPos)
+                   CST.Codata -> RST.TyRec defaultLoc PosRep recVar (RST.TyCodataRefined defaultLoc PosRep polyknd argVars tn xtorsReplacedNeg)
   let fullRefinementTypeNeg :: RST.Typ Neg = case dc of
-                   CST.Data   -> RST.TyRec defaultLoc NegRep recVar (RST.TyDataRefined defaultLoc NegRep polyknd [] tn    xtorsReplacedNeg)
-                   CST.Codata -> RST.TyRec defaultLoc NegRep recVar (RST.TyCodataRefined defaultLoc NegRep polyknd [] tn  xtorsReplacedPos)
+                   CST.Data   -> RST.TyRec defaultLoc NegRep recVar (RST.TyDataRefined defaultLoc NegRep polyknd argVars tn    xtorsReplacedNeg)
+                   CST.Codata -> RST.TyRec defaultLoc NegRep recVar (RST.TyCodataRefined defaultLoc NegRep polyknd argVars tn  xtorsReplacedPos)
   pure (fullRefinementTypePos, fullRefinementTypeNeg)
 
 annotateDataDecl :: RST.DataDecl -> DataDeclM TST.DataDecl 
@@ -485,10 +488,11 @@ instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
         skMap <- gets (\x -> x.usedSkolemVars)
         case (M.lookup sk skMap, mmk) of 
           (Nothing, _) -> throwOtherError loc ["Skolem Variable " <> ppPrint sk <> " defined but not used"]
-          (Just pk,Nothing) -> return (sk,pk)
-          (Just pk, Just pk') -> do
+          (Just (MkPknd pk),Nothing) -> return (sk,pk)
+          (Just (MkPknd pk), Just pk') -> do
             addConstraint $ KindEq KindConstraint (MkPknd pk) (MkPknd pk')
             return (sk,pk)
+          (Just primk, _) -> throwOtherError loc ["Skolem Variable " <> ppPrint sk <> " can't have kind " <> ppPrint primk]
                 
 instance AnnotateKind (RST.VariantType pol) (TST.VariantType pol) where
   annotateKind ::  RST.VariantType pol -> GenM (TST.VariantType pol)
@@ -518,10 +522,10 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     case M.lookup tv skMap of 
       Nothing -> do
         kv <- newKVar
-        let newM = M.insert tv (KindVar kv) skMap
+        let newM = M.insert tv (MkPknd $ KindVar kv) skMap
         modify (\gs@GenerateState{} -> gs { usedSkolemVars = newM })
         return (TST.TySkolemVar loc pol (MkPknd $ KindVar kv) tv)
-      Just pk -> return (TST.TySkolemVar loc pol (MkPknd pk) tv)
+      Just pk -> return (TST.TySkolemVar loc pol pk tv)
 
   annotateKind (RST.TyUniVar loc pol tv) = do 
     uniMap <- gets (\x -> x.usedUniVars)
@@ -556,14 +560,37 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
     return (TST.TyCodata loc pol eo xtors')
  
   annotateKind (RST.TyDataRefined loc pol pknd argVars tyn xtors) = do 
+    let skKnds = (\(_,_,x) -> x) <$> pknd.kindArgs
+    insertSkolems loc argVars skKnds 
     xtors' <- mapM annotateKind xtors
     mapM_ (checkXtorKind loc (Just tyn)) xtors'
     return (TST.TyDataRefined loc pol pknd argVars tyn xtors')
+    where 
+      insertSkolems :: Loc -> [SkolemTVar] -> [MonoKind] -> GenM ()
+      insertSkolems loc skolems knds = if length skolems /= length knds then 
+        throwOtherError loc ["Not enough bound Skolem Vars for refinement type"]
+        else do
+         skMap <- gets (\x -> x.usedSkolemVars)
+         let skMapNew = foldr (\(sk,mk) mp -> M.insert sk (monoToAnyKind mk) mp) skMap (zip skolems knds)
+         modify (\gs@GenerateState{} -> gs { usedSkolemVars = skMapNew })
 
+         
   annotateKind (RST.TyCodataRefined loc pol pknd argVars tyn xtors) = do
+    let skKnds = (\(_,_,x) -> x) <$> pknd.kindArgs
+    insertSkolems loc argVars skKnds 
     xtors' <- mapM annotateKind xtors
     mapM_ (checkXtorKind loc (Just tyn)) xtors'
     return (TST.TyCodataRefined loc pol pknd argVars tyn xtors')
+    where 
+      insertSkolems :: Loc -> [SkolemTVar] -> [MonoKind] -> GenM ()
+      insertSkolems loc skolems knds = if length skolems /= length knds then 
+        throwOtherError loc ["Not enough bound Skolem Vars for refinement type"]
+        else do
+         skMap <- gets (\x -> x.usedSkolemVars)
+         let skMapNew = foldr (\(sk,mk) mp -> M.insert sk (monoToAnyKind mk) mp) skMap (zip skolems knds)
+         modify (\gs@GenerateState{} -> gs { usedSkolemVars = skMapNew })
+
+
 
   annotateKind (RST.TyApp loc pol ty tyn args) = do 
     ty' <- annotateKind ty 
