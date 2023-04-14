@@ -1,5 +1,4 @@
 module TypeAutomata.Determinize ( determinize ) where
-import Debug.Trace
 import Control.Monad.State
     ( execState, State, MonadState(get), modify )
 import Data.Functor.Identity ( Identity(Identity) )
@@ -88,7 +87,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
             nl_nominal = S.union fstLabel.nl_nominal combLabel.nl_nominal,
             nl_ref_data = mrgRefDat fstLabel.nl_ref_data combLabel.nl_ref_data, 
             nl_ref_codata = mrgRefCodat fstLabel.nl_ref_codata combLabel.nl_ref_codata, 
-            nl_kind = knd
+            nl_kind = MkPolyKind (S.toList $ (S.fromList combLabel.nl_kind.kindArgs) `S.union` S.fromList knd.kindArgs) knd.returnKind
           }
         else
           error "Tried to combine node labels of different polarity!"
