@@ -149,13 +149,13 @@ instance EmbedTST (TST.Typ pol) (RST.Typ pol) where
   embedTST (TST.TyCodata loc pol eo xtors) =
     RST.TyKindAnnot (CBox eo) $ RST.TyCodata loc pol (map embedTST xtors)
   embedTST (TST.TyDataRefined loc pol pk@(MkPolyKind [] rk) tn xtors) =
-    RST.TyKindAnnot (CBox rk) $ RST.TyDataRefined loc pol pk tn (map embedTST xtors)
+    RST.TyKindAnnot (CBox rk) $ RST.TyDataRefined loc pol pk [] tn (map embedTST xtors)
   embedTST (TST.TyDataRefined loc pol pk tn xtors) =
-    RST.TyDataRefined loc pol pk tn (embedTST <$> xtors)
+    RST.TyDataRefined loc pol pk [] tn (embedTST <$> xtors)
   embedTST (TST.TyCodataRefined loc pol pk@(MkPolyKind [] rk) tn xtors) = 
-    RST.TyKindAnnot (CBox rk) $ RST.TyCodataRefined loc pol pk tn (map embedTST xtors)
+    RST.TyKindAnnot (CBox rk) $ RST.TyCodataRefined loc pol pk [] tn (map embedTST xtors)
   embedTST (TST.TyCodataRefined loc pol pk tn xtors) = 
-    RST.TyCodataRefined loc pol pk tn (embedTST <$> xtors)
+    RST.TyCodataRefined loc pol pk [] tn (embedTST <$> xtors)
 -- if arguments are applied to TyNominal or TyXDataRefined, don't annotate the Kind, otherwise the parser will break after prettyprint
 --  embedTST (TST.TyApp loc pol _ (TST.TyNominal loc' pol' polyknd tn) args) = 
 --    RST.TyApp loc pol (RST.TyNominal loc' pol' polyknd tn) (embedTST <$> args)

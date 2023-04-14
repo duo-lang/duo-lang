@@ -14,7 +14,6 @@ import Syntax.RST.Names
 import Syntax.RST.Program qualified as RST
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Terms qualified as RST
-import Syntax.CST.Kinds (PolyKind(..))
 import Loc
 import Syntax.RST.Terms (CmdCase(cmdcase_pat))
 import Syntax.CST.Names
@@ -581,12 +580,10 @@ instance Unresolve (RST.Typ pol) CST.Typ where
   unresolve (RST.TyCodata loc _ xtors) = do
     xtors' <- mapM unresolve xtors
     pure $ CST.TyXData loc CST.Codata xtors'
-  unresolve (RST.TyDataRefined loc _ pk tn xtors) = do
-    let argVars = (\(_,x,_) -> x) <$> pk.kindArgs 
+  unresolve (RST.TyDataRefined loc _ _ argVars tn xtors) = do
     xtors' <- mapM unresolve xtors
     pure $ CST.TyXRefined loc CST.Data tn.rnTnName argVars xtors'
-  unresolve (RST.TyCodataRefined loc _ pk tn xtors) = do
-    let argVars = (\(_,x,_) -> x) <$> pk.kindArgs 
+  unresolve (RST.TyCodataRefined loc _ _ argVars tn xtors) = do
     xtors' <- mapM unresolve xtors
     pure $ CST.TyXRefined loc CST.Codata tn.rnTnName argVars xtors'
   unresolve (RST.TyApp loc _ ty tyn args) = do 
