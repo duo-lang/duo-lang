@@ -222,18 +222,11 @@ nodeToTypeNoCache rep i  = do
             args <- mapM f argNodes 
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Data xt
-              case args of 
-                [] -> do
-                  argTypes <- argNodesToArgTypes nodes rep rep Nothing
-                  return (MkXtorSig xt.labelName argTypes)
-                (args1:argsRst) -> do
-                  argTypes <- argNodesToArgTypes nodes rep rep (Just (tn,args1:|argsRst))
-                  return (MkXtorSig xt.labelName argTypes)    
-            let argKnds =  (\(_,_,mk) -> mk) <$> pk.kindArgs
-            let skolemsPos = (\(mk,sk) -> TySkolemVar defaultLoc PosRep (monoToAnyKind mk) sk) <$> zip argKnds (S.toList skolems)
-            let skolemsNeg = (\(mk,sk) -> TySkolemVar defaultLoc NegRep (monoToAnyKind mk) sk) <$> zip argKnds (S.toList skolems)
-            let bisubst = MkBisubstitution (M.fromList (zip (snd <$> vars) (zip skolemsPos skolemsNeg)))
-            let sig' = zonk SkolemRep bisubst <$> sig
+              let margs = case args of 
+                            [] -> Nothing
+                            (args1:argsRst) -> Just (tn, args1:|argsRst)
+              argTypes <- argNodesToArgTypes nodes rep rep margs
+              return (MkXtorSig xt.labelName argTypes)
             case args of 
               [] -> return $ TyDataRefined defaultLoc rep pk (snd <$> vars) tn sig'
               (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk (snd <$> vars) tn sig') tn (arg1:|argRst)
@@ -246,18 +239,11 @@ nodeToTypeNoCache rep i  = do
             args <- mapM f argNodes 
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Codata xt
-              case args of 
-                [] -> do 
-                  argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep Nothing
-                  return (MkXtorSig xt.labelName argTypes)
-                (args1:argsRst) -> do 
-                  argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep (Just (tn, args1:|argsRst))
-                  return (MkXtorSig xt.labelName argTypes)
-            let argKnds =  (\(_,_,mk) -> mk) <$> pk.kindArgs
-            let skolemsPos = (\(mk,sk) -> TySkolemVar defaultLoc PosRep (monoToAnyKind mk) sk) <$> zip argKnds (S.toList skolems)
-            let skolemsNeg = (\(mk,sk) -> TySkolemVar defaultLoc NegRep (monoToAnyKind mk) sk) <$> zip argKnds (S.toList skolems)
-            let bisubst = MkBisubstitution (M.fromList (zip (snd <$> vars) (zip skolemsPos skolemsNeg)))
-            let sig' = zonk SkolemRep bisubst <$> sig
+              let margs = case args of
+                            [] -> Nothing
+                            (args1:argsRst) -> Just (tn, args1:|argsRst)
+              argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep margs
+              return (MkXtorSig xt.labelName argTypes)
             case args of
               [] -> return $ TyCodataRefined defaultLoc rep pk (snd <$> vars) tn sig'
               (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk (snd <$> vars) tn sig') tn (arg1:|argRst)
