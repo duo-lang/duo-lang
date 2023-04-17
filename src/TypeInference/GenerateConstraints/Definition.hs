@@ -187,19 +187,22 @@ freshTVarsForTypeParams rep decl = do
       (Contravariant, NegRep) -> pure (TST.ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
 -- these functins are specific to refinement types as they require handling type arguments differently
-getTypeArgsRef :: TST.DataDecl -> GenM ([TST.VariantType Pos], [TST.VariantType Neg], TST.Bisubstitution TST.SkolemVT)
-getTypeArgsRef decl =  do 
+getTypeArgsRef :: Loc -> TST.DataDecl -> [SkolemTVar] -> GenM ([TST.VariantType Pos], [TST.VariantType Neg],TST.Bisubstitution TST.SkolemVT)
+getTypeArgsRef loc decl skolems =  do 
   let kndArgs = decl.data_kind.kindArgs
-  vars <- forM kndArgs (\ (var, sk, mk) -> do 
-    (uvarPos, uvarNeg) <- freshTVar (TypeParameter decl.data_name sk) (Just (monoToAnyKind mk))
-    let mapPair = (sk,(uvarPos,uvarNeg))
-    case var of
-      Covariant -> return (TST.CovariantType uvarPos, TST.CovariantType uvarNeg, mapPair)
-      Contravariant -> return (TST.ContravariantType uvarNeg, TST.ContravariantType uvarPos,mapPair))
-  let varsPos = (\(x,_,_) -> x) <$> vars
-  let varsNeg = (\(_,x,_) -> x) <$> vars
-  let bisubst = TST.MkBisubstitution $ M.fromList (foldr (\(_,_,x) ls -> x : ls) [] vars)
-  return (varsPos,varsNeg,bisubst)
+  if length skolems == length kndArgs then do
+    vars <- forM (zip kndArgs skolems) (\ ((var, _, mk),sk) -> do 
+      (uvarPos, uvarNeg) <- freshTVar (TypeParameter decl.data_name sk) (Just (monoToAnyKind mk))
+      let mapPair = (sk,(uvarPos,uvarNeg))
+      case var of
+        Covariant -> return (TST.CovariantType uvarPos, TST.CovariantType uvarNeg, mapPair)
+        Contravariant -> return (TST.ContravariantType uvarNeg, TST.ContravariantType uvarPos,mapPair))
+    let varsPos = (\(x,_,_) -> x) <$> vars
+    let varsNeg = (\(_,x,_) -> x) <$> vars
+    let bisubstMap = M.fromList ( foldr (\(_,_,x) mp -> x:mp) [] vars)
+    return (varsPos,varsNeg,TST.MkBisubstitution bisubstMap)
+  else 
+    throwOtherError loc ["Not enough skolem variables bound in refinement type"] 
 
 replaceUniVarRef :: TST.PrdCnsType pol -> TST.PrdCnsType pol1 -> (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg)) -> ConstraintInfo -> GenM (TST.PrdCnsType pol)
 replaceUniVarRef (TST.PrdCnsType PrdRep _) (TST.PrdCnsType CnsRep _) _ _ = error "Can't happen"
