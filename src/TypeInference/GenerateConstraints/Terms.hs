@@ -2,7 +2,6 @@ module TypeInference.GenerateConstraints.Terms
   ( GenConstraints(..)
   , genConstraintsTermRecursive
   ) where
-import Debug.Trace
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -158,11 +157,12 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     let pk = decl.data_kind
     let argVars = (\(_,x,_) -> x) <$> pk.kindArgs
     xtorSigUpper <- lookupXtorSigUpper loc xt 
-    (uvarsPos,uvarsNeg) <- getTypeArgsRef decl
+    (uvarsPos,uvarsNeg,tyParamsMap) <- getTypeArgsRef decl
     let cstrInfo = case rep of PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc
     --substTypes' <- getSubstTypesRef substTypes xtorSigUpper.sig_args (uvarsPos,uvarsNeg) cstrInfo
     -- Then we generate constraints between the inferred types of the substitution
-    genConstraintsCtxts substTypes xtorSigUpper.sig_args cstrInfo
+    let constrSigArgs = TST.zonk TST.SkolemRep tyParamsMap xtorSigUpper.sig_args
+    genConstraintsCtxts substTypes constrSigArgs cstrInfo
     let newXtorSig = [TST.MkXtorSig xt substTypes]
     case rep of 
       PrdRep -> do 
@@ -257,7 +257,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- We check that all cases in the pattern match belong to the type declaration.
     checkCorrectness loc ((\cs -> case cs.cmdcase_pat of Core.XtorPat _ xt _ -> xt) <$> cases) decl
     -- Generate fresh unification variables for type parameters
-    (tyArgsPos,tyArgsNeg) <- getTypeArgsRef decl
+    (tyArgsPos,tyArgsNeg,tyParamsMap) <- getTypeArgsRef decl
     inferredCases <- forM cases (\(Core.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdcase_cmd) -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
@@ -270,10 +270,12 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- Then we generate constraints between the inferred types of the substitution
                         xtorLower <- lookupXtorSigLower loc xt
                         xtorUpper <- lookupXtorSigUpper loc xt 
---                        let lowerBound = TST.zonk TST.SkolemRep tyParamsMap xtorLower.sig_args
---                        let upperBound = TST.zonk TST.SkolemRep tyParamsMap xtorUpper.sig_args
-                        genConstraintsCtxts xtorLower.sig_args substTypesNeg (PatternMatchConstraint loc)
-                        genConstraintsCtxts substTypesPos xtorUpper.sig_args (PatternMatchConstraint loc)
+                        let lowerBound = TST.zonk TST.SkolemRep tyParamsMap xtorLower.sig_args
+                        let upperBound = TST.zonk TST.SkolemRep tyParamsMap xtorUpper.sig_args
+                        let substTypesPosConstr = TST.zonk TST.SkolemRep tyParamsMap substTypesPos
+                        let substTypesNegConstr = TST.zonk TST.SkolemRep tyParamsMap substTypesNeg
+                        genConstraintsCtxts lowerBound substTypesNegConstr (PatternMatchConstraint loc)
+                        genConstraintsCtxts substTypesPosConstr upperBound (PatternMatchConstraint loc)
                         -- For the type, we return the unification variables which are now bounded by the least
                         -- and greatest type translation.
                         return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt substTypesNeg))

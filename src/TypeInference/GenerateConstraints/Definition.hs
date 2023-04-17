@@ -36,7 +36,7 @@ module TypeInference.GenerateConstraints.Definition
   , initialState
   , initialReader
 ) where
-import Debug.Trace
+
 import Control.Monad.Except
 import Control.Monad.Reader
 import Control.Monad.State
@@ -187,17 +187,19 @@ freshTVarsForTypeParams rep decl = do
       (Contravariant, NegRep) -> pure (TST.ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
 -- these functins are specific to refinement types as they require handling type arguments differently
-getTypeArgsRef :: TST.DataDecl -> GenM ([TST.VariantType Pos], [TST.VariantType Neg])
+getTypeArgsRef :: TST.DataDecl -> GenM ([TST.VariantType Pos], [TST.VariantType Neg], TST.Bisubstitution TST.SkolemVT)
 getTypeArgsRef decl =  do 
   let kndArgs = decl.data_kind.kindArgs
   vars <- forM kndArgs (\ (var, sk, mk) -> do 
     (uvarPos, uvarNeg) <- freshTVar (TypeParameter decl.data_name sk) (Just (monoToAnyKind mk))
+    let mapPair = (sk,(uvarPos,uvarNeg))
     case var of
-      Covariant -> return (TST.CovariantType uvarPos, TST.CovariantType uvarNeg, uvarPos,uvarNeg)
-      Contravariant -> return (TST.ContravariantType uvarNeg, TST.ContravariantType uvarPos,uvarPos,uvarNeg))
-  let varsPos = (\(x,_,_,_) -> x) <$> vars
-  let varsNeg = (\(_,x,_,_) -> x) <$> vars
-  return (varsPos,varsNeg)
+      Covariant -> return (TST.CovariantType uvarPos, TST.CovariantType uvarNeg, mapPair)
+      Contravariant -> return (TST.ContravariantType uvarNeg, TST.ContravariantType uvarPos,mapPair))
+  let varsPos = (\(x,_,_) -> x) <$> vars
+  let varsNeg = (\(_,x,_) -> x) <$> vars
+  let bisubst = TST.MkBisubstitution $ M.fromList (foldr (\(_,_,x) ls -> x : ls) [] vars)
+  return (varsPos,varsNeg,bisubst)
 
 replaceUniVarRef :: TST.PrdCnsType pol -> TST.PrdCnsType pol1 -> (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg)) -> ConstraintInfo -> GenM (TST.PrdCnsType pol)
 replaceUniVarRef (TST.PrdCnsType PrdRep _) (TST.PrdCnsType CnsRep _) _ _ = error "Can't happen"
@@ -205,7 +207,6 @@ replaceUniVarRef (TST.PrdCnsType CnsRep _) (TST.PrdCnsType PrdRep _) _ _ = error
 replaceUniVarRef pc1@(TST.PrdCnsType PrdRep ty1) (TST.PrdCnsType PrdRep ty2) tyArgs info = case (ty1,ty2) of 
   (TST.TyUniVar loc pol knd _,TST.TyApp _ _ eo ty tyn _) -> do
     (uvarPos,uvarNeg) <- freshTVar (RefinementArgument loc) (Just $ TST.getKind ty)
---    trace ("generated " <> show uvarPos) $ pure ()
     addConstraint $ KindEq ReturnKindConstraint knd (MkPknd (MkPolyKind [] eo))
     let newTyPos = TST.TyApp loc PosRep eo uvarPos tyn (fst tyArgs)
     let newTyNeg = TST.TyApp loc NegRep eo uvarNeg tyn (snd tyArgs)
@@ -253,7 +254,6 @@ freshTVarsXCaseRef loc xt (fstPos:rstPos, fstNeg:rstNeg) args = do
     freshTVarRef _ argTys ((Prd,fv),TST.PrdCnsType PrdRep ty) = case ty of 
       TST.TyApp loc' _ eo ty tyn _ -> do
         (tyPos, tyNeg) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just (TST.getKind ty))
---        trace ("generated in freshTVarRef " <>show tyPos) $ pure ()
         let newTyPos = TST.TyApp loc' PosRep eo tyPos tyn (fst argTys)
         let newTyNeg = TST.TyApp loc' NegRep eo tyNeg tyn (snd argTys)
         return (TST.PrdCnsType PrdRep newTyPos, TST.PrdCnsType PrdRep newTyNeg) 
