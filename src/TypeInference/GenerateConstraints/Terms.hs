@@ -163,7 +163,6 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- Then we generate constraints between the inferred types of the substitution
     let constrSigArgs = TST.zonk TST.SkolemRep tyParamsMap xtorSigUpper.sig_args
     let substTypesConstr = TST.zonk TST.SkolemRep tyParamsMap substTypes
---    trace ("generating constraints xtors " <> ppPrintString substTypesConstr <> " <: " <> ppPrintString constrSigArgs) $ pure ()
     genConstraintsCtxts substTypesConstr constrSigArgs cstrInfo
     let newXtorSig = [TST.MkXtorSig xt substTypes]
     case rep of 

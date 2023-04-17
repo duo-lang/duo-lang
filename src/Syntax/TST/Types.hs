@@ -357,14 +357,16 @@ instance Zonk (Typ pol) where
      let knd = zonkKind (snd bisubst.bisubst_map)  pk in
      TyDataRefined loc rep knd argVars tn (zonk UniRep bisubst <$> xtors)
   zonk SkolemRep bisubst (TyDataRefined loc rep pk argVars tn xtors) = do
-     TyDataRefined loc rep pk argVars tn (zonk SkolemRep bisubst <$> xtors)
+     let bisubstNew = MkBisubstitution $ foldr M.delete bisubst.bisubst_map argVars
+     TyDataRefined loc rep pk argVars tn (zonk SkolemRep bisubstNew <$> xtors)
   zonk vt bisubst (TyDataRefined loc rep pk argVars tn xtors) =
      TyDataRefined loc rep pk argVars tn (zonk vt bisubst <$> xtors)
   zonk UniRep bisubst (TyCodataRefined loc rep pk argVars tn xtors) =
      let knd = zonkKind (snd bisubst.bisubst_map) pk in
      TyCodataRefined loc rep knd argVars tn (zonk UniRep bisubst <$> xtors)
   zonk SkolemRep bisubst (TyCodataRefined loc rep pk argVars tn xtors) = do
-     TyCodataRefined loc rep pk argVars tn (zonk SkolemRep bisubst <$> xtors)
+     let bisubstNew = MkBisubstitution $ foldr M.delete bisubst.bisubst_map argVars
+     TyCodataRefined loc rep pk argVars tn (zonk SkolemRep bisubstNew <$> xtors)
   zonk vt bisubst (TyCodataRefined loc rep pk argVars tn xtors) =
      TyCodataRefined loc rep pk argVars tn (zonk vt bisubst <$> xtors)
   zonk UniRep bisubst (TyNominal loc rep pk tn) = 
