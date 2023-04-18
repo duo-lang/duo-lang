@@ -20,9 +20,7 @@ import Loc
 import Syntax.TST.Types qualified as TST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Names
-import Syntax.CST.Terms qualified as CST
 import Syntax.RST.Terms qualified as RST
-import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Control.Monad.Writer (MonadWriter)
 import Control.Monad.State (MonadState)
 import Syntax.TST.Program (InstanceDeclaration(..))
