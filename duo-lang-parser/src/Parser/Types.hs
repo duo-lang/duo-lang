@@ -242,7 +242,7 @@ typAtomP = do
   endPos <- getSourcePos
   case args of
     Nothing -> pure (fstTy, endPos)
-    Just (args',endPos) -> pure (TyApp (Loc startPos endPos) fstTy args',endPos)
+    Just (args',endPos) -> pure (TyApp (Loc startPos endPos) fstTy (getTypeName fstTy) args',endPos)
 
 tyArgsP :: Parser (NonEmpty Typ, SourcePos)
 tyArgsP = do 

@@ -19,8 +19,8 @@ import Errors.Renamer
 import Syntax.CST.Names
 import Syntax.CST.Program
 import Syntax.CST.Types
-import Syntax.CST.Terms
 import Syntax.RST.Names
+import Syntax.RST.Terms qualified as RST
 import Loc ( Loc )
 
 ---------------------------------------------------------------------------------
@@ -52,7 +52,7 @@ data TypeNameResolve where
 -- | What a XtorName can resolve to during name resolution
 data XtorNameResolve where
   -- | Xtor was introduced in a data or codata declaration
-  XtorNameResult :: DataCodata ->  NominalStructural -> Arity -> XtorNameResolve
+  XtorNameResult :: DataCodata ->  RST.NominalStructural -> Arity -> XtorNameResolve
   -- | Xtor was introduced as a method in a class declaration
   MethodNameResult :: ClassName -> Arity -> XtorNameResolve
 
@@ -139,7 +139,7 @@ createSymbolTable' :: MonadError ResolutionError m
 createSymbolTable' _ _ (XtorDecl decl) st = do
   -- Check whether the xtor name is already declared in this module
   checkFreshXtorName decl.loc decl.name st
-  let xtorResolve = XtorNameResult decl.data_codata Structural (fst <$> decl.arity)
+  let xtorResolve = XtorNameResult decl.data_codata RST.Structural (fst <$> decl.arity)
   pure $ st { xtorNameMap = M.insert decl.name xtorResolve st.xtorNameMap }
 createSymbolTable' fp mn  (DataDecl decl) st = do
   -- Check whether the TypeName, and the XtorNames, are already declared in this module
@@ -150,8 +150,8 @@ createSymbolTable' fp mn  (DataDecl decl) st = do
                     Nothing -> MkPolyKind [] (case decl.data_codata of Data -> CBV; Codata -> CBN)
                     Just knd -> knd
   let ns = case decl.isRefined of
-               Refined -> Refinement
-               NotRefined -> Nominal
+               Refined -> RST.Refinement
+               NotRefined -> RST.Nominal decl.name 
   let xtors = M.fromList [(sig.name, XtorNameResult decl.data_codata ns (linearContextToArity sig.args))| sig <- decl.xtors]
   let rnTypeName = MkRnTypeName { rnTnLoc = decl.loc
                                 , rnTnDoc = decl.doc

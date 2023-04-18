@@ -21,6 +21,8 @@ import Syntax.TST.Types qualified as TST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Names
 import Syntax.CST.Terms qualified as CST
+import Syntax.RST.Terms qualified as RST
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Control.Monad.Writer (MonadWriter)
 import Control.Monad.State (MonadState)
 import Syntax.TST.Program (InstanceDeclaration(..))
@@ -64,8 +66,8 @@ natType :: TST.Typ 'Pos
 natType = TST.TyNominal defaultLoc PosRep (MkPolyKind [] CBV) peanoNm
 
 convertInt :: Int -> Term Prd
-convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "Z") $ MkSubstitution []
-convertInt n = Xtor defaultLoc XtorAnnotOrig PrdRep natType CST.Nominal (MkXtorName "S") $ MkSubstitution [PrdTerm $ convertInt (n-1)]
+convertInt 0 = Xtor defaultLoc XtorAnnotOrig PrdRep natType (RST.Nominal (MkTypeName "Nat")) (MkXtorName "Z") $ MkSubstitution []
+convertInt n = Xtor defaultLoc XtorAnnotOrig PrdRep natType (RST.Nominal (MkTypeName "Nat")) (MkXtorName "S") $ MkSubstitution [PrdTerm $ convertInt (n-1)]
 
 
 readInt :: IO (Term Prd)

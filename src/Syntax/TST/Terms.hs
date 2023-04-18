@@ -27,7 +27,6 @@ import Syntax.Core.Annot
     ( ApplyAnnot, MatchAnnot, MuAnnot, XtorAnnot )
 import Syntax.Core.Terms qualified as Core
 import Syntax.RST.Kinds ( AnyKind )
-import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
 import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
@@ -124,10 +123,10 @@ data Term (pc :: PrdCns) where
   FreeVar :: Loc -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> FreeVarName -> Term pc
   -- | A constructor or destructor.
   -- If the first argument is `PrdRep` it is a constructor, a destructor otherwise.
-  Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> CST.NominalStructural -> XtorName -> Substitution -> Term pc
+  Xtor :: Loc -> XtorAnnot -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> RST.NominalStructural -> XtorName -> Substitution -> Term pc
   -- | A pattern or copattern match.
   -- If the first argument is `PrdRep` it is a copattern match, a pattern match otherwise.
-  XCase :: Loc -> MatchAnnot pc' -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> CST.NominalStructural -> [CmdCase] -> Term pc
+  XCase :: Loc -> MatchAnnot pc' -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) -> RST.NominalStructural -> [CmdCase] -> Term pc
   -- | A Mu or TildeMu abstraction:
   --
   --  mu k.c    =   MuAbs PrdRep c

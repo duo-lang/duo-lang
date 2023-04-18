@@ -23,6 +23,11 @@ instance PrettyAnn CST.NominalStructural where
   prettyAnn CST.Structural = "Structural"
   prettyAnn CST.Refinement = "Refinement"
 
+instance PrettyAnn RST.NominalStructural where
+  prettyAnn (RST.Nominal _) = "Nominal"
+  prettyAnn RST.Structural = "Structural"
+  prettyAnn RST.Refinement = "Refinement"
+
 ---------------------------------------------------------------------------------
 -- Patterns
 ---------------------------------------------------------------------------------

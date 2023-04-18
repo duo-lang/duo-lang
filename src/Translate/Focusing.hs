@@ -10,8 +10,7 @@ import Syntax.Core.Terms (Pattern(..))
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.RST.Terms qualified as RST
 import Loc
-import Syntax.CST.Terms qualified as CST
-import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..), EvaluationOrder(..), PolyKind(..))
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..), EvaluationOrder (..), PolyKind (..))
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.RST.Kinds
 import Syntax.CST.Names
@@ -170,14 +169,14 @@ betaVar i = MkFreeVarName ("$beta" <> T.pack (show i))
 
 -- | Invariant of `focusXtor`:
 --   The output should have the property `isFocusedSTerm`.
-focusXtor :: EvaluationOrder -> PrdCnsRep pc ->  Typ (PrdCnsToPol pc) -> CST.NominalStructural -> XtorName -> Substitution -> Term pc
+focusXtor :: EvaluationOrder -> PrdCnsRep pc ->  Typ (PrdCnsToPol pc) -> RST.NominalStructural -> XtorName -> Substitution -> Term pc
 focusXtor eo PrdRep ty ns xt subst =
     MuAbs defaultLoc MuAnnotOrig PrdRep ty Nothing (LN.close [(Cns, alphaVar)] (LN.shift ShiftUp (focusXtor' eo PrdRep ty ns xt subst.unSubstitution [])))
 focusXtor eo CnsRep ty ns xt subst =
     MuAbs defaultLoc MuAnnotOrig CnsRep ty Nothing (LN.close [(Prd, alphaVar)] (LN.shift ShiftUp (focusXtor' eo CnsRep ty ns xt subst.unSubstitution [])))
 
 
-focusXtor' :: EvaluationOrder -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) ->  CST.NominalStructural -> XtorName -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
+focusXtor' :: EvaluationOrder -> PrdCnsRep pc -> Typ (PrdCnsToPol pc) ->  RST.NominalStructural -> XtorName -> [PrdCnsTerm] -> [PrdCnsTerm] -> Command
 focusXtor' eo CnsRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (MkPknd (MkPolyKind [] eo)) (FreeVar defaultLoc PrdRep (TyFlipPol PosRep ty) alphaVar)
                                                                            (Xtor defaultLoc XtorAnnotOrig CnsRep ty ns xt (MkSubstitution $ reverse pcterms'))
 focusXtor' eo PrdRep ty ns xt [] pcterms' = Apply defaultLoc ApplyAnnotOrig  (MkPknd (MkPolyKind [] eo)) (Xtor defaultLoc XtorAnnotOrig PrdRep ty ns xt (MkSubstitution $ reverse pcterms'))
