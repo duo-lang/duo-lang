@@ -19,7 +19,7 @@ import qualified Data.Set as S
 -- Resolver Monad
 ------------------------------------------------------------------------------
 
-data ResolveReader = ResolveReader { rr_modules :: Map ModuleName SymbolTable, rr_recVars :: S.Set RecTVar }
+data ResolveReader = ResolveReader { rr_modules :: Map ModuleName SymbolTable, rr_recVars :: S.Set RecTVar, rr_recVarTyNames :: Map SkolemTVar TypeName }
 
 type WarningWriter = Writer [Warning]
 

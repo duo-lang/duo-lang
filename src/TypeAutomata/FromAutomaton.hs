@@ -75,7 +75,7 @@ runAutToTypeM m state = runExcept (runReaderT m state)
 autToType :: TypeAutDet pol -> Either (NonEmpty Error) (TypeScheme pol)
 autToType aut = do
   let startState = initializeFromAutomaton aut
-  monotype <- runAutToTypeM (nodeToType aut.ta_pol (runIdentity aut.ta_starts)) startState
+  monotype <- runAutToTypeM (nodeToType aut.ta_pol (runIdentity aut.ta_starts) Nothing) startState
   pure TypeScheme { ts_loc = defaultLoc
                   -- TODO Replace CBV with actual kinds
                   , ts_vars = startState.tvars
@@ -133,19 +133,21 @@ computeArgNodes outs dc lbl = args
     args = argFun <$> enumerate lbl.labelArity
 
 -- | Takes the output of computeArgNodes and turns the nodes into types.
-argNodesToArgTypes :: [(PrdCns,[Node])] -> PolarityRep pol -> AutToTypeM (LinearContext pol)
-argNodesToArgTypes argNodes rep = do
+argNodesToArgTypes :: [(PrdCns,[Node])] -> PolarityRep pol -> PolarityRep pol1 -> Maybe (RnTypeName, NonEmpty (VariantType pol1)) -> AutToTypeM (LinearContext pol)
+argNodesToArgTypes argNodes rep rep1 margs = do
   forM argNodes $ \ns -> do
     case ns of
       (Prd, ns) -> do
-         typs <- forM ns (nodeToType rep)
+         let margs' = case (rep,rep1) of (PosRep,PosRep) -> margs; (NegRep,NegRep) -> margs; _ -> Nothing
+         typs <- forM ns (\x -> nodeToType rep x margs')
          knds <- mapM getNodeKind ns
          knd <- checkTypKinds knds
          pure $ PrdCnsType PrdRep $ case rep of
                                        PosRep -> mkUnion defaultLoc knd typs
                                        NegRep -> mkInter defaultLoc knd typs
       (Cns, ns) -> do
-         typs <- forM ns (nodeToType (flipPolarityRep rep))
+         let margs' = case (rep,rep1) of (PosRep,NegRep) -> margs; (NegRep, PosRep) -> margs; _ -> Nothing
+         typs <- forM ns (\x -> nodeToType (flipPolarityRep rep) x margs')
          knds <- mapM getNodeKind ns
          knd <- checkTypKinds knds
          pure $ PrdCnsType CnsRep $ case rep of
@@ -156,15 +158,18 @@ checkTypKinds :: [AnyKind] -> AutToTypeM AnyKind
 checkTypKinds [] = throwAutomatonError  defaultLoc [T.pack "Can't get Kind of empty list of types"]
 checkTypKinds (fst:rst) = if all (fst ==) rst then return fst else throwAutomatonError defaultLoc [T.pack "Kinds of intersection types don't match"]
 
-nodeToType :: PolarityRep pol -> Node -> AutToTypeM (Typ pol)
-nodeToType rep i = do
+nodeToType :: PolarityRep pol -> Node -> Maybe (RnTypeName, NonEmpty (VariantType pol)) -> AutToTypeM (Typ pol)
+nodeToType rep i margs = do
   -- First we check if i is in the cache.
   -- If i is in the cache, we return a recursive variable.
   inCache <- checkCache i
   if inCache
     then do 
       knd <- getNodeKindPk i
-      pure (TyRecVar defaultLoc rep knd (MkRecTVar ("r" <> T.pack (show i))))
+      let rvTy =  TyRecVar defaultLoc rep knd (MkRecTVar ("r" <> T.pack (show i)))
+      case margs of 
+        Nothing -> pure rvTy 
+        Just (tyn, args) -> pure $ TyApp defaultLoc rep knd.returnKind rvTy tyn args
     else nodeToTypeNoCache rep i
 
 -- | Should only be called if node is not in cache.
@@ -197,7 +202,7 @@ nodeToTypeNoCache rep i  = do
           Just xtors -> do
             sig <- forM xtors $ \xt -> do
               let nodes = computeArgNodes outs CST.Data xt
-              argTypes <- argNodesToArgTypes nodes rep
+              argTypes <- argNodesToArgTypes nodes rep rep Nothing
               return (MkXtorSig xt.labelName argTypes)
             return [TyData defaultLoc rep pk.returnKind sig]
         -- Creating codata types
@@ -206,47 +211,53 @@ nodeToTypeNoCache rep i  = do
           Just xtors -> do
             sig <- forM xtors $ \xt -> do
               let nodes = computeArgNodes outs CST.Codata xt
-              argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
+              argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep Nothing
               return (MkXtorSig xt.labelName argTypes)
             return [TyCodata defaultLoc rep pk.returnKind sig]
         -- Creating ref data types
         refDatL <- do
           forM refDatTypes $ \(tn,(xtors,vars)) -> do
+            argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length vars - 1)]]
+            let f (node, Covariant) = CovariantType <$> nodeToType rep node Nothing
+                f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
+            args <- mapM f argNodes 
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Data xt
-              argTypes <- argNodesToArgTypes nodes rep
-              return (MkXtorSig xt.labelName argTypes) 
-            argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length vars - 1)]]
-            let f (node, Covariant) = CovariantType <$> nodeToType rep node
-                f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
-            args <- mapM f argNodes 
+              let margs = case args of 
+                            [] -> Nothing
+                            (args1:argsRst) -> Just (tn, args1:|argsRst)
+              argTypes <- argNodesToArgTypes nodes rep rep margs
+              return (MkXtorSig xt.labelName argTypes)
             case args of 
               [] -> return $ TyDataRefined defaultLoc rep pk tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk tn sig) (arg1:|argRst)
+              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk tn sig) tn (arg1:|argRst)
         -- Creating ref codata types
         refCodatL <- do
           forM refCodatTypes $ \(tn,(xtors,vars)) -> do
+            argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length vars - 1)]]
+            let f (node, Covariant) = CovariantType <$> nodeToType rep node Nothing 
+                f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
+            args <- mapM f argNodes 
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Codata xt
-              argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep)
+              let margs = case args of
+                            [] -> Nothing
+                            (args1:argsRst) -> Just (tn, args1:|argsRst)
+              argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep margs
               return (MkXtorSig xt.labelName argTypes)
-            argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length vars - 1)]]
-            let f (node, Covariant) = CovariantType <$> nodeToType rep node
-                f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
-            args <- mapM f argNodes 
             case args of
               [] -> return $ TyCodataRefined defaultLoc rep pk tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk tn sig) (arg1:|argRst)
+              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk tn sig) tn (arg1:|argRst)
         -- Creating Nominal types
         nominals <- do
             forM (S.toList tns) $ \(tn, variances) -> do
               argNodes <- sequence [ unsafeLookup (tn, i) | i <- [0..(length variances - 1)]]
-              let f (node, Covariant) = CovariantType <$> nodeToType rep node
-                  f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node
+              let f (node, Covariant) = CovariantType <$> nodeToType rep node Nothing
+                  f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
               args <- mapM f argNodes 
               case args of 
                 [] -> pure $ TyNominal defaultLoc rep pk tn
-                (fst:rst) -> pure $ TyApp defaultLoc rep pk.returnKind (TyNominal defaultLoc rep pk tn) (fst:|rst)
+                (fst:rst) -> pure $ TyApp defaultLoc rep pk.returnKind (TyNominal defaultLoc rep pk tn) tn (fst:|rst)
 
         let typs = varL ++ datL ++ codatL ++ refDatL ++ refCodatL ++ nominals -- ++ prims
         return $ case rep of

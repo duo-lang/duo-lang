@@ -3,7 +3,7 @@ module Data.PeanoRefinement;
 -- Peano Natural Numbers (Refinement)
 
 import Codata.Function;
-import Data.Bool;
+import Data.BoolRefinement;
 
 -- | The type of Peano natural numbers.
 refinement data Nat {
