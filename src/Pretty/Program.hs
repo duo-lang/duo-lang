@@ -12,8 +12,7 @@ import Pretty.Common
 import Sugar.Desugar (Desugar(..))
 import Syntax.CST.Program qualified as CST
 import Syntax.CST.Types qualified as CST
-import Syntax.CST.Types (PrdCns(..))
-import Syntax.CST.Kinds
+import Syntax.CST.Types (PrdCns(..), MonoKind(..), Variance(..))
 import Syntax.CST.Names
 import Syntax.Core.Program qualified as Core
 import Syntax.RST.Program qualified as RST

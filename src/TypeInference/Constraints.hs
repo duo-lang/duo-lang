@@ -7,7 +7,6 @@ import Syntax.CST.Names
 import Syntax.RST.Types (Polarity(..))
 import Syntax.RST.Names
 import Syntax.RST.Kinds
-import Syntax.CST.Kinds
 import Loc ( Loc )
 
 

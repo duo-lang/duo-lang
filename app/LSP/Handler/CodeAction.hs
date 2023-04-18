@@ -30,9 +30,8 @@ import Language.LSP.Server
     (  requestHandler, sendRequest, Handlers, getConfig )
 import System.Log.Logger ( debugM )
 import Syntax.TST.Types qualified as TST ( TopAnnot(..))
-import Syntax.CST.Kinds ( EvaluationOrder(..) )
 import Syntax.TST.Program qualified as TST
-import Syntax.CST.Types (PrdCnsRep(..))
+import Syntax.CST.Types (PrdCnsRep(..), EvaluationOrder(..))
 import Driver.Definition
     ( DriverState(drvEnv),
       defaultDriverState,

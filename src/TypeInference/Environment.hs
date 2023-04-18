@@ -19,7 +19,7 @@ import Syntax.TST.Types ( TypeScheme, Typ, XtorSig(..) )
 import Syntax.TST.Program ( DataDecl(..), InstanceDeclaration )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), MethodSig (..), LinearContext)
 import Syntax.CST.Types( PrdCns(..), PrdCnsRep(..))
-import Syntax.CST.Kinds (EvaluationOrder,PolyKind(..))
+import Syntax.CST.Types (EvaluationOrder,PolyKind(..))
 import Syntax.RST.Names
 import Loc ( Loc, defaultLoc )
 import qualified Syntax.RST.Program as RST

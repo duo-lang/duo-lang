@@ -6,7 +6,7 @@ module TypeInference.GenerateConstraints.Terms
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
-import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..), Variance(..), PolyKind(..), EvaluationOrder)
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Types qualified as TST
@@ -19,7 +19,6 @@ import Syntax.CST.Names
 import Syntax.RST.Names
 import Syntax.RST.Kinds
 import Syntax.RST.Terms qualified as RST
-import Syntax.CST.Kinds
 import Translate.EmbedTST (EmbedTST(..))
 import Pretty.Pretty
 

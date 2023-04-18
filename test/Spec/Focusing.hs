@@ -10,7 +10,7 @@ import Control.Monad.Except (MonadIO, liftIO)
 import Driver.Definition
 import Driver.Driver (inferProgramIO)
 import Sugar.Desugar (Desugar(..))
-import Syntax.CST.Kinds
+import Syntax.CST.Types
 import Syntax.TST.Program qualified as TST
 import Syntax.CST.Program qualified as CST
 import Translate.Focusing

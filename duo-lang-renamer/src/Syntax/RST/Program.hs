@@ -14,9 +14,7 @@ import Syntax.CST.Names
       ModuleName,
       XtorName )
 import Syntax.RST.Names (RnTypeName)
-import Syntax.CST.Kinds
-    ( EvaluationOrder, MonoKind, PolyKind )
-import Syntax.CST.Types ( DataCodata, PrdCns(..), PrdCnsRep(..) )
+import Syntax.CST.Types ( DataCodata, PrdCns(..), PrdCnsRep(..), EvaluationOrder, MonoKind, PolyKind )
 
 import Loc ( Loc )
 import Syntax.CST.Program qualified as CST

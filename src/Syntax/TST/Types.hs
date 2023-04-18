@@ -7,9 +7,8 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Maybe (fromMaybe)
 import Data.Kind ( Type )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), FlipPol ,PrdCnsFlip)
-import Syntax.CST.Kinds
-import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity)
-import Syntax.CST.Names ( MethodName, SkolemTVar, XtorName )
+import Syntax.CST.Types ( PrdCnsRep(..), PrdCns(..), Arity, Variance(..), EvaluationOrder(..), PolyKind(..), MonoKind(..))
+import Syntax.CST.Names ( MethodName, SkolemTVar, KVar(..), XtorName )
 import Syntax.RST.Names
 import Syntax.RST.Kinds
 import Loc

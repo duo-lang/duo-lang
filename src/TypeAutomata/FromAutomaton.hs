@@ -8,9 +8,8 @@ import Syntax.RST.Types (PolarityRep(..), flipPolarityRep)
 import Syntax.RST.Names
 import Syntax.RST.Kinds
 import Syntax.CST.Types qualified as CST
-import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..))
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..), PolyKind(..), Variance(..))
 import Syntax.CST.Names
-import Syntax.CST.Kinds
 import Pretty.TypeAutomata ()
 import TypeAutomata.Definition
 import TypeAutomata.BicliqueDecomp

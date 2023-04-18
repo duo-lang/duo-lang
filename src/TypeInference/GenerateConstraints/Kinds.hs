@@ -12,7 +12,7 @@ import Syntax.RST.Names
 import Syntax.RST.Kinds
 import Syntax.TST.Types qualified as TST
 import Syntax.TST.Types (getKind)
-import Syntax.CST.Kinds
+import Syntax.CST.Types
 import Syntax.CST.Names 
 import Pretty.Pretty
 import Pretty.Types()
@@ -455,7 +455,7 @@ instance AnnotateKind (RST.TypeScheme pol) (TST.TypeScheme pol) where
     newTVars <- mapM addTVar tvs
     return TST.TypeScheme {ts_loc = loc, ts_vars = newTVars,ts_monotype = ty'}
     where 
-      addTVar :: MaybeKindedSkolem -> GenM KindedSkolem
+      addTVar :: (SkolemTVar, Maybe PolyKind)-> GenM KindedSkolem
       addTVar (sk, mmk) = do 
         skMap <- gets (\x -> x.usedSkolemVars)
         case (M.lookup sk skMap, mmk) of 

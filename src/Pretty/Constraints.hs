@@ -12,7 +12,6 @@ import Syntax.CST.Names
 import Syntax.RST.Names
 import Syntax.RST.Kinds
 import TypeInference.Constraints
-import Syntax.CST.Kinds
 
 ---------------------------------------------------------------------------------
 -- Generated Constraints
