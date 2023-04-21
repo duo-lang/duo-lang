@@ -157,8 +157,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- Since we infer refinement types, we have to look up the translated xtorSig.
     decl <- lookupDataDecl loc xt
     let pk = decl.data_kind
-    argVars <- freshSkolems (length pk.kindArgs) 
-    skolemSubst <- getSkolemSubst pk argVars
+    (argVars,skolemSubst) <- freshSkolems pk
     xtorSigUpper <- lookupXtorSigUpper loc xt 
     (uvarsPos,uvarsNeg,_) <- getTypeArgsRef loc decl argVars
     uvars <- varTyToTy (uvarsPos,uvarsNeg)
@@ -283,14 +282,13 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- We check that all cases in the pattern match belong to the type declaration.
     checkCorrectness loc ((\cs -> case cs.cmdcase_pat of Core.XtorPat _ xt _ -> xt) <$> cases) decl
     -- Generate fresh unification variables for type parameters
-    argVars <- freshSkolems (length decl.data_kind.kindArgs)
-    skolemSubst <- getSkolemSubst decl.data_kind argVars
+    (argVars,skolemSubst) <- freshSkolems decl.data_kind
     (tyArgsPos,tyArgsNeg,_) <- getTypeArgsRef loc decl argVars
     uvars <- varTyToTy (tyArgsPos,tyArgsNeg)
     inferredCases <- forM cases (\(Core.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdcase_cmd) -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
-                        (substTypesPos,substTypesNeg) <- freshTVarsXCaseRef loc xt argVars args
+                        (substTypesPos,substTypesNeg) <- freshTVarsXCaseRef loc xt argVars skolemSubst args
                         -- Check the command in the context extended with the positive unification variables
                         cmdInferred <- withContext substTypesPos (genConstraints cmdcase_cmd)
                         -- We have to bound the unification variables with the lower and upper bounds generated
@@ -342,18 +340,17 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
         else 
           throwOtherError loc ["number of arguments does not match number of bound skolems"]
  
-      freshTVarsXCaseRef :: Loc -> XtorName -> [SkolemTVar] -> [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
-      freshTVarsXCaseRef loc xt [] args = do 
+      freshTVarsXCaseRef :: Loc -> XtorName -> [SkolemTVar] -> TST.Bisubstitution TST.SkolemVT -> [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
+      freshTVarsXCaseRef loc xt [] _ args = do 
         xtor <- lookupXtorSig loc xt PosRep
         let argKnds = map TST.getKind xtor.sig_args
         let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, z))) args argKnds
         freshTVars tVarArgs
-      freshTVarsXCaseRef loc xt (skFst:skRst) args = do 
+      freshTVarsXCaseRef loc xt (skFst:skRst) bisubst args = do 
         xtor <- lookupXtorSig loc xt PosRep
         decl <- lookupDataDecl loc xt
         let skolems = skFst :| skRst
         tyArgs <- getSkArgs loc decl.data_kind skolems
-        bisubst <- getSkolemSubst decl.data_kind (skFst:skRst)
         let xtor' = TST.zonk TST.SkolemRep bisubst xtor
         prdCnsTys <- forM (zip args xtor'.sig_args) (freshTVarRef loc tyArgs)
         return (fst <$> prdCnsTys,snd <$> prdCnsTys)

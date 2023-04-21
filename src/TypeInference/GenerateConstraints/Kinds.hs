@@ -563,12 +563,16 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
  
   annotateKind (RST.TyDataRefined loc pol pknd argVars tyn xtors) = do 
     let skKnds = (\(_,_,x) -> x) <$> pknd.kindArgs
+    let f (sk,(x,_,z)) = (x,sk,z)
+    let pknd' = MkPolyKind (f <$> zip argVars pknd.kindArgs) pknd.returnKind
     -- create fresh skolems to bind to avoid overlap
-    argVars' <- freshSkolems (length argVars)
-    insertSkolems loc argVars' skKnds 
-    xtors' <- mapM annotateKind xtors
-    mapM_ (checkXtorKind loc (Just tyn)) xtors'
-    return (TST.TyDataRefined loc pol pknd argVars' tyn xtors')
+    (argVars',bisubst) <- freshSkolems pknd' 
+    -- insert the new skolems and remove the old ones from the type
+    insertSkolems loc argVars skKnds 
+    xtors' <- mapM annotateKind xtors 
+    let xtors'' = TST.zonk TST.SkolemRep bisubst <$> xtors'
+    mapM_ (checkXtorKind loc (Just tyn)) xtors''
+    return (TST.TyDataRefined loc pol pknd argVars' tyn xtors'')
     where 
       insertSkolems :: Loc -> [SkolemTVar] -> [MonoKind] -> GenM ()
       insertSkolems loc skolems knds = if length skolems /= length knds then 
@@ -581,12 +585,15 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
          
   annotateKind (RST.TyCodataRefined loc pol pknd argVars tyn xtors) = do
     let skKnds = (\(_,_,x) -> x) <$> pknd.kindArgs
+    let f (sk,(x,_,z)) = (x,sk,z)
+    let pknd' = MkPolyKind (f <$> zip argVars pknd.kindArgs) pknd.returnKind
     -- create fresh skolems to bind to avoid overlap
-    argVars' <- freshSkolems (length argVars)
-    insertSkolems loc argVars' skKnds 
+    (argVars',bisubst) <- freshSkolems pknd' 
+    insertSkolems loc argVars skKnds 
     xtors' <- mapM annotateKind xtors
-    mapM_ (checkXtorKind loc (Just tyn)) xtors'
-    return (TST.TyCodataRefined loc pol pknd argVars' tyn xtors')
+    let xtors''  = TST.zonk TST.SkolemRep bisubst <$> xtors'
+    mapM_ (checkXtorKind loc (Just tyn)) xtors''
+    return (TST.TyCodataRefined loc pol pknd argVars' tyn xtors'')
     where 
       insertSkolems :: Loc -> [SkolemTVar] -> [MonoKind] -> GenM ()
       insertSkolems loc skolems knds = if length skolems /= length knds then 

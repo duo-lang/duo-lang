@@ -6,7 +6,6 @@ module TypeInference.GenerateConstraints.Definition
   , runGenM
     -- Generating fresh unification variables
   , freshSkolems
-  , getSkolemSubst
   , freshTVar
   , freshTVars
   , freshTVarsForTypeParams
@@ -61,7 +60,7 @@ import Syntax.TST.Program as TST
 import Syntax.LocallyNameless (Index)
 import TypeInference.Constraints
 import Loc ( Loc, defaultLoc )
-import Utils ( indexMaybe )
+import Utils ( indexMaybe, enumerate )
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -133,24 +132,18 @@ class GenConstraints a b | a -> b where
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
 
-freshSkolems :: Int -> GenM [SkolemTVar]
-freshSkolems n = do 
+freshSkolems :: PolyKind -> GenM ([SkolemTVar], TST.Bisubstitution TST.SkolemVT)
+freshSkolems pk = do 
   skVarC <- gets (\x -> x.skVarCount)
-  skolems <- forM [1..n] (\i -> return $ MkSkolemTVar ("a_" <> T.pack (show (skVarC+i))))
-  modify (\gs -> gs {skVarCount = skVarC + n})
-  return skolems
-
-getSkolemSubst :: PolyKind -> [SkolemTVar] -> GenM (TST.Bisubstitution TST.SkolemVT)
-getSkolemSubst pk skolems = if length pk.kindArgs == length skolems then do
-  let pkSkolems = (\(_,x,y) -> (x,y)) <$> pk.kindArgs
-  bisubstList <- forM (zip pkSkolems skolems) (\(sk1,sk2) -> do
-    let skKnd = monoToAnyKind (snd sk1)
-    let skPos = TST.TySkolemVar defaultLoc PosRep skKnd sk2
-    let skNeg = TST.TySkolemVar defaultLoc NegRep skKnd sk2
-    return (fst sk1, (skPos,skNeg)))
-  return $ TST.MkBisubstitution (M.fromList bisubstList)
-  else 
-    throwOtherError defaultLoc ["number of skolem variables in polykind does not match"]
+  skolems <- forM (enumerate pk.kindArgs) (\(i,(_,sk,mk)) -> do
+    let newSk = MkSkolemTVar ("a" <> T.pack (show (skVarC+i)))
+    let skPos = TST.TySkolemVar defaultLoc PosRep (monoToAnyKind mk) newSk
+    let skNeg = TST.TySkolemVar defaultLoc NegRep (monoToAnyKind mk) newSk
+    let bisubstPair = (sk,(skPos,skNeg))
+    return (newSk,bisubstPair))  
+  modify (\gs -> gs {skVarCount = skVarC + length pk.kindArgs}) 
+  let bisubst = TST.MkBisubstitution $ M.fromList (snd <$> skolems)
+  return (fst <$> skolems,bisubst)
 
 freshTVar :: UVarProvenance -> Maybe AnyKind -> GenM (TST.Typ Pos, TST.Typ Neg)
 freshTVar uvp Nothing = do
