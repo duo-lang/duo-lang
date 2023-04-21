@@ -283,27 +283,45 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     checkCorrectness loc ((\cs -> case cs.cmdcase_pat of Core.XtorPat _ xt _ -> xt) <$> cases) decl
     -- Generate fresh unification variables for type parameters
     (argVars,skolemSubst) <- freshSkolems decl.data_kind
-    (tyArgsPos,tyArgsNeg,_) <- getTypeArgsRef loc decl argVars
+    (tyArgsPos,tyArgsNeg,argSubst) <- getTypeArgsRef loc decl argVars
     uvars <- varTyToTy (tyArgsPos,tyArgsNeg)
     inferredCases <- forM cases (\(Core.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdcase_cmd) -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
-                        (substTypesPos,substTypesNeg) <- freshTVarsXCaseRef loc xt argVars skolemSubst args
                         -- Check the command in the context extended with the positive unification variables
-                        cmdInferred <- withContext substTypesPos (genConstraints cmdcase_cmd)
                         -- We have to bound the unification variables with the lower and upper bounds generated
                         -- from the information in the type declaration. These lower and upper bounds correspond
                         -- to the least and greatest type translation.
                         -- Then we generate constraints between the inferred types of the substitution
-                        xtorLower <- lookupXtorSigLower loc xt
-                        xtorUpper <- lookupXtorSigUpper loc xt 
-                        let lowerBound = TST.zonk TST.SkolemRep skolemSubst xtorLower.sig_args
-                        let upperBound = TST.zonk TST.SkolemRep skolemSubst xtorUpper.sig_args
-                        genConstraintsCtxts lowerBound substTypesNeg (PatternMatchConstraint loc)
-                        genConstraintsCtxts substTypesPos upperBound (PatternMatchConstraint loc)
                         -- For the type, we return the unification variables which are now bounded by the least
                         -- and greatest type translation.
-                        return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt substTypesNeg))
+
+                        xtor <- lookupXtorSig loc xt PosRep
+                        xtorLower <- lookupXtorSigLower loc xt
+                        xtorUpper <- lookupXtorSigUpper loc xt 
+
+                        case argVars of 
+                          [] -> do 
+                            let argKnds = map TST.getKind xtor.sig_args
+                            let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, z))) args argKnds
+                            (substTypesPos, substTypesNeg) <- freshTVars tVarArgs
+                            cmdInferred <- withContext substTypesPos (genConstraints cmdcase_cmd)
+                            genConstraintsCtxts xtorLower.sig_args substTypesNeg (PatternMatchConstraint loc)
+                            genConstraintsCtxts substTypesPos xtorUpper.sig_args (PatternMatchConstraint loc)
+                            return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt substTypesNeg)
+                          (skFst:skRst) -> do
+                            let skolems = skFst :| skRst
+                            tyArgs <- getSkArgs loc decl.data_kind skolems
+                            let xtor' = TST.zonk TST.SkolemRep skolemSubst xtor
+                            prdCnsTys <- forM (zip args xtor'.sig_args) (freshTVarRef loc tyArgs)
+                            let (substTypesPos,substTypesNeg) = (fst <$> prdCnsTys,snd <$> prdCnsTys)
+                            let lowerBound = TST.zonk TST.SkolemRep skolemSubst xtorLower.sig_args
+                            let upperBound = TST.zonk TST.SkolemRep skolemSubst xtorUpper.sig_args
+                            genConstraintsCtxts lowerBound substTypesNeg (PatternMatchConstraint loc)
+                            genConstraintsCtxts substTypesPos upperBound (PatternMatchConstraint loc)
+                            let substTypesPos' = TST.zonk TST.SkolemRep argSubst substTypesPos
+                            cmdInferred <- withContext substTypesPos' (genConstraints cmdcase_cmd)
+                            return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt substTypesNeg))
     case rep of
       CnsRep -> do
         let refTy = TST.TyDataRefined defaultLoc NegRep decl.data_kind argVars decl.data_name (snd <$> inferredCases)
@@ -340,20 +358,6 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
         else 
           throwOtherError loc ["number of arguments does not match number of bound skolems"]
  
-      freshTVarsXCaseRef :: Loc -> XtorName -> [SkolemTVar] -> TST.Bisubstitution TST.SkolemVT -> [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
-      freshTVarsXCaseRef loc xt [] _ args = do 
-        xtor <- lookupXtorSig loc xt PosRep
-        let argKnds = map TST.getKind xtor.sig_args
-        let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, z))) args argKnds
-        freshTVars tVarArgs
-      freshTVarsXCaseRef loc xt (skFst:skRst) bisubst args = do 
-        xtor <- lookupXtorSig loc xt PosRep
-        decl <- lookupDataDecl loc xt
-        let skolems = skFst :| skRst
-        tyArgs <- getSkArgs loc decl.data_kind skolems
-        let xtor' = TST.zonk TST.SkolemRep bisubst xtor
-        prdCnsTys <- forM (zip args xtor'.sig_args) (freshTVarRef loc tyArgs)
-        return (fst <$> prdCnsTys,snd <$> prdCnsTys)
       getSkArgs :: Loc -> PolyKind -> NonEmpty SkolemTVar -> GenM (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg))
       getSkArgs loc pk skolems = if length pk.kindArgs == length skolems then do 
         let kndVar = case (\(x,_,z) -> (x,z)) <$> pk.kindArgs of [] -> error "impossible"; pairFst:pairRst -> pairFst :| pairRst 
