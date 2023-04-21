@@ -563,10 +563,12 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
  
   annotateKind (RST.TyDataRefined loc pol pknd argVars tyn xtors) = do 
     let skKnds = (\(_,_,x) -> x) <$> pknd.kindArgs
-    insertSkolems loc argVars skKnds 
+    -- create fresh skolems to bind to avoid overlap
+    argVars' <- freshSkolems (length argVars)
+    insertSkolems loc argVars' skKnds 
     xtors' <- mapM annotateKind xtors
     mapM_ (checkXtorKind loc (Just tyn)) xtors'
-    return (TST.TyDataRefined loc pol pknd argVars tyn xtors')
+    return (TST.TyDataRefined loc pol pknd argVars' tyn xtors')
     where 
       insertSkolems :: Loc -> [SkolemTVar] -> [MonoKind] -> GenM ()
       insertSkolems loc skolems knds = if length skolems /= length knds then 
@@ -579,10 +581,12 @@ instance AnnotateKind (RST.Typ pol) (TST.Typ pol) where
          
   annotateKind (RST.TyCodataRefined loc pol pknd argVars tyn xtors) = do
     let skKnds = (\(_,_,x) -> x) <$> pknd.kindArgs
-    insertSkolems loc argVars skKnds 
+    -- create fresh skolems to bind to avoid overlap
+    argVars' <- freshSkolems (length argVars)
+    insertSkolems loc argVars' skKnds 
     xtors' <- mapM annotateKind xtors
     mapM_ (checkXtorKind loc (Just tyn)) xtors'
-    return (TST.TyCodataRefined loc pol pknd argVars tyn xtors')
+    return (TST.TyCodataRefined loc pol pknd argVars' tyn xtors')
     where 
       insertSkolems :: Loc -> [SkolemTVar] -> [MonoKind] -> GenM ()
       insertSkolems loc skolems knds = if length skolems /= length knds then 

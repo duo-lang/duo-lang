@@ -5,6 +5,8 @@ module TypeInference.GenerateConstraints.Definition
   , GenConstraints(..)
   , runGenM
     -- Generating fresh unification variables
+  , freshSkolems
+  , getSkolemSubst
   , freshTVar
   , freshTVars
   , freshTVarsForTypeParams
@@ -45,6 +47,7 @@ import Data.Map ( Map )
 import Data.Map qualified as M
 import Data.Text qualified as T
 import Data.List.NonEmpty (NonEmpty((:|)))
+import Data.List.NonEmpty qualified as NE
 
 import TypeInference.Environment
 import Errors
@@ -73,6 +76,7 @@ import Utils ( indexMaybe )
 data GenerateState = GenerateState
   { uVarCount :: Int
   , kVarCount :: Int
+  , skVarCount :: Int
   , constraintSet :: ConstraintSet
   , usedRecVars :: M.Map RecTVar PolyKind
   , usedSkolemVars :: M.Map SkolemTVar AnyKind
@@ -90,6 +94,7 @@ initialState :: GenerateState
 initialState = GenerateState {   uVarCount = 0
                                , constraintSet = initialConstraintSet
                                , kVarCount = 0
+                               , skVarCount = 0
                                , usedRecVars = M.empty
                                , usedSkolemVars = M.empty
                                , usedUniVars = M.empty
@@ -131,6 +136,25 @@ class GenConstraints a b | a -> b where
 ---------------------------------------------------------------------------------------------
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
+
+freshSkolems :: Int -> GenM [SkolemTVar]
+freshSkolems n = do 
+  skVarC <- gets (\x -> x.skVarCount)
+  skolems <- forM [1..n] (\i -> return $ MkSkolemTVar ("a_" <> T.pack (show (skVarC+i))))
+  modify (\gs -> gs {skVarCount = skVarC + n})
+  return skolems
+
+getSkolemSubst :: PolyKind -> [SkolemTVar] -> GenM (TST.Bisubstitution TST.SkolemVT)
+getSkolemSubst pk skolems = if length pk.kindArgs == length skolems then do
+  let pkSkolems = (\(_,x,y) -> (x,y)) <$> pk.kindArgs
+  bisubstList <- forM (zip pkSkolems skolems) (\(sk1,sk2) -> do
+    let skKnd = monoToAnyKind (snd sk1)
+    let skPos = TST.TySkolemVar defaultLoc PosRep skKnd sk2
+    let skNeg = TST.TySkolemVar defaultLoc NegRep skKnd sk2
+    return (fst sk1, (skPos,skNeg)))
+  return $ TST.MkBisubstitution (M.fromList bisubstList)
+  else 
+    throwOtherError defaultLoc ["number of skolem variables in polykind does not match"]
 
 freshTVar :: UVarProvenance -> Maybe AnyKind -> GenM (TST.Typ Pos, TST.Typ Neg)
 freshTVar uvp Nothing = do
@@ -236,21 +260,35 @@ replaceUniVarRef pc1@(TST.PrdCnsType CnsRep ty1) (TST.PrdCnsType CnsRep ty2) tyA
         return (TST.PrdCnsType CnsRep newTyNeg)
   _ -> return pc1
 
-freshTVarsXCaseRef :: Loc -> XtorName -> ([TST.VariantType Pos], [TST.VariantType Neg]) -> [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
-freshTVarsXCaseRef loc xt ([],[]) args = do 
+freshTVarsXCaseRef :: Loc -> XtorName -> [SkolemTVar] -> [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
+freshTVarsXCaseRef loc xt [] args = do 
   xtor <- lookupXtorSig loc xt PosRep
   let argKnds = map TST.getKind xtor.sig_args
   let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, z))) args argKnds
   freshTVars tVarArgs
-freshTVarsXCaseRef _ _ ([],_) _ = error "impossible"
-freshTVarsXCaseRef _ _ (_,[]) _ = error "impossible"
-freshTVarsXCaseRef loc xt (fstPos:rstPos, fstNeg:rstNeg) args = do 
+freshTVarsXCaseRef loc xt (skFst:skRst) args = do 
   xtor <- lookupXtorSig loc xt PosRep
---  let xtor' = TST.zonk TST.SkolemRep tyParamsMap xtor
-  let tyArgs = (fstPos :| rstPos, fstNeg :| rstNeg)
-  prdCnsTys <- forM (zip args xtor.sig_args) (freshTVarRef loc tyArgs)
+  decl <- lookupDataDecl loc xt
+  let skolems = skFst :| skRst
+  tyArgs <- getSkArgs loc decl.data_kind skolems
+  bisubst <- getSkolemSubst decl.data_kind (skFst:skRst)
+  let xtor' = TST.zonk TST.SkolemRep bisubst xtor
+  prdCnsTys <- forM (zip args xtor'.sig_args) (freshTVarRef loc tyArgs)
   return (fst <$> prdCnsTys,snd <$> prdCnsTys)
   where 
+    getSkArgs :: Loc -> PolyKind -> NonEmpty SkolemTVar -> GenM (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg))
+    getSkArgs loc pk skolems = if length pk.kindArgs == length skolems then do 
+      let kndVar = case (\(x,_,z) -> (x,z)) <$> pk.kindArgs of [] -> error "impossible"; pairFst:pairRst -> pairFst :| pairRst 
+      skArgs <- forM (NE.zip kndVar skolems) (\((var,mk),sk) -> do 
+        let skPos = TST.TySkolemVar defaultLoc PosRep (monoToAnyKind mk) sk
+        let skNeg = TST.TySkolemVar defaultLoc NegRep (monoToAnyKind mk) sk
+        case var of 
+          Covariant -> return (TST.CovariantType skPos,TST.CovariantType skNeg)
+          Contravariant -> return (TST.ContravariantType skNeg, TST.ContravariantType skPos)
+        )
+      return (fst <$> skArgs, snd <$> skArgs)
+    else 
+      throwOtherError loc ["bound skolem vars don't match polykind"]
     freshTVarRef :: Loc -> (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg)) -> ((PrdCns,Maybe FreeVarName),TST.PrdCnsType pol) -> GenM (TST.PrdCnsType Pos,TST.PrdCnsType Neg)
     freshTVarRef loc _ ((Prd,_),TST.PrdCnsType CnsRep _) = throwOtherError loc ["Xtor argument has to be consumer, was producer"]
     freshTVarRef loc _ ((Cns,_),TST.PrdCnsType PrdRep _) = throwOtherError loc ["Xtor argument has to be consumer, was producer"]
