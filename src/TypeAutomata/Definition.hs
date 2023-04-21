@@ -10,7 +10,7 @@ import Data.Bifunctor (bimap)
 import Data.Functor.Identity
 import Data.Containers.ListUtils (nubOrd)
 
-import Syntax.CST.Names ( XtorName )
+import Syntax.CST.Names ( XtorName, SkolemTVar)
 import Syntax.CST.Types ( DataCodata(..), Arity, PrdCns(..))
 import Syntax.RST.Types ( Polarity, PolarityRep(..))
 import Syntax.RST.Names ( RnTypeName )
@@ -171,8 +171,8 @@ data NodeLabel =
     , nl_codata :: Maybe (Set XtorLabel)
     -- Nominal type names with the arities of type parameters
     , nl_nominal :: Set (RnTypeName,[Variance])
-    , nl_ref_data :: Map RnTypeName (Set XtorLabel,[Variance])
-    , nl_ref_codata :: Map RnTypeName (Set XtorLabel,[Variance])
+    , nl_ref_data :: Map RnTypeName (Set XtorLabel,[(Variance,SkolemTVar)])
+    , nl_ref_codata :: Map RnTypeName (Set XtorLabel,[(Variance,SkolemTVar)])
     , nl_kind :: PolyKind 
     }
   |
@@ -191,7 +191,7 @@ emptyNodeLabel pol MkChar       = MkPrimitiveNodeLabel pol PChar
 
 singleNodeLabelNominal :: Polarity -> (RnTypeName, [Variance]) ->  PolyKind -> NodeLabel
 singleNodeLabelNominal pol nominal k = MkNodeLabel { nl_pol = pol, nl_data = Nothing, nl_codata = Nothing, nl_nominal = S.singleton nominal, nl_ref_data = M.empty, nl_ref_codata = M.empty, nl_kind = k }
-singleNodeLabelXtor :: Polarity -> DataCodata -> Maybe (RnTypeName,[Variance]) -> Set XtorLabel -> PolyKind -> NodeLabel
+singleNodeLabelXtor :: Polarity -> DataCodata -> Maybe (RnTypeName,[(Variance,SkolemTVar)]) -> Set XtorLabel -> PolyKind -> NodeLabel
 singleNodeLabelXtor pol Data   Nothing   xtors k =
   MkNodeLabel { nl_pol = pol, nl_data = Just xtors, nl_codata = Nothing,    nl_nominal = S.empty, nl_ref_data = M.empty,                     nl_ref_codata = M.empty,                     nl_kind = k }
 singleNodeLabelXtor pol Codata Nothing   xtors k = 

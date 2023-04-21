@@ -1,5 +1,5 @@
 module TypeAutomata.ToAutomaton ( typeToAut ) where 
-import Control.Monad.Except ( runExcept, Except )
+import Control.Monad.Except ( runExcept, Except, forM )
 import Control.Monad.Reader
     ( ReaderT(..), asks, MonadReader(..) )
 import Control.Monad.State
@@ -164,7 +164,7 @@ lookupTRecVar NegRep tv = do
 sigToLabel :: XtorSig pol -> XtorLabel
 sigToLabel (MkXtorSig name ctxt) = MkXtorLabel name (linearContextToArity ctxt)
 
-insertXtors :: CST.DataCodata -> Polarity -> Maybe RnTypeName -> PolyKind -> [XtorSig pol] -> TTA Node
+insertXtors :: CST.DataCodata -> Polarity -> Maybe (RnTypeName,[SkolemTVar]) -> PolyKind -> [XtorSig pol] -> TTA Node
 insertXtors _ _ _ (KindVar _) _ = throwAutomatonError defaultLoc ["Kind variable can't appear at this point in the program"]
 -- XData
 insertXtors dc pol Nothing pk xtors = do 
@@ -180,8 +180,8 @@ insertXtors dc pol Nothing pk xtors = do
       insertEdges [(newNode, n, EdgeSymbol dc nm (case pcType of (PrdCnsType PrdRep _) -> Prd; (PrdCnsType CnsRep _) -> Cns) i) | n <- ns]
 
 -- XDataRefined
-insertXtors dc pol (Just tyn) pk@(MkPolyKind args _) xtors = do
-  let vars = map (\(x,_,_) -> x) args
+insertXtors dc pol (Just (tyn,argVars)) pk@(MkPolyKind args _) xtors = do
+  let vars = zip ((\(x,_,_) -> x) <$> args) argVars
   newNode <- newNodeM
   let xtorLabel = singleNodeLabelXtor pol dc (Just (tyn, vars)) (S.fromList (sigToLabel <$> xtors)) pk
   insertNode newNode xtorLabel 
@@ -244,22 +244,39 @@ insertType (TyRec _ rep rv ty) = do
   return $ newNode : ns
 insertType (TyData _  polrep eo xtors)             = pure <$> insertXtors CST.Data   (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
 insertType (TyCodata _ polrep eo  xtors)           = pure <$> insertXtors CST.Codata (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
-insertType (TyDataRefined _ polrep pk _ mtn xtors)   = pure <$> insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) pk xtors
-insertType (TyCodataRefined _ polrep pk _ mtn xtors) = pure <$> insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) pk xtors
+
+insertType (TyDataRefined _ polrep pk argVars mtn xtors)   = do 
+  let pol = polarityRepToPol polrep
+  let argKnds = (\(_,_,mk) -> mk) <$> pk.kindArgs
+  varNodes <- forM argKnds (\mk -> do
+    newNode <- newNodeM
+    insertNode newNode (emptyNodeLabel pol (monoToAnyKind mk))
+    return newNode)
+  pure <$> local (insertSkolems argVars varNodes) (insertXtors CST.Data   (polarityRepToPol polrep) (Just (mtn,argVars)) pk xtors)
+  where
+    insertSkolems :: [SkolemTVar] -> [Node] -> LookupEnv -> LookupEnv 
+    insertSkolems argVars nds (LookupEnv tSkolemVars tRecVars) = LookupEnv (foldr (\(sk,nd) -> M.insert sk (nd,nd)) tSkolemVars (zip argVars nds)) tRecVars
+
+insertType (TyCodataRefined _ polrep pk argVars mtn xtors) = do
+  let pol = polarityRepToPol polrep
+  let argKnds = (\(_,_,mk) -> mk) <$> pk.kindArgs
+  varNodes <- forM argKnds (\mk -> do
+    newNode <- newNodeM
+    insertNode newNode (emptyNodeLabel pol (monoToAnyKind mk))
+    return newNode)
+  pure <$> local (insertSkolems argVars varNodes) (insertXtors CST.Codata (polarityRepToPol polrep) (Just (mtn,argVars)) pk xtors)
+  where
+    insertSkolems :: [SkolemTVar] -> [Node] -> LookupEnv -> LookupEnv 
+    insertSkolems argVars nds (LookupEnv tSkolemVars tRecVars) = LookupEnv (foldr (\(sk,nd) -> M.insert sk (nd,nd)) tSkolemVars (zip argVars nds)) tRecVars
+
 insertType (TySyn _ _ _ ty) = insertType ty
 
 
 insertType (TyApp _ _ _ ty tyn args) = do 
   argNodes <- mapM insertVariantType args
-  tyNodes <-  local (insertSkolems ty (NE.toList (head . fst <$> argNodes))) (insertType ty)
+  tyNodes <-  insertType ty 
   insertEdges (concatMap (\(i,(ns,variance)) -> [(tyNode, n, TypeArgEdge tyn variance i) | tyNode <- tyNodes, n <- ns]) $ enumerate (NE.toList argNodes))
   return tyNodes
-  where 
-    insertSkolems :: Typ pol -> [Node] -> LookupEnv -> LookupEnv 
-    insertSkolems (TyDataRefined _ _ _ argVars _ _) nds (LookupEnv tSkolemVars tRecVars) = LookupEnv (foldr (\(sk,nd) -> M.insert sk (nd,nd)) tSkolemVars (zip argVars nds)) tRecVars
-    insertSkolems (TyCodataRefined _ _ _ argVars _ _) nds (LookupEnv tSkolemVars tRecVars) = LookupEnv (foldr (\(sk,nd) -> M.insert sk (nd,nd)) tSkolemVars (zip argVars nds)) tRecVars
-    insertSkolems _ _ env = env
-
 
 insertType (TyNominal _ rep pk@(MkPolyKind args _) tn) = do
   let pol = polarityRepToPol rep 

@@ -48,11 +48,12 @@ instance PrettyAnn NodeLabel where
       printRefDat refDat = case M.toList refDat of
         [] -> Nothing
         refTns -> Just $ intercalateX "; " $ (\(tn, (xtors,vars)) -> angles $ mempty <+>
-          prettyAnn tn <+> pipeSym <+> printDat xtors <+> "@" <+> prettyAnn vars <+> mempty) <$> refTns
+          prettyAnn tn <+> pipeSym <+> printDat xtors <+> "@" <+> printVars vars <+> mempty) <$> refTns
       printRefCodat refCodat = case M.toList refCodat of
         [] -> Nothing
         refTns -> Just $ intercalateX "; " $ (\(tn, (xtors,vars)) -> braces $ mempty <+>
-          prettyAnn tn <+> pipeSym <+> printCodat xtors <+> "@" <+> prettyAnn vars <+> mempty) <$> refTns
+          prettyAnn tn <+> pipeSym <+> printCodat xtors <+> "@" <+> printVars vars <+> mempty) <$> refTns
+      printVars vars = intercalateX " " $ (\(var,sk) -> prettyAnn var <+> prettyAnn sk) <$> vars
 
 instance PrettyAnn EdgeLabel where
   prettyAnn (EdgeSymbol _ xt Prd i) = prettyAnn xt <> parens (pretty i)

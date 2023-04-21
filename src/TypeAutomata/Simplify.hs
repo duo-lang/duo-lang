@@ -1,5 +1,4 @@
 module TypeAutomata.Simplify where
-import Debug.Trace 
 import Control.Monad.Except
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( createDirectoryIfMissing, getCurrentDirectory )
