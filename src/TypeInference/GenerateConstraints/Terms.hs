@@ -170,12 +170,12 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
       PrdRep -> do 
         let refTy = TST.TyDataRefined defaultLoc PosRep pk argVars decl.data_name newXtorSig
         let ty = getAppTy PosRep pk.returnKind decl.data_name (uvarsPos,uvarsNeg) refTy
-        addUVarConstr PosRep loc cstrInfo (fst uvars) ((\(_,sk,_) -> sk) <$> decl.data_kind.kindArgs) skolemSubst
+        --addUVarConstr NegRep loc cstrInfo (snd uvars) ((\(_,sk,_) -> sk) <$> decl.data_kind.kindArgs) skolemSubst
         return $ TST.Xtor loc annot rep ty RST.Refinement xt substInferred
       CnsRep -> do
         let refTy = TST.TyCodataRefined defaultLoc NegRep pk argVars decl.data_name newXtorSig
         let ty = getAppTy NegRep pk.returnKind decl.data_name (uvarsPos,uvarsNeg) refTy
-        addUVarConstr NegRep loc cstrInfo (snd uvars) ((\(_,sk,_) -> sk) <$> decl.data_kind.kindArgs) skolemSubst
+        --addUVarConstr PosRep loc cstrInfo (fst uvars) ((\(_,sk,_) -> sk) <$> decl.data_kind.kindArgs) skolemSubst
         return $ TST.Xtor loc annot rep ty RST.Refinement xt substInferred
     where 
       varTyToTy :: ([TST.VariantType Pos],[TST.VariantType Neg]) -> GenM ([TST.Typ Pos], [TST.Typ Neg])
@@ -326,14 +326,14 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
       CnsRep -> do
         let refTy = TST.TyDataRefined defaultLoc NegRep decl.data_kind argVars decl.data_name (snd <$> inferredCases)
         let ty = case tyArgsNeg of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc NegRep decl.data_kind.returnKind refTy decl.data_name (fst:|rst)
-        addUVarConstr PosRep loc (PatternMatchConstraint loc) (fst uvars) ((\(_,sk,_) -> sk) <$> decl.data_kind.kindArgs) skolemSubst
+       -- addUVarConstr NegRep loc (PatternMatchConstraint loc) (snd uvars) ((\(_,sk,_) -> sk) <$> decl.data_kind.kindArgs) skolemSubst
 
         return $ TST.XCase loc annot rep ty RST.Refinement (fst <$> inferredCases)
       PrdRep -> do
         let refTy = TST.TyCodataRefined defaultLoc PosRep decl.data_kind argVars decl.data_name (snd <$> inferredCases)
         let ty = case tyArgsPos of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc PosRep decl.data_kind.returnKind refTy decl.data_name (fst:|rst)
 
-        addUVarConstr NegRep loc (PatternMatchConstraint loc) (snd uvars) ((\(_,sk,_) -> sk) <$> decl.data_kind.kindArgs) skolemSubst
+       -- addUVarConstr PosRep loc (PatternMatchConstraint loc) (fst uvars) ((\(_,sk,_) -> sk) <$> decl.data_kind.kindArgs) skolemSubst
         return $ TST.XCase loc annot rep ty RST.Refinement (fst <$> inferredCases)
      where 
       varTyToTy :: ([TST.VariantType Pos],[TST.VariantType Neg]) -> GenM ([TST.Typ Pos], [TST.Typ Neg])
