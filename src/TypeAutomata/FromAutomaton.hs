@@ -97,7 +97,7 @@ getNodeKindPk i = do
   gr <- asks (\x -> x.graph)
   case lab gr i of 
     Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
-    Just (MkNodeLabel _ _ _ _ _ _ pk) -> return pk
+    Just (MkNodeLabel _ _ _ _ _ _ _ pk) -> return pk
     _ -> throwAutomatonError defaultLoc ["Recursive Variables can only have kind CBV or CBN"]
 
 getNodeKind :: Node -> AutToTypeM AnyKind
@@ -105,7 +105,7 @@ getNodeKind i = do
   gr <- asks (\x -> x.graph)
   case lab gr i of 
     Nothing -> throwAutomatonError  defaultLoc [T.pack ("Could not find Nodelabel of Node" <> show i)]
-    Just (MkNodeLabel _ _ _ _ _ _ pk) -> return (MkPknd pk)
+    Just (MkNodeLabel _ _ _ _ _ _ _ pk) -> return (MkPknd pk)
     Just MkPrimitiveNodeLabel{ pl_prim = pty } -> pure $ primitiveToAnyKind pty
 
 
@@ -184,8 +184,8 @@ nodeToTypeNoCache rep i  = do
           toPrimType rep PChar = TyChar defaultLoc rep
           toPrimType rep PString = TyString defaultLoc rep
       pure (toPrimType rep tp)
-    MkNodeLabel _ _ _ _ _ _ (KindVar _) -> throwAutomatonError defaultLoc ["Kind Variable should not appear in the program at this point"]
-    MkNodeLabel _ datSet codatSet tns refDat refCodat pk@(MkPolyKind _ _) -> do
+    MkNodeLabel _ _ _ _ _ _ _ (KindVar _) -> throwAutomatonError defaultLoc ["Kind Variable should not appear in the program at this point"]
+    MkNodeLabel _ datSet codatSet tns refDat refCodat skolems pk@(MkPolyKind _ _) -> do
       outs <- nodeToOuts i
       let (maybeDat,maybeCodat) = (S.toList <$> datSet, S.toList <$> codatSet)
       let refDatTypes = M.toList refDat -- Unique data ref types
@@ -229,10 +229,15 @@ nodeToTypeNoCache rep i  = do
                   return (MkXtorSig xt.labelName argTypes)
                 (args1:argsRst) -> do
                   argTypes <- argNodesToArgTypes nodes rep rep (Just (tn,args1:|argsRst))
-                  return (MkXtorSig xt.labelName argTypes)             
+                  return (MkXtorSig xt.labelName argTypes)    
+            let argKnds =  (\(_,_,mk) -> mk) <$> pk.kindArgs
+            let skolemsPos = (\(mk,sk) -> TySkolemVar defaultLoc PosRep (monoToAnyKind mk) sk) <$> zip argKnds (S.toList skolems)
+            let skolemsNeg = (\(mk,sk) -> TySkolemVar defaultLoc NegRep (monoToAnyKind mk) sk) <$> zip argKnds (S.toList skolems)
+            let bisubst = MkBisubstitution (M.fromList (zip (snd <$> vars) (zip skolemsPos skolemsNeg)))
+            let sig' = zonk SkolemRep bisubst <$> sig
             case args of 
-              [] -> return $ TyDataRefined defaultLoc rep pk [] tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk [] tn sig) tn (arg1:|argRst)
+              [] -> return $ TyDataRefined defaultLoc rep pk (snd <$> vars) tn sig'
+              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk (snd <$> vars) tn sig') tn (arg1:|argRst)
         -- Creating ref codata types
         refCodatL <- do
           forM refCodatTypes $ \(tn,(xtors,vars)) -> do
@@ -249,9 +254,14 @@ nodeToTypeNoCache rep i  = do
                 (args1:argsRst) -> do 
                   argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep (Just (tn, args1:|argsRst))
                   return (MkXtorSig xt.labelName argTypes)
+            let argKnds =  (\(_,_,mk) -> mk) <$> pk.kindArgs
+            let skolemsPos = (\(mk,sk) -> TySkolemVar defaultLoc PosRep (monoToAnyKind mk) sk) <$> zip argKnds (S.toList skolems)
+            let skolemsNeg = (\(mk,sk) -> TySkolemVar defaultLoc NegRep (monoToAnyKind mk) sk) <$> zip argKnds (S.toList skolems)
+            let bisubst = MkBisubstitution (M.fromList (zip (snd <$> vars) (zip skolemsPos skolemsNeg)))
+            let sig' = zonk SkolemRep bisubst <$> sig
             case args of
-              [] -> return $ TyCodataRefined defaultLoc rep pk [] tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk [] tn sig) tn (arg1:|argRst)
+              [] -> return $ TyCodataRefined defaultLoc rep pk (snd <$> vars) tn sig'
+              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk (snd <$> vars) tn sig') tn (arg1:|argRst)
         -- Creating Nominal types
         nominals <- do
             forM (S.toList tns) $ \(tn, variances) -> do

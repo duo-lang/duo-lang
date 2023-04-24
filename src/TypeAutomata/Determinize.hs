@@ -88,6 +88,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
             nl_nominal = S.union fstLabel.nl_nominal combLabel.nl_nominal,
             nl_ref_data = mrgRefDat fstLabel.nl_ref_data combLabel.nl_ref_data, 
             nl_ref_codata = mrgRefCodat fstLabel.nl_ref_codata combLabel.nl_ref_codata, 
+            nl_skolem = S.union combLabel.nl_skolem fstLabel.nl_skolem,
             nl_kind = MkPolyKind (mrgKindArgs combLabel.nl_kind.kindArgs knd.kindArgs) knd.returnKind
           }
         else
