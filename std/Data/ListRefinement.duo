@@ -29,7 +29,7 @@ def rec prd tail : forall a. <List(a) | r | Cons(a,r(a))>(a) -> <List(a) | r | N
         };
 
 --  Append two lists together.
-def rec prd append : forall a. <List(a) | r | Nil, Cons(a,r(a)) >(a) -> <List(a) | r | Nil, Cons(a,r(a))>(a) -> <List(a) | r | Nil, Cons(a,r(a)) >(a) :=
+def rec prd append : forall a. <List(b) | r | Nil, Cons(b,r(b)) >(a) -> <List(b) | r | Nil, Cons(b,r(b))>(a) -> <List(b) | r | Nil, Cons(b,r(b)) >(a) :=
    \xs ys => case xs of {
         Nil => ys,
         Cons(z, zs) => Cons(z, append zs ys)

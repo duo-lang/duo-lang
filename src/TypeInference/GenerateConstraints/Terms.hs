@@ -2,6 +2,7 @@ module TypeInference.GenerateConstraints.Terms
   ( GenConstraints(..)
   , genConstraintsTermRecursive
   ) where
+import Debug.Trace
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -21,7 +22,6 @@ import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Kinds
 import Translate.EmbedTST (EmbedTST(..))
 import Pretty.Pretty
-import Data.Map qualified as M
 import Data.List.NonEmpty qualified as NE
 
 import TypeInference.GenerateConstraints.Definition
@@ -159,53 +159,31 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     let pk = decl.data_kind
     (argVars,skolemSubst) <- freshSkolems pk
     xtorSigUpper <- lookupXtorSigUpper loc xt 
+    xtorSigUpper' <- freshSkolemsXtor xtorSigUpper
+    trace ("xtor upper " <> ppPrintString xtorSigUpper <> " xtor upper with replacement " <> ppPrintString xtorSigUpper') $ pure ()
     (uvarsPos,uvarsNeg,argSubst) <- getTypeArgsRef loc decl argVars
-    uvars <- varTyToTy (uvarsPos,uvarsNeg)
     let cstrInfo = case rep of PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc
     -- Then we generate constraints between the inferred types of the substitution
-    let constrSigArgs = TST.zonk TST.SkolemRep argSubst (TST.zonk TST.SkolemRep skolemSubst xtorSigUpper.sig_args)
+    let constrSigArgs = TST.zonk TST.SkolemRep argSubst (TST.zonk TST.SkolemRep skolemSubst xtorSigUpper'.sig_args)
+    trace ("constraints " <> ppPrintString substTypes <> " <: " <> ppPrintString constrSigArgs <> " (xtor)\n") $ pure ()
     genConstraintsCtxts substTypes constrSigArgs cstrInfo
     let newXtorSig = [TST.MkXtorSig xt substTypes]
     case rep of 
       PrdRep -> do 
         let refTy = TST.TyDataRefined defaultLoc PosRep pk argVars decl.data_name newXtorSig
         let ty = getAppTy PosRep pk.returnKind decl.data_name (uvarsPos,uvarsNeg) refTy
-        --addUVarConstr NegRep loc cstrInfo (snd uvars) ((\(_,sk,_) -> sk) <$> decl.data_kind.kindArgs) skolemSubst
         return $ TST.Xtor loc annot rep ty RST.Refinement xt substInferred
       CnsRep -> do
         let refTy = TST.TyCodataRefined defaultLoc NegRep pk argVars decl.data_name newXtorSig
         let ty = getAppTy NegRep pk.returnKind decl.data_name (uvarsPos,uvarsNeg) refTy
-        --addUVarConstr PosRep loc cstrInfo (fst uvars) ((\(_,sk,_) -> sk) <$> decl.data_kind.kindArgs) skolemSubst
         return $ TST.Xtor loc annot rep ty RST.Refinement xt substInferred
     where 
-      varTyToTy :: ([TST.VariantType Pos],[TST.VariantType Neg]) -> GenM ([TST.Typ Pos], [TST.Typ Neg])
-      varTyToTy (varsPos,varsNeg) = do 
-        tyPairs <- forM (zip varsPos varsNeg) 
-          (\case
-           (TST.CovariantType tyPos, TST.CovariantType tyNeg) -> return (tyPos, tyNeg)
-           (TST.ContravariantType tyNeg, TST.ContravariantType tyPos) -> return (tyPos, tyNeg)
-           _ -> error "impossible")
-        return (fst <$> tyPairs, snd <$> tyPairs)
       getAppTy :: PolarityRep pol -> EvaluationOrder -> RnTypeName -> ([TST.VariantType Pos],[TST.VariantType Neg]) -> (TST.Typ pol -> TST.Typ pol)
       getAppTy _ _ _ ([],[]) = id
       getAppTy _ _ _ ([],_) = error "impossible"
       getAppTy _ _ _ (_,[]) = error "impossible"
       getAppTy PosRep eo tyn (fstPos:rstPos,_) = \x -> TST.TyApp defaultLoc PosRep eo x tyn (fstPos:|rstPos)
       getAppTy NegRep eo tyn (_,fstNeg:rstNeg) = \x -> TST.TyApp defaultLoc NegRep eo x tyn (fstNeg:|rstNeg)
-      addUVarConstr :: PolarityRep pol -> Loc -> ConstraintInfo -> [TST.Typ pol] -> [SkolemTVar] -> TST.Bisubstitution TST.SkolemVT -> GenM () 
-      addUVarConstr PosRep loc info uvars skolems bisubst = if length uvars == length skolems then do
-        forM_ (zip uvars skolems) (\(uv,sk) -> case M.lookup sk bisubst.bisubst_map of 
-          Nothing -> return ()
-          Just (_,tyNeg) -> addConstraint $ SubType info uv tyNeg)
-        else 
-          throwOtherError loc ["number of arguments does not match number of bound skolems"]
-      addUVarConstr NegRep loc info uvars skolems bisubst = if length uvars == length skolems then 
-        forM_ (zip uvars skolems) (\(uv,sk) -> case M.lookup sk bisubst.bisubst_map of 
-          Nothing -> return ()
-          Just (tyPos,_) -> addConstraint $ SubType info tyPos uv)
-        else 
-          throwOtherError loc ["number of arguments does not match number of bound skolems"]
-
 
   --
   -- Structural pattern and copattern matches:
@@ -284,7 +262,6 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- Generate fresh unification variables for type parameters
     (argVars,skolemSubst) <- freshSkolems decl.data_kind
     (tyArgsPos,tyArgsNeg,argSubst) <- getTypeArgsRef loc decl argVars
-    uvars <- varTyToTy (tyArgsPos,tyArgsNeg)
     inferredCases <- forM cases (\(Core.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdcase_cmd) -> do
                         -- Generate positive and negative unification variables for all variables
                         -- bound in the pattern.
@@ -296,27 +273,32 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- For the type, we return the unification variables which are now bounded by the least
                         -- and greatest type translation.
 
-                        xtor <- lookupXtorSig loc xt PosRep
+                        xtor <- lookupXtorSig loc xt PosRep 
+                        xtor' <- freshSkolemsXtor xtor 
                         xtorLower <- lookupXtorSigLower loc xt
+                        xtorLower' <- freshSkolemsXtor xtorLower
                         xtorUpper <- lookupXtorSigUpper loc xt 
+                        xtorUpper' <- freshSkolemsXtor xtorUpper
+                        trace ("xtors: xtor " <> ppPrintString xtor <> ", lower " <> ppPrintString xtorLower <> ", upper " <> ppPrintString xtorUpper <> "\n xtors replaced : xtor " <> ppPrintString xtor' <> ", lower " <> ppPrintString xtorLower' <> ", upper " <> ppPrintString xtorUpper') $ pure ()
 
                         case argVars of 
                           [] -> do 
-                            let argKnds = map TST.getKind xtor.sig_args
+                            let argKnds = map TST.getKind xtor'.sig_args
                             let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, z))) args argKnds
                             (substTypesPos, substTypesNeg) <- freshTVars tVarArgs
                             cmdInferred <- withContext substTypesPos (genConstraints cmdcase_cmd)
-                            genConstraintsCtxts xtorLower.sig_args substTypesNeg (PatternMatchConstraint loc)
-                            genConstraintsCtxts substTypesPos xtorUpper.sig_args (PatternMatchConstraint loc)
+                            genConstraintsCtxts xtorLower'.sig_args substTypesNeg (PatternMatchConstraint loc)
+                            genConstraintsCtxts substTypesPos xtorUpper'.sig_args (PatternMatchConstraint loc)
                             return (TST.MkCmdCase cmdcase_loc (Core.XtorPat loc xt args) cmdInferred, TST.MkXtorSig xt substTypesNeg)
                           (skFst:skRst) -> do
                             let skolems = skFst :| skRst
                             tyArgs <- getSkArgs loc decl.data_kind skolems
-                            let xtor' = TST.zonk TST.SkolemRep skolemSubst xtor
-                            prdCnsTys <- forM (zip args xtor'.sig_args) (freshTVarRef loc tyArgs)
+                            let xtor'' = TST.zonk TST.SkolemRep skolemSubst xtor'
+                            prdCnsTys <- forM (zip args xtor''.sig_args) (freshTVarRef loc tyArgs)
                             let (substTypesPos,substTypesNeg) = (fst <$> prdCnsTys,snd <$> prdCnsTys)
-                            let lowerBound = TST.zonk TST.SkolemRep skolemSubst xtorLower.sig_args
-                            let upperBound = TST.zonk TST.SkolemRep skolemSubst xtorUpper.sig_args
+                            let lowerBound = TST.zonk TST.SkolemRep skolemSubst xtorLower'.sig_args
+                            let upperBound = TST.zonk TST.SkolemRep skolemSubst xtorUpper'.sig_args
+                            trace ("constraints " <> ppPrintString lowerBound <> " <: " <> ppPrintString substTypesNeg <> " \n " <> ppPrintString substTypesPos <> " <: " <> ppPrintString upperBound <> " (xcase)") $ pure ()
                             genConstraintsCtxts lowerBound substTypesNeg (PatternMatchConstraint loc)
                             genConstraintsCtxts substTypesPos upperBound (PatternMatchConstraint loc)
                             let substTypesPos' = TST.zonk TST.SkolemRep argSubst substTypesPos
@@ -326,38 +308,14 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
       CnsRep -> do
         let refTy = TST.TyDataRefined defaultLoc NegRep decl.data_kind argVars decl.data_name (snd <$> inferredCases)
         let ty = case tyArgsNeg of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc NegRep decl.data_kind.returnKind refTy decl.data_name (fst:|rst)
-       -- addUVarConstr NegRep loc (PatternMatchConstraint loc) (snd uvars) ((\(_,sk,_) -> sk) <$> decl.data_kind.kindArgs) skolemSubst
 
         return $ TST.XCase loc annot rep ty RST.Refinement (fst <$> inferredCases)
       PrdRep -> do
         let refTy = TST.TyCodataRefined defaultLoc PosRep decl.data_kind argVars decl.data_name (snd <$> inferredCases)
         let ty = case tyArgsPos of [] -> refTy; (fst:rst) -> TST.TyApp defaultLoc PosRep decl.data_kind.returnKind refTy decl.data_name (fst:|rst)
 
-       -- addUVarConstr PosRep loc (PatternMatchConstraint loc) (fst uvars) ((\(_,sk,_) -> sk) <$> decl.data_kind.kindArgs) skolemSubst
         return $ TST.XCase loc annot rep ty RST.Refinement (fst <$> inferredCases)
-     where 
-      varTyToTy :: ([TST.VariantType Pos],[TST.VariantType Neg]) -> GenM ([TST.Typ Pos], [TST.Typ Neg])
-      varTyToTy (varsPos,varsNeg) = do 
-        tyPairs <- forM (zip varsPos varsNeg) 
-          (\case
-           (TST.CovariantType tyPos, TST.CovariantType tyNeg) -> return (tyPos, tyNeg)
-           (TST.ContravariantType tyNeg, TST.ContravariantType tyPos) -> return (tyPos, tyNeg)
-           _ -> error "impossible")
-        return (fst <$> tyPairs, snd <$> tyPairs)
-      addUVarConstr :: PolarityRep pol -> Loc -> ConstraintInfo -> [TST.Typ pol] -> [SkolemTVar] -> TST.Bisubstitution TST.SkolemVT -> GenM () 
-      addUVarConstr PosRep loc info uvars skolems bisubst = if length uvars == length skolems then do
-        forM_ (zip uvars skolems) (\(uv,sk) -> case M.lookup sk bisubst.bisubst_map of 
-          Nothing -> return ()
-          Just (_,tyNeg) -> addConstraint $ SubType info uv tyNeg)
-        else 
-          throwOtherError loc ["number of arguments does not match number of bound skolems"]
-      addUVarConstr NegRep loc info uvars skolems bisubst = if length uvars == length skolems then 
-        forM_ (zip uvars skolems) (\(uv,sk) -> case M.lookup sk bisubst.bisubst_map of 
-          Nothing ->return ()
-          Just (tyPos,_) -> addConstraint $ SubType info tyPos uv)
-        else 
-          throwOtherError loc ["number of arguments does not match number of bound skolems"]
- 
+     where  
       getSkArgs :: Loc -> PolyKind -> NonEmpty SkolemTVar -> GenM (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg))
       getSkArgs loc pk skolems = if length pk.kindArgs == length skolems then do 
         let kndVar = case (\(x,_,z) -> (x,z)) <$> pk.kindArgs of [] -> error "impossible"; pairFst:pairRst -> pairFst :| pairRst 

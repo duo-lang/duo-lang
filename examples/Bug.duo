@@ -22,15 +22,8 @@ data Bool : CBV {
     False
 };
 
-def prd z := Cons(S(S(Z)), Nil);
-
---def prd tail : forall a. <List(b) | r | Cons(b,r(b)) >(a) -> <List(b) | r | Cons(b,r(b))>(a) := 
---    \xs => case xs of { 
---        Cons(_,ys) => ys
---};
---  Computes the length of a list.
---def rec prd length : forall a. <List(b) | r | Nil, Cons(b,r(b)) >(a) -> <Nat | r2 | Z, S(r2)>:=
---    \xs => case xs of {
---        Nil => Z,
---        Cons(_, xs) => S(length xs)
---    };
+def rec prd append : forall a. <List(b) | r | Nil, Cons(b,r(b)) >(a) -> <List(b) | r | Nil, Cons(b,r(b))>(a) -> <List(b) | r | Nil, Cons(b,r(b)) >(a) :=
+   \xs ys => case xs of {
+        Nil => ys,
+        Cons(z, zs) => Cons(z, append zs ys)
+    };
