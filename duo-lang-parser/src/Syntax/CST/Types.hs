@@ -1,8 +1,7 @@
 module Syntax.CST.Types where
 
 import Syntax.CST.Names
-    ( BinOp, SkolemTVar, TypeName, XtorName )
-import Syntax.CST.Kinds
+    ( BinOp, SkolemTVar, TypeName, XtorName, KVar )
 import Data.List.NonEmpty (NonEmpty)
 import Loc ( Loc, HasLoc(..))
 
@@ -22,20 +21,48 @@ data PrdCnsRep pc where
 deriving instance Show (PrdCnsRep pc)
 deriving instance Eq (PrdCnsRep pc)
 
+---------------------------------------------------------------------------------
+-- Variance
+---------------------------------------------------------------------------------
+
+data Variance = Covariant | Contravariant
+  deriving (Eq, Show, Ord)
+
+instance Semigroup Variance where
+  Covariant <> v         = v
+  v         <> Covariant = v
+  _         <> _         = Covariant
+
+---------------------------------------------------------------------------------
+-- Evaluation Order
+---------------------------------------------------------------------------------
+
+-- | An evaluation order is either call-by-value or call-by-name.
+data EvaluationOrder = CBV | CBN
+  deriving (Show, Eq, Ord)
+
+---------------------------------------------------------------------------------
+-- Arity
+---------------------------------------------------------------------------------
+
 type Arity = [PrdCns]
+
+---------------------------------------------------------------------------------
+-- DataCodata
+---------------------------------------------------------------------------------
+
+data DataCodata = Data | Codata deriving (Eq, Ord, Show)
 
 ---------------------------------------------------------------------------------
 -- Parse Types
 ---------------------------------------------------------------------------------
-
-data DataCodata = Data | Codata deriving (Eq, Ord, Show)
 
 data Typ where
   TySkolemVar :: Loc -> SkolemTVar -> Typ
   TyXData    :: Loc -> DataCodata             -> [XtorSig] -> Typ
   TyXRefined :: Loc -> DataCodata -> TypeName -> [XtorSig] -> Typ
   TyNominal :: Loc -> TypeName -> Typ
-  TyApp :: Loc -> Typ -> NonEmpty Typ -> Typ
+  TyApp :: Loc -> Typ -> Maybe TypeName -> NonEmpty Typ -> Typ
   TyRec :: Loc -> SkolemTVar -> Typ -> Typ
   TyTop :: Loc -> Typ
   TyBot :: Loc -> Typ
@@ -54,12 +81,20 @@ data Typ where
   TyKindAnnot :: MonoKind -> Typ -> Typ
   deriving (Show, Eq)
 
+getTypeName :: Typ -> Maybe TypeName
+getTypeName (TyXRefined _ _ tyn _) = Just tyn
+getTypeName (TyNominal _ tyn) = Just tyn
+getTypeName (TyRec _ _ ty) = getTypeName ty
+getTypeName (TyParens _ ty) = getTypeName ty 
+getTypeName (TyKindAnnot _ ty) = getTypeName ty 
+getTypeName _ = Nothing 
+
 instance HasLoc Typ where
   getLoc (TySkolemVar loc _) = loc
   getLoc (TyXData loc _ _) = loc
   getLoc (TyXRefined loc _ _ _) = loc
   getLoc (TyNominal loc _ ) = loc
-  getLoc (TyApp loc _ _) = loc
+  getLoc (TyApp loc _  _ _) = loc
   getLoc (TyRec loc _ _) = loc
   getLoc (TyTop loc) = loc
   getLoc (TyBot loc) = loc
@@ -94,9 +129,47 @@ linearContextToArity = map f
     f (CnsType _) = Cns
 
 
+---------------------------------------------------------------------------------
+-- MonoKind
+---------------------------------------------------------------------------------
+
+-- | A MonoKind is a kind which classifies inhabitated types.
+data MonoKind where
+  CBox :: EvaluationOrder -> MonoKind
+  -- ^ Boxed CBV/CBN
+  I64Rep :: MonoKind
+  F64Rep :: MonoKind
+  CharRep :: MonoKind
+  StringRep :: MonoKind
+
+deriving instance Show MonoKind
+deriving instance Eq MonoKind
+deriving instance Ord MonoKind
+
+------------------------------------------------------------------------------
+-- PolyKinds and TypeSchemes
+------------------------------------------------------------------------------
+
+data PolyKind =
+  MkPolyKind { kindArgs :: [(Variance, SkolemTVar, MonoKind)]
+             , returnKind :: EvaluationOrder
+             }
+  | KindVar KVar 
+
+deriving instance Show PolyKind
+deriving instance Ord PolyKind
+instance Eq PolyKind where 
+  KindVar kv1 == KindVar kv2 = kv1 == kv2
+  MkPolyKind args1 eo1 == MkPolyKind args2 eo2 = 
+    let getVariances = Prelude.map (\(x,_,_) -> x)
+        getMks = Prelude.map (\(_,_,z) -> z)
+    in 
+    eo1 == eo2 && getVariances args1 == getVariances args2 && getMks args1 == getMks args2
+  _ == _ = False 
+
 data TypeScheme = TypeScheme
   { loc :: Loc
-  , vars :: [MaybeKindedSkolem]
+  , vars :: [(SkolemTVar, Maybe PolyKind)]
   , monotype :: Typ
   }
   deriving Show

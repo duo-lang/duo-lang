@@ -21,9 +21,8 @@ import Pretty.Terms ()
 import Syntax.CST.Names
     ( MethodName, ClassName)
 import Syntax.RST.Names
-import Syntax.CST.Kinds ( MonoKind )
 import Syntax.RST.Kinds ( AnyKind )
-import Syntax.CST.Types ( PrdCnsRep(..), DataCodata(..), PrdCns(..))
+import Syntax.CST.Types ( PrdCnsRep(..), DataCodata(..), PrdCns(..), MonoKind)
 import Syntax.TST.Terms
     ( Command(Method, Print, Read, Jump, ExitSuccess, ExitFailure,
               PrimOp),
@@ -367,7 +366,7 @@ instance ToHoverMap (TST.Typ pol) where
                       ]
     in
       mkHoverMap loc msg
-  toHoverMap (TST.TyApp loc _ _ ty args) = 
+  toHoverMap (TST.TyApp loc _ _ ty _ args) = 
     let 
       hoverTy = toHoverMap ty 
       betw = mkHoverMap loc (T.unlines ["applied to"])

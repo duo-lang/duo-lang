@@ -17,14 +17,12 @@ import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
 import Pretty.Pretty
 import Syntax.TST.Types
-import Syntax.RST.Types (PolarityRep(..), Polarity(..), polarityRepToPol, getTypeNames)
-import Translate.EmbedTST
+import Syntax.RST.Types (PolarityRep(..), Polarity(..), polarityRepToPol)
 import Syntax.RST.Names
 import Syntax.RST.Kinds
 import Syntax.CST.Types qualified as CST
-import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..))
+import Syntax.CST.Types (PrdCnsRep(..), PrdCns(..), PolyKind(..), Variance(..))
 import Syntax.CST.Names
-import Syntax.CST.Kinds
 import TypeAutomata.Definition
 import Loc ( defaultLoc )
 import Utils ( enumerate )
@@ -249,15 +247,11 @@ insertType (TyDataRefined _ polrep pk mtn xtors)   = pure <$> insertXtors CST.Da
 insertType (TyCodataRefined _ polrep pk mtn xtors) = pure <$> insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) pk xtors
 insertType (TySyn _ _ _ ty) = insertType ty
 
-insertType (TyApp _ _ _ ty args) = do 
+insertType (TyApp _ _ _ ty tyn args) = do 
   argNodes <- mapM insertVariantType args
   tyNodes <- insertType ty
-  let tyns = getTypeNames (embedTST ty)
-  case tyns of 
-    [] -> return tyNodes
-    names -> do
-      mapM_ (\tyn -> insertEdges (concatMap (\(i,(ns,variance)) -> [(tyNode, n, TypeArgEdge tyn variance i) | tyNode <- tyNodes, n <- ns]) $ enumerate (NE.toList argNodes))) names 
-      return tyNodes
+  insertEdges (concatMap (\(i,(ns,variance)) -> [(tyNode, n, TypeArgEdge tyn variance i) | tyNode <- tyNodes, n <- ns]) $ enumerate (NE.toList argNodes))
+  return tyNodes
 
 insertType (TyNominal _ rep pk@(MkPolyKind args _) tn) = do
   let pol = polarityRepToPol rep 

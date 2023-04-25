@@ -28,10 +28,9 @@ import Resolution.Program (resolveModule)
 import Resolution.Definition
 
 import Syntax.CST.Names
-import Syntax.CST.Kinds (KVar, PolyKind(..))
 import Syntax.RST.Kinds
 import Syntax.CST.Program qualified as CST
-import Syntax.CST.Types ( PrdCnsRep(..))
+import Syntax.CST.Types ( PrdCnsRep(..), PolyKind(..))
 import Syntax.RST.Program qualified as RST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Terms qualified as TST
@@ -418,7 +417,7 @@ runCompilationPlan compilationOrder = do
       sts <- getSymbolTables
       let helper :: (a -> a') -> (Either a b, c) -> (Either a' b, c)
           helper f (x,y) = (first f x, y)
-      resolvedDecls <- liftEitherErr (helper (\err -> ErrResolution err :| []) (runResolverM (ResolveReader sts mempty) (resolveModule decls)))
+      resolvedDecls <- liftEitherErr (helper (\err -> ErrResolution err :| []) (runResolverM (ResolveReader sts mempty mempty) (resolveModule decls)))
       -- 4. Desugar the program
       let desugaredProg = desugar resolvedDecls
       -- 5. Infer the declarations

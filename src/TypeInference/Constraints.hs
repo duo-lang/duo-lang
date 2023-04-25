@@ -7,7 +7,6 @@ import Syntax.CST.Names
 import Syntax.RST.Types (Polarity(..))
 import Syntax.RST.Names
 import Syntax.RST.Kinds
-import Syntax.CST.Kinds
 import Loc ( Loc )
 
 
@@ -103,6 +102,7 @@ data UVarProvenance
   | DtorAp Loc                             -- ^ UVar generated for result of Dtor application.
   | TypeSchemeInstance FreeVarName Loc     -- ^ UVar generated for the instantiation of a type scheme.
   | TypeParameter RnTypeName SkolemTVar    -- ^ UVar generated for a type parameter of a nominal type
+  | RefinementArgument Loc                 -- ^ UVar generated for an refinement Xtor
   | TypeClassInstance ClassName SkolemTVar -- ^ UVar generated for a type parameter of a class instance
   | TypeClassResolution                    -- ^ Placeholder UVar generated during type class resolution.
   

@@ -4,7 +4,7 @@ import Data.Text (Text)
 
 import Syntax.CST.Terms ( Term, TermCase )
 import Syntax.CST.Types
-    ( TypeScheme, XtorSig, Typ, DataCodata, PrdCns )
+    ( TypeScheme, XtorSig, Typ, DataCodata, PrdCns, EvaluationOrder, MonoKind, PolyKind, )
 import Syntax.CST.Names
     ( Associativity,
       ClassName,
@@ -15,8 +15,6 @@ import Syntax.CST.Names
       TyOpName,
       TypeName,
       XtorName )
-import Syntax.CST.Kinds
-    ( EvaluationOrder, MonoKind, PolyKind, )
 import Loc ( HasLoc(..), Loc )
 
 ---------------------------------------------------------------------------------

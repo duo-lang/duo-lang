@@ -18,11 +18,10 @@ import Syntax.CST.Names
       Precedence(..),
       SkolemTVar(MkSkolemTVar),
       TypeName(MkTypeName),
-      XtorName(MkXtorName) )
+      XtorName(MkXtorName),
+      KVar(..))
 import Syntax.RST.Names
-import Syntax.CST.Types (Arity, PrdCns(..))      
-import Syntax.CST.Kinds
-    ( EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..), KVar(..), MaybeKindedSkolem)
+import Syntax.CST.Types (Arity, PrdCns(..), EvaluationOrder(..), MonoKind(..), PolyKind(..), Variance(..))      
 import Syntax.RST.Kinds
 import Loc ( Loc(..) )
 import Data.List (intersperse)
@@ -112,7 +111,7 @@ prettyPrdCns Cns = "cns"
 -- Kinds
 ---------------------------------------------------------------------------------
 
-instance PrettyAnn MaybeKindedSkolem where 
+instance PrettyAnn (SkolemTVar, Maybe PolyKind) where 
   prettyAnn (sk,Nothing) = prettyAnn sk
   prettyAnn (sk,Just mk) = parens (prettyAnn sk <+> ":" <+> prettyAnn mk)
 

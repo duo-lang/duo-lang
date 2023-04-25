@@ -172,10 +172,10 @@ coalesceType (TyCodataRefined loc rep mk tn xtors) = do
     return (TyCodataRefined loc rep mk tn xtors')
 coalesceType (TyNominal loc rep mk tn) = do
     return $ TyNominal loc rep mk tn
-coalesceType (TyApp loc rep eo ty args) = do
+coalesceType (TyApp loc rep eo ty tyn args) = do
     ty' <- coalesceType ty
     args' <- mapM coalesceVariantType args
-    return $ TyApp loc rep eo ty' args'
+    return $ TyApp loc rep eo ty' tyn args'
 coalesceType (TySyn _loc _rep _nm ty) = coalesceType ty
 coalesceType (TyTop loc pk) = do
     pure (TyTop loc pk)
