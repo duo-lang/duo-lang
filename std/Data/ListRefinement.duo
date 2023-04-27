@@ -43,7 +43,7 @@ def rec prd reverse : forall a. <List(a) | r | Nil, Cons(a,r(a)) >(a) -> <List(a
     };
 
 --  Maps a function over all elements of a list.
-def rec prd map : forall a b. (a->b) -> <List(a) | r | Nil, Cons(a,r(a))>(a) -> <List(a) | r | Nil, Cons(b,r(b))>(b) :=
+def rec prd map : forall a b. (a->b) -> <List(c) | r | Nil, Cons(c,r(c))>(a) -> <List(c) | r | Nil, Cons(c,r(c))>(b) :=
     \f xs => case xs of {
         Nil => Nil,
         Cons(y, ys) => Cons(f y, map f ys)

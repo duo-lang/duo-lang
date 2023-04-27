@@ -160,12 +160,12 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     (argVars,skolemSubst) <- freshSkolems pk
     xtorSigUpper <- lookupXtorSigUpper loc xt 
     xtorSigUpper' <- freshSkolemsXtor xtorSigUpper
-    trace ("xtor upper " <> ppPrintString xtorSigUpper <> " xtor upper with replacement " <> ppPrintString xtorSigUpper') $ pure ()
     (uvarsPos,uvarsNeg,argSubst) <- getTypeArgsRef loc decl argVars
     let cstrInfo = case rep of PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc
+--    addUVConstr (uvarsPos,uvarsNeg) cstrInfo (zip argVars ((\(_,_,mk) -> mk) <$> pk.kindArgs))
     -- Then we generate constraints between the inferred types of the substitution
-    let constrSigArgs = TST.zonk TST.SkolemRep argSubst (TST.zonk TST.SkolemRep skolemSubst xtorSigUpper'.sig_args)
-    trace ("constraints " <> ppPrintString substTypes <> " <: " <> ppPrintString constrSigArgs <> " (xtor)\n") $ pure ()
+    let constrSigArgs = TST.zonk TST.SkolemRep skolemSubst xtorSigUpper'.sig_args
+    trace ("generating constraints " <> ppPrintString substTypes <> " <: " <> ppPrintString constrSigArgs <> " (xtor)\n") $ pure ()
     genConstraintsCtxts substTypes constrSigArgs cstrInfo
     let newXtorSig = [TST.MkXtorSig xt substTypes]
     case rep of 
@@ -178,6 +178,18 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
         let ty = getAppTy NegRep pk.returnKind decl.data_name (uvarsPos,uvarsNeg) refTy
         return $ TST.Xtor loc annot rep ty RST.Refinement xt substInferred
     where 
+      varTyToTy :: (TST.VariantType Pos, TST.VariantType Neg) -> TST.Typ Pos
+      varTyToTy (TST.CovariantType ty, _) = ty
+      varTyToTy (_,TST.ContravariantType ty) = ty
+      varTyToTy _ = error "impossible"
+
+      addUVConstr :: ([TST.VariantType Pos],[TST.VariantType Neg]) -> ConstraintInfo -> [(SkolemTVar,MonoKind)] -> GenM()
+      addUVConstr (uvpos,uvneg) info skolems = if length uvpos == length skolems then do 
+        let skolemsNeg = (\(sk,mk) -> TST.TySkolemVar defaultLoc NegRep (monoToAnyKind mk) sk) <$> skolems
+        let uvs = varTyToTy <$> zip uvpos uvneg
+        forM_ (zip uvs skolemsNeg) (\(uv,sk) -> addConstraint $ SubType info uv sk)
+        else 
+          throwOtherError defaultLoc ["Number of skolems does not match number of generated unification variables"]
       getAppTy :: PolarityRep pol -> EvaluationOrder -> RnTypeName -> ([TST.VariantType Pos],[TST.VariantType Neg]) -> (TST.Typ pol -> TST.Typ pol)
       getAppTy _ _ _ ([],[]) = id
       getAppTy _ _ _ ([],_) = error "impossible"
@@ -279,7 +291,6 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         xtorLower' <- freshSkolemsXtor xtorLower
                         xtorUpper <- lookupXtorSigUpper loc xt 
                         xtorUpper' <- freshSkolemsXtor xtorUpper
-                        trace ("xtors: xtor " <> ppPrintString xtor <> ", lower " <> ppPrintString xtorLower <> ", upper " <> ppPrintString xtorUpper <> "\n xtors replaced : xtor " <> ppPrintString xtor' <> ", lower " <> ppPrintString xtorLower' <> ", upper " <> ppPrintString xtorUpper') $ pure ()
 
                         case argVars of 
                           [] -> do 
@@ -298,7 +309,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                             let (substTypesPos,substTypesNeg) = (fst <$> prdCnsTys,snd <$> prdCnsTys)
                             let lowerBound = TST.zonk TST.SkolemRep skolemSubst xtorLower'.sig_args
                             let upperBound = TST.zonk TST.SkolemRep skolemSubst xtorUpper'.sig_args
-                            trace ("constraints " <> ppPrintString lowerBound <> " <: " <> ppPrintString substTypesNeg <> " \n " <> ppPrintString substTypesPos <> " <: " <> ppPrintString upperBound <> " (xcase)") $ pure ()
+                            trace ("generating constraint \n" <> "lowerbound " <> ppPrintString lowerBound <> " <: " <> ppPrintString substTypesNeg <> "\n upperbound " <> ppPrintString substTypesPos <> " <: " <> ppPrintString upperBound) $ pure ()
                             genConstraintsCtxts lowerBound substTypesNeg (PatternMatchConstraint loc)
                             genConstraintsCtxts substTypesPos upperBound (PatternMatchConstraint loc)
                             let substTypesPos' = TST.zonk TST.SkolemRep argSubst substTypesPos
