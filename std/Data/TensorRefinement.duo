@@ -16,3 +16,6 @@ def prd fst : forall a. <Tensor (a , b) | MkTensor(a,Top)> (a,Top) -> a :=
 -- | Second projection on Tensor
 def prd snd : forall a. <Tensor(a,b) | MkTensor(Top,a)> (Top,a) -> a :=
   \p => case p of { MkTensor(_,y) => y};
+
+def prd diag : forall a. a -> <Tensor(b,c) | MkTensor(b,c)>(a,a) :=
+  \x => MkTensor(x,x);
