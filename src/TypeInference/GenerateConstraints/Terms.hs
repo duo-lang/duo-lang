@@ -2,12 +2,11 @@ module TypeInference.GenerateConstraints.Terms
   ( GenConstraints(..)
   , genConstraintsTermRecursive
   ) where
-import Debug.Trace
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
 import Syntax.CST.Terms qualified as CST
-import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..), Variance(..), PolyKind(..))
+import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..), Variance(..), PolyKind(..), EvaluationOrder, MonoKind)
 import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Program qualified as TST
 import Syntax.TST.Types qualified as TST
@@ -16,6 +15,7 @@ import Syntax.Core.Program qualified as Core
 import Syntax.RST.Types qualified as RST
 import Syntax.RST.Types (Polarity(..), PolarityRep(..))
 import Syntax.RST.Program qualified as RST
+import Syntax.RST.Terms qualified as RST
 import Syntax.CST.Names
 import Syntax.RST.Names
 import Syntax.RST.Kinds
@@ -164,7 +164,6 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
 --    addUVConstr (uvarsPos,uvarsNeg) cstrInfo (zip argVars ((\(_,_,mk) -> mk) <$> pk.kindArgs))
     -- Then we generate constraints between the inferred types of the substitution
     let constrSigArgs = TST.zonk TST.SkolemRep skolemSubst xtorSigUpper'.sig_args
-    trace ("generating constraints " <> ppPrintString substTypes <> " <: " <> ppPrintString constrSigArgs <> " (xtor)\n") $ pure ()
     genConstraintsCtxts substTypes constrSigArgs cstrInfo
     let newXtorSig = [TST.MkXtorSig xt substTypes]
     case rep of 
@@ -308,7 +307,6 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                             let (substTypesPos,substTypesNeg) = (fst <$> prdCnsTys,snd <$> prdCnsTys)
                             let lowerBound = TST.zonk TST.SkolemRep skolemSubst xtorLower'.sig_args
                             let upperBound = TST.zonk TST.SkolemRep skolemSubst xtorUpper'.sig_args
-                            trace ("generating constraint \n" <> "lowerbound " <> ppPrintString lowerBound <> " <: " <> ppPrintString substTypesNeg <> "\n upperbound " <> ppPrintString substTypesPos <> " <: " <> ppPrintString upperBound) $ pure ()
                             genConstraintsCtxts lowerBound substTypesNeg (PatternMatchConstraint loc)
                             genConstraintsCtxts substTypesPos upperBound (PatternMatchConstraint loc)
                             let substTypesPos' = TST.zonk TST.SkolemRep argSubst substTypesPos
