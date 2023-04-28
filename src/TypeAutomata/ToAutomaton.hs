@@ -1,16 +1,17 @@
 module TypeAutomata.ToAutomaton ( typeToAut ) where 
-import Control.Monad.Except ( runExcept, Except, forM )
+import Control.Monad.Except ( runExcept, Except )
 import Control.Monad.Reader
     ( ReaderT(..), asks, MonadReader(..) )
 import Control.Monad.State
     ( StateT(..), gets, modify )
 import Data.Graph.Inductive.Graph (Node)
 import Data.Graph.Inductive.Graph qualified as G
-import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.List.NonEmpty qualified as NE
+import Data.List.NonEmpty (NonEmpty)
+import Data.List (elemIndex)
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
@@ -37,7 +38,7 @@ import Utils ( enumerate )
 --
 -- Skolem variables exist both positively and negatively. They are therefore
 -- mapped to a pair `(n,m)`
-data LookupEnv = LookupEnv { tSkolemVarEnv :: Map SkolemTVar (Node,Node) , tRecVarEnv :: Map RecTVar (Maybe Node, Maybe Node) }
+data LookupEnv = LookupEnv { tSkolemVarEnv :: Map SkolemTVar (Node,Node) , tRecVarEnv :: Map RecTVar (Maybe Node, Maybe Node), tTyArgs :: [[Node]]}
 
 type TTA a = StateT TypeAutCore (ReaderT LookupEnv (Except (NonEmpty Error))) a
 
@@ -72,6 +73,7 @@ initialize tvars =
               }
     lookupEnv = LookupEnv { tSkolemVarEnv = M.fromList [(tv, (posNode,negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
                           , tRecVarEnv = M.empty
+                          , tTyArgs = []
                           }
   in
     (initAut, lookupEnv)
@@ -184,13 +186,39 @@ insertXtors dc pol (Just (tyn,argVars)) pk@(MkPolyKind args _) xtors = do
   newNode <- newNodeM
   let xtorLabel = singleNodeLabelXtor pol dc (Just (tyn, fst<$>vars)) (S.fromList (sigToLabel <$> xtors)) pk
   insertNode newNode xtorLabel 
-  mapM_ (\(MkXtorSig xt ctxt) -> mapM_ (insertCtxt newNode xt) (enumerate ctxt)) xtors
+  mapM_ (\(MkXtorSig xt ctxt) -> mapM_ (insertCtxt newNode xt argVars) (enumerate ctxt)) xtors
   return newNode
   where 
-    insertCtxt :: Node -> XtorName -> (Int, PrdCnsType pol) -> TTA ()
-    insertCtxt newNode nm (i,pcType) = do 
+    insertCtxt :: Node -> XtorName -> [SkolemTVar] -> (Int, PrdCnsType pol) -> TTA ()
+    insertCtxt newNode nm [] (i,pcType) = do 
       ns <- insertPCType pcType
       insertEdges [(newNode, n, EdgeSymbol dc nm (case pcType of (PrdCnsType PrdRep _) -> Prd; (PrdCnsType CnsRep _) -> Cns) i) | n <- ns]
+    insertCtxt newNode nm skolems (i,pcType) = do 
+      tyArgs <- asks (\x -> x.tTyArgs)
+      if length tyArgs == length skolems then 
+        case pcType of 
+          (PrdCnsType PrdRep (TySkolemVar _ _ _ sk)) -> case elemIndex sk skolems of
+            Nothing -> do 
+              ns <- insertPCType pcType
+              insertEdges [(newNode, n, EdgeSymbol dc nm Prd i) | n <- ns]
+            Just j -> do 
+              let argJ = tyArgs !! j 
+              insertEdges [(newNode,n,EdgeSymbol dc nm Prd i) | n <- argJ]
+          (PrdCnsType CnsRep (TySkolemVar _ _ _ sk)) -> case elemIndex sk skolems of
+            Nothing -> do 
+              ns <- insertPCType pcType
+              insertEdges [(newNode, n, EdgeSymbol dc nm Cns i) | n <- ns]
+            Just j -> do 
+              let argJ = tyArgs !! j 
+              insertEdges [(newNode,n,EdgeSymbol dc nm Cns i) | n <- argJ]
+          (PrdCnsType PrdRep _) -> do 
+            ns <- insertPCType pcType
+            insertEdges [(newNode, n, EdgeSymbol dc nm Prd i) | n <- ns]
+          (PrdCnsType CnsRep _) -> do 
+            ns <- insertPCType pcType
+            insertEdges [(newNode, n, EdgeSymbol dc nm Cns i) | n <- ns]
+      else
+        throwAutomatonError defaultLoc ["number of arguments does not match declaration"]
 
 
 insertPCType :: PrdCnsType pol -> TTA [Node]
@@ -236,8 +264,8 @@ insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel pol (getKind ty))
-  let extendEnv PosRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars (M.insert rv (Just newNode, Nothing) tRecVars) 
-      extendEnv NegRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars (M.insert rv (Nothing, Just newNode) tRecVars)
+  let extendEnv PosRep (LookupEnv tSkolemVars tRecVars tArgs) = LookupEnv tSkolemVars (M.insert rv (Just newNode, Nothing) tRecVars) tArgs
+      extendEnv NegRep (LookupEnv tSkolemVars tRecVars tArgs) = LookupEnv tSkolemVars (M.insert rv (Nothing, Just newNode) tRecVars) tArgs
   ns <- local (extendEnv rep) (insertType ty)
   addPredecessorsOf newNode ns
   return $ newNode : ns
@@ -245,37 +273,21 @@ insertType (TyData _  polrep eo xtors)             = pure <$> insertXtors CST.Da
 insertType (TyCodata _ polrep eo  xtors)           = pure <$> insertXtors CST.Codata (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
 
 insertType (TyDataRefined _ polrep pk argVars mtn xtors)   = do 
-  let pol = polarityRepToPol polrep
-  let argKnds = (\(_,_,mk) -> mk) <$> pk.kindArgs
-  varNodes <- forM argKnds (\mk -> do
-    newNode <- newNodeM
-    insertNode newNode (emptyNodeLabel pol (monoToAnyKind mk))
-    return newNode)
-  pure <$> local (insertSkolems argVars varNodes) (insertXtors CST.Data   (polarityRepToPol polrep) (Just (mtn,argVars)) pk xtors)
-  where
-    insertSkolems :: [SkolemTVar] -> [Node] -> LookupEnv -> LookupEnv 
-    insertSkolems argVars nds (LookupEnv tSkolemVars tRecVars) = LookupEnv (foldr (\(sk,nd) -> M.insert sk (nd,nd)) tSkolemVars (zip argVars nds)) tRecVars
+  pure <$> insertXtors CST.Data   (polarityRepToPol polrep) (Just (mtn,argVars)) pk xtors
 
 insertType (TyCodataRefined _ polrep pk argVars mtn xtors) = do
-  let pol = polarityRepToPol polrep
-  let argKnds = (\(_,_,mk) -> mk) <$> pk.kindArgs
-  varNodes <- forM argKnds (\mk -> do
-    newNode <- newNodeM
-    insertNode newNode (emptyNodeLabel pol (monoToAnyKind mk))
-    return newNode)
-  pure <$> local (insertSkolems argVars varNodes) (insertXtors CST.Codata (polarityRepToPol polrep) (Just (mtn,argVars)) pk xtors)
-  where
-    insertSkolems :: [SkolemTVar] -> [Node] -> LookupEnv -> LookupEnv 
-    insertSkolems argVars nds (LookupEnv tSkolemVars tRecVars) = LookupEnv (foldr (\(sk,nd) -> M.insert sk (nd,nd)) tSkolemVars (zip argVars nds)) tRecVars
+  pure <$> insertXtors CST.Codata (polarityRepToPol polrep) (Just (mtn,argVars)) pk xtors
 
 insertType (TySyn _ _ _ ty) = insertType ty
 
-
 insertType (TyApp _ _ _ ty tyn args) = do 
-  argNodes <- mapM insertVariantType args
-  tyNodes <-  insertType ty 
-  insertEdges (concatMap (\(i,(ns,variance)) -> [(tyNode, n, TypeArgEdge tyn variance i) | tyNode <- tyNodes, n <- ns]) $ enumerate (NE.toList argNodes))
+  args <- mapM insertVariantType args
+  let argNodes = fst <$> NE.toList args
+  let extendEnv (LookupEnv tSkolemVars tRecVars _) = LookupEnv tSkolemVars tRecVars argNodes
+  tyNodes <-  local extendEnv $ insertType ty 
+  insertEdges (concatMap (\(i,(ns,variance)) -> [(tyNode, n, TypeArgEdge tyn variance i) | tyNode <- tyNodes, n <- ns]) $ enumerate (NE.toList args))
   return tyNodes
+
 
 insertType (TyNominal _ rep pk@(MkPolyKind args _) tn) = do
   let pol = polarityRepToPol rep 
