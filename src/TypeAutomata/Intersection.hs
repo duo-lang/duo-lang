@@ -1,6 +1,5 @@
 module TypeAutomata.Intersection (emptyIntersection,intersectIsEmpty,intersectAut) where
 
-
 import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), NodeLabel (..), EdgeLabel, TypeAut)
 import Control.Monad.Identity (Identity(..))
 import Data.Graph.Inductive.Graph (Node, Graph (..), lsuc, lab)
@@ -74,8 +73,8 @@ explore gr1 gr2 = do
 
 -- | Intersection of labels, returns Nothing if labels cannot be safely combined.
 intersectLabels :: NodeLabel -> NodeLabel -> Maybe NodeLabel
-intersectLabels (MkNodeLabel pol  data'  codata  nominal  ref_data  ref_codata  skolems  kind )
-                (MkNodeLabel pol' data'' codata' nominal' ref_data' ref_codata' skolems' kind')
+intersectLabels (MkNodeLabel pol  data'  codata  nominal  ref_data  ref_codata  kind )
+                (MkNodeLabel pol' data'' codata' nominal' ref_data' ref_codata' kind')
  | pol /= pol' = Nothing
  | kind /= kind' = Nothing
  | otherwise = do
@@ -86,7 +85,6 @@ intersectLabels (MkNodeLabel pol  data'  codata  nominal  ref_data  ref_codata  
                                       (S.intersection nominal nominal')
                                       new_ref_data
                                       new_ref_codata
-                                      (S.intersection skolems skolems')
                                       kind
 intersectLabels (MkPrimitiveNodeLabel pol prim)
                 (MkPrimitiveNodeLabel pol' prim')

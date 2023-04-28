@@ -87,7 +87,6 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
             nl_nominal = S.union fstLabel.nl_nominal combLabel.nl_nominal,
             nl_ref_data = mrgRefDat fstLabel.nl_ref_data combLabel.nl_ref_data, 
             nl_ref_codata = mrgRefCodat fstLabel.nl_ref_codata combLabel.nl_ref_codata, 
-            nl_skolem = S.union combLabel.nl_skolem fstLabel.nl_skolem,
             nl_kind = MkPolyKind (mrgKindArgs combLabel.nl_kind.kindArgs knd.kindArgs) knd.returnKind
           }
         else
@@ -110,12 +109,12 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
 
     mrgRefDat refs1 refs2 = 
       let mrgXtors xtors1 xtors2 = case pol of Pos -> S.union xtors1 xtors2; Neg -> S.intersection xtors1 xtors2
-          checkVars vars1 vars2 = if (fst <$> vars1) == (fst <$> vars2) then vars2 else error "variances don't match"
+          checkVars vars1 vars2 = if vars1 == vars2 then vars1 else error "variances don't match"
           f (xtors1, vars1) (xtors2, vars2) = (mrgXtors xtors1 xtors2, checkVars vars1 vars2)
       in M.unionWith f refs1 refs2 
     mrgRefCodat refs1 refs2 = 
       let mrgXtors xtors1 xtors2 = case pol of Pos -> S.intersection xtors1 xtors2; Neg -> S.union xtors1 xtors2
-          checkVars vars1 vars2 = if (fst <$> vars1) == (fst <$> vars2) then vars1 else error "variances don't match"
+          checkVars vars1 vars2 = if vars1 == vars2 then vars1 else error "variances don't match"
           f (xtors1,vars1) (xtors2,vars2) = (mrgXtors xtors1 xtors2, checkVars vars1 vars2)
       in M.unionWith f refs1 refs2
     rs_merged = combineNodeLabels rs

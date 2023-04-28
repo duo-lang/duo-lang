@@ -182,7 +182,7 @@ insertXtors dc pol Nothing pk xtors = do
 insertXtors dc pol (Just (tyn,argVars)) pk@(MkPolyKind args _) xtors = do
   let vars = zip ((\(x,_,_) -> x) <$> args) argVars
   newNode <- newNodeM
-  let xtorLabel = singleNodeLabelXtor pol dc (Just (tyn, vars)) (S.fromList (sigToLabel <$> xtors)) pk
+  let xtorLabel = singleNodeLabelXtor pol dc (Just (tyn, fst<$>vars)) (S.fromList (sigToLabel <$> xtors)) pk
   insertNode newNode xtorLabel 
   mapM_ (\(MkXtorSig xt ctxt) -> mapM_ (insertCtxt newNode xt) (enumerate ctxt)) xtors
   return newNode
