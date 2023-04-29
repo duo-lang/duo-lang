@@ -22,11 +22,16 @@ data Bool : CBV {
     False
 };
 
-def rec prd id : forall a. <List(b) | r | Nil,Cons(b,r(b))>(a) -> <List(b) | r | Nil,Cons(b,r(b))>(a) := 
- \xs => case xs of { 
-    Nil => Nil,
-    Cons(y,ys) => Cons(y,ys)
+def rec prd tail : forall a. <List(b) | Cons(b,<List(c) | r | Nil, Cons(c,r(c))>(b))>(a) -> <List(c) | r | Nil, Cons(c,r(c))>(a) :=
+  \xs => case xs of { 
+    Cons(_,ys) => ys
 };
+
+--def rec prd id : forall a. <List(b) | r | Nil,Cons(b,r(b))>(a) -> <List(b) | r | Nil,Cons(b,r(b))>(a) := 
+-- \xs => case xs of { 
+--    Nil => Nil,
+--    Cons(y,ys) => Cons(y,ys)
+--};
 
 
 --def prd x := Cons(S(Z),Nil);
