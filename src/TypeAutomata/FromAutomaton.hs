@@ -53,6 +53,7 @@ initializeFromAutomaton aut =
                    , graph = gr
                    , cache = S.empty
                    , tvars = concatMap getTVars (M.toList flowAnalysis)
+                   , skCount = 0
                    --S.toList $ S.unions (M.elems flowAnalysis)
                    }
 
@@ -64,12 +65,12 @@ data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set SkolemTVar)
                                      , graph :: TypeGr
                                      , cache :: Set Node
                                      , tvars :: [KindedSkolem]
+                                     , skCount :: Int
                                      }
 type AutToTypeM a = (ReaderT AutToTypeState (Except (NonEmpty Error))) a
 
 runAutToTypeM :: AutToTypeM a -> AutToTypeState -> Either (NonEmpty Error) a
 runAutToTypeM m state = runExcept (runReaderT m state)
-
 
 autToType :: TypeAutDet pol -> Either (NonEmpty Error) (TypeScheme pol)
 autToType aut = do
@@ -220,6 +221,7 @@ nodeToTypeNoCache rep i  = do
             let f (node, Covariant) = CovariantType <$> nodeToType rep node Nothing
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
             args <- mapM f argNodes 
+            let argVars = (\(_,sk,_) -> sk) <$> pk.kindArgs
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Data xt
               case args of 
@@ -228,10 +230,11 @@ nodeToTypeNoCache rep i  = do
                   return (MkXtorSig xt.labelName argTypes)
                 (args1:argsRst) -> do
                   argTypes <- argNodesToArgTypes nodes rep rep (Just (tn,args1:|argsRst))
-                  return (MkXtorSig xt.labelName argTypes)    
+                  argTypes' <- forM argTypes (\ty -> return $ foldr (uncurry replType) ty (zip (varTyToTy rep <$> args) argVars))
+                  return (MkXtorSig xt.labelName argTypes')    
             case args of 
-              [] -> return $ TyDataRefined defaultLoc rep pk [] tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk [] tn sig) tn (arg1:|argRst)
+              [] -> return $ TyDataRefined defaultLoc rep pk argVars tn sig
+              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk argVars tn sig) tn (arg1:|argRst)
         -- Creating ref codata types
         refCodatL <- do
           forM refCodatTypes $ \(tn,(xtors,vars)) -> do
@@ -239,6 +242,7 @@ nodeToTypeNoCache rep i  = do
             let f (node, Covariant) = CovariantType <$> nodeToType rep node Nothing 
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
             args <- mapM f argNodes 
+            let argVars = (\(_,sk,_) -> sk) <$> pk.kindArgs
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Codata xt
               case args of 
@@ -247,10 +251,11 @@ nodeToTypeNoCache rep i  = do
                   return (MkXtorSig xt.labelName argTypes)
                 (args1:argsRst) -> do 
                   argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep (Just (tn, args1:|argsRst))
-                  return (MkXtorSig xt.labelName argTypes)
+                  argTypes' <- forM argTypes (\ty -> return $ foldr (uncurry replType) ty (zip (varTyToTy rep <$> args) argVars))
+                  return (MkXtorSig xt.labelName argTypes')
             case args of
-              [] -> return $ TyCodataRefined defaultLoc rep pk [] tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk [] tn sig) tn (arg1:|argRst)
+              [] -> return $ TyCodataRefined defaultLoc rep pk argVars tn sig
+              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk argVars tn sig) tn (arg1:|argRst)
         -- Creating Nominal types
         nominals <- do
             forM (S.toList tns) $ \(tn, variances) -> do
@@ -271,3 +276,7 @@ nodeToTypeNoCache rep i  = do
       if i `elem` dfs (suc gr i) gr
         then return $ TyRec defaultLoc rep (MkRecTVar ("r" <> T.pack (show i))) resType
         else return resType
+  where 
+    varTyToTy :: PolarityRep pol -> VariantType pol -> Typ pol
+    varTyToTy _ (CovariantType ty) = ty
+    varTyToTy rep (ContravariantType ty) = TyFlipPol rep ty
