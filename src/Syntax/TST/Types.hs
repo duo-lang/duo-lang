@@ -508,3 +508,128 @@ unfoldRecType :: Typ pol -> Typ pol
 unfoldRecType recty@(TyRec _ PosRep var ty) = zonk RecRep (MkBisubstitution (M.fromList [(var,(recty, error "unfoldRecType"))])) ty
 unfoldRecType recty@(TyRec _ NegRep var ty) = zonk RecRep (MkBisubstitution (M.fromList [(var,(error "unfoldRecType", recty))])) ty
 unfoldRecType ty = ty
+
+-----
+-- replace type with other skolem (used for arguments of refinement types)
+----
+class ReplType (a::Type) where 
+  replType :: Typ pol -> SkolemTVar -> a -> a
+
+instance ReplType (Typ pol) where 
+  replType (TySkolemVar _ _ knd' sk') sk'' ty@(TySkolemVar loc pol knd sk) = 
+    if sk==sk' && knd==knd' then TySkolemVar loc pol knd sk'' else ty
+  replType _ _ ty@TySkolemVar{} = ty
+  replType (TyUniVar _ _ knd' uv') sk ty@(TyUniVar loc pol knd uv) = 
+    if uv == uv' && knd==knd' then TySkolemVar loc pol knd sk else ty
+  replType _ _ ty@TyUniVar{} = ty
+  replType (TyRecVar _ _ pk' rv') sk ty@(TyRecVar loc pol pk rv) = 
+    if rv == rv' && pk == pk' then TySkolemVar loc pol (MkPknd pk) sk else ty
+  replType _ _ ty@TyRecVar{} = ty
+  replType (TyData _ _ eo' xtors') sk ty@(TyData loc pol eo xtors) = 
+    if eo == eo' && ((\x -> x.sig_name) <$> xtors) == ((\x -> x.sig_name) <$> xtors') then TySkolemVar loc pol (MkPknd (MkPolyKind [] eo)) sk
+    else TyData loc pol eo (replType ty sk <$> xtors)
+  replType ty sk (TyData loc pol eo xtors) = TyData loc pol eo (replType ty sk <$> xtors)
+  replType ty@(TyCodata _ _ eo' xtors') sk (TyCodata loc pol eo xtors) = 
+    if eo == eo' && ((\x -> x.sig_name) <$> xtors) == ((\x -> x.sig_name) <$> xtors') then TySkolemVar loc pol (MkPknd (MkPolyKind [] eo)) sk 
+    else TyCodata loc pol eo (replType ty sk <$> xtors)
+  replType ty sk (TyCodata loc pol eo xtors) = TyCodata loc pol eo (replType ty sk <$> xtors)
+  
+  replType ty'@(TyDataRefined _ pol' pk' argVars' tyn' xtors') sk (TyDataRefined loc pol pk argVars tyn xtors) = 
+    let refTy = TyDataRefined loc pol pk argVars tyn (replType ty' sk <$> xtors)
+        skolemKinds = monoToAnyKind <$> ((\(_,_,mk) -> mk) <$> pk.kindArgs)
+        skolems = (\(sk,knd) ->  (TySkolemVar defaultLoc PosRep knd sk, TySkolemVar defaultLoc NegRep knd sk)) <$> zip argVars skolemKinds
+        bisubst = MkBisubstitution (M.fromList (zip argVars' skolems))
+        xtorsZonked = zonk SkolemRep bisubst <$> xtors' 
+    in
+    if pk' == pk && tyn' == tyn && length argVars == length argVars' then case (pol,pol') of 
+      (PosRep,PosRep) -> if xtors == xtorsZonked then TySkolemVar loc pol (MkPknd pk) sk else refTy
+      (NegRep,NegRep) -> if xtors == xtorsZonked then TySkolemVar loc pol (MkPknd pk) sk else refTy
+      _ -> refTy
+    else refTy
+  replType ty' sk (TyDataRefined loc pol pk argVars tyn xtors) = TyDataRefined loc pol pk argVars tyn (replType ty' sk <$> xtors)
+  replType ty'@(TyCodataRefined _ pol' pk' argVars' tyn' xtors') sk (TyCodataRefined loc pol pk argVars tyn xtors) = 
+    let refTy = TyCodataRefined loc pol pk argVars tyn (replType ty' sk <$> xtors)
+        skolemKinds = monoToAnyKind <$> ((\(_,_,mk) -> mk) <$> pk.kindArgs)
+        skolems = (\(sk,knd) ->  (TySkolemVar defaultLoc PosRep knd sk, TySkolemVar defaultLoc NegRep knd sk)) <$> zip argVars skolemKinds
+        bisubst = MkBisubstitution (M.fromList (zip argVars' skolems))
+        xtorsZonked = zonk SkolemRep bisubst <$> xtors' 
+    in
+    if pk' == pk && tyn' == tyn && length argVars == length argVars' then case (pol,pol') of 
+      (PosRep,PosRep) -> if xtors == xtorsZonked then TySkolemVar loc pol (MkPknd pk) sk else refTy
+      (NegRep,NegRep) -> if xtors == xtorsZonked then TySkolemVar loc pol (MkPknd pk) sk else refTy
+      _ -> refTy
+    else refTy
+  replType ty' sk (TyCodataRefined loc pol pk argVars tyn xtors) = TyCodataRefined loc pol pk argVars tyn (replType ty' sk <$> xtors)
+  replType (TyNominal _ _ pk' tyn') sk ty@(TyNominal loc pol pk tyn) = 
+    if tyn == tyn' && pk == pk' then TySkolemVar loc pol (MkPknd pk) sk
+    else ty 
+  replType _ _ ty@TyNominal{} = ty
+
+  replType ty'@(TyApp _ pol' eo' ty1' tyn' args') sk (TyApp loc pol eo ty1 tyn args) = 
+    let appTy = TyApp loc pol eo (replType ty' sk ty1) tyn  (replType ty' sk <$> args)
+    in
+    if eo == eo' && tyn == tyn' then case (pol,pol') of 
+      (PosRep,PosRep) -> if ty1 == ty1' && args == args' then TySkolemVar loc pol (MkPknd $ MkPolyKind [] eo) sk else appTy 
+
+      (NegRep,NegRep) -> if ty1 == ty1' && args == args' then TySkolemVar loc pol (MkPknd $ MkPolyKind [] eo) sk else appTy
+
+      _ -> appTy 
+    else appTy 
+  replType ty sk (TyApp loc pol eo ty1 tyn args) = TyApp loc pol eo (replType ty sk ty1) tyn (replType ty sk <$> args)
+
+  replType ty'@(TySyn _ pol' tyn' ty1') sk (TySyn loc pol tyn ty1) = 
+    let synTy = TySyn loc pol tyn (replType ty' sk ty1)
+    in 
+    if tyn == tyn' then case (pol,pol') of 
+      (PosRep, PosRep) -> if ty1 == ty1' then TySkolemVar loc pol (getKind ty1) sk else synTy
+      (NegRep, NegRep) -> if ty1 == ty1' then TySkolemVar loc pol (getKind ty1) sk else synTy 
+      _ -> synTy
+    else synTy
+  replType ty sk (TySyn loc pol tyn ty1) = TySyn loc pol tyn (replType ty sk ty1)
+  replType (TyBot _ knd') sk ty@(TyBot loc knd) = if knd == knd' then TySkolemVar loc PosRep knd sk else ty
+  replType _ _ ty@TyBot{} = ty
+  replType (TyTop _ knd') sk ty@(TyTop loc knd) = if knd == knd' then TySkolemVar loc NegRep knd sk else ty 
+  replType _ _ ty@TyTop{} = ty
+  replType ty@(TyUnion _ knd' ty1' ty2') sk (TyUnion loc knd ty1 ty2) = 
+    if knd == knd' && ty1' == ty1 && ty2' == ty2 then TySkolemVar loc PosRep knd sk
+    else TyUnion loc knd (replType ty sk ty1) (replType ty sk ty2)
+  replType ty sk (TyUnion loc knd ty1 ty2) = TyUnion loc knd (replType ty sk ty1) (replType ty sk ty2)
+  replType ty@(TyInter _ knd' ty1' ty2') sk (TyInter loc knd ty1 ty2) = 
+    if knd == knd' && ty1' == ty1 && ty2' == ty2 then TySkolemVar loc NegRep knd sk
+    else TyInter loc knd (replType ty sk ty1) (replType ty sk ty2)
+  replType ty sk (TyInter loc knd ty1 ty2) = TyInter loc knd (replType ty sk ty1) (replType ty sk ty2)
+  replType ty'@(TyRec _ pol' rv' ty2) sk (TyRec loc pol rv ty1) = 
+    let recTy = TyRec loc pol rv (replType ty' sk ty1)
+    in 
+    if rv' == rv then case (pol,pol') of 
+      (PosRep, PosRep) -> if ty1 == ty2 then TySkolemVar loc pol (getKind ty1) sk else recTy
+      (NegRep, NegRep) -> if ty1 == ty2 then TySkolemVar loc pol (getKind ty1) sk else recTy
+      _ -> recTy
+    else recTy
+  replType ty sk (TyRec loc pol rv ty1) = TyRec loc pol rv (replType ty sk ty1)
+  replType TyI64{} sk (TyI64 loc pol) = TySkolemVar loc pol MkI64 sk
+  replType _ _ ty@TyI64{} = ty
+  replType TyF64{} sk (TyF64 loc pol) = TySkolemVar loc pol MkF64 sk
+  replType _ _ ty@TyF64{} = ty
+  replType TyChar{} sk (TyChar loc pol) = TySkolemVar loc pol MkChar sk
+  replType _ _ ty@TyChar{} = ty
+  replType TyString{} sk (TyString loc pol) = TySkolemVar loc pol MkString sk
+  replType _ _ ty@TyString{} = ty
+  replType ty'@(TyFlipPol pol' ty1') sk (TyFlipPol pol ty1) = 
+    let flipTy = TyFlipPol pol (replType ty' sk ty1)
+    in 
+    case (pol,pol') of 
+      (PosRep, PosRep) -> if ty1 == ty1' then TySkolemVar (getLoc ty1) pol (getKind ty1) sk else flipTy
+      (NegRep, NegRep) -> if ty1 == ty1' then TySkolemVar (getLoc ty1) pol (getKind ty1) sk else flipTy
+      _ -> flipTy
+  replType ty sk (TyFlipPol pol ty1) = TyFlipPol pol (replType ty sk ty1)
+
+instance ReplType (XtorSig pol) where 
+  replType ty sk (MkXtorSig nm args) = MkXtorSig nm (replType ty sk <$> args) 
+
+instance ReplType (PrdCnsType pol) where 
+  replType ty sk (PrdCnsType rep ty') = PrdCnsType rep (replType ty sk ty')
+
+instance ReplType (VariantType pol) where 
+  replType ty sk (CovariantType ty') = CovariantType (replType ty sk ty')
+  replType ty sk (ContravariantType ty') = ContravariantType (replType ty sk ty')
