@@ -2,7 +2,7 @@ module TypeInference.GenerateConstraints.Terms
   ( GenConstraints(..)
   , genConstraintsTermRecursive
   ) where
-import Debug.Trace
+
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -162,9 +162,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     xtorSigUpper' <- freshSkolemsXtor xtorSigUpper skolemSubst
     (uvarsPos,uvarsNeg,_) <- getTypeArgsRef loc decl argVars
     let cstrInfo = case rep of PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc
---    addUVConstr (uvarsPos,uvarsNeg) cstrInfo (zip argVars ((\(_,_,mk) -> mk) <$> pk.kindArgs))
     -- Then we generate constraints between the inferred types of the substitution
-    let constrSigArgs = TST.zonk TST.SkolemRep skolemSubst xtorSigUpper'.sig_args 
     substTypes' <- forM (zip substTypes xtorSigUpper'.sig_args) (\(ty,declTy) -> do
       let (pairsPos,pairsNeg) = TST.getDeclReplacements declTy ty 
       forM_ pairsPos (addReplConstr PosRep cstrInfo argVars (uvarsPos,uvarsNeg))
@@ -172,7 +170,6 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
       let replacedPos = foldr (\(tyPos,sk) -> TST.replType PosRep sk tyPos) ty pairsPos
       let replacedNeg = foldr (\(tyNeg,sk) -> TST.replType NegRep sk tyNeg) replacedPos pairsNeg
       return replacedNeg)
-    genConstraintsCtxts substTypes' constrSigArgs cstrInfo
     let newXtorSig = [TST.MkXtorSig xt substTypes']
     case rep of 
       PrdRep -> do 
@@ -191,38 +188,20 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
           Just i -> do
             let uvars = varTyToTy (uvarsPos !! i,uvarsNeg !! i)
             addConstraint $ SubType cstrInfo tyPos (snd uvars)
+            addConstraint $ KindEq KindConstraint (TST.getKind tyPos) (TST.getKind (snd uvars))
       addReplConstr NegRep cstrInfo argVars (uvarsPos,uvarsNeg) (tyNeg,sk) = 
         case elemIndex sk argVars of 
           Nothing -> return ()
           Just i -> do
             let uvars = varTyToTy (uvarsPos !! i,uvarsNeg !! i)
             addConstraint $ SubType cstrInfo (fst uvars) tyNeg
-
---      replaceArgs :: TST.PrdCnsType pol -> TST.PrdCnsType pol -> ([TST.VariantType Pos],[TST.VariantType Neg]) -> [SkolemTVar] -> GenM (TST.PrdCnsType pol)
---      replaceArgs substType xtorType (argsPos,argsNeg) argVars = do 
---        let newArgs = varTyToTy <$> zip argsPos argsNeg
---        case substType of 
---          TST.PrdCnsType PrdRep ty -> do
---            let posReplaced = foldr (\(arg,sk) -> TST.replType PosRep sk arg) ty (zip (fst <$> newArgs) argVars)
---            let negReplaced = foldr (\(arg,sk) -> TST.replType NegRep sk arg) posReplaced (zip (snd <$> newArgs) argVars)
---            pure $ TST.PrdCnsType PrdRep negReplaced
---          TST.PrdCnsType CnsRep ty -> do
---            let posReplaced = foldr (\(arg,sk) -> TST.replType PosRep sk arg) ty (zip (fst <$> newArgs) argVars)
---            let negReplaced = foldr (\(arg,sk) -> TST.replType NegRep sk arg) posReplaced (zip (snd <$> newArgs) argVars)
---            pure $ TST.PrdCnsType CnsRep negReplaced 
+            addConstraint $ KindEq KindConstraint (TST.getKind tyNeg) (TST.getKind (fst uvars))
 
       varTyToTy :: (TST.VariantType Pos, TST.VariantType Neg) -> (TST.Typ Pos,TST.Typ Neg)
       varTyToTy (TST.CovariantType tyPos, TST.CovariantType tyNeg) = (tyPos,tyNeg)
       varTyToTy (TST.ContravariantType tyNeg,TST.ContravariantType tyPos) = (tyPos,tyNeg)
       varTyToTy _ = error "impossible"
 
---      addUVConstr :: ([TST.VariantType Pos],[TST.VariantType Neg]) -> ConstraintInfo -> [(SkolemTVar,MonoKind)] -> GenM()
---      addUVConstr (uvpos,uvneg) info skolems = if length uvpos == length skolems then do 
---        let skolemsNeg = (\(sk,mk) -> TST.TySkolemVar defaultLoc NegRep (monoToAnyKind mk) sk) <$> skolems
---        let uvs = varTyToTy <$> zip uvpos uvneg
---        forM_ (zip uvs skolemsNeg) (\(uv,sk) -> addConstraint $ SubType info uv sk)
---        else 
---          throwOtherError defaultLoc ["Number of skolems does not match number of generated unification variables"]
       getAppTy :: PolarityRep pol -> EvaluationOrder -> RnTypeName -> ([TST.VariantType Pos],[TST.VariantType Neg]) -> (TST.Typ pol -> TST.Typ pol)
       getAppTy _ _ _ ([],[]) = id
       getAppTy _ _ _ ([],_) = error "impossible"
