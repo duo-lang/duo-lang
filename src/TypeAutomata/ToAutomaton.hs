@@ -38,7 +38,7 @@ import Utils ( enumerate )
 --
 -- Skolem variables exist both positively and negatively. They are therefore
 -- mapped to a pair `(n,m)`
-data LookupEnv = LookupEnv { tSkolemVarEnv :: Map SkolemTVar (Node,Node) , tRecVarEnv :: Map RecTVar (Maybe Node, Maybe Node), tTyArgs :: [[Node]]}
+data LookupEnv = LookupEnv { tSkolemVarEnv :: Map SkolemTVar ([Node],[Node]) , tRecVarEnv :: Map RecTVar (Maybe Node, Maybe Node), tTyArgs :: [[Node]]}
 
 type TTA a = StateT TypeAutCore (ReaderT LookupEnv (Except (NonEmpty Error))) a
 
@@ -71,7 +71,7 @@ initialize tvars =
               { ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) []
               , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
               }
-    lookupEnv = LookupEnv { tSkolemVarEnv = M.fromList [(tv, (posNode,negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
+    lookupEnv = LookupEnv { tSkolemVarEnv = M.fromList [(tv, ([posNode],[negNode])) | (tv,(posNode,_),(negNode,_),_) <- nodes]
                           , tRecVarEnv = M.empty
                           , tTyArgs = []
                           }
@@ -106,7 +106,7 @@ newNodeM = do
   graph <- gets (\x -> x.ta_gr)
   pure $ (head . G.newNodes 1) graph
 
-lookupTVar :: PolarityRep pol -> SkolemTVar -> TTA Node
+lookupTVar :: PolarityRep pol -> SkolemTVar -> TTA [Node]
 lookupTVar PosRep tv = do
   tSkolemVarEnv <- asks (\x -> x.tSkolemVarEnv)
   case M.lookup tv tSkolemVarEnv of
@@ -207,7 +207,7 @@ insertVariantType (ContravariantType ty) = do
   pure (ns, Contravariant)
 
 insertType :: Typ pol -> TTA [Node]
-insertType (TySkolemVar _ rep _ tv) = pure <$> lookupTVar rep tv
+insertType (TySkolemVar _ rep _ tv) = lookupTVar rep tv
 insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert type into automaton."
                                                             , "The unification variable:"
                                                             , "    " <> tv.unUniTVar
@@ -255,7 +255,7 @@ insertType (TyDataRefined loc polrep pk argVars mtn xtors)   =
     _ -> do
       tyArgs <- asks (\x -> x.tTyArgs)
       if length argVars == length tyArgs then do
-        let newSkolems = zip argVars ((\x -> (head x,head x)) <$> tyArgs)
+        let newSkolems = zip argVars ((\x -> (x,x)) <$> tyArgs)
         let f (LookupEnv tSkolems tRecs tTyArgs) = LookupEnv (M.fromList (M.toList tSkolems++newSkolems)) tRecs tTyArgs
         xtorNd <- local f $ insertXtors CST.Data pol (Just mtn) pk xtors
         pure [xtorNd]
@@ -271,7 +271,7 @@ insertType (TyCodataRefined loc polrep pk argVars mtn xtors) =
     _ -> do 
       tyArgs <- asks (\x->x.tTyArgs)
       if length argVars == length tyArgs then do 
-        let newSkolems = zip argVars ((\x -> (head x, head x)) <$> tyArgs)
+        let newSkolems = zip argVars ((\x -> (x, x)) <$> tyArgs)
         let f (LookupEnv tSkolems tRecs tTyArgs) = LookupEnv (M.fromList (M.toList tSkolems ++ newSkolems)) tRecs tTyArgs
         xtorNd <- local f $ insertXtors CST.Codata pol (Just mtn) pk xtors
         pure [xtorNd]
@@ -280,8 +280,8 @@ insertType (TyCodataRefined loc polrep pk argVars mtn xtors) =
 
 insertType (TySyn _ _ _ ty) = insertType ty
 
-insertType (TyApp _ _ _ ty tyn args) = do 
-  args <- mapM insertVariantType args
+insertType (TyApp _ _ _ ty tyn argTys) = do 
+  args <- mapM insertVariantType argTys
   let argNodes = fst <$> NE.toList args
   let extendEnv (LookupEnv tSkolemVars tRecVars _) = LookupEnv tSkolemVars tRecVars argNodes
   tyNodes <-  local extendEnv $ insertType ty 

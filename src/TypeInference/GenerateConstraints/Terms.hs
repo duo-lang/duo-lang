@@ -2,7 +2,7 @@ module TypeInference.GenerateConstraints.Terms
   ( GenConstraints(..)
   , genConstraintsTermRecursive
   ) where
-import Debug.Trace
+
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -182,11 +182,6 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
         Just i -> do
           let uvars = varTyToTy (uvarsPos !! i,uvarsNeg !! i)
           addConstraint $ SubType cstrInfo (fst uvars) ty)
-    trace ("substTypes " <> ppPrintString substTypes <> 
-           "\n xtorsig "<> ppPrintString xtorSigUpper' <> 
-           "\n replaced " <> ppPrintString substTypes'<> 
-           "\n replacement " <> concatMap (\(ty,sk) -> ppPrintString ty <> " -> " <> show sk) pairsPos <> 
-           "\n" <> concatMap (\(ty,sk) -> ppPrintString ty <> " -> " <> show sk) pairsNeg) $ pure ()
     genConstraintsCtxts substTypes' constrSigArgs cstrInfo
     let newXtorSig = [TST.MkXtorSig xt substTypes']
     case rep of 
