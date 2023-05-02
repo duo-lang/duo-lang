@@ -22,10 +22,10 @@ data Bool : CBV {
     False
 };
 
-def rec prd tail : forall a. <List(b) | Cons(b,<List(c) | r | Nil, Cons(c,r(c))>(b))>(a) -> <List(c) | r | Nil, Cons(c,r(c))>(a) :=
-  \xs => case xs of { 
-    Cons(_,ys) => ys
-};
+--def rec prd tail : forall a. <List(b) | Cons(b,<List(c) | r | Nil, Cons(c,r(c))>(b))>(a) -> <List(c) | r | Nil, Cons(c,r(c))>(a) :=
+--  \xs => case xs of { 
+--    Cons(_,ys) => ys
+--};
 
 --def rec prd id : forall a. <List(b) | r | Nil,Cons(b,r(b))>(a) -> <List(b) | r | Nil,Cons(b,r(b))>(a) := 
 -- \xs => case xs of { 
@@ -34,7 +34,7 @@ def rec prd tail : forall a. <List(b) | Cons(b,<List(c) | r | Nil, Cons(c,r(c))>
 --};
 
 
---def prd x := Cons(S(Z),Nil);
+def prd x := Cons(S(Z),Nil);
 
 --def rec prd map : forall a b. (a->b) -> <List(c) | r | Nil, Cons(c,r(c))>(a) -> <List(c) | r | Nil, Cons(c,r(c))>(b) :=
 --    \f xs => case xs of {

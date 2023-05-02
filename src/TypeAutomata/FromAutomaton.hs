@@ -4,7 +4,7 @@
 module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.TST.Types
-import Syntax.RST.Types (PolarityRep(..), flipPolarityRep)
+import Syntax.RST.Types (PolarityRep(..), flipPolarityRep, Polarity(..))
 import Syntax.RST.Names
 import Syntax.RST.Kinds
 import Syntax.CST.Types qualified as CST
@@ -222,6 +222,7 @@ nodeToTypeNoCache rep i  = do
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
             args <- mapM f argNodes 
             let argVars = (\(_,sk,_) -> sk) <$> pk.kindArgs
+            let argPairs = argsToTypes args argVars
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Data xt
               case args of 
@@ -230,7 +231,10 @@ nodeToTypeNoCache rep i  = do
                   return (MkXtorSig xt.labelName argTypes)
                 (args1:argsRst) -> do
                   argTypes <- argNodesToArgTypes nodes rep rep (Just (tn,args1:|argsRst))
-                  argTypes' <- forM argTypes (\ty -> return $ foldr (uncurry replType) ty (zip (varTyToTy rep <$> args) argVars))
+                  argTypes' <- forM argTypes (\ty -> do 
+                   let replacedPos = foldr (\(arg,sk) -> replType PosRep sk arg) ty (fst argPairs)
+                   let replacedNeg = foldr (\(arg,sk) -> replType NegRep sk arg) replacedPos (snd argPairs)
+                   return replacedNeg) 
                   return (MkXtorSig xt.labelName argTypes')    
             case args of 
               [] -> return $ TyDataRefined defaultLoc rep pk argVars tn sig
@@ -243,6 +247,7 @@ nodeToTypeNoCache rep i  = do
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
             args <- mapM f argNodes 
             let argVars = (\(_,sk,_) -> sk) <$> pk.kindArgs
+            let argPairs = argsToTypes args argVars
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Codata xt
               case args of 
@@ -251,7 +256,10 @@ nodeToTypeNoCache rep i  = do
                   return (MkXtorSig xt.labelName argTypes)
                 (args1:argsRst) -> do 
                   argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep (Just (tn, args1:|argsRst))
-                  argTypes' <- forM argTypes (\ty -> return $ foldr (uncurry replType) ty (zip (varTyToTy rep <$> args) argVars))
+                  argTypes' <- forM argTypes (\ty -> do 
+                   let replacedPos = foldr (\(arg,sk) -> replType PosRep sk arg) ty (fst argPairs)
+                   let replacedNeg = foldr (\(arg,sk) -> replType NegRep sk arg) replacedPos (snd argPairs)
+                   return replacedNeg) 
                   return (MkXtorSig xt.labelName argTypes')
             case args of
               [] -> return $ TyCodataRefined defaultLoc rep pk argVars tn sig
@@ -277,6 +285,14 @@ nodeToTypeNoCache rep i  = do
         then return $ TyRec defaultLoc rep (MkRecTVar ("r" <> T.pack (show i))) resType
         else return resType
   where 
-    varTyToTy :: PolarityRep pol -> VariantType pol -> Typ pol
-    varTyToTy _ (CovariantType ty) = ty
-    varTyToTy rep (ContravariantType ty) = TyFlipPol rep ty
+    argsToTypes :: [VariantType pol] -> [SkolemTVar] -> ([(Typ Pos,SkolemTVar)],[(Typ Neg,SkolemTVar)])
+    argsToTypes args argVars = do 
+      let f :: PolarityRep pol -> (VariantType pol1,SkolemTVar)-> [(Typ pol,SkolemTVar)] -> [(Typ pol,SkolemTVar)]
+          f PosRep (CovariantType ty,sk) ls = case getPolarity ty of PosRep -> (ty,sk):ls; _ -> ls
+          f NegRep (CovariantType ty,sk) ls = case getPolarity ty of NegRep -> (ty,sk):ls; _ -> ls
+          f PosRep (ContravariantType ty, sk) ls = case getPolarity ty of PosRep -> (ty,sk):ls; _->ls
+          f NegRep (ContravariantType ty, sk) ls = case getPolarity ty of NegRep -> (ty,sk):ls; _->ls
+
+      let tysPos = foldr (f PosRep) [] (zip args argVars) 
+      let tysNeg = foldr (f NegRep) [] (zip args argVars) 
+      (tysPos,tysNeg)
