@@ -374,8 +374,8 @@ subConstraints (SubType _ (TyCodata loc1 PosRep _ dtors1) (TyCodata loc2 NegRep 
 --
 subConstraints (SubType _ (TyDataRefined loc1 PosRep pk1 argVars1 tn1 ctors1) (TyDataRefined loc2 NegRep _ argVars2 tn2 ctors2)) | tn1 == tn2 = do
   let skKinds = (\(_,_,mk) -> monoToAnyKind mk) <$> pk1.kindArgs
-  let sksPos = uncurry (TySkolemVar defaultLoc PosRep) <$> zip skKinds argVars1
-  let sksNeg = uncurry (TySkolemVar defaultLoc NegRep) <$> zip skKinds argVars1
+  let sksPos = zipWith (TySkolemVar defaultLoc PosRep) skKinds argVars1
+  let sksNeg = zipWith (TySkolemVar defaultLoc NegRep) skKinds argVars1
   let bisubst = MkBisubstitution (M.fromList (zip argVars2 (zip sksPos sksNeg)))
   let ctors2' = zonk SkolemRep bisubst <$> ctors2
   constraints <- forM ctors1 (\x -> checkXtor ctors2' loc2 x loc1)
@@ -383,8 +383,8 @@ subConstraints (SubType _ (TyDataRefined loc1 PosRep pk1 argVars1 tn1 ctors1) (T
 
 subConstraints (SubType _ (TyCodataRefined loc1 PosRep pk1 argVars1 tn1 dtors1) (TyCodataRefined loc2 NegRep _ argVars2 tn2 dtors2))  | tn1 == tn2 = do
   let skKinds = (\(_,_,mk) -> monoToAnyKind mk) <$> pk1.kindArgs
-  let sksPos = uncurry (TySkolemVar defaultLoc PosRep) <$> zip skKinds argVars1
-  let sksNeg = uncurry (TySkolemVar defaultLoc NegRep) <$> zip skKinds argVars1
+  let sksPos = zipWith (TySkolemVar defaultLoc PosRep) skKinds argVars1
+  let sksNeg = zipWith (TySkolemVar defaultLoc NegRep) skKinds argVars1
   let bisubst = MkBisubstitution (M.fromList (zip argVars2 (zip sksPos sksNeg)))
   let dtors2' = zonk SkolemRep bisubst <$> dtors2
   constraints <- forM dtors2' (\x -> checkXtor dtors1 loc1 x loc2)

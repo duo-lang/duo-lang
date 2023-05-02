@@ -685,20 +685,20 @@ class GetDeclReplacements (a::Type) (b::Type) where
 instance GetDeclReplacements (Typ pol1) (Typ pol2) where 
  getDeclReplacements (TySkolemVar _ _ _ sk) ty =  case getPolarity ty of PosRep -> ([(ty,sk)],[]); NegRep -> ([],[(ty,sk)])
  getDeclReplacements (TyData _ _ _ xtors) (TyData _ _ _ xtors') = do 
-   let repls = uncurry getDeclReplacements <$> zip xtors' xtors
+   let repls = zipWith getDeclReplacements xtors' xtors
    (concatMap fst repls, concatMap snd repls)
  getDeclReplacements (TyCodata _ _ _ xtors) (TyCodata _ _ _ xtors')  = do 
-   let repls = uncurry getDeclReplacements <$> zip  xtors' xtors
+   let repls = zipWith getDeclReplacements  xtors' xtors
    (concatMap fst repls, concatMap snd repls)
  getDeclReplacements (TyDataRefined _ _ _ _ _ xtors) (TyDataRefined _ _ _ _ _ xtors') = do 
-   let repls = uncurry getDeclReplacements <$> zip xtors' xtors
+   let repls = zipWith getDeclReplacements xtors' xtors
    (concatMap fst repls, concatMap snd repls)
  getDeclReplacements (TyCodataRefined _ _ _ _ _ xtors) (TyCodataRefined _ _ _ _ _ xtors') = do 
-   let repls = uncurry getDeclReplacements <$> zip xtors' xtors
+   let repls = zipWith getDeclReplacements xtors' xtors
    (concatMap fst repls, concatMap snd repls)
  getDeclReplacements (TyApp _ _ _ ty _ args) (TyApp _ _ _ ty' _ args') = do 
    let (replPos,replNeg) = getDeclReplacements ty' ty 
-   let repls = uncurry getDeclReplacements <$> zip (NE.toList args) (NE.toList args')
+   let repls = zipWith getDeclReplacements (NE.toList args) (NE.toList args')
    (replPos ++ concatMap fst repls, replNeg ++ concatMap snd repls)
  getDeclReplacements (TySyn _ _ _ ty) (TySyn _ _ _ ty') = getDeclReplacements ty' ty
  getDeclReplacements (TyUnion _ _ ty1 ty2) (TyUnion _ _ ty1' ty2') = do 
@@ -718,7 +718,7 @@ instance GetDeclReplacements (XtorSig pol1) (XtorSig pol2) where
 
 instance GetDeclReplacements (LinearContext pol1) (LinearContext pol2) where 
   getDeclReplacements ctxt1 ctxt2 = do 
-    let repls = uncurry getDeclReplacements <$> zip ctxt1 ctxt2
+    let repls = zipWith getDeclReplacements ctxt1 ctxt2
     (concatMap fst repls, concatMap snd repls)
 
 instance GetDeclReplacements (PrdCnsType pol1) (PrdCnsType pol2) where 
