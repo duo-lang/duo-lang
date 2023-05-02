@@ -10,7 +10,6 @@ import Syntax.Core.Terms (Pattern(..))
 import Syntax.RST.Types (PolarityRep(..))
 import Syntax.RST.Terms qualified as RST
 import Loc
-import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types (PrdCns(..), PrdCnsRep(..), EvaluationOrder(..), PolyKind(..))
 import Syntax.RST.Program (PrdCnsToPol)
 import Syntax.RST.Kinds
