@@ -2,6 +2,7 @@ module TypeInference.GenerateConstraints.Terms
   ( GenConstraints(..)
   , genConstraintsTermRecursive
   ) where
+import Debug.Trace
 import Control.Monad.Reader
 import Errors
 import Data.List.NonEmpty (NonEmpty((:|)))
@@ -21,6 +22,7 @@ import Syntax.RST.Kinds
 import Translate.EmbedTST (EmbedTST(..))
 import Pretty.Pretty
 import Data.List.NonEmpty qualified as NE
+import Data.List (elemIndex)
 
 import TypeInference.GenerateConstraints.Definition
 import TypeInference.GenerateConstraints.Kinds
@@ -157,14 +159,35 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     let pk = decl.data_kind
     (argVars,skolemSubst) <- freshSkolems pk
     xtorSigUpper <- lookupXtorSigUpper loc xt 
-    xtorSigUpper' <- freshSkolemsXtor xtorSigUpper
+    xtorSigUpper' <- freshSkolemsXtor xtorSigUpper skolemSubst
     (uvarsPos,uvarsNeg,_) <- getTypeArgsRef loc decl argVars
     let cstrInfo = case rep of PrdRep -> CtorArgsConstraint loc; CnsRep -> DtorArgsConstraint loc
 --    addUVConstr (uvarsPos,uvarsNeg) cstrInfo (zip argVars ((\(_,_,mk) -> mk) <$> pk.kindArgs))
     -- Then we generate constraints between the inferred types of the substitution
-    let constrSigArgs = TST.zonk TST.SkolemRep skolemSubst xtorSigUpper'.sig_args
-    genConstraintsCtxts substTypes constrSigArgs cstrInfo
-    substTypes' <- forM substTypes (\ty -> replaceArgs ty (uvarsPos,uvarsNeg) argVars)
+    let constrSigArgs = TST.zonk TST.SkolemRep skolemSubst xtorSigUpper'.sig_args 
+    let (pairsPos,pairsNeg) = TST.getDeclReplacements xtorSigUpper'.sig_args substTypes 
+    substTypes' <- forM substTypes (\ty -> do 
+      let replacedPos = foldr (\(tyPos,sk) -> TST.replType PosRep sk tyPos) ty pairsPos
+      let replacedNeg = foldr (\(tyNeg,sk) -> TST.replType NegRep sk tyNeg) replacedPos pairsNeg
+      return replacedNeg)
+    forM_ pairsPos (\(ty,sk) -> 
+      case elemIndex sk argVars of 
+        Nothing -> return ()
+        Just i -> do
+          let uvars = varTyToTy (uvarsPos !! i,uvarsNeg !! i)
+          addConstraint $ SubType cstrInfo ty (snd uvars))
+    forM_ pairsNeg (\(ty,sk) -> 
+      case elemIndex sk argVars of 
+        Nothing -> return ()
+        Just i -> do
+          let uvars = varTyToTy (uvarsPos !! i,uvarsNeg !! i)
+          addConstraint $ SubType cstrInfo (fst uvars) ty)
+    trace ("substTypes " <> ppPrintString substTypes <> 
+           "\n xtorsig "<> ppPrintString xtorSigUpper' <> 
+           "\n replaced " <> ppPrintString substTypes'<> 
+           "\n replacement " <> concatMap (\(ty,sk) -> ppPrintString ty <> " -> " <> show sk) pairsPos <> 
+           "\n" <> concatMap (\(ty,sk) -> ppPrintString ty <> " -> " <> show sk) pairsNeg) $ pure ()
+    genConstraintsCtxts substTypes' constrSigArgs cstrInfo
     let newXtorSig = [TST.MkXtorSig xt substTypes']
     case rep of 
       PrdRep -> do 
@@ -176,18 +199,18 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
         let ty = getAppTy NegRep pk.returnKind decl.data_name (uvarsPos,uvarsNeg) refTy
         return $ TST.Xtor loc annot rep ty RST.Refinement xt substInferred
     where 
-      replaceArgs :: TST.PrdCnsType pol -> ([TST.VariantType Pos],[TST.VariantType Neg]) -> [SkolemTVar] -> GenM (TST.PrdCnsType pol)
-      replaceArgs substType (argsPos,argsNeg) argVars = do 
-        let newArgs = varTyToTy <$> zip argsPos argsNeg
-        case substType of 
-          TST.PrdCnsType PrdRep ty -> do
-            let posReplaced = foldr (\(arg,sk) -> TST.replType PosRep sk arg) ty (zip (fst <$> newArgs) argVars)
-            let negReplaced = foldr (\(arg,sk) -> TST.replType NegRep sk arg) posReplaced (zip (snd <$> newArgs) argVars)
-            pure $ TST.PrdCnsType PrdRep negReplaced
-          TST.PrdCnsType CnsRep ty -> do
-            let posReplaced = foldr (\(arg,sk) -> TST.replType PosRep sk arg) ty (zip (fst <$> newArgs) argVars)
-            let negReplaced = foldr (\(arg,sk) -> TST.replType NegRep sk arg) posReplaced (zip (snd <$> newArgs) argVars)
-            pure $ TST.PrdCnsType CnsRep negReplaced 
+--      replaceArgs :: TST.PrdCnsType pol -> TST.PrdCnsType pol -> ([TST.VariantType Pos],[TST.VariantType Neg]) -> [SkolemTVar] -> GenM (TST.PrdCnsType pol)
+--      replaceArgs substType xtorType (argsPos,argsNeg) argVars = do 
+--        let newArgs = varTyToTy <$> zip argsPos argsNeg
+--        case substType of 
+--          TST.PrdCnsType PrdRep ty -> do
+--            let posReplaced = foldr (\(arg,sk) -> TST.replType PosRep sk arg) ty (zip (fst <$> newArgs) argVars)
+--            let negReplaced = foldr (\(arg,sk) -> TST.replType NegRep sk arg) posReplaced (zip (snd <$> newArgs) argVars)
+--            pure $ TST.PrdCnsType PrdRep negReplaced
+--          TST.PrdCnsType CnsRep ty -> do
+--            let posReplaced = foldr (\(arg,sk) -> TST.replType PosRep sk arg) ty (zip (fst <$> newArgs) argVars)
+--            let negReplaced = foldr (\(arg,sk) -> TST.replType NegRep sk arg) posReplaced (zip (snd <$> newArgs) argVars)
+--            pure $ TST.PrdCnsType CnsRep negReplaced 
 
       varTyToTy :: (TST.VariantType Pos, TST.VariantType Neg) -> (TST.Typ Pos,TST.Typ Neg)
       varTyToTy (TST.CovariantType tyPos, TST.CovariantType tyNeg) = (tyPos,tyNeg)
@@ -297,11 +320,11 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- and greatest type translation.
 
                         xtor <- lookupXtorSig loc xt PosRep 
-                        xtor' <- freshSkolemsXtor xtor 
+                        xtor' <- freshSkolemsXtor xtor skolemSubst
                         xtorLower <- lookupXtorSigLower loc xt
-                        xtorLower' <- freshSkolemsXtor xtorLower
+                        xtorLower' <- freshSkolemsXtor xtorLower skolemSubst
                         xtorUpper <- lookupXtorSigUpper loc xt 
-                        xtorUpper' <- freshSkolemsXtor xtorUpper
+                        xtorUpper' <- freshSkolemsXtor xtorUpper skolemSubst
 
                         case argVars of 
                           [] -> do 

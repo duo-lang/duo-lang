@@ -4,6 +4,7 @@ import Data.Set qualified as S
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.List.NonEmpty (NonEmpty)
+import Data.List.NonEmpty qualified as NE (toList) 
 import Data.Maybe (fromMaybe)
 import Data.Kind ( Type )
 import Syntax.RST.Types (Polarity(..), PolarityRep(..), FlipPol ,PrdCnsFlip)
@@ -673,3 +674,59 @@ instance ReplType (PrdCnsType pol) where
 instance ReplType (VariantType pol) where 
   replType rep ty sk (CovariantType ty') = CovariantType (replType rep ty sk ty')
   replType rep ty sk (ContravariantType ty') = ContravariantType (replType rep ty sk ty')
+
+-- this class is used for refinement xtors 
+-- the first argument is the type in the declaration and the second is the inferred type 
+-- we have to replace the types inside the inferred xtor with skolem variables for type arguments 
+-- to do this we check where the skolems are in the declaration and return the corresponding inferred type
+class GetDeclReplacements (a::Type) (b::Type) where 
+  getDeclReplacements :: a -> b -> ([(Typ Pos, SkolemTVar)], [(Typ Neg,SkolemTVar)])
+
+instance GetDeclReplacements (Typ pol1) (Typ pol2) where 
+ getDeclReplacements (TySkolemVar _ _ _ sk) ty =  case getPolarity ty of PosRep -> ([(ty,sk)],[]); NegRep -> ([],[(ty,sk)])
+ getDeclReplacements (TyData _ _ _ xtors) (TyData _ _ _ xtors') = do 
+   let repls = uncurry getDeclReplacements <$> zip xtors' xtors
+   (concatMap fst repls, concatMap snd repls)
+ getDeclReplacements (TyCodata _ _ _ xtors) (TyCodata _ _ _ xtors')  = do 
+   let repls = uncurry getDeclReplacements <$> zip  xtors' xtors
+   (concatMap fst repls, concatMap snd repls)
+ getDeclReplacements (TyDataRefined _ _ _ _ _ xtors) (TyDataRefined _ _ _ _ _ xtors') = do 
+   let repls = uncurry getDeclReplacements <$> zip xtors' xtors
+   (concatMap fst repls, concatMap snd repls)
+ getDeclReplacements (TyCodataRefined _ _ _ _ _ xtors) (TyCodataRefined _ _ _ _ _ xtors') = do 
+   let repls = uncurry getDeclReplacements <$> zip xtors' xtors
+   (concatMap fst repls, concatMap snd repls)
+ getDeclReplacements (TyApp _ _ _ ty _ args) (TyApp _ _ _ ty' _ args') = do 
+   let (replPos,replNeg) = getDeclReplacements ty' ty 
+   let repls = uncurry getDeclReplacements <$> zip (NE.toList args) (NE.toList args')
+   (replPos ++ concatMap fst repls, replNeg ++ concatMap snd repls)
+ getDeclReplacements (TySyn _ _ _ ty) (TySyn _ _ _ ty') = getDeclReplacements ty' ty
+ getDeclReplacements (TyUnion _ _ ty1 ty2) (TyUnion _ _ ty1' ty2') = do 
+   let (repl1Pos,repl1Neg) = getDeclReplacements ty1' ty1
+   let (repl2Pos,repl2Neg) = getDeclReplacements ty2' ty2
+   (repl1Pos ++ repl2Pos, repl1Neg++repl2Neg)
+ getDeclReplacements (TyInter _ _ ty1 ty2) (TyInter _ _ ty1' ty2') = do 
+   let (repl1Pos,repl1Neg) = getDeclReplacements ty1' ty1 
+   let (repl2Pos,repl2Neg) = getDeclReplacements ty2' ty2
+   (repl1Pos ++ repl2Pos, repl1Neg ++ repl2Neg) 
+ getDeclReplacements (TyRec _ _ _  ty) (TyRec _ _ _ ty') = getDeclReplacements ty' ty
+ getDeclReplacements (TyFlipPol _ ty) (TyFlipPol _ ty') =  getDeclReplacements ty' ty
+ getDeclReplacements _ _ = ([],[])
+
+instance GetDeclReplacements (XtorSig pol1) (XtorSig pol2) where 
+  getDeclReplacements (MkXtorSig _ args1) (MkXtorSig _ args2) = getDeclReplacements args1 args2
+
+instance GetDeclReplacements (LinearContext pol1) (LinearContext pol2) where 
+  getDeclReplacements ctxt1 ctxt2 = do 
+    let repls = uncurry getDeclReplacements <$> zip ctxt1 ctxt2
+    (concatMap fst repls, concatMap snd repls)
+
+instance GetDeclReplacements (PrdCnsType pol1) (PrdCnsType pol2) where 
+  getDeclReplacements (PrdCnsType PrdRep ty) (PrdCnsType PrdRep ty') = getDeclReplacements ty ty'
+  getDeclReplacements (PrdCnsType CnsRep ty) (PrdCnsType CnsRep ty') = getDeclReplacements ty ty'
+  getDeclReplacements _ _ = error "impossible"
+
+instance GetDeclReplacements (VariantType pol1) (VariantType pol2) where 
+  getDeclReplacements (CovariantType ty) (CovariantType ty') = getDeclReplacements ty ty'
+  getDeclReplacements (ContravariantType ty) (ContravariantType ty') = getDeclReplacements ty ty'
+  getDeclReplacements _ _ = error "impossible"

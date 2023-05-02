@@ -145,10 +145,11 @@ freshSkolems pk = do
   let bisubst = TST.MkBisubstitution $ M.fromList (snd <$> skolems)
   return (fst <$> skolems,bisubst)
 
-freshSkolemsXtor :: TST.XtorSig pol -> GenM (TST.XtorSig pol)
-freshSkolemsXtor xtor = do 
-  newCtxt <- forM xtor.sig_args f 
-  return (TST.MkXtorSig xtor.sig_name newCtxt)
+freshSkolemsXtor :: TST.XtorSig pol -> TST.Bisubstitution TST.SkolemVT -> GenM (TST.XtorSig pol)
+freshSkolemsXtor xtor bisubst = do 
+  let xtor' = TST.zonk TST.SkolemRep bisubst xtor
+  newCtxt <- forM xtor'.sig_args f 
+  return (TST.MkXtorSig xtor'.sig_name newCtxt)
   where 
     f :: TST.PrdCnsType pol -> GenM (TST.PrdCnsType pol)
     f (TST.PrdCnsType PrdRep ty) = do 
@@ -166,7 +167,7 @@ freshSkolemsXtor xtor = do
       let xtorNms = (\x -> x.sig_name) <$> xtors
       let ctxtsRepl = TST.zonk TST.SkolemRep bisubst <$> ctxts 
       let newXtors = uncurry TST.MkXtorSig <$> zip xtorNms ctxtsRepl
-      xtors' <- forM newXtors freshSkolemsXtor 
+      xtors' <- forM newXtors (`freshSkolemsXtor` bisubst) 
       return $ TST.TyDataRefined loc pol newPk skolems tyn xtors'
     g (TST.TyCodataRefined loc pol pk argVars tyn xtors) = do
       let newKindArgs = (\((var,_,mk),sk) -> (var,sk,mk)) <$> zip pk.kindArgs argVars
@@ -176,13 +177,13 @@ freshSkolemsXtor xtor = do
       let xtorNms = (\x -> x.sig_name) <$> xtors
       let ctxtsRepl = TST.zonk TST.SkolemRep bisubst <$> ctxts
       let newXtors = uncurry TST.MkXtorSig <$> zip xtorNms ctxtsRepl
-      xtors' <- forM newXtors freshSkolemsXtor
+      xtors' <- forM newXtors (`freshSkolemsXtor` bisubst)
       return $ TST.TyCodataRefined loc pol newPk skolems tyn xtors'
     g (TST.TyData loc pol eo xtors) = do
-      xtors' <- forM xtors freshSkolemsXtor
+      xtors' <- forM xtors (`freshSkolemsXtor` bisubst)
       return $ TST.TyData loc pol eo xtors'
     g (TST.TyCodata loc pol eo xtors) = do
-      xtors' <- forM xtors freshSkolemsXtor
+      xtors' <- forM xtors (`freshSkolemsXtor` bisubst)
       return $ TST.TyCodata loc pol eo xtors'
     g (TST.TyApp loc pol eo ty tyn args) = do 
       ty' <- g ty 
