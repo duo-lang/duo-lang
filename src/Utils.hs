@@ -15,7 +15,9 @@ module Utils
   , moduleNameToFullPath
   , listRecursiveDuoFiles
   , isModuleFile
-  , sequenceMap) where
+  , sequenceMap
+  , distribute3
+  , distribute2) where
 
 import Data.Char (isSpace)
 import Data.Foldable (foldl')
@@ -133,3 +135,9 @@ analyzeDuoFilepath :: FilePath -> ([FilePath], String)
 analyzeDuoFilepath fp =
   case splitFileName fp of
     (path, file) -> (splitDirectories path, dropExtension file)
+
+distribute2 :: [(a,b)] -> ([a],[b])
+distribute2 = foldr (\(a,b) (as,bs) -> (a:as,b:bs)) ([],[])
+
+distribute3 :: [(a,b,c)] -> ([a],[b],[c])
+distribute3 = foldr (\(a,b,c) (as,bs,cs) -> (a:as,b:bs,c:cs)) ([],[],[])

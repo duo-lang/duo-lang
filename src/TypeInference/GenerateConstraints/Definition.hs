@@ -60,7 +60,7 @@ import Syntax.TST.Program as TST
 import Syntax.LocallyNameless (Index)
 import TypeInference.Constraints
 import Loc ( Loc, defaultLoc )
-import Utils ( indexMaybe, enumerate )
+import Utils ( indexMaybe, enumerate, distribute3 )
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -152,69 +152,53 @@ freshSkolemsXtor xtor bisubst = do
   return (TST.MkXtorSig xtor'.sig_name newCtxt)
   where 
     f :: TST.PrdCnsType pol -> GenM (TST.PrdCnsType pol)
-    f (TST.PrdCnsType PrdRep ty) = do 
-      ty' <- g ty 
-      return (TST.PrdCnsType PrdRep ty')
-    f (TST.PrdCnsType CnsRep ty) = do
-      ty' <- g ty
-      return (TST.PrdCnsType CnsRep ty')
+    f (TST.PrdCnsType PrdRep ty) = TST.PrdCnsType PrdRep <$> g ty
+    f (TST.PrdCnsType CnsRep ty) = TST.PrdCnsType CnsRep <$> g ty
+
     g :: TST.Typ pol -> GenM (TST.Typ pol)
     g (TST.TyDataRefined loc pol pk argVars tyn xtors) = do
-      let newKindArgs = (\((var,_,mk),sk) -> (var,sk,mk)) <$> zip pk.kindArgs argVars
+      let newKindArgs = zipWith (\(var,_,mk) sk -> (var,sk,mk)) pk.kindArgs argVars
       let newPk = MkPolyKind newKindArgs pk.returnKind
       (skolems,bisubst) <- freshSkolems newPk
       let ctxts = (\x -> x.sig_args) <$> xtors
       let xtorNms = (\x -> x.sig_name) <$> xtors
       let ctxtsRepl = TST.zonk TST.SkolemRep bisubst <$> ctxts 
-      let newXtors = uncurry TST.MkXtorSig <$> zip xtorNms ctxtsRepl
+      let newXtors = zipWith TST.MkXtorSig xtorNms ctxtsRepl
       xtors' <- forM newXtors (`freshSkolemsXtor` bisubst) 
       return $ TST.TyDataRefined loc pol newPk skolems tyn xtors'
     g (TST.TyCodataRefined loc pol pk argVars tyn xtors) = do
-      let newKindArgs = (\((var,_,mk),sk) -> (var,sk,mk)) <$> zip pk.kindArgs argVars
+      let newKindArgs = zipWith (\(var,_,mk) sk -> (var,sk,mk)) pk.kindArgs argVars
       let newPk = MkPolyKind newKindArgs pk.returnKind
       (skolems,bisubst) <- freshSkolems newPk
       let ctxts = (\x -> x.sig_args) <$> xtors
       let xtorNms = (\x -> x.sig_name) <$> xtors
       let ctxtsRepl = TST.zonk TST.SkolemRep bisubst <$> ctxts
-      let newXtors = uncurry TST.MkXtorSig <$> zip xtorNms ctxtsRepl
+      let newXtors = zipWith TST.MkXtorSig xtorNms ctxtsRepl
       xtors' <- forM newXtors (`freshSkolemsXtor` bisubst)
       return $ TST.TyCodataRefined loc pol newPk skolems tyn xtors'
-    g (TST.TyData loc pol eo xtors) = do
-      xtors' <- forM xtors (`freshSkolemsXtor` bisubst)
-      return $ TST.TyData loc pol eo xtors'
-    g (TST.TyCodata loc pol eo xtors) = do
-      xtors' <- forM xtors (`freshSkolemsXtor` bisubst)
-      return $ TST.TyCodata loc pol eo xtors'
-    g (TST.TyApp loc pol eo ty tyn args) = do 
-      ty' <- g ty 
-      args' <- forM args h
-      return (TST.TyApp loc pol eo ty' tyn args')
-    g (TST.TySyn loc pol tyn ty) = do 
-      ty' <- g ty 
-      return $ TST.TySyn loc pol tyn ty'  
-    g (TST.TyUnion loc knd ty1 ty2) = do 
-      ty1' <- g ty1 
-      ty2' <- g ty2
-      return $ TST.TyUnion loc knd ty1' ty2'
-    g (TST.TyInter loc knd ty1 ty2) = do 
-      ty1' <- g ty1
-      ty2' <- g ty2
-      return $ TST.TyInter loc knd ty1' ty2'
-    g (TST.TyRec loc pol rv ty) = do 
-      ty' <- g ty 
-      return $ TST.TyRec loc pol rv ty'
-    g (TST.TyFlipPol pol ty) = do 
-      ty' <- g ty 
-      return $ TST.TyFlipPol pol ty'
+    g (TST.TyData   loc pol eo xtors) =
+        TST.TyData   loc pol eo <$> mapM (`freshSkolemsXtor` bisubst) xtors
+    g (TST.TyCodata loc pol eo xtors) =
+        TST.TyCodata loc pol eo <$> mapM (`freshSkolemsXtor` bisubst) xtors
+    g (TST.TyApp loc pol eo ty tyn args) =
+        TST.TyApp loc pol eo <$> g ty <*> pure tyn <*> mapM h args
+    g (TST.TySyn loc pol tyn ty) =
+        TST.TySyn loc pol tyn <$> g ty
+    g (TST.TyUnion loc knd ty1 ty2) =
+        TST.TyUnion loc knd <$> g ty1 <*> g ty2
+    g (TST.TyInter loc knd ty1 ty2) =
+        TST.TyInter loc knd <$> g ty1 <*> g ty2
+    g (TST.TyRec loc pol rv ty) =
+        TST.TyRec loc pol rv <$> g ty
+    g (TST.TyFlipPol pol ty) =
+        TST.TyFlipPol pol <$> g ty
     g ty = return ty 
 
     h :: TST.VariantType pol -> GenM (TST.VariantType pol)
-    h (TST.CovariantType ty) = do 
-      ty' <- g ty 
-      return (TST.CovariantType ty')
-    h (TST.ContravariantType ty) = do 
-      ty' <- g ty 
-      return (TST.ContravariantType ty')
+    h (TST.CovariantType ty) =
+      TST.CovariantType <$> g ty
+    h (TST.ContravariantType ty) =
+      TST.ContravariantType <$> g ty
 
 freshTVar :: UVarProvenance -> Maybe AnyKind -> GenM (TST.Typ Pos, TST.Typ Neg)
 freshTVar uvp Nothing = do
@@ -281,9 +265,8 @@ getTypeArgsRef loc decl skolems =  do
       case var of
         Covariant -> return (TST.CovariantType uvarPos, TST.CovariantType uvarNeg, mapPair)
         Contravariant -> return (TST.ContravariantType uvarNeg, TST.ContravariantType uvarPos,mapPair))
-    let varsPos = (\(x,_,_) -> x) <$> vars
-    let varsNeg = (\(_,x,_) -> x) <$> vars
-    let bisubstMap = M.fromList ( foldr (\(_,_,x) mp -> x:mp) [] vars)
+    let (varsPos,varsNeg,mapPairs) = distribute3 vars
+    let bisubstMap = M.fromList mapPairs
     return (varsPos,varsNeg,TST.MkBisubstitution bisubstMap)
   else 
     throwOtherError loc ["Not enough skolem variables bound in refinement type"] 
