@@ -281,11 +281,11 @@ insertType (TyCodataRefined loc polrep pk argVars mtn xtors) =
 insertType (TySyn _ _ _ ty) = insertType ty
 
 insertType (TyApp _ _ _ ty tyn argTys) = do 
-  args <- mapM insertVariantType argTys
-  let argNodes = fst <$> NE.toList args
+  args <- mapM insertVariantType $ NE.toList argTys
+  let argNodes = fst <$> args
   let extendEnv (LookupEnv tSkolemVars tRecVars _) = LookupEnv tSkolemVars tRecVars argNodes
   tyNodes <-  local extendEnv $ insertType ty 
-  insertEdges (concatMap (\(i,(ns,variance)) -> [(tyNode, n, TypeArgEdge tyn variance i) | tyNode <- tyNodes, n <- ns]) $ enumerate (NE.toList args))
+  insertEdges (concatMap (\(i,(ns,variance)) -> [(tyNode, n, TypeArgEdge tyn variance i) | tyNode <- tyNodes, n <- ns]) $ enumerate args)
   return tyNodes
 
 

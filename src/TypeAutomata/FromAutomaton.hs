@@ -222,23 +222,23 @@ nodeToTypeNoCache rep i  = do
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
             args <- mapM f argNodes 
             let argVars = (\(_,sk,_) -> sk) <$> pk.kindArgs
-            let argPairs = argsToTypes args argVars
+            let (argTysPos, argTysNeg) = argsToTypes args argVars
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Data xt
-              case args of 
+              argTypes <- case args of 
                 [] -> do
-                  argTypes <- argNodesToArgTypes nodes rep rep Nothing
-                  return (MkXtorSig xt.labelName argTypes)
+                  argNodesToArgTypes nodes rep rep Nothing
                 (args1:argsRst) -> do
                   argTypes <- argNodesToArgTypes nodes rep rep (Just (tn,args1:|argsRst))
-                  argTypes' <- forM argTypes (\ty -> do 
-                   let replacedPos = foldr (\(arg,sk) -> replType PosRep sk arg) ty (fst argPairs)
-                   let replacedNeg = foldr (\(arg,sk) -> replType NegRep sk arg) replacedPos (snd argPairs)
-                   return replacedNeg) 
-                  return (MkXtorSig xt.labelName argTypes')    
-            case args of 
-              [] -> return $ TyDataRefined defaultLoc rep pk argVars tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk argVars tn sig) tn (arg1:|argRst)
+                  forM argTypes (\ty -> do 
+                    let replacedPos = foldr (\(arg,sk) -> replType PosRep sk arg) ty argTysPos
+                    let replacedNeg = foldr (\(arg,sk) -> replType NegRep sk arg) replacedPos argTysNeg
+                    return replacedNeg) 
+              return (MkXtorSig xt.labelName argTypes)
+            let ty = TyDataRefined defaultLoc rep pk argVars tn sig
+            return $ case args of 
+                        [] -> ty
+                        (arg1:argRst) -> TyApp defaultLoc rep pk.returnKind ty tn (arg1:|argRst)
         -- Creating ref codata types
         refCodatL <- do
           forM refCodatTypes $ \(tn,(xtors,vars)) -> do
@@ -247,23 +247,23 @@ nodeToTypeNoCache rep i  = do
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
             args <- mapM f argNodes 
             let argVars = (\(_,sk,_) -> sk) <$> pk.kindArgs
-            let argPairs = argsToTypes args argVars
+            let (argTysPos, argTysNeg) = argsToTypes args argVars
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Codata xt
-              case args of 
+              argTypes <- case args of 
                 [] -> do 
-                  argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep Nothing
-                  return (MkXtorSig xt.labelName argTypes)
+                  argNodesToArgTypes nodes (flipPolarityRep rep) rep Nothing
                 (args1:argsRst) -> do 
                   argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep (Just (tn, args1:|argsRst))
-                  argTypes' <- forM argTypes (\ty -> do 
-                   let replacedPos = foldr (\(arg,sk) -> replType PosRep sk arg) ty (fst argPairs)
-                   let replacedNeg = foldr (\(arg,sk) -> replType NegRep sk arg) replacedPos (snd argPairs)
-                   return replacedNeg) 
-                  return (MkXtorSig xt.labelName argTypes')
-            case args of
-              [] -> return $ TyCodataRefined defaultLoc rep pk argVars tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk argVars tn sig) tn (arg1:|argRst)
+                  forM argTypes (\ty -> do 
+                    let replacedPos = foldr (\(arg,sk) -> replType PosRep sk arg) ty argTysPos
+                    let replacedNeg = foldr (\(arg,sk) -> replType NegRep sk arg) replacedPos argTysNeg
+                    return replacedNeg) 
+              return (MkXtorSig xt.labelName argTypes)
+            let ty = TyCodataRefined defaultLoc rep pk argVars tn sig
+            return $ case args of
+                        [] -> ty
+                        (arg1:argRst) -> TyApp defaultLoc rep pk.returnKind ty tn (arg1:|argRst)
         -- Creating Nominal types
         nominals <- do
             forM (S.toList tns) $ \(tn, variances) -> do
