@@ -28,9 +28,6 @@ codata CoBool {
     IfThenElse(return Nat)
 };
 
-
-
-
 def prd true : (CoBool:CBN) := cocase {IfThenElse(k) => Z >> k};
 def prd false : CoBool := cocase {IfThenElse(*) => S(Z)};
 
