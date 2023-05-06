@@ -221,6 +221,7 @@ nodeToTypeNoCache rep i  = do
             let f (node, Covariant) = CovariantType <$> nodeToType rep node Nothing
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
             args <- mapM f argNodes 
+            -- create new skolems bound by the refinement type
             let argVars = (\(_,sk,_) -> sk) <$> pk.kindArgs
             let (argTysPos, argTysNeg) = argsToTypes args argVars
             sig <- forM (S.toList xtors) $ \xt -> do
@@ -230,6 +231,8 @@ nodeToTypeNoCache rep i  = do
                   argNodesToArgTypes nodes rep rep Nothing
                 (args1:argsRst) -> do
                   argTypes <- argNodesToArgTypes nodes rep rep (Just (tn,args1:|argsRst))
+                  -- for each type argument, replace with by the corresponding skolem variable when it appears inside the refinement type
+                  -- the actual arguments are then only placed inside the type application
                   forM argTypes (\ty -> do 
                     let replacedPos = foldr (\(arg,sk) -> replType PosRep sk arg) ty argTysPos
                     let replacedNeg = foldr (\(arg,sk) -> replType NegRep sk arg) replacedPos argTysNeg
@@ -246,6 +249,7 @@ nodeToTypeNoCache rep i  = do
             let f (node, Covariant) = CovariantType <$> nodeToType rep node Nothing 
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
             args <- mapM f argNodes 
+            -- create new skolems bound by the refinement type
             let argVars = (\(_,sk,_) -> sk) <$> pk.kindArgs
             let (argTysPos, argTysNeg) = argsToTypes args argVars
             sig <- forM (S.toList xtors) $ \xt -> do
@@ -255,6 +259,8 @@ nodeToTypeNoCache rep i  = do
                   argNodesToArgTypes nodes (flipPolarityRep rep) rep Nothing
                 (args1:argsRst) -> do 
                   argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep (Just (tn, args1:|argsRst))
+                  -- for each type argument, replace with by the corresponding skolem variable when it appears inside the refinement type
+                  -- the actual arguments are then only placed inside the type application
                   forM argTypes (\ty -> do 
                     let replacedPos = foldr (\(arg,sk) -> replType PosRep sk arg) ty argTysPos
                     let replacedNeg = foldr (\(arg,sk) -> replType NegRep sk arg) replacedPos argTysNeg

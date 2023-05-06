@@ -160,12 +160,15 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     let pk = decl.data_kind
     (argVars,skolemSubst) <- freshSkolems pk
     xtorSigUpper <- lookupXtorSigUpper loc xt
+    -- replace skolem variables in the looked up xtor with the newly generated ones 
     let xtorSigUpper' = TST.zonk TST.SkolemRep skolemSubst xtorSigUpper 
     (uvarsPos,uvarsNeg,_) <- getTypeArgsRef loc decl argVars
     let uvars = (uvarsPos, uvarsNeg)
     -- Then we generate constraints between the inferred types of the substitution
     substTypes' <- forM (zip substTypes xtorSigUpper'.sig_args) (\(ty,declTy) -> do
+      -- get the types in the substTypes corresponding to the argument skolems 
       let (pairsPos,pairsNeg) = TST.getDeclReplacements declTy ty
+      -- replace these types with skolems and generate constraints for the actual argument types
       forM_ pairsPos (addReplConstr PosRep argVars uvars)
       forM_ pairsNeg (addReplConstr NegRep argVars uvars)
       let replacedPos = foldr (\(tyPos,sk) -> TST.replType PosRep sk tyPos) ty          pairsPos
@@ -300,7 +303,8 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- Then we generate constraints between the inferred types of the substitution
                         -- For the type, we return the unification variables which are now bounded by the least
                         -- and greatest type translation.
-
+                        
+                        -- for all xtors we need, replace the skolems from the declaration with the generated ones 
                         xtor <- lookupXtorSig loc xt PosRep
                         let xtor' = TST.zonk TST.SkolemRep skolemSubst xtor
                         xtorLower <- lookupXtorSigLower loc xt

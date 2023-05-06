@@ -252,6 +252,8 @@ instance FreeTVars (Typ pol) where
   freeTVars (TySyn _ _ _ ty)                   = freeTVars ty
   freeTVars (TyData _  _ _ xtors)              = S.unions (freeTVars <$> xtors)
   freeTVars (TyCodata _ _ _ xtors)             = S.unions (freeTVars <$> xtors)
+  -- for refinement types, the variables bound for the type arguments are not free 
+  -- i.e. for <List(a) | r | Nil,Cons(a,r(a))>(b), b is free, but a is bound by List so is not free
   freeTVars (TyDataRefined _ _ _ argVars _ xtors)    = do 
     let freeVars = S.unions (freeTVars <$> xtors)
     let f (sk,_) = sk `notElem` argVars
@@ -285,6 +287,9 @@ generalize ty = do
   let freeVars = S.toList $ freeTVars ty
   TypeScheme defaultLoc (filterVars freeVars)  ty
   where 
+    -- skolem variables bound by a typescheme only have polykinds, so all with primitive kinds are removed 
+    -- skolems with primitive kinds can only appear as variables bound for refinement types 
+    -- these will never be in the list of freevars so this will never remove any variables
     filterVars :: [(SkolemTVar, AnyKind)] -> [(SkolemTVar, PolyKind)]
     filterVars [] = []
     filterVars ((sk,MkPknd pk):rst) = (sk,pk) : filterVars rst
@@ -329,10 +334,10 @@ instance Zonk (Typ pol) where
   zonk RecRep _ ty@TyUniVar{} = ty
   zonk UniRep bisubst ty@TySkolemVar{} = zonkKind (snd bisubst.bisubst_map) ty
   zonk SkolemRep bisubst ty@(TySkolemVar _ PosRep _ tv) = case M.lookup tv bisubst.bisubst_map of
-     Nothing -> ty -- Recursive variable!
+     Nothing -> ty
      Just (tyPos,_) -> tyPos
   zonk SkolemRep bisubst ty@(TySkolemVar _ NegRep _ tv) = case M.lookup tv bisubst.bisubst_map of
-     Nothing -> ty -- Recursive variable!
+     Nothing -> ty 
      Just (_,tyNeg) -> tyNeg
   zonk RecRep _ ty@TySkolemVar{} = ty
   zonk UniRep bisubst ty@TyRecVar{} = zonkKind (snd bisubst.bisubst_map) ty
@@ -356,6 +361,8 @@ instance Zonk (Typ pol) where
   zonk UniRep bisubst (TyDataRefined loc rep pk argVars tn xtors) =
      let knd = zonkKind (snd bisubst.bisubst_map)  pk in
      TyDataRefined loc rep knd argVars tn (zonk UniRep bisubst <$> xtors)
+  -- when zonking skolems in refinement types, ignore the bound variables
+  -- by definition of the refinement types these bound variables should never be removed
   zonk SkolemRep bisubst (TyDataRefined loc rep pk argVars tn xtors) = do
      let bisubstNew = MkBisubstitution $ foldr M.delete bisubst.bisubst_map argVars
      TyDataRefined loc rep pk argVars tn (zonk SkolemRep bisubstNew <$> xtors)

@@ -4,11 +4,13 @@ module TypeInference.GenerateConstraints.Definition
   , GenerateReader(..)
   , GenConstraints(..)
   , runGenM
-    -- Generating fresh unification variables
+  -- generate fresh skolem variables for polykinded refinement types
   , freshSkolems
+  -- Generating fresh unification variables
   , freshTVar
   , freshTVars
   , freshTVarsForTypeParams
+  -- also greates unification variables for type arguments, but specific to refinement types
   , getTypeArgsRef
   , paramsMap
   , createMethodSubst
@@ -131,6 +133,8 @@ class GenConstraints a b | a -> b where
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
 
+-- these are used to make sure refinement types have unique bound variables
+-- otherwise they will just use the ones defined in the declaration and there will be shadowing
 freshSkolems :: PolyKind -> GenM ([SkolemTVar], TST.Bisubstitution TST.SkolemVT)
 freshSkolems pk = do 
   skVarC <- gets (\x -> x.skVarCount)
@@ -198,7 +202,8 @@ freshTVarsForTypeParams rep decl = do
       (Contravariant, PosRep) -> pure (TST.ContravariantType tyNeg : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, NegRep) -> pure (TST.ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
--- these functins are specific to refinement types as they require handling type arguments differently
+-- like freshTVarsForTypeParams, but for refinement types
+-- also creates a bisubstitution replacing the bound skolem vars of a refinement type with the unification variables
 getTypeArgsRef :: Loc -> TST.DataDecl -> [SkolemTVar] -> GenM ([TST.VariantType Pos], [TST.VariantType Neg],TST.Bisubstitution TST.SkolemVT)
 getTypeArgsRef loc decl skolems =  do 
   let kndArgs = decl.data_kind.kindArgs

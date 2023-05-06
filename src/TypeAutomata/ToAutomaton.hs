@@ -38,6 +38,8 @@ import Utils ( enumerate )
 --
 -- Skolem variables exist both positively and negatively. They are therefore
 -- mapped to a pair `(n,m)`
+--
+-- tTyArgs are used for type applications to save type arguments for refinement types
 data LookupEnv = LookupEnv { tSkolemVarEnv :: Map SkolemTVar ([Node],[Node]) , tRecVarEnv :: Map RecTVar (Maybe Node, Maybe Node), tTyArgs :: [[Node]]}
 
 type TTA a = StateT TypeAutCore (ReaderT LookupEnv (Except (NonEmpty Error))) a
@@ -253,8 +255,11 @@ insertType (TyDataRefined loc polrep pk argVars mtn xtors)   =
     [] -> pure <$> insertXtors CST.Data pol (Just mtn) pk xtors
   --the case where we have type arguments 
     _ -> do
+      -- when this is a polykinded type, the type arguments will be previously inserted by a TyApp
       tyArgs <- asks (\x -> x.tTyArgs)
       if length argVars == length tyArgs then do
+        -- to insert the skolems, we add the nodes created for the type arguments to the bound skolems
+        -- when the skolem appears within some xtor, the node for the argument will be used 
         let newSkolems = zip argVars ((\x -> (x,x)) <$> tyArgs)
         let f (LookupEnv tSkolems tRecs tTyArgs) = LookupEnv (M.fromList (M.toList tSkolems++newSkolems)) tRecs tTyArgs
         xtorNd <- local f $ insertXtors CST.Data pol (Just mtn) pk xtors
@@ -269,8 +274,11 @@ insertType (TyCodataRefined loc polrep pk argVars mtn xtors) =
     [] -> pure <$> insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) pk xtors
     -- the case with type arguments 
     _ -> do 
+      -- when this is a polykinded type, the type arguments will be previously inserted by a TyApp
       tyArgs <- asks (\x->x.tTyArgs)
       if length argVars == length tyArgs then do 
+        -- to insert the skolems, we add the nodes created for the type arguments to the bound skolems
+        -- when the skolem appears within some xtor, the node for the argument will be used 
         let newSkolems = zip argVars ((\x -> (x, x)) <$> tyArgs)
         let f (LookupEnv tSkolems tRecs tTyArgs) = LookupEnv (M.fromList (M.toList tSkolems ++ newSkolems)) tRecs tTyArgs
         xtorNd <- local f $ insertXtors CST.Codata pol (Just mtn) pk xtors
@@ -283,6 +291,8 @@ insertType (TySyn _ _ _ ty) = insertType ty
 insertType (TyApp _ _ _ ty tyn argTys) = do 
   args <- mapM insertVariantType $ NE.toList argTys
   let argNodes = fst <$> args
+  -- insert the nodes for the type arguments into the environment 
+  -- when these types are applied to a refinement type these will be used for the bound skolems
   let extendEnv (LookupEnv tSkolemVars tRecVars _) = LookupEnv tSkolemVars tRecVars argNodes
   tyNodes <-  local extendEnv $ insertType ty 
   insertEdges (concatMap (\(i,(ns,variance)) -> [(tyNode, n, TypeArgEdge tyn variance i) | tyNode <- tyNodes, n <- ns]) $ enumerate args)
