@@ -6,7 +6,6 @@ module TypeInference.GenerateConstraints.Definition
   , runGenM
     -- Generating fresh unification variables
   , freshSkolems
-  , freshSkolemsXtor
   , freshTVar
   , freshTVars
   , freshTVarsForTypeParams
@@ -144,61 +143,6 @@ freshSkolems pk = do
   modify (\gs -> gs {skVarCount = skVarC + length pk.kindArgs}) 
   let bisubst = TST.MkBisubstitution $ M.fromList (snd <$> skolems)
   return (fst <$> skolems,bisubst)
-
-freshSkolemsXtor :: TST.XtorSig pol -> TST.Bisubstitution TST.SkolemVT -> GenM (TST.XtorSig pol)
-freshSkolemsXtor xtor bisubst = do 
-  let xtor' = TST.zonk TST.SkolemRep bisubst xtor
-  newCtxt <- forM xtor'.sig_args f 
-  return (TST.MkXtorSig xtor'.sig_name newCtxt)
-  where 
-    f :: TST.PrdCnsType pol -> GenM (TST.PrdCnsType pol)
-    f (TST.PrdCnsType PrdRep ty) = TST.PrdCnsType PrdRep <$> g ty
-    f (TST.PrdCnsType CnsRep ty) = TST.PrdCnsType CnsRep <$> g ty
-
-    g :: TST.Typ pol -> GenM (TST.Typ pol)
-    g (TST.TyDataRefined loc pol pk argVars tyn xtors) = do
-      let newKindArgs = zipWith (\(var,_,mk) sk -> (var,sk,mk)) pk.kindArgs argVars
-      let newPk = MkPolyKind newKindArgs pk.returnKind
-      (skolems,bisubst) <- freshSkolems newPk
-      let ctxts = (\x -> x.sig_args) <$> xtors
-      let xtorNms = (\x -> x.sig_name) <$> xtors
-      let ctxtsRepl = TST.zonk TST.SkolemRep bisubst <$> ctxts 
-      let newXtors = zipWith TST.MkXtorSig xtorNms ctxtsRepl
-      xtors' <- forM newXtors (`freshSkolemsXtor` bisubst) 
-      return $ TST.TyDataRefined loc pol newPk skolems tyn xtors'
-    g (TST.TyCodataRefined loc pol pk argVars tyn xtors) = do
-      let newKindArgs = zipWith (\(var,_,mk) sk -> (var,sk,mk)) pk.kindArgs argVars
-      let newPk = MkPolyKind newKindArgs pk.returnKind
-      (skolems,bisubst) <- freshSkolems newPk
-      let ctxts = (\x -> x.sig_args) <$> xtors
-      let xtorNms = (\x -> x.sig_name) <$> xtors
-      let ctxtsRepl = TST.zonk TST.SkolemRep bisubst <$> ctxts
-      let newXtors = zipWith TST.MkXtorSig xtorNms ctxtsRepl
-      xtors' <- forM newXtors (`freshSkolemsXtor` bisubst)
-      return $ TST.TyCodataRefined loc pol newPk skolems tyn xtors'
-    g (TST.TyData   loc pol eo xtors) =
-        TST.TyData   loc pol eo <$> mapM (`freshSkolemsXtor` bisubst) xtors
-    g (TST.TyCodata loc pol eo xtors) =
-        TST.TyCodata loc pol eo <$> mapM (`freshSkolemsXtor` bisubst) xtors
-    g (TST.TyApp loc pol eo ty tyn args) =
-        TST.TyApp loc pol eo <$> g ty <*> pure tyn <*> mapM h args
-    g (TST.TySyn loc pol tyn ty) =
-        TST.TySyn loc pol tyn <$> g ty
-    g (TST.TyUnion loc knd ty1 ty2) =
-        TST.TyUnion loc knd <$> g ty1 <*> g ty2
-    g (TST.TyInter loc knd ty1 ty2) =
-        TST.TyInter loc knd <$> g ty1 <*> g ty2
-    g (TST.TyRec loc pol rv ty) =
-        TST.TyRec loc pol rv <$> g ty
-    g (TST.TyFlipPol pol ty) =
-        TST.TyFlipPol pol <$> g ty
-    g ty = return ty 
-
-    h :: TST.VariantType pol -> GenM (TST.VariantType pol)
-    h (TST.CovariantType ty) =
-      TST.CovariantType <$> g ty
-    h (TST.ContravariantType ty) =
-      TST.ContravariantType <$> g ty
 
 freshTVar :: UVarProvenance -> Maybe AnyKind -> GenM (TST.Typ Pos, TST.Typ Neg)
 freshTVar uvp Nothing = do

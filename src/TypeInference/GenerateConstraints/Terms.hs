@@ -160,7 +160,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     let pk = decl.data_kind
     (argVars,skolemSubst) <- freshSkolems pk
     xtorSigUpper <- lookupXtorSigUpper loc xt
-    xtorSigUpper' <- freshSkolemsXtor xtorSigUpper skolemSubst
+    let xtorSigUpper' = TST.zonk TST.SkolemRep skolemSubst xtorSigUpper 
     (uvarsPos,uvarsNeg,_) <- getTypeArgsRef loc decl argVars
     let uvars = (uvarsPos, uvarsNeg)
     -- Then we generate constraints between the inferred types of the substitution
@@ -302,11 +302,11 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
                         -- and greatest type translation.
 
                         xtor <- lookupXtorSig loc xt PosRep
-                        xtor' <- freshSkolemsXtor xtor skolemSubst
+                        let xtor' = TST.zonk TST.SkolemRep skolemSubst xtor
                         xtorLower <- lookupXtorSigLower loc xt
-                        xtorLower' <- freshSkolemsXtor xtorLower skolemSubst
+                        let xtorLower' = TST.zonk TST.SkolemRep skolemSubst xtorLower
                         xtorUpper <- lookupXtorSigUpper loc xt
-                        xtorUpper' <- freshSkolemsXtor xtorUpper skolemSubst
+                        let xtorUpper' = TST.zonk TST.SkolemRep skolemSubst xtorUpper
 
                         (cmdInferred, substTypesNeg) <- case argVars of
                           [] -> do
