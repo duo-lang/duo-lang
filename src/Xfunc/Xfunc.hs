@@ -112,6 +112,60 @@ xFuncDataDecl mod decl@(TST.NominalDecl _ _ _ CST.Codata _ _) = constructNewData
 xFuncDataDecl mod decl@(TST.NominalDecl _ _ _ CST.Data _ _) = constructNewDataDecl (getPrdCns (filterDeclsTST CST.CnsRep mod.mod_decls) decl.data_name) decl
 xFuncDataDecl _ (TST.RefinementDecl loc _ _ _ _ _ _ _ _) = throwXfuncError (XfuncError loc "Cannot xfunc refinement data declaration")
 
+------------------------------------------------------------------------------
+-- transforming constructors/destructors to producers/consumers
+------------------------------------------------------------------------------
+-- lifting module to RST
+-- create prd/cns
+-- collect terms
+liftModule :: TST.Module -> RST.Module
+liftModule mod = embedCore (embedTST mod)
+
+
+filterModule :: TST.Module -> TST.DataDecl -> XfuncM TST.Module
+filterModule mod datadecl@(TST.NominalDecl _ _ _ CST.Codata _ _) = pure $ TST.MkModule { mod_name = mod.mod_name,
+                                                                                  mod_libpath = mod.mod_libpath,
+                                                                                  mod_decls = TST.DataDecl datadecl : (TST.PrdCnsDecl CST.PrdRep <$> getPrdCns (filterDeclsTST CST.PrdRep mod.mod_decls) datadecl.data_name)}
+filterModule mod datadecl@(TST.NominalDecl _ _ _ CST.Data _ _) = pure $ TST.MkModule { mod_name = mod.mod_name,
+                                                                                  mod_libpath = mod.mod_libpath,
+                                                                                  mod_decls = TST.DataDecl datadecl : (TST.PrdCnsDecl CST.CnsRep <$> getPrdCns (filterDeclsTST CST.CnsRep mod.mod_decls) datadecl.data_name)}
+filterModule _ (TST.RefinementDecl loc _ _ _ _ _ _ _ _) = throwXfuncError (XfuncError loc "Cannot xfunc refinement data declaration")
+
+
+filterDeclsRST ::  CST.PrdCnsRep pc -> [RST.Declaration] -> [RST.PrdCnsDeclaration pc]
+filterDeclsRST CST.PrdRep ((RST.PrdCnsDecl CST.PrdRep decl):rest)  = decl : filterDeclsRST CST.PrdRep rest
+filterDeclsRST CST.CnsRep ((RST.PrdCnsDecl CST.CnsRep decl):rest)  = decl : filterDeclsRST CST.CnsRep rest
+filterDeclsRST pc (_:rest) = filterDeclsRST pc rest
+filterDeclsRST _ [] = []
+
+
+createTermCns :: RST.Term CST.Cns
+createTermCns = undefined
+
+createTermPrd :: RST.Term CST.Prd
+createTermPrd = undefined
+
+constructCnsDecl :: RST.DataDecl -> XfuncM (RST.PrdCnsDeclaration CST.Cns)
+constructCnsDecl datadecl@(RST.NominalDecl _ _ name CST.Codata _ _) = pure $ RST.MkPrdCnsDeclaration{ pcdecl_loc = Loc.defaultLoc,
+                                                                                      pcdecl_doc = datadecl.data_doc,
+                                                                                      pcdecl_pc = CST.CnsRep,
+                                                                                      pcdecl_isRec = CST.NonRecursive,
+                                                                                      pcdecl_name = CST.MkFreeVarName (lowerFirstLetter (name.rnTnName.unTypeName)) ,
+                                                                                      pcdecl_annot = Nothing,
+                                                                                      pcdecl_term = createTermCns}
+constructCnsDecl (RST.NominalDecl loc _ _ _ _ _)  = throwXfuncError (XfuncError loc "should not occur")
+constructCnsDecl (RST.RefinementDecl loc _ _ _ _ _)  = throwXfuncError (XfuncError loc "Cannot xfunc refinement data declaration")   
+
+constructPrdDecl :: RST.DataDecl -> XfuncM (RST.PrdCnsDeclaration CST.Prd)                                                                                   
+constructPrdDecl datadecl@(RST.NominalDecl _ _ name CST.Data _ _) = pure $ RST.MkPrdCnsDeclaration{ pcdecl_loc = Loc.defaultLoc,
+                                                                                      pcdecl_doc = datadecl.data_doc,
+                                                                                      pcdecl_pc = CST.PrdRep,
+                                                                                      pcdecl_isRec = CST.NonRecursive,
+                                                                                      pcdecl_name = CST.MkFreeVarName (lowerFirstLetter (name.rnTnName.unTypeName)) ,
+                                                                                      pcdecl_annot = Nothing,
+                                                                                      pcdecl_term = createTermPrd}   
+constructPrdDecl (RST.NominalDecl loc _ _ _ _ _)  = throwXfuncError (XfuncError loc "should not occur")
+constructPrdDecl (RST.RefinementDecl loc _ _ _ _ _ ) = throwXfuncError (XfuncError loc "Cannot xfunc refinement data declaration")                                                                                                                                                                       
 
 
 ------------------------------------------------------------------------------
