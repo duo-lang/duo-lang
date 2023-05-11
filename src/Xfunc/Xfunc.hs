@@ -114,10 +114,12 @@ xFuncDataDecl _ (TST.RefinementDecl loc _ _ _ _ _ _ _ _) = throwXfuncError (Xfun
 
 ------------------------------------------------------------------------------
 -- transforming constructors/destructors to producers/consumers
+-- WORK IN PROGRESS: this part includes some attempts that might not work
 ------------------------------------------------------------------------------
 -- lifting module to RST
--- create prd/cns
 -- collect terms
+-- create prd/cns
+
 liftModule :: TST.Module -> RST.Module
 liftModule mod = embedCore (embedTST mod)
 
@@ -138,6 +140,24 @@ filterDeclsRST CST.CnsRep ((RST.PrdCnsDecl CST.CnsRep decl):rest)  = decl : filt
 filterDeclsRST pc (_:rest) = filterDeclsRST pc rest
 filterDeclsRST _ [] = []
 
+getCmdCase :: CST.XtorName -> RST.CmdCase -> RST.Command
+getCmdCase name (RST.MkCmdCase loc (RST.XtorPat _ xtor _) cmd) = undefined
+
+getTermCase :: CST.XtorName -> RST.TermCase pc-> RST.Term pc
+getTermCase name (RST.MkTermCase loc (RST.XtorPat _ xtor _) tm) = undefined
+
+getTermCaseI :: CST.XtorName -> RST.TermCaseI pc -> RST.Term pc
+getTermCaseI name (RST.MkTermCaseI loc (RST.XtorPatI _ xtor _) tm) = undefined
+
+getTerm :: CST.XtorName -> RST.PrdCnsDeclaration pc -> (CST.XtorName, Either [RST.Term pc] [RST.Command])
+getTerm xtor (RST.MkPrdCnsDeclaration loc doc pcdecl isRec fvname annot term) = 
+    case term of
+        RST.XCase _ _ _ cases  -> (xtor, Right (getCmdCase xtor <$> cases))
+        RST.CaseOf _ _ _ _ cases -> (xtor, Left (getTermCase xtor <$> cases))
+        RST.CocaseOf _ _ _ _ cases -> (xtor, Left (getTermCase xtor <$> cases))
+        RST.CaseI _ _ _ cases -> undefined 
+        RST.CocaseI _ _ _ cases -> undefined
+        _ -> undefined
 
 createTermCns :: RST.Term CST.Cns
 createTermCns = undefined
