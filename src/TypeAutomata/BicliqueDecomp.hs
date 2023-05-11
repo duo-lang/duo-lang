@@ -7,7 +7,7 @@ module TypeAutomata.BicliqueDecomp
 import Data.Graph.Inductive.Graph
     ( delEdges, edges, neighbors, nodes, Node )
 import Data.Graph.Inductive.PatriciaTree ( Gr )
-import Data.List (intersect)
+import Data.List (intersect, foldl')
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Maybe ( mapMaybe )
@@ -70,12 +70,8 @@ computeBicliqueDecomposition flgr = go flgr []
 -------------------------------------------------------------------------------------
 
 decompositionToFlowMap :: [Node] -> [Biclique] -> Map Node (Set SkolemTVar)
-decompositionToFlowMap nodes bicliques = go bicliqueTvars (M.fromList [(n, S.empty ) | n <- nodes])
+decompositionToFlowMap nodes bicliques = foldl' (flip insertBicliqueIntoMap) (M.fromList [(n, S.empty ) | n <- nodes]) bicliqueTvars
   where
-      go :: [(Biclique, SkolemTVar)] -> Map Node (Set SkolemTVar) -> Map Node (Set SkolemTVar)
-      go [] acc = acc
-      go (x:xs) acc = go xs (insertBicliqueIntoMap x acc)
-
       bicliqueTvars :: [(Biclique, SkolemTVar)]
       bicliqueTvars = zip bicliques [MkSkolemTVar ("t" <> T.pack (show n)) | n <- [0 :: Int ..] ]
 
