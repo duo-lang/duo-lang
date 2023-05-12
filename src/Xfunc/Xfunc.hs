@@ -1,11 +1,11 @@
-module Xfunc.Xfunc (transformable, xFuncDataDecl) where
+module Xfunc.Xfunc (transformable, xFuncDataDecl, xFuncXtors) where
 
 
-
+import Syntax.CST.Terms qualified as CST
 import Syntax.CST.Types qualified as CST
 import Syntax.CST.Names qualified as CST
 import Syntax.CST.Program qualified as CST
-import Syntax.RST.Program qualified as RST
+--import Syntax.RST.Program qualified as RST
 import Syntax.RST.Kinds qualified as RST
 import Syntax.RST.Terms qualified as RST
 import Syntax.RST.Types qualified as RST
@@ -15,11 +15,15 @@ import Syntax.TST.Terms qualified as TST
 import Syntax.TST.Types qualified as TST
 import qualified Syntax.RST.Names as TST
 import Data.Set qualified as Set
+--import Data.List qualified as List
 import Data.Text as Text ( Text, append, head, tail, singleton )
 import Data.Char as Char ( toUpper, toLower )
+import Data.Either as Either
 import Translate.EmbedTST ( embedTST )
 import Sugar.Desugar (embedCore)
+import Resolution.Unresolve (unresolve, runUnresolveM)
 import Loc ( Loc , defaultLoc)
+import Pretty.Pretty
 
 ------------------------------------------------------------------------------
 -- TODO
@@ -46,7 +50,7 @@ throwXfuncError :: forall a. XfuncError -> XfuncM a
 throwXfuncError = Left
 
 ------------------------------------------------------------------------------
--- transforming producers/consumers to constructors/destructors
+-- helper functions
 ------------------------------------------------------------------------------
 
 -- helper for capitalizing names
@@ -78,6 +82,16 @@ filterDeclsTST _ [] = []
 getPrdCns :: [TST.PrdCnsDeclaration pc] -> TST.RnTypeName -> [TST.PrdCnsDeclaration pc]
 getPrdCns (decl@(TST.MkPrdCnsDeclaration _ _ _ _ _ _ (TST.XCase _ _ _ _ (RST.Nominal typename) _ )):rest) dataname = if typename == dataname.rnTnName then decl : getPrdCns rest dataname else getPrdCns rest dataname
 getPrdCns _ _ = []
+
+liftPrdCns :: TST.PrdCnsDeclaration pc -> CST.PrdCnsDeclaration
+liftPrdCns decl = runUnresolveM (unresolve (embedCore (embedTST decl)))
+
+liftDataDecl :: TST.DataDecl -> CST.DataDecl
+liftDataDecl decl = runUnresolveM (unresolve (embedTST decl))
+
+------------------------------------------------------------------------------
+-- transforming producers/consumers to constructors/destructors
+------------------------------------------------------------------------------
 
 
 -- creates a Xtor out of a TST.PrdCnsDeclaration
@@ -116,78 +130,55 @@ xFuncDataDecl _ (TST.RefinementDecl loc _ _ _ _ _ _ _ _) = throwXfuncError (Xfun
 -- transforming constructors/destructors to producers/consumers
 -- WORK IN PROGRESS: this part includes some attempts that might not work
 ------------------------------------------------------------------------------
--- lifting module to RST
--- collect terms
--- create prd/cns
-
-liftModule :: TST.Module -> RST.Module
-liftModule mod = embedCore (embedTST mod)
 
 
-filterModule :: TST.Module -> TST.DataDecl -> XfuncM TST.Module
-filterModule mod datadecl@(TST.NominalDecl _ _ _ CST.Codata _ _) = pure $ TST.MkModule { mod_name = mod.mod_name,
-                                                                                  mod_libpath = mod.mod_libpath,
-                                                                                  mod_decls = TST.DataDecl datadecl : (TST.PrdCnsDecl CST.PrdRep <$> getPrdCns (filterDeclsTST CST.PrdRep mod.mod_decls) datadecl.data_name)}
-filterModule mod datadecl@(TST.NominalDecl _ _ _ CST.Data _ _) = pure $ TST.MkModule { mod_name = mod.mod_name,
-                                                                                  mod_libpath = mod.mod_libpath,
-                                                                                  mod_decls = TST.DataDecl datadecl : (TST.PrdCnsDecl CST.CnsRep <$> getPrdCns (filterDeclsTST CST.CnsRep mod.mod_decls) datadecl.data_name)}
-filterModule _ (TST.RefinementDecl loc _ _ _ _ _ _ _ _) = throwXfuncError (XfuncError loc "Cannot xfunc refinement data declaration")
+xFuncXtors :: TST.Module -> TST.DataDecl -> XfuncM [CST.PrdCnsDeclaration]
+xFuncXtors mod decl@(TST.NominalDecl _ _ _ CST.Codata _ _) = pure $ createPrdCns (liftPrdCns <$> getPrdCns (filterDeclsTST CST.PrdRep mod.mod_decls) decl.data_name) (liftDataDecl decl)
+xFuncXtors mod decl@(TST.NominalDecl _ _ _ CST.Data _ _) = pure $ createPrdCns (liftPrdCns <$> getPrdCns (filterDeclsTST CST.CnsRep mod.mod_decls) decl.data_name) (liftDataDecl decl) 
+xFuncXtors _ (TST.RefinementDecl loc _ _ _ _ _ _ _ _) = throwXfuncError (XfuncError loc "Cannot xfunc refinement data declaration")
 
 
-filterDeclsRST ::  CST.PrdCnsRep pc -> [RST.Declaration] -> [RST.PrdCnsDeclaration pc]
-filterDeclsRST CST.PrdRep ((RST.PrdCnsDecl CST.PrdRep decl):rest)  = decl : filterDeclsRST CST.PrdRep rest
-filterDeclsRST CST.CnsRep ((RST.PrdCnsDecl CST.CnsRep decl):rest)  = decl : filterDeclsRST CST.CnsRep rest
-filterDeclsRST pc (_:rest) = filterDeclsRST pc rest
-filterDeclsRST _ [] = []
-
-getCmdCase :: CST.XtorName -> RST.CmdCase -> RST.Command
-getCmdCase name (RST.MkCmdCase loc (RST.XtorPat _ xtor _) cmd) = undefined
-
-getTermCase :: CST.XtorName -> RST.TermCase pc-> RST.Term pc
-getTermCase name (RST.MkTermCase loc (RST.XtorPat _ xtor _) tm) = undefined
-
-getTermCaseI :: CST.XtorName -> RST.TermCaseI pc -> RST.Term pc
-getTermCaseI name (RST.MkTermCaseI loc (RST.XtorPatI _ xtor _) tm) = undefined
-
-getTerm :: CST.XtorName -> RST.PrdCnsDeclaration pc -> (CST.XtorName, Either [RST.Term pc] [RST.Command])
-getTerm xtor (RST.MkPrdCnsDeclaration loc doc pcdecl isRec fvname annot term) = 
-    case term of
-        RST.XCase _ _ _ cases  -> (xtor, Right (getCmdCase xtor <$> cases))
-        RST.CaseOf _ _ _ _ cases -> (xtor, Left (getTermCase xtor <$> cases))
-        RST.CocaseOf _ _ _ _ cases -> (xtor, Left (getTermCase xtor <$> cases))
-        RST.CaseI _ _ _ cases -> undefined 
-        RST.CocaseI _ _ _ cases -> undefined
-        _ -> undefined
-
-createTermCns :: RST.Term CST.Cns
-createTermCns = undefined
-
-createTermPrd :: RST.Term CST.Prd
-createTermPrd = undefined
-
-constructCnsDecl :: RST.DataDecl -> XfuncM (RST.PrdCnsDeclaration CST.Cns)
-constructCnsDecl datadecl@(RST.NominalDecl _ _ name CST.Codata _ _) = pure $ RST.MkPrdCnsDeclaration{ pcdecl_loc = Loc.defaultLoc,
-                                                                                      pcdecl_doc = datadecl.data_doc,
-                                                                                      pcdecl_pc = CST.CnsRep,
-                                                                                      pcdecl_isRec = CST.NonRecursive,
-                                                                                      pcdecl_name = CST.MkFreeVarName (lowerFirstLetter (name.rnTnName.unTypeName)) ,
-                                                                                      pcdecl_annot = Nothing,
-                                                                                      pcdecl_term = createTermCns}
-constructCnsDecl (RST.NominalDecl loc _ _ _ _ _)  = throwXfuncError (XfuncError loc "should not occur")
-constructCnsDecl (RST.RefinementDecl loc _ _ _ _ _)  = throwXfuncError (XfuncError loc "Cannot xfunc refinement data declaration")   
-
-constructPrdDecl :: RST.DataDecl -> XfuncM (RST.PrdCnsDeclaration CST.Prd)                                                                                   
-constructPrdDecl datadecl@(RST.NominalDecl _ _ name CST.Data _ _) = pure $ RST.MkPrdCnsDeclaration{ pcdecl_loc = Loc.defaultLoc,
-                                                                                      pcdecl_doc = datadecl.data_doc,
-                                                                                      pcdecl_pc = CST.PrdRep,
-                                                                                      pcdecl_isRec = CST.NonRecursive,
-                                                                                      pcdecl_name = CST.MkFreeVarName (lowerFirstLetter (name.rnTnName.unTypeName)) ,
-                                                                                      pcdecl_annot = Nothing,
-                                                                                      pcdecl_term = createTermPrd}   
-constructPrdDecl (RST.NominalDecl loc _ _ _ _ _)  = throwXfuncError (XfuncError loc "should not occur")
-constructPrdDecl (RST.RefinementDecl loc _ _ _ _ _ ) = throwXfuncError (XfuncError loc "Cannot xfunc refinement data declaration")                                                                                                                                                                       
+createPrdCns :: [CST.PrdCnsDeclaration] -> CST.DataDecl -> [CST.PrdCnsDeclaration]
+createPrdCns pcdecls (CST.MkDataDecl _ _ _ _ CST.Data _ sigs) = constructPrdDecl  pcdecls <$> sigs 
+createPrdCns pcdecls (CST.MkDataDecl _ _ _ _ CST.Codata _ sigs) = constructCnsDecl pcdecls <$> sigs
 
 
+filterTermCase :: CST.XtorName -> [CST.TermCase] -> XfuncM CST.Term
+filterTermCase xtor ((CST.MkTermCase _ (CST.PatXtor _ xtorname _) term):rest) = if xtor == xtorname then pure term else filterTermCase xtor rest 
+filterTermCase _ _ = throwXfuncError (XfuncError Loc.defaultLoc "no xtor matched")
+
+createTermCase :: CST.XtorName -> CST.PrdCnsDeclaration -> XfuncM CST.TermCase
+createTermCase xtor (CST.MkPrdCnsDeclaration _ _ _ _ name _ (CST.Case loc list)) = do
+  term <- filterTermCase xtor list
+  pure $ CST.MkTermCase loc (CST.PatXtor loc (CST.MkXtorName (capFirstLetter (name.unFreeVarName))) []) term
+createTermCase _ _ = throwXfuncError (XfuncError Loc.defaultLoc "xtor error")
+
+
+createTermCaseList :: CST.XtorName -> [CST.PrdCnsDeclaration] -> [XfuncM CST.TermCase]
+createTermCaseList xtor (pcdecl:rest) =  createTermCase xtor pcdecl : createTermCaseList xtor rest
+createTermCaseList _ [] = []
+
+constructPrdDecl :: [CST.PrdCnsDeclaration] -> CST.XtorSig -> CST.PrdCnsDeclaration
+constructPrdDecl pcdecls (CST.MkXtorSig xtor _) = CST.MkPrdCnsDeclaration {
+    loc = Loc.defaultLoc
+  , doc = Nothing
+  , prd_cns = CST.Prd
+  , isRecursive = CST.NonRecursive
+  , name = CST.MkFreeVarName (lowerFirstLetter (xtor.unXtorName))
+  , annot = Nothing
+  , term = CST.Cocase Loc.defaultLoc (Either.rights (createTermCaseList xtor pcdecls))
+}
+
+constructCnsDecl :: [CST.PrdCnsDeclaration] -> CST.XtorSig -> CST.PrdCnsDeclaration
+constructCnsDecl pcdecls (CST.MkXtorSig xtor _) = CST.MkPrdCnsDeclaration {
+    loc = Loc.defaultLoc
+  , doc = Nothing
+  , prd_cns = CST.Cns
+  , isRecursive = CST.NonRecursive
+  , name = CST.MkFreeVarName (lowerFirstLetter (xtor.unXtorName))
+  , annot = Nothing
+  , term = CST.Case Loc.defaultLoc (Either.rights (createTermCaseList xtor pcdecls))
+}
 ------------------------------------------------------------------------------
 -- transformability checks
 ------------------------------------------------------------------------------
