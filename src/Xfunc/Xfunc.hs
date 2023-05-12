@@ -23,8 +23,6 @@ import Translate.EmbedTST ( embedTST )
 import Sugar.Desugar (embedCore)
 import Resolution.Unresolve (unresolve, runUnresolveM)
 import Loc ( Loc , defaultLoc)
-import Pretty.Pretty
-
 ------------------------------------------------------------------------------
 -- TODO
 ------------------------------------------------------------------------------
