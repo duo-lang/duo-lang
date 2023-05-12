@@ -210,7 +210,7 @@ computeKVarSolution kp annot kvpk = do
   where 
     buildMap :: [([KVar],Maybe AnyKind)] -> ([KVar],[(KVar, AnyKind)])
     buildMap kvars = 
-      let foldFun (xs,mknd) (nothings, kvmap) = case mknd of Nothing -> (xs++nothings,kvmap); Just knd -> (nothings,zip xs (repeat knd)++kvmap) 
+      let foldFun (xs,mknd) (nothings, kvmap) = case mknd of Nothing -> (xs++nothings,kvmap); Just knd -> (nothings, map (, knd) xs++kvmap) 
       in
       foldr foldFun ([],[]) kvars 
     insertAnnot :: Maybe (KVar, AnyKind) -> [KVar] -> [(KVar, AnyKind)] -> ([(KVar, AnyKind)],[KVar])
@@ -294,7 +294,6 @@ subConstraints (SubType info (TyApp _ _ eo1 ty1 tyn1 args1) (TyApp _  _ eo2 ty2 
   
 
 -- Skolem Vars can only be subtypes of each other if they are the same
--- double check if this should ever occur
 
 subConstraints (SubType _ p@(TySkolemVar _ _ _ sk1) n@(TySkolemVar _ _ _ sk2)) = 
   if sk1 == sk2 then 
@@ -373,12 +372,22 @@ subConstraints (SubType _ (TyCodata loc1 PosRep _ dtors1) (TyCodata loc2 NegRep 
 --     {{ Nat :>> < ctors1 > }} <: {{ Nat  :>> < ctors2 > }}   ~>    [ checkXtors ctors2 ctor | ctor <- ctors1 ]
 --     {{ Nat :>> < ctors1 > }} <: {{ Bool :>> < ctors2 > }}   ~>    FAIL
 --
-subConstraints (SubType _ (TyDataRefined loc1 PosRep _ tn1 ctors1) (TyDataRefined loc2 NegRep _ tn2 ctors2)) | tn1 == tn2 = do
-  constraints <- forM ctors1 (\x -> checkXtor ctors2 loc2 x loc1)
+subConstraints (SubType _ (TyDataRefined loc1 PosRep pk1 argVars1 tn1 ctors1) (TyDataRefined loc2 NegRep _ argVars2 tn2 ctors2)) | tn1 == tn2 = do
+  let skKinds = (\(_,_,mk) -> monoToAnyKind mk) <$> pk1.kindArgs
+  let sksPos = zipWith (TySkolemVar defaultLoc PosRep) skKinds argVars1
+  let sksNeg = zipWith (TySkolemVar defaultLoc NegRep) skKinds argVars1
+  let bisubst = MkBisubstitution (M.fromList (zip argVars2 (zip sksPos sksNeg)))
+  let ctors2' = zonk SkolemRep bisubst <$> ctors2
+  constraints <- forM ctors1 (\x -> checkXtor ctors2' loc2 x loc1)
   pure (DataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
 
-subConstraints (SubType _ (TyCodataRefined loc1 PosRep _ tn1 dtors1) (TyCodataRefined loc2 NegRep _ tn2 dtors2))  | tn1 == tn2 = do
-  constraints <- forM dtors2 (\x -> checkXtor dtors1 loc1 x loc2)
+subConstraints (SubType _ (TyCodataRefined loc1 PosRep pk1 argVars1 tn1 dtors1) (TyCodataRefined loc2 NegRep _ argVars2 tn2 dtors2))  | tn1 == tn2 = do
+  let skKinds = (\(_,_,mk) -> monoToAnyKind mk) <$> pk1.kindArgs
+  let sksPos = zipWith (TySkolemVar defaultLoc PosRep) skKinds argVars1
+  let sksNeg = zipWith (TySkolemVar defaultLoc NegRep) skKinds argVars1
+  let bisubst = MkBisubstitution (M.fromList (zip argVars2 (zip sksPos sksNeg)))
+  let dtors2' = zonk SkolemRep bisubst <$> dtors2
+  constraints <- forM dtors2' (\x -> checkXtor dtors1 loc1 x loc2)
   pure (CodataRefined tn1 $ SubVar . void <$> concat constraints, concat constraints)
 
 subConstraints (SubType _ t1@TyCodataRefined{} t2@TyCodataRefined{}) = 

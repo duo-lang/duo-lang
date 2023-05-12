@@ -57,6 +57,7 @@ initializeFromAutomaton aut =
                    , graph = gr
                    , cache = S.empty
                    , tvars = concatMap getTVars (M.toList flowAnalysis)
+                   , skCount = 0
                    --S.toList $ S.unions (M.elems flowAnalysis)
                    }
 
@@ -68,12 +69,12 @@ data AutToTypeState = AutToTypeState { tvMap :: Map Node (Set SkolemTVar)
                                      , graph :: TypeGr
                                      , cache :: Set Node
                                      , tvars :: [KindedSkolem]
+                                     , skCount :: Int
                                      }
 type AutToTypeM a = (ReaderT AutToTypeState (Except (NonEmpty Error))) a
 
 runAutToTypeM :: AutToTypeM a -> AutToTypeState -> Either (NonEmpty Error) a
 runAutToTypeM m state = runExcept (runReaderT m state)
-
 
 autToType :: TypeAutDet pol -> Either (NonEmpty Error) (TypeScheme pol)
 autToType aut = do
@@ -117,7 +118,7 @@ nodeToTVars :: PolarityRep pol -> Node -> AutToTypeM [Typ pol]
 nodeToTVars rep i = do
   tvMap <- asks (\x -> x.tvMap)
   knd <- getNodeKindPk i
-  return (TySkolemVar defaultLoc rep knd <$> S.toList (fromJust $ M.lookup i tvMap))
+  return (TySkolemVar defaultLoc rep (MkPknd knd) <$> S.toList (fromJust $ M.lookup i tvMap))
 
 nodeToOuts :: Node -> AutToTypeM [(EdgeLabel, Node)]
 nodeToOuts i = do
@@ -224,16 +225,27 @@ nodeToTypeNoCache rep i  = do
             let f (node, Covariant) = CovariantType <$> nodeToType rep node Nothing
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
             args <- mapM f argNodes 
+            -- create new skolems bound by the refinement type
+            let argVars = (\(_,sk,_) -> sk) <$> pk.kindArgs
+            let (argTysPos, argTysNeg) = argsToTypes args argVars
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Data xt
-              let margs = case args of 
-                            [] -> Nothing
-                            (args1:argsRst) -> Just (tn, args1:|argsRst)
-              argTypes <- argNodesToArgTypes nodes rep rep margs
+              argTypes <- case args of 
+                [] -> do
+                  argNodesToArgTypes nodes rep rep Nothing
+                (args1:argsRst) -> do
+                  argTypes <- argNodesToArgTypes nodes rep rep (Just (tn,args1:|argsRst))
+                  -- for each type argument, replace with by the corresponding skolem variable when it appears inside the refinement type
+                  -- the actual arguments are then only placed inside the type application
+                  forM argTypes (\ty -> do 
+                    let replacedPos = foldr (\(arg,sk) -> replType PosRep sk arg) ty argTysPos
+                    let replacedNeg = foldr (\(arg,sk) -> replType NegRep sk arg) replacedPos argTysNeg
+                    return replacedNeg) 
               return (MkXtorSig xt.labelName argTypes)
-            case args of 
-              [] -> return $ TyDataRefined defaultLoc rep pk tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyDataRefined defaultLoc rep pk tn sig) tn (arg1:|argRst)
+            let ty = TyDataRefined defaultLoc rep pk argVars tn sig
+            return $ case args of 
+                        [] -> ty
+                        (arg1:argRst) -> TyApp defaultLoc rep pk.returnKind ty tn (arg1:|argRst)
         -- Creating ref codata types
         refCodatL <- do
           forM refCodatTypes $ \(tn,(xtors,vars)) -> do
@@ -241,16 +253,27 @@ nodeToTypeNoCache rep i  = do
             let f (node, Covariant) = CovariantType <$> nodeToType rep node Nothing 
                 f (node, Contravariant) = ContravariantType <$> nodeToType (flipPolarityRep rep) node Nothing
             args <- mapM f argNodes 
+            -- create new skolems bound by the refinement type
+            let argVars = (\(_,sk,_) -> sk) <$> pk.kindArgs
+            let (argTysPos, argTysNeg) = argsToTypes args argVars
             sig <- forM (S.toList xtors) $ \xt -> do
               let nodes = computeArgNodes outs CST.Codata xt
-              let margs = case args of
-                            [] -> Nothing
-                            (args1:argsRst) -> Just (tn, args1:|argsRst)
-              argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep margs
+              argTypes <- case args of 
+                [] -> do 
+                  argNodesToArgTypes nodes (flipPolarityRep rep) rep Nothing
+                (args1:argsRst) -> do 
+                  argTypes <- argNodesToArgTypes nodes (flipPolarityRep rep) rep (Just (tn, args1:|argsRst))
+                  -- for each type argument, replace with by the corresponding skolem variable when it appears inside the refinement type
+                  -- the actual arguments are then only placed inside the type application
+                  forM argTypes (\ty -> do 
+                    let replacedPos = foldr (\(arg,sk) -> replType PosRep sk arg) ty argTysPos
+                    let replacedNeg = foldr (\(arg,sk) -> replType NegRep sk arg) replacedPos argTysNeg
+                    return replacedNeg) 
               return (MkXtorSig xt.labelName argTypes)
-            case args of
-              [] -> return $ TyCodataRefined defaultLoc rep pk tn sig
-              (arg1:argRst) -> return $ TyApp defaultLoc rep pk.returnKind (TyCodataRefined defaultLoc rep pk tn sig) tn (arg1:|argRst)
+            let ty = TyCodataRefined defaultLoc rep pk argVars tn sig
+            return $ case args of
+                        [] -> ty
+                        (arg1:argRst) -> TyApp defaultLoc rep pk.returnKind ty tn (arg1:|argRst)
         -- Creating Nominal types
         nominals <- do
             forM (S.toList tns) $ \(tn, variances) -> do
@@ -271,3 +294,15 @@ nodeToTypeNoCache rep i  = do
       if i `elem` dfs (suc gr i) gr
         then return $ TyRec defaultLoc rep (MkRecTVar ("r" <> T.pack (show i))) resType
         else return resType
+  where 
+    argsToTypes :: [VariantType pol] -> [SkolemTVar] -> ([(Typ Pos,SkolemTVar)],[(Typ Neg,SkolemTVar)])
+    argsToTypes args argVars = do 
+      let f :: PolarityRep pol -> (VariantType pol1,SkolemTVar)-> [(Typ pol,SkolemTVar)] -> [(Typ pol,SkolemTVar)]
+          f PosRep (CovariantType ty,sk) ls = case getPolarity ty of PosRep -> (ty,sk):ls; _ -> ls
+          f NegRep (CovariantType ty,sk) ls = case getPolarity ty of NegRep -> (ty,sk):ls; _ -> ls
+          f PosRep (ContravariantType ty, sk) ls = case getPolarity ty of PosRep -> (ty,sk):ls; _->ls
+          f NegRep (ContravariantType ty, sk) ls = case getPolarity ty of NegRep -> (ty,sk):ls; _->ls
+
+      let tysPos = foldr (f PosRep) [] (zip args argVars) 
+      let tysNeg = foldr (f NegRep) [] (zip args argVars) 
+      (tysPos,tysNeg)

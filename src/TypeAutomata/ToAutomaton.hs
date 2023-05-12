@@ -7,11 +7,11 @@ import Control.Monad.State
     ( StateT(..), gets, modify )
 import Data.Graph.Inductive.Graph (Node)
 import Data.Graph.Inductive.Graph qualified as G
-import Data.List.NonEmpty (NonEmpty)
 import Data.Map (Map)
 import Data.Map qualified as M
 import Data.Set qualified as S
 import Data.List.NonEmpty qualified as NE
+import Data.List.NonEmpty (NonEmpty)
 
 import Errors ( Error, throwAutomatonError )
 import Pretty.Types ()
@@ -38,7 +38,9 @@ import Utils ( enumerate )
 --
 -- Skolem variables exist both positively and negatively. They are therefore
 -- mapped to a pair `(n,m)`
-data LookupEnv = LookupEnv { tSkolemVarEnv :: Map SkolemTVar (Node,Node) , tRecVarEnv :: Map RecTVar (Maybe Node, Maybe Node) }
+--
+-- tTyArgs are used for type applications to save type arguments for refinement types
+data LookupEnv = LookupEnv { tSkolemVarEnv :: Map SkolemTVar ([Node],[Node]) , tRecVarEnv :: Map RecTVar (Maybe Node, Maybe Node), tTyArgs :: [[Node]]}
 
 type TTA a = StateT TypeAutCore (ReaderT LookupEnv (Except (NonEmpty Error))) a
 
@@ -71,8 +73,9 @@ initialize tvars =
               { ta_gr = G.mkGraph ([pos | (_,pos,_,_) <- nodes] ++ [neg | (_,_,neg,_) <- nodes]) []
               , ta_flowEdges = [ flowEdge | (_,_,_,flowEdge) <- nodes]
               }
-    lookupEnv = LookupEnv { tSkolemVarEnv = M.fromList [(tv, (posNode,negNode)) | (tv,(posNode,_),(negNode,_),_) <- nodes]
+    lookupEnv = LookupEnv { tSkolemVarEnv = M.fromList [(tv, ([posNode],[negNode])) | (tv,(posNode,_),(negNode,_),_) <- nodes]
                           , tRecVarEnv = M.empty
+                          , tTyArgs = []
                           }
   in
     (initAut, lookupEnv)
@@ -105,7 +108,7 @@ newNodeM = do
   graph <- gets (\x -> x.ta_gr)
   pure $ (head . G.newNodes 1) graph
 
-lookupTVar :: PolarityRep pol -> SkolemTVar -> TTA Node
+lookupTVar :: PolarityRep pol -> SkolemTVar -> TTA [Node]
 lookupTVar PosRep tv = do
   tSkolemVarEnv <- asks (\x -> x.tSkolemVarEnv)
   case M.lookup tv tSkolemVarEnv of
@@ -117,6 +120,7 @@ lookupTVar PosRep tv = do
     Just (pos,_) -> return pos
 lookupTVar NegRep tv = do
   tSkolemVarEnv <- asks (\x -> x.tSkolemVarEnv)
+
   case M.lookup tv tSkolemVarEnv of
     Nothing -> throwAutomatonError defaultLoc [ "Could not insert type into automaton."
                                               , "The type variable:"
@@ -175,13 +179,13 @@ insertXtors dc pol Nothing pk xtors = do
   return newNode
   where 
     insertCtxt :: Node -> XtorName -> (Int, PrdCnsType pol) -> TTA ()
-    insertCtxt newNode nm (i,pcType) = do 
+    insertCtxt newNode nm (i,pcType) = do
       ns <- insertPCType pcType
       insertEdges [(newNode, n, EdgeSymbol dc nm (case pcType of (PrdCnsType PrdRep _) -> Prd; (PrdCnsType CnsRep _) -> Cns) i) | n <- ns]
 
 -- XDataRefined
 insertXtors dc pol (Just tyn) pk@(MkPolyKind args _) xtors = do
-  let vars = map (\(x,_,_) -> x) args
+  let vars = (\(x,_,_) -> x) <$> args
   newNode <- newNodeM
   let xtorLabel = singleNodeLabelXtor pol dc (Just (tyn, vars)) (S.fromList (sigToLabel <$> xtors)) pk
   insertNode newNode xtorLabel 
@@ -205,7 +209,7 @@ insertVariantType (ContravariantType ty) = do
   pure (ns, Contravariant)
 
 insertType :: Typ pol -> TTA [Node]
-insertType (TySkolemVar _ rep _ tv) = pure <$> lookupTVar rep tv
+insertType (TySkolemVar _ rep _ tv) = lookupTVar rep tv
 insertType (TyUniVar loc _ _ tv) = throwAutomatonError loc  [ "Could not insert type into automaton."
                                                             , "The unification variable:"
                                                             , "    " <> tv.unUniTVar
@@ -236,22 +240,64 @@ insertType (TyRec _ rep rv ty) = do
   let pol = polarityRepToPol rep
   newNode <- newNodeM
   insertNode newNode (emptyNodeLabel pol (getKind ty))
-  let extendEnv PosRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars (M.insert rv (Just newNode, Nothing) tRecVars) 
-      extendEnv NegRep (LookupEnv tSkolemVars tRecVars) = LookupEnv tSkolemVars (M.insert rv (Nothing, Just newNode) tRecVars)
+  let extendEnv PosRep (LookupEnv tSkolemVars tRecVars tArgs) = LookupEnv tSkolemVars (M.insert rv (Just newNode, Nothing) tRecVars) tArgs
+      extendEnv NegRep (LookupEnv tSkolemVars tRecVars tArgs) = LookupEnv tSkolemVars (M.insert rv (Nothing, Just newNode) tRecVars) tArgs
   ns <- local (extendEnv rep) (insertType ty)
   addPredecessorsOf newNode ns
   return $ newNode : ns
 insertType (TyData _  polrep eo xtors)             = pure <$> insertXtors CST.Data   (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
 insertType (TyCodata _ polrep eo  xtors)           = pure <$> insertXtors CST.Codata (polarityRepToPol polrep) Nothing (MkPolyKind [] eo) xtors
-insertType (TyDataRefined _ polrep pk mtn xtors)   = pure <$> insertXtors CST.Data   (polarityRepToPol polrep) (Just mtn) pk xtors
-insertType (TyCodataRefined _ polrep pk mtn xtors) = pure <$> insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) pk xtors
+
+insertType (TyDataRefined loc polrep pk argVars mtn xtors)   = 
+  let pol = polarityRepToPol polrep
+  in 
+  case argVars of 
+    [] -> pure <$> insertXtors CST.Data pol (Just mtn) pk xtors
+  --the case where we have type arguments 
+    _ -> do
+      -- when this is a polykinded type, the type arguments will be previously inserted by a TyApp
+      tyArgs <- asks (\x -> x.tTyArgs)
+      if length argVars == length tyArgs then do
+        -- to insert the skolems, we add the nodes created for the type arguments to the bound skolems
+        -- when the skolem appears within some xtor, the node for the argument will be used 
+        let newSkolems = zip argVars ((\x -> (x,x)) <$> tyArgs)
+        let f (LookupEnv tSkolems tRecs tTyArgs) = LookupEnv (M.fromList (M.toList tSkolems++newSkolems)) tRecs tTyArgs
+        xtorNd <- local f $ insertXtors CST.Data pol (Just mtn) pk xtors
+        pure [xtorNd]
+      else 
+        throwAutomatonError loc ["Number of bound skolem variables does not match polykind of refinement type"]
+
+insertType (TyCodataRefined loc polrep pk argVars mtn xtors) = 
+  let pol = polarityRepToPol polrep 
+  in 
+  case argVars of 
+    [] -> pure <$> insertXtors CST.Codata (polarityRepToPol polrep) (Just mtn) pk xtors
+    -- the case with type arguments 
+    _ -> do 
+      -- when this is a polykinded type, the type arguments will be previously inserted by a TyApp
+      tyArgs <- asks (\x->x.tTyArgs)
+      if length argVars == length tyArgs then do 
+        -- to insert the skolems, we add the nodes created for the type arguments to the bound skolems
+        -- when the skolem appears within some xtor, the node for the argument will be used 
+        let newSkolems = zip argVars ((\x -> (x, x)) <$> tyArgs)
+        let f (LookupEnv tSkolems tRecs tTyArgs) = LookupEnv (M.fromList (M.toList tSkolems ++ newSkolems)) tRecs tTyArgs
+        xtorNd <- local f $ insertXtors CST.Codata pol (Just mtn) pk xtors
+        pure [xtorNd]
+      else 
+        throwAutomatonError loc ["Number of bound skolem variables does not match polykind of refinement type"]
+
 insertType (TySyn _ _ _ ty) = insertType ty
 
-insertType (TyApp _ _ _ ty tyn args) = do 
-  argNodes <- mapM insertVariantType args
-  tyNodes <- insertType ty
-  insertEdges (concatMap (\(i,(ns,variance)) -> [(tyNode, n, TypeArgEdge tyn variance i) | tyNode <- tyNodes, n <- ns]) $ enumerate (NE.toList argNodes))
+insertType (TyApp _ _ _ ty tyn argTys) = do 
+  args <- mapM insertVariantType $ NE.toList argTys
+  let argNodes = fst <$> args
+  -- insert the nodes for the type arguments into the environment 
+  -- when these types are applied to a refinement type these will be used for the bound skolems
+  let extendEnv (LookupEnv tSkolemVars tRecVars _) = LookupEnv tSkolemVars tRecVars argNodes
+  tyNodes <-  local extendEnv $ insertType ty 
+  insertEdges (concatMap (\(i,(ns,variance)) -> [(tyNode, n, TypeArgEdge tyn variance i) | tyNode <- tyNodes, n <- ns]) $ enumerate args)
   return tyNodes
+
 
 insertType (TyNominal _ rep pk@(MkPolyKind args _) tn) = do
   let pol = polarityRepToPol rep 
@@ -298,7 +344,7 @@ addPredecessorsOf n ns = modifyGraph addPreds
 
 -- turns a type into a type automaton with prescribed start polarity.
 typeToAut :: TypeScheme pol -> Either (NonEmpty Error) (TypeAut pol)
-typeToAut ts = do
+typeToAut ts = do 
   (start, aut) <- runTypeAutTvars ts.ts_vars (insertType ts.ts_monotype)
   return TypeAut { ta_pol = getPolarity ts.ts_monotype
                  , ta_starts = start

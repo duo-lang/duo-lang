@@ -116,7 +116,7 @@ coalesceType (TyUniVar _ PosRep pk tv) = do
         case M.lookup (tv, Pos) recVarMap of
           Nothing     -> do
             newName <- getSkolemVar tv
-            return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk' newName : lbs')
+            return $ mkUnion defaultLoc pk (TySkolemVar defaultLoc PosRep pk newName : lbs')
           Just recVar ->
             return $ TyRec defaultLoc PosRep recVar (mkUnion defaultLoc pk (TyRecVar defaultLoc PosRep pk' recVar  : lbs'))
       primknd -> return $ mkUnion defaultLoc pk (primKindToPrimTy primknd : lbs')
@@ -146,7 +146,7 @@ coalesceType (TyUniVar _ NegRep pk tv) = do
           case M.lookup (tv, Neg) recVarMap of
             Nothing -> do
               newName <- getSkolemVar tv
-              return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep pk' newName : ubs')
+              return $ mkInter defaultLoc pk (TySkolemVar defaultLoc NegRep pk newName : ubs')
             Just recVar ->
               return $ TyRec defaultLoc NegRep recVar (mkInter defaultLoc pk (TyRecVar defaultLoc NegRep pk' recVar  : ubs'))
         primknd -> return $ mkInter defaultLoc pk (primKindToPrimTy primknd : ubs')
@@ -164,12 +164,12 @@ coalesceType (TyData loc rep mk xtors) = do
 coalesceType (TyCodata loc rep mk xtors) = do
     xtors' <- mapM coalesceXtor xtors
     return (TyCodata loc rep mk xtors')
-coalesceType (TyDataRefined loc rep mk tn xtors) = do
+coalesceType (TyDataRefined loc rep pk argVars tn xtors) = do
     xtors' <- mapM coalesceXtor xtors
-    return (TyDataRefined loc rep mk tn xtors')
-coalesceType (TyCodataRefined loc rep mk tn xtors) = do
+    return (TyDataRefined loc rep pk argVars tn xtors')
+coalesceType (TyCodataRefined loc rep pk argVars tn xtors) = do
     xtors' <- mapM coalesceXtor xtors
-    return (TyCodataRefined loc rep mk tn xtors')
+    return (TyCodataRefined loc rep pk argVars tn xtors')
 coalesceType (TyNominal loc rep mk tn) = do
     return $ TyNominal loc rep mk tn
 coalesceType (TyApp loc rep eo ty tyn args) = do

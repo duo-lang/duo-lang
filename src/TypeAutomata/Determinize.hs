@@ -1,5 +1,4 @@
 module TypeAutomata.Determinize ( determinize ) where
-
 import Control.Monad.State
     ( execState, State, MonadState(get), modify )
 import Data.Functor.Identity ( Identity(Identity) )
@@ -110,7 +109,7 @@ combineNodeLabels (fstLabel@MkNodeLabel{}:rs) =
 
     mrgRefDat refs1 refs2 = 
       let mrgXtors xtors1 xtors2 = case pol of Pos -> S.union xtors1 xtors2; Neg -> S.intersection xtors1 xtors2
-          checkVars vars1 vars2 = if vars1 == vars2 then vars2 else error "variances don't match"
+          checkVars vars1 vars2 = if vars1 == vars2 then vars1 else error "variances don't match"
           f (xtors1, vars1) (xtors2, vars2) = (mrgXtors xtors1 xtors2, checkVars vars1 vars2)
       in M.unionWith f refs1 refs2 
     mrgRefCodat refs1 refs2 = 

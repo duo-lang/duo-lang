@@ -1,6 +1,5 @@
 module TypeAutomata.Intersection (emptyIntersection,intersectIsEmpty,intersectAut) where
 
-
 import TypeAutomata.Definition (TypeAutDet, TypeAut' (..), TypeAutCore (..), NodeLabel (..), EdgeLabel, TypeAut)
 import Control.Monad.Identity (Identity(..))
 import Data.Graph.Inductive.Graph (Node, Graph (..), lsuc, lab)

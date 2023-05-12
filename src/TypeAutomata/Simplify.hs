@@ -1,5 +1,4 @@
 module TypeAutomata.Simplify where
-
 import Control.Monad.Except
 import System.FilePath ( (</>), (<.>))
 import System.Directory ( createDirectoryIfMissing, getCurrentDirectory )
@@ -9,7 +8,7 @@ import Data.List.NonEmpty (NonEmpty)
 import Pretty.TypeAutomata (typeAutToDot)
 
 import Errors ( Error )    
-import Syntax.TST.Types ( TypeScheme )
+import Syntax.TST.Types ( TypeScheme(..) )
 import TypeAutomata.Definition
 import TypeAutomata.ToAutomaton ( typeToAut )
 import TypeAutomata.FromAutomaton ( autToType )

@@ -4,13 +4,14 @@ module TypeInference.GenerateConstraints.Definition
   , GenerateReader(..)
   , GenConstraints(..)
   , runGenM
-    -- Generating fresh unification variables
+  -- generate fresh skolem variables for polykinded refinement types
+  , freshSkolems
+  -- Generating fresh unification variables
   , freshTVar
   , freshTVars
   , freshTVarsForTypeParams
+  -- also greates unification variables for type arguments, but specific to refinement types
   , getTypeArgsRef
-  , getSubstTypesRef
-  , freshTVarsXCaseRef 
   , paramsMap
   , createMethodSubst
   , insertSkolemsClass
@@ -44,8 +45,7 @@ import Control.Monad.Writer
 import Data.Map ( Map )
 import Data.Map qualified as M
 import Data.Text qualified as T
-import Data.List.NonEmpty (NonEmpty((:|)))
-
+import Data.List.NonEmpty (NonEmpty(..))
 import TypeInference.Environment
 import Errors
 import Errors.Renamer
@@ -61,7 +61,7 @@ import Syntax.TST.Program as TST
 import Syntax.LocallyNameless (Index)
 import TypeInference.Constraints
 import Loc ( Loc, defaultLoc )
-import Utils ( indexMaybe )
+import Utils ( indexMaybe, enumerate, distribute3 )
 
 ---------------------------------------------------------------------------------------------
 -- GenerateState:
@@ -72,9 +72,10 @@ import Utils ( indexMaybe )
 data GenerateState = GenerateState
   { uVarCount :: Int
   , kVarCount :: Int
+  , skVarCount :: Int
   , constraintSet :: ConstraintSet
   , usedRecVars :: M.Map RecTVar PolyKind
-  , usedSkolemVars :: M.Map SkolemTVar PolyKind
+  , usedSkolemVars :: M.Map SkolemTVar AnyKind
   , usedUniVars :: M.Map UniTVar AnyKind
   }
 
@@ -89,6 +90,7 @@ initialState :: GenerateState
 initialState = GenerateState {   uVarCount = 0
                                , constraintSet = initialConstraintSet
                                , kVarCount = 0
+                               , skVarCount = 0
                                , usedRecVars = M.empty
                                , usedSkolemVars = M.empty
                                , usedUniVars = M.empty
@@ -130,6 +132,21 @@ class GenConstraints a b | a -> b where
 ---------------------------------------------------------------------------------------------
 -- Generating fresh unification variables
 ---------------------------------------------------------------------------------------------
+
+-- these are used to make sure refinement types have unique bound variables
+-- otherwise they will just use the ones defined in the declaration and there will be shadowing
+freshSkolems :: PolyKind -> GenM ([SkolemTVar], TST.Bisubstitution TST.SkolemVT)
+freshSkolems pk = do 
+  skVarC <- gets (\x -> x.skVarCount)
+  skolems <- forM (enumerate pk.kindArgs) (\(i,(_,sk,mk)) -> do
+    let newSk = MkSkolemTVar ("a" <> T.pack (show (skVarC+i)))
+    let skPos = TST.TySkolemVar defaultLoc PosRep (monoToAnyKind mk) newSk
+    let skNeg = TST.TySkolemVar defaultLoc NegRep (monoToAnyKind mk) newSk
+    let bisubstPair = (sk,(skPos,skNeg))
+    return (newSk,bisubstPair))  
+  modify (\gs -> gs {skVarCount = skVarC + length pk.kindArgs}) 
+  let bisubst = TST.MkBisubstitution $ M.fromList (snd <$> skolems)
+  return (fst <$> skolems,bisubst)
 
 freshTVar :: UVarProvenance -> Maybe AnyKind -> GenM (TST.Typ Pos, TST.Typ Neg)
 freshTVar uvp Nothing = do
@@ -185,108 +202,23 @@ freshTVarsForTypeParams rep decl = do
       (Contravariant, PosRep) -> pure (TST.ContravariantType tyNeg : vartypes, (tyPos, tyNeg) : vs')
       (Contravariant, NegRep) -> pure (TST.ContravariantType tyPos : vartypes, (tyPos, tyNeg) : vs')
 
--- these functins are specific to refinement types as they require handling type arguments differently
-getTypeArgsRef :: TST.DataDecl -> GenM ([TST.VariantType Pos], [TST.VariantType Neg],TST.Bisubstitution TST.SkolemVT)
-getTypeArgsRef decl =  do 
+-- like freshTVarsForTypeParams, but for refinement types
+-- also creates a bisubstitution replacing the bound skolem vars of a refinement type with the unification variables
+getTypeArgsRef :: Loc -> TST.DataDecl -> [SkolemTVar] -> GenM ([TST.VariantType Pos], [TST.VariantType Neg],TST.Bisubstitution TST.SkolemVT)
+getTypeArgsRef loc decl skolems =  do 
   let kndArgs = decl.data_kind.kindArgs
-  vars <- forM kndArgs (\ (var, sk, mk) -> do 
-    (uvarPos, uvarNeg) <- freshTVar (TypeParameter decl.data_name sk) (Just (monoToAnyKind mk))
-    case var of
-      Covariant -> return (TST.CovariantType uvarPos, TST.CovariantType uvarNeg, uvarPos,uvarNeg)
-      Contravariant -> return (TST.ContravariantType uvarNeg, TST.ContravariantType uvarPos,uvarPos,uvarNeg))
-  let varsPos = (\(x,_,_,_) -> x) <$> vars
-  let varsNeg = (\(_,x,_,_) -> x) <$> vars
-  let uvs = (\(_,_,x,y) -> (x,y)) <$> vars
-  return (varsPos,varsNeg,paramsMap kndArgs uvs)
-
-replaceUniVarRef :: TST.PrdCnsType pol -> TST.PrdCnsType pol1 -> (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg)) -> ConstraintInfo -> GenM (TST.PrdCnsType pol)
-replaceUniVarRef (TST.PrdCnsType PrdRep _) (TST.PrdCnsType CnsRep _) _ _ = error "Can't happen"
-replaceUniVarRef (TST.PrdCnsType CnsRep _) (TST.PrdCnsType PrdRep _) _ _ = error "Can't happen"
-replaceUniVarRef pc1@(TST.PrdCnsType PrdRep ty1) (TST.PrdCnsType PrdRep ty2) tyArgs info = case (ty1,ty2) of 
-  (TST.TyUniVar loc pol knd _,TST.TyApp _ _ eo ty tyn _) -> do
-    (uvarPos,uvarNeg) <- freshTVar (RefinementArgument loc) (Just $ TST.getKind ty)
-    addConstraint $ KindEq ReturnKindConstraint knd (MkPknd (MkPolyKind [] eo))
-    let newTyPos = TST.TyApp loc PosRep eo uvarPos tyn (fst tyArgs)
-    let newTyNeg = TST.TyApp loc NegRep eo uvarNeg tyn (snd tyArgs)
-    case pol of 
-      PosRep -> do 
-        addConstraint $ SubType info ty1 newTyNeg
-        return (TST.PrdCnsType PrdRep newTyPos)
-      NegRep -> do
-        addConstraint $ SubType info newTyPos ty1
-        return (TST.PrdCnsType PrdRep newTyNeg)
-  _ -> return pc1
-replaceUniVarRef pc1@(TST.PrdCnsType CnsRep ty1) (TST.PrdCnsType CnsRep ty2) tyArgs info = case (ty1,ty2) of 
-  (TST.TyUniVar loc pol knd _,TST.TyApp _ _ eo ty tyn _) -> do
-    (uvarPos,uvarNeg) <- freshTVar (RefinementArgument loc) (Just $ TST.getKind ty)
-    addConstraint $ KindEq ReturnKindConstraint knd (MkPknd (MkPolyKind [] eo))
-    let newTyPos = TST.TyApp loc PosRep eo uvarPos tyn (fst tyArgs)
-    let newTyNeg = TST.TyApp loc NegRep eo uvarNeg tyn (snd tyArgs)
-    case pol of 
-      PosRep -> do 
-        addConstraint $ SubType info ty1 newTyNeg
-        return (TST.PrdCnsType CnsRep newTyPos)
-      NegRep -> do
-        addConstraint $ SubType info newTyPos ty1
-        return (TST.PrdCnsType CnsRep newTyNeg)
-  _ -> return pc1
-
-freshTVarsXCaseRef :: Loc -> XtorName -> ([TST.VariantType Pos], [TST.VariantType Neg],TST.Bisubstitution TST.SkolemVT) -> [(PrdCns, Maybe FreeVarName)] -> GenM (TST.LinearContext Pos, TST.LinearContext Neg)
-freshTVarsXCaseRef loc xt ([],[],_) args = do 
-  xtor <- lookupXtorSig loc xt PosRep
-  let argKnds = map TST.getKind xtor.sig_args
-  let tVarArgs = zipWith (curry (\ ((x, y), z) -> (x, y, z))) args argKnds
-  freshTVars tVarArgs
-freshTVarsXCaseRef _ _ ([],_,_) _ = error "impossible"
-freshTVarsXCaseRef _ _ (_,[],_) _ = error "impossible"
-freshTVarsXCaseRef loc xt (fstPos:rstPos, fstNeg:rstNeg,tyParamsMap) args = do 
-  xtor <- lookupXtorSig loc xt PosRep
-  let xtor' = TST.zonk TST.SkolemRep tyParamsMap xtor
-  let tyArgs = (fstPos :| rstPos, fstNeg :| rstNeg)
-  prdCnsTys <- forM (zip args xtor'.sig_args) (freshTVarRef loc tyArgs)
-  return (fst <$> prdCnsTys,snd <$> prdCnsTys)
-  where 
-    freshTVarRef :: Loc -> (NonEmpty (TST.VariantType Pos), NonEmpty (TST.VariantType Neg)) -> ((PrdCns,Maybe FreeVarName),TST.PrdCnsType pol) -> GenM (TST.PrdCnsType Pos,TST.PrdCnsType Neg)
-    freshTVarRef loc _ ((Prd,_),TST.PrdCnsType CnsRep _) = throwOtherError loc ["Xtor argument has to be consumer, was producer"]
-    freshTVarRef loc _ ((Cns,_),TST.PrdCnsType PrdRep _) = throwOtherError loc ["Xtor argument has to be consumer, was producer"]
-    freshTVarRef _ argTys ((Prd,fv),TST.PrdCnsType PrdRep ty) = case ty of 
-      TST.TyApp loc' _ eo ty tyn _ -> do
-        (tyPos, tyNeg) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just (TST.getKind ty))
-        let newTyPos = TST.TyApp loc' PosRep eo tyPos tyn (fst argTys)
-        let newTyNeg = TST.TyApp loc' NegRep eo tyNeg tyn (snd argTys)
-        return (TST.PrdCnsType PrdRep newTyPos, TST.PrdCnsType PrdRep newTyNeg) 
-      uvPos@(TST.TyUniVar loc PosRep knd uv) -> do 
-        let uvNeg = TST.TyUniVar loc NegRep knd uv
-        return (TST.PrdCnsType PrdRep uvPos, TST.PrdCnsType PrdRep uvNeg)
-      uvNeg@(TST.TyUniVar loc NegRep knd uv) -> do 
-        let uvPos = TST.TyUniVar loc PosRep knd uv 
-        return (TST.PrdCnsType PrdRep uvPos, TST.PrdCnsType PrdRep uvNeg)
-      _ -> do
-        let knd = TST.getKind ty
-        (tp, tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just knd)
-        return (TST.PrdCnsType PrdRep tp,TST.PrdCnsType PrdRep tn)
-    freshTVarRef _ argTys ((Cns,fv),TST.PrdCnsType CnsRep ty) = case ty of 
-      TST.TyApp loc' _ eo ty tyn _ -> do 
-        (tyPos, tyNeg) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just (TST.getKind ty))
-        let newTyPos = TST.TyApp loc' PosRep eo tyPos tyn (fst argTys)
-        let newTyNeg = TST.TyApp loc' NegRep eo tyNeg tyn (snd argTys)
-        return (TST.PrdCnsType CnsRep newTyNeg, TST.PrdCnsType CnsRep newTyPos)
-      uvPos@(TST.TyUniVar loc PosRep knd uv) -> do 
-        let uvNeg = TST.TyUniVar loc NegRep knd uv
-        return (TST.PrdCnsType CnsRep uvNeg, TST.PrdCnsType CnsRep uvPos)
-      uvNeg@(TST.TyUniVar loc NegRep knd uv) -> do 
-        let uvPos = TST.TyUniVar loc PosRep knd uv 
-        return (TST.PrdCnsType CnsRep uvNeg, TST.PrdCnsType CnsRep uvPos)
-      _ -> do 
-        let knd = TST.getKind ty 
-        (tp,tn) <- freshTVar (ProgramVariable (fromMaybeVar fv)) (Just knd)
-        return (TST.PrdCnsType CnsRep tn, TST.PrdCnsType CnsRep tp)
- 
-
-getSubstTypesRef :: [TST.PrdCnsType pol] -> [TST.PrdCnsType pol1] -> ([TST.VariantType Pos], [TST.VariantType Neg]) -> ConstraintInfo -> GenM [TST.PrdCnsType pol]
-getSubstTypesRef substTypes _ ([],[]) _ = return substTypes 
-getSubstTypesRef substTypes sig_args (fstPos:rstPos,fstNeg:rstNeg) info = forM (zip substTypes sig_args) (\(x,y) -> replaceUniVarRef x y (fstPos :| rstPos, fstNeg :| rstNeg) info)
-getSubstTypesRef _ _ _ _ = error "impossible (there are always the same amount of positive and negative univars"
+  if length skolems == length kndArgs then do
+    vars <- forM (zip kndArgs skolems) (\ ((var, _, mk),sk) -> do 
+      (uvarPos, uvarNeg) <- freshTVar (TypeParameter decl.data_name sk) (Just (monoToAnyKind mk))
+      let mapPair = (sk,(uvarPos,uvarNeg))
+      case var of
+        Covariant -> return (TST.CovariantType uvarPos, TST.CovariantType uvarNeg, mapPair)
+        Contravariant -> return (TST.ContravariantType uvarNeg, TST.ContravariantType uvarPos,mapPair))
+    let (varsPos,varsNeg,mapPairs) = distribute3 vars
+    let bisubstMap = M.fromList mapPairs
+    return (varsPos,varsNeg,TST.MkBisubstitution bisubstMap)
+  else 
+    throwOtherError loc ["Not enough skolem variables bound in refinement type"] 
 
 createMethodSubst :: Loc -> ClassDeclaration -> GenM (TST.Bisubstitution TST.SkolemVT, [UniTVar])
 createMethodSubst loc decl =
@@ -323,9 +255,9 @@ insertSkolemsClass decl = do
   modify (\gs@GenerateState{} -> gs {usedSkolemVars = newM})
   return ()
   where
-    insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar PolyKind -> M.Map SkolemTVar PolyKind
+    insertSkolems :: [(Variance,SkolemTVar,MonoKind)] -> M.Map SkolemTVar AnyKind -> M.Map SkolemTVar AnyKind
     insertSkolems [] mp = mp
-    insertSkolems ((_,tv,CBox eo):rst) mp = insertSkolems rst (M.insert tv (MkPolyKind [] eo) mp)
+    insertSkolems ((_,tv,CBox eo):rst) mp = insertSkolems rst (M.insert tv (MkPknd $ MkPolyKind [] eo) mp)
     insertSkolems ((_,tv,primk):_) _ = error ("Skolem Variable " <> show tv <> " can't have kind " <> show primk)
 
 ---------------------------------------------------------------------------------------------

@@ -131,10 +131,14 @@ instance PrettyAnn (TST.Typ pol) where
 
 instance PrettyAnn CST.Typ where
   -- special case for <TypeName | RecVar | Xtors> Syntax
-  prettyAnn (CST.TyRec _ rv (CST.TyXRefined _ CST.Data   tn xtors)) =
+  prettyAnn (CST.TyRec _ rv (CST.TyXRefined _ CST.Data   tn [] xtors)) =
     angles' mempty [prettyAnn tn <+> pipeSym, prettyAnn rv <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))] 
-  prettyAnn (CST.TyRec _ rv (CST.TyXRefined _ CST.Codata tn xtors)) =
+  prettyAnn (CST.TyRec _ rv (CST.TyXRefined _ CST.Data   tn argVars xtors)) =
+    angles' mempty [prettyAnn tn <+> parens (hsep (intersperse commaSym (prettyAnn <$> argVars))) <+> pipeSym, prettyAnn rv <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))] 
+  prettyAnn (CST.TyRec _ rv (CST.TyXRefined _ CST.Codata tn [] xtors)) =
     braces' mempty [prettyAnn tn <+> pipeSym, prettyAnn rv <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+  prettyAnn (CST.TyRec _ rv (CST.TyXRefined _ CST.Codata tn argVars xtors)) =
+    braces' mempty [prettyAnn tn <+> parens (hsep (intersperse commaSym (prettyAnn <$> argVars))) <+> pipeSym, prettyAnn rv <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
 
   -- Top and Bottom lattice types
   prettyAnn CST.TyTop {} = topSymUnicode
@@ -163,10 +167,14 @@ instance PrettyAnn CST.Typ where
   prettyAnn (CST.TyXData _ CST.Codata xtors) =
     braces' commaSym (prettyAnn <$> xtors)
   -- Refinement types
-  prettyAnn (CST.TyXRefined _ CST.Data   tn xtors) =
+  prettyAnn (CST.TyXRefined _ CST.Data   tn [] xtors) =
     angles' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
-  prettyAnn (CST.TyXRefined _ CST.Codata tn xtors) =
+  prettyAnn (CST.TyXRefined _ CST.Data   tn argVars xtors) =
+    angles' mempty [prettyAnn tn <+> parens (hsep (intersperse commaSym (prettyAnn <$> argVars))) <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+  prettyAnn (CST.TyXRefined _ CST.Codata tn [] xtors) =
     braces' mempty [prettyAnn tn <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
+  prettyAnn (CST.TyXRefined _ CST.Codata tn argVars xtors) =
+    braces' mempty [prettyAnn tn <+> parens (hsep (intersperse commaSym (prettyAnn <$> argVars))) <+> pipeSym, hsep (intersperse commaSym (prettyAnn <$> xtors))]
   -- Primitive types
   prettyAnn (CST.TyI64 _) = "#I64"
   prettyAnn (CST.TyF64 _) = "#F64"

@@ -330,7 +330,7 @@ instance ToHoverMap (TST.Typ pol) where
                       ]
     in
       M.unions (mkHoverMap loc msg : (toHoverMap <$> xtors))
-  toHoverMap (TST.TyDataRefined loc rep _knd tn xtors) =
+  toHoverMap (TST.TyDataRefined loc rep _knd _ tn xtors) =
     let
       msg = T.unlines [ "#### Refinement datatype"
                       , "- Name: `" <> ppPrint tn <> "`"
@@ -347,7 +347,7 @@ instance ToHoverMap (TST.Typ pol) where
                       ]
     in
       M.unions (mkHoverMap loc msg : (toHoverMap <$> xtors))
-  toHoverMap (TST.TyCodataRefined loc rep _knd tn xtors) =
+  toHoverMap (TST.TyCodataRefined loc rep _knd _ tn xtors) =
     let
       msg = T.unlines [ "#### Refinement codata type"
                       , "- Name: `" <> ppPrint tn <> "`"

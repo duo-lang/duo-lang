@@ -60,7 +60,7 @@ data DataCodata = Data | Codata deriving (Eq, Ord, Show)
 data Typ where
   TySkolemVar :: Loc -> SkolemTVar -> Typ
   TyXData    :: Loc -> DataCodata             -> [XtorSig] -> Typ
-  TyXRefined :: Loc -> DataCodata -> TypeName -> [XtorSig] -> Typ
+  TyXRefined :: Loc -> DataCodata -> TypeName -> [SkolemTVar] -> [XtorSig] -> Typ
   TyNominal :: Loc -> TypeName -> Typ
   TyApp :: Loc -> Typ -> Maybe TypeName -> NonEmpty Typ -> Typ
   TyRec :: Loc -> SkolemTVar -> Typ -> Typ
@@ -82,7 +82,7 @@ data Typ where
   deriving (Show, Eq)
 
 getTypeName :: Typ -> Maybe TypeName
-getTypeName (TyXRefined _ _ tyn _) = Just tyn
+getTypeName (TyXRefined _ _ tyn _ _) = Just tyn
 getTypeName (TyNominal _ tyn) = Just tyn
 getTypeName (TyRec _ _ ty) = getTypeName ty
 getTypeName (TyParens _ ty) = getTypeName ty 
@@ -92,7 +92,7 @@ getTypeName _ = Nothing
 instance HasLoc Typ where
   getLoc (TySkolemVar loc _) = loc
   getLoc (TyXData loc _ _) = loc
-  getLoc (TyXRefined loc _ _ _) = loc
+  getLoc (TyXRefined loc _ _ _ _) = loc
   getLoc (TyNominal loc _ ) = loc
   getLoc (TyApp loc _  _ _) = loc
   getLoc (TyRec loc _ _) = loc
