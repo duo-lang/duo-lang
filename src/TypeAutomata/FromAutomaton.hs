@@ -4,7 +4,7 @@
 module TypeAutomata.FromAutomaton ( autToType ) where
 
 import Syntax.TST.Types
-import Syntax.RST.Types (PolarityRep(..), flipPolarityRep, Polarity(..))
+import Syntax.RST.Types (PolarityRep(..), flipPolarityRep, Polarity (..))
 import Syntax.RST.Names
 import Syntax.RST.Kinds
 import Syntax.CST.Types qualified as CST
@@ -46,8 +46,12 @@ initializeFromAutomaton aut =
     getTVars (nd,skolems) = do
       let skList = S.toList skolems
       let nl = lab gr nd
-      let mk = case nl of Nothing -> error "Can't find Node Label (should never happen)"; Just nl -> getKindNL nl
-      map (\x -> (x,mk)) skList
+      let (mk, pol) = case nl of
+                          Nothing -> error "Can't find Node Label (should never happen)"
+                          Just nl -> (getKindNL nl, getPolarityNL nl)
+      case pol of 
+        Pos -> map (\x -> (x,mk)) skList
+        Neg -> []
   in
     AutToTypeState { tvMap = flowAnalysis
                    , graph = gr

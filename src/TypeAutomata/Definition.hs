@@ -220,7 +220,6 @@ getKindNL MkPrimitiveNodeLabel{} = error "can't get polykind of primitive kind"
 data EdgeLabel
   = EdgeSymbol DataCodata XtorName PrdCns Int
   | FlowEdge
-  | RefineEdge RnTypeName
   | TypeArgEdge RnTypeName Variance Int
   deriving (Eq, Show, Ord)
 

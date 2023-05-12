@@ -1,7 +1,7 @@
 module Pretty.TypeAutomata ( typeAutToDot ) where
 
 import Data.Graph.Inductive.Graph
-import Data.GraphViz.Attributes.Complete (Attribute(Style), StyleName(Dashed,Dotted), StyleItem(SItem))
+import Data.GraphViz.Attributes.Complete (Attribute(Style), StyleName(Dashed), StyleItem(SItem))
 import Data.GraphViz
 import Data.Maybe (catMaybes)
 import Data.Set qualified as S
@@ -60,7 +60,6 @@ instance PrettyAnn EdgeLabel where
   prettyAnn (EdgeSymbol _ xt Prd i) = prettyAnn xt <> parens (pretty i)
   prettyAnn (EdgeSymbol _ xt Cns i) = prettyAnn xt <> brackets (pretty i)
   prettyAnn FlowEdge = "e"
-  prettyAnn (RefineEdge tn) = prettyAnn tn
   prettyAnn (TypeArgEdge tn v i) = "TypeArg" <> parens (prettyAnn tn <> " , " <> prettyAnn v <> " , " <> pretty i)
 
 typeAutToDot :: Bool -> TypeAut' f pol -> DotGraph Node
@@ -79,11 +78,9 @@ typeAutParams showId = defaultParams
   , fmtEdge = \(_,_,elM) -> case elM of
                               el@EdgeSymbol {} -> regularEdgeStyle el
                               FlowEdge -> flowEdgeStyle
-                              RefineEdge tn -> refEdgeStyle tn
                               el@TypeArgEdge {} -> typeArgEdgeStyle el
   }
   where
     flowEdgeStyle = [arrowTo dotArrow, Style [SItem Dashed []]]
     regularEdgeStyle el = [textLabel $ pack (ppPrintString el)]
-    refEdgeStyle tn = [arrowTo vee, Style [SItem Dotted []], textLabel $ pack $ ppPrintString tn]
     typeArgEdgeStyle el = [textLabel $ pack (ppPrintString el)]
