@@ -1,7 +1,7 @@
 module Pretty.TypeAutomata ( typeAutToDot ) where
 
 import Data.Graph.Inductive.Graph
-import Data.GraphViz.Attributes.Complete (Attribute(Style), StyleName(Dashed,Dotted), StyleItem(SItem))
+import Data.GraphViz.Attributes.Complete (Attribute(Style), StyleName(Dashed), StyleItem(SItem))
 import Data.GraphViz
 import Data.Maybe (catMaybes)
 import Data.Set qualified as S
