@@ -121,7 +121,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
   --
   -- Nominal Xtors
   --
-  genConstraints (Core.Xtor loc annot rep (RST.Nominal _) xt subst) = do
+  genConstraints (Core.Xtor loc annot rep (RST.Nominal typename) xt subst) = do
     -- First we infer the types of the arguments.
     substInferred <- genConstraints subst
     let substTypes = TST.getTypArgs substInferred
@@ -141,9 +141,8 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     else do
       let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep decl.data_kind.returnKind (nomTy rep) decl.data_name (fst:|rst)
       case rep of
-        PrdRep -> return (TST.Xtor loc annot rep (ty PosRep) (RST.Nominal decl.data_name.rnTnName) xt substInferred)
-        CnsRep -> return (TST.Xtor loc annot rep (ty NegRep) (RST.Nominal decl.data_name.rnTnName) xt substInferred)
-
+        PrdRep -> return (TST.Xtor loc annot rep (ty PosRep) (RST.Nominal typename) xt substInferred)
+        CnsRep -> return (TST.Xtor loc annot rep (ty NegRep) (RST.Nominal typename) xt substInferred)
   --
   -- Refinement Xtors
   --
@@ -213,7 +212,7 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     -- We know that empty matches cannot be parsed as nominal.
     -- It is therefore safe to pattern match on the head of the xtors in the other cases.
     throwGenError (EmptyNominalMatch loc)
-  genConstraints (Core.XCase loc annot rep (RST.Nominal _) cases@(pmcase:_)) = do
+  genConstraints (Core.XCase loc annot rep (RST.Nominal typename) cases@(pmcase:_)) = do
     -- We lookup the data declaration based on the first pattern match case.
     decl <- lookupDataDecl loc (case pmcase.cmdcase_pat of (Core.XtorPat _ xt _) -> xt)
     -- We check that all cases in the pattern match belong to the type declaration.
@@ -240,8 +239,8 @@ instance GenConstraints (Core.Term pc) (TST.Term pc) where
     else do 
       let ty = case args of [] -> nomTy; (fst:rst) -> \rep -> TST.TyApp defaultLoc rep decl.data_kind.returnKind (nomTy rep) decl.data_name (fst:|rst)
       case rep of
-        PrdRep -> return $ TST.XCase loc annot rep (ty PosRep) (RST.Nominal decl.data_name.rnTnName) (fst <$> inferredCases)
-        CnsRep -> return $ TST.XCase loc annot rep (ty NegRep) (RST.Nominal decl.data_name.rnTnName) (fst <$> inferredCases)
+        PrdRep -> return $ TST.XCase loc annot rep (ty PosRep) (RST.Nominal typename) (fst <$> inferredCases)
+        CnsRep -> return $ TST.XCase loc annot rep (ty NegRep) (RST.Nominal typename) (fst <$> inferredCases)
   --
   -- Refinement pattern and copattern matches
   --

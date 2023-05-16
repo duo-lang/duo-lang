@@ -289,10 +289,14 @@ extractCmdCase CnsRep [Core.MkCmdCase _ (Core.XtorPat _ (MkXtorName "CoAp") [(Cn
 extractCmdCase _ _ = Nothing 
 
 pattern Lambda  :: Loc ->  PrdCnsRep pc -> FreeVarName -> Core.Term pc  -> Core.Term pc 
-pattern Lambda loc pc fv tm <- Core.XCase loc MatchAnnotLambda pc (RST.Nominal _) (extractCmdCase pc -> Just (fv,tm))
+pattern Lambda loc pc fv tm <- Core.XCase loc MatchAnnotLambda pc (RST.Nominal (MkTypeName _)) (extractCmdCase pc -> Just (fv,tm))
   where 
-    Lambda loc PrdRep x tm = Core.XCase loc MatchAnnotLambda PrdRep (RST.Nominal (MkTypeName "Fun")) [Core.MkCmdCase loc (Core.XtorPat loc (MkXtorName "Ap") [(Prd,Just x),(Cns,Nothing)]) (Core.Apply loc ApplyAnnotLambda tm (BoundVar loc CnsRep (0,1)))]  
-    Lambda loc CnsRep x tm = Core.XCase loc MatchAnnotLambda CnsRep (RST.Nominal (MkTypeName "CoFun")) [Core.MkCmdCase loc (Core.XtorPat loc (MkXtorName "CoAp") [(Cns,Just x),(Prd,Nothing)]) (Core.Apply loc ApplyAnnotLambda (BoundVar loc PrdRep (0,1)) tm )]  
+    Lambda loc PrdRep x tm@(Core.XCase _ _ _ (RST.Nominal name) _ ) = Core.XCase loc MatchAnnotLambda PrdRep (RST.Nominal name) [Core.MkCmdCase loc (Core.XtorPat loc (MkXtorName "Ap") [(Prd,Just x),(Cns,Nothing)]) (Core.Apply loc ApplyAnnotLambda tm (BoundVar loc CnsRep (0,1)))]
+    Lambda loc PrdRep x tm@(Core.Xtor _ _ _ (RST.Nominal name) _ _) = Core.XCase loc MatchAnnotLambda PrdRep (RST.Nominal name) [Core.MkCmdCase loc (Core.XtorPat loc (MkXtorName "Ap") [(Prd,Just x),(Cns,Nothing)]) (Core.Apply loc ApplyAnnotLambda tm (BoundVar loc CnsRep (0,1)))]
+    Lambda loc CnsRep x tm@(Core.XCase _ _ _ (RST.Nominal name) _) = Core.XCase loc MatchAnnotLambda CnsRep (RST.Nominal name) [Core.MkCmdCase loc (Core.XtorPat loc (MkXtorName "CoAp") [(Cns,Just x),(Prd,Nothing)]) (Core.Apply loc ApplyAnnotLambda (BoundVar loc PrdRep (0,1)) tm )] 
+    Lambda loc CnsRep x tm@(Core.Xtor _ _ _ (RST.Nominal name) _ _) = Core.XCase loc MatchAnnotLambda CnsRep (RST.Nominal name) [Core.MkCmdCase loc (Core.XtorPat loc (MkXtorName "CoAp") [(Cns,Just x),(Prd,Nothing)]) (Core.Apply loc ApplyAnnotLambda (BoundVar loc PrdRep (0,1)) tm )] 
+    Lambda loc PrdRep x tm = Core.XCase loc MatchAnnotLambda PrdRep (RST.Nominal (MkTypeName "default")) [Core.MkCmdCase loc (Core.XtorPat loc (MkXtorName "Ap") [(Prd,Just x),(Cns,Nothing)]) (Core.Apply loc ApplyAnnotLambda tm (BoundVar loc CnsRep (0,1)))]  
+    Lambda loc CnsRep x tm = Core.XCase loc MatchAnnotLambda CnsRep (RST.Nominal (MkTypeName "default")) [Core.MkCmdCase loc (Core.XtorPat loc (MkXtorName "CoAp") [(Cns,Just x),(Prd,Nothing)]) (Core.Apply loc ApplyAnnotLambda (BoundVar loc PrdRep (0,1)) tm )]  
 
 pattern RawCase ::  Loc -> PrdCnsRep pc -> RST.NominalStructural -> [Core.CmdCase] -> Core.Term pc
 pattern RawCase loc pc ns cases = Core.XCase loc MatchAnnotOrig pc ns cases 

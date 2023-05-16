@@ -1,38 +1,38 @@
 module Transformation;
 
-import Data.Peano;
-import Data.Maybe;
-import Data.Bool;
+-- import Data.Peano;
+-- import Data.Maybe;
+import Data.Cofunction;
+import Codata.Function;
 
-data List : CBV {
-    Nil,
-    Cons(Nat,List)
+data Nat {
+    Z,
+    S(Nat)
 };
 
-def rec prd index : List -> Nat -> Maybe(Nat) :=
-    \l n => case l of {
-        Nil => Nothing,
-        Cons(head, tail) => case n of {
-            Z => Just(head),
-            S(num) => index tail num
-        }
-    };
-
-codata CoList : CBV {
-    Index(Nat, return Maybe(Nat))
+-- can be transformed
+data Bool {
+    True,
+    False
 };
 
-def prd nil : CoList := cocase {
-    Index(n,*) => Nothing
+def cns ifThenElse : Bool := case {
+    True => #Print(1,#ExitSuccess),
+    False => #Print(0,#ExitSuccess)
 };
 
-def rec prd cons : Nat -> CoList -> CoList := \head tail => cocase {
-    Index(n,*) => case n of {
-        Z => Just(head),
-        S(num) => tail.Index(num,*)
-    }
+-- Terms in 
+--  IfThenElse => term
+-- are not recognized
+codata CoBool {
+    IfThenElse
 };
 
---examples
-def prd listWithData := Cons(1, Cons(2, Cons(3,Nil)));
-def prd listWithCodata := cons 1 (cons 2 (cons 3 nil));
+def prd true : CoBool := cocase {
+    IfThenElse => #Print(1,#ExitSuccess)
+};
+
+def prd false : CoBool := cocase {
+    IfThenElse => #Print(0,#ExitSuccess)
+};
+
