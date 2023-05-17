@@ -172,7 +172,7 @@ data TypeScheme = TypeScheme
   , vars :: [(SkolemTVar, Maybe PolyKind)]
   , monotype :: Typ
   }
-  deriving Show
+  deriving (Show, Eq)
 
 instance HasLoc TypeScheme where
   getLoc ts = ts.loc

@@ -45,6 +45,7 @@ data PrdCnsDeclaration = MkPrdCnsDeclaration
 }
 
 deriving instance Show PrdCnsDeclaration
+deriving instance Eq PrdCnsDeclaration
 
 instance HasLoc PrdCnsDeclaration where
   getLoc decl = decl.loc
@@ -66,6 +67,7 @@ data CommandDeclaration = MkCommandDeclaration
   }
 
 deriving instance Show CommandDeclaration
+deriving instance Eq CommandDeclaration
 
 instance HasLoc CommandDeclaration where
   getLoc decl = decl.loc
@@ -98,6 +100,7 @@ data StructuralXtorDeclaration = MkStructuralXtorDeclaration
   }
 
 deriving instance Show StructuralXtorDeclaration
+deriving instance Eq StructuralXtorDeclaration
 
 instance HasLoc StructuralXtorDeclaration where
   getLoc decl = decl.loc
@@ -117,6 +120,7 @@ data ImportDeclaration = MkImportDeclaration
   }
 
 deriving instance Show ImportDeclaration
+deriving instance Eq ImportDeclaration
 
 instance HasLoc ImportDeclaration where
   getLoc decl = decl.loc
@@ -136,6 +140,7 @@ data SetDeclaration = MkSetDeclaration
   }
 
 deriving instance Show SetDeclaration
+deriving instance Eq SetDeclaration
 
 instance HasLoc SetDeclaration where
   getLoc decl = decl.loc
@@ -161,6 +166,7 @@ data TyOpDeclaration = MkTyOpDeclaration
   }
 
 deriving instance Show TyOpDeclaration
+deriving instance Eq TyOpDeclaration
 
 instance HasLoc TyOpDeclaration where
   getLoc decl = decl.loc
@@ -182,6 +188,7 @@ data TySynDeclaration = MkTySynDeclaration
   }
 
 deriving instance Show TySynDeclaration
+deriving instance Eq TySynDeclaration
 
 instance HasLoc TySynDeclaration where
   getLoc decl = decl.loc
@@ -206,6 +213,7 @@ data InstanceDeclaration = MkInstanceDeclaration
   }
 
 deriving instance Show InstanceDeclaration
+deriving instance Eq InstanceDeclaration
 
 instance HasLoc InstanceDeclaration where
   getLoc decl = decl.loc
@@ -228,6 +236,7 @@ data ClassDeclaration = MkClassDeclaration
   }
 
 deriving instance Show ClassDeclaration
+deriving instance Eq ClassDeclaration
 
 instance HasLoc ClassDeclaration where
   getLoc decl = decl.loc
@@ -258,6 +267,7 @@ data DataDecl = MkDataDecl
   }
 
 deriving instance Show DataDecl
+deriving instance Eq DataDecl
 
 instance HasLoc DataDecl where
   getLoc decl = decl.loc
@@ -281,6 +291,7 @@ data Declaration where
 
 instance Show Declaration where
   show _ = "<Show for Declaration not implemented>"
+deriving instance Eq Declaration
 
 ---------------------------------------------------------------------------------
 -- Module
@@ -297,3 +308,4 @@ data Module = MkModule
   }
 
 deriving instance Show Module
+deriving instance Eq Module
