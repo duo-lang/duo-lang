@@ -95,7 +95,7 @@ noDeps = (const Nothing, [])
 
 -- Arguments: 
 -- descr          A description for the test
--- exs            A list of examples to be tested. Nothing values will be skipped
+-- exs            A list of examples to be tested.
 -- dependencies   A tuple with a dependency function (calculating a list of vertical dependencies)
 --                       , and a List of indices, serving as horizontal dependencies
 -- spectest       The spectest that is to be run over every example, returning a result and a spec
@@ -105,24 +105,26 @@ noDeps = (const Nothing, [])
 --                                                                         with a `Nothing`)
 runTest :: (Eq a) => Monad m =>
                     Description
-                  -> [Maybe a]                     
+                  -> [a]                     
                   -> (a -> Maybe [a], [Int])       
                   -> (a -> m (Maybe b, Spec))
                   -> TestM m Int                   
 runTest descr exs (depFunc, depIds) spectest = do
+  let examples = map Just exs
   conf <- ask
+  
   -- filter horizontal dependencies
-  horizontalDepTests <- extractDeps depIds exs
+  horizontalDepTests <- extractDeps depIds examples
 
   -- actually run tests
   tested <- dependencyTesting [] horizontalDepTests depFunc spectest
 
   let results = case conf of
-                  DefConf -> map (join . fmap (`lookup` tested)) exs
+                  DefConf -> map (join . fmap (`lookup` tested)) examples
                   PendingConf -> map (fmap (\val -> fromMaybe
                     (Nothing, it "The dependencies were not fullfilled" $ do pending)
                     (lookup val tested)))
-                                 exs
+                                 examples
   -- extract results of test runs
   let bs = map (join . fmap fst) results
   -- extract and combine test display output

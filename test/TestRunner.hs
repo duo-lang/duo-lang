@@ -69,8 +69,8 @@ testM examples counterExamples = do
   ----Perform Tests-----
 
   -- Collect the parsed declarations
-  successfullyParsedExamples <- runTest "Examples could be successfully parsed" (map Just examples) noDeps Spec.ParseTest.spec
-  successfullyParsedCounterExamples <- runTest "Counterexamples could be successfully parsed" (map Just counterExamples) noDeps Spec.ParseTest.spec
+  successfullyParsedExamples <- runTest "Examples could be successfully parsed" examples noDeps Spec.ParseTest.spec
+  successfullyParsedCounterExamples <- runTest "Counterexamples could be successfully parsed" counterExamples noDeps Spec.ParseTest.spec
 
   -- Prettyprinting after parsing: 
   parsedPPExamples <- runTestFromResult "Prettyprinting and parsing again" successfullyParsedExamples noDeps Spec.Prettyprinter.specParse
