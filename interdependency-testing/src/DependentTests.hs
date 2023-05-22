@@ -52,7 +52,7 @@ liftTestM = MkTestM . lift . lift
 
 -- Add a testresult (tuple of results and spec) to the state
 addTestResult :: MonadState TestState m => ([Maybe b], Spec) -> m ()
-addTestResult (result, spec) = modify (\s -> s {tests = (fmap TestResult <$> result) : tests s,
+addTestResult (result, spec) = modify (\s -> s {tests = tests s ++ [(fmap TestResult <$> result)],
                                                 testSpecs = testSpecs s >> spec})
 
 getTestId :: MonadState TestState m => m Int
