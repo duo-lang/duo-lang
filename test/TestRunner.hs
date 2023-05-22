@@ -1,10 +1,7 @@
 module Main where
 
-import Control.Monad.Except (forM)
-import Control.Monad (foldM)
 import Data.List (sort)
 import DependentTests
-import Test.Hspec
 import Test.Hspec.Runner
 import Test.Hspec.Formatters
 import System.Environment (withArgs)
@@ -12,7 +9,6 @@ import GHC.IO.Encoding (setLocaleEncoding)
 import System.IO (utf8)
 import Spec.LocallyClosed qualified
 import Spec.TypeInferenceExamples qualified
-import Spec.OverlapCheck qualified
 import Spec.Prettyprinter qualified
 import Spec.Focusing qualified
 import Spec.ParseTest qualified
@@ -73,24 +69,24 @@ testM examples counterExamples = do
   successfullyParsedCounterExamples <- runTest "Counterexamples could be successfully parsed" counterExamples noDeps Spec.ParseTest.spec
 
   -- Prettyprinting after parsing: 
-  parsedPPExamples <- runTestFromResult "Prettyprinting and parsing again" successfullyParsedExamples noDeps Spec.Prettyprinter.specParse
+  _parsedPPExamples <- runTestFromResult "Prettyprinting and parsing again" successfullyParsedExamples noDeps Spec.Prettyprinter.specParse
     
   -- Typechecktest: 
   successfullyTypecheckedExamples <- runTestFromResult "Examples could be successfully typechecked" successfullyParsedExamples noDeps Spec.TypecheckTest.spec
 
   -- Locally closed (if examples are not locally closed, typechecking is naught): 
-  locallyClosedExamples <- runTestFromResult "Examples are locally closed" successfullyTypecheckedExamples noDeps Spec.LocallyClosed.spec
+  _locallyClosedExamples <- runTestFromResult "Examples are locally closed" successfullyTypecheckedExamples noDeps Spec.LocallyClosed.spec
     
     
     
   -- Prettyprinting after typechecking: 
-  typecheckedPPExamples <- runTestFromResult "Examples parse and typecheck after prettyprinting" successfullyTypecheckedExamples noDeps Spec.Prettyprinter.specType
+  _typecheckedPPExamples <- runTestFromResult "Examples parse and typecheck after prettyprinting" successfullyTypecheckedExamples noDeps Spec.Prettyprinter.specType
 
   -- Focusing (makes only sense, if examples could be successfully typechecked):
-  successfullyFocusedExamples <- runTestFromResult "Examples can be focused" successfullyTypecheckedExamples noDeps Spec.Focusing.spec
+  _successfullyFocusedExamples <- runTestFromResult "Examples can be focused" successfullyTypecheckedExamples noDeps Spec.Focusing.spec
 
   -- Type Inference Test
-  typeInferredCounterExamples <- runTestFromResult "Counterexamples cannot be typechecked" successfullyParsedCounterExamples noDeps Spec.TypeInferenceExamples.spec
+  _typeInferredCounterExamples <- runTestFromResult "Counterexamples cannot be typechecked" successfullyParsedCounterExamples noDeps Spec.TypeInferenceExamples.spec
 
   get
 
