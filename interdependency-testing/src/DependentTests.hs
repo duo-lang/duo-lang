@@ -32,7 +32,7 @@ type TestResults = [[Maybe TestResult]]
 
 -- The Teststate:
 data TestState = TestState {tests :: TestResults           -- testresults of previous tests
-                            , testSpecs :: Spec              -- the spectests, ready to be run
+                            , testSpecs :: Spec              -- the specs, ready to be run
                             }
 
 initialTestState :: TestState
@@ -88,8 +88,8 @@ extractDeps ids exs = do
 
 ---------------------------------------------------------
 ---- pre configured settings 
-noDeps :: (a -> Maybe [a], [Int])
-noDeps = (const Nothing, [])
+noDeps :: (a -> [a], [Int])
+noDeps = (const [], [])
 ------------------------------------------
 -- The core of this library - runTest
 
@@ -98,7 +98,7 @@ noDeps = (const Nothing, [])
 -- exs            A list of examples to be tested.
 -- dependencies   A tuple with a dependency function (calculating a list of vertical dependencies)
 --                       , and a List of indices, serving as horizontal dependencies
--- spectest       The spectest that is to be run over every example, returning a result and a spec
+-- testFunc       The testing function that is to be run over every example, returning a result and a spec
 
 -- Returns: An tuple (Int, [Maybe b]), which depict an index for these testresults (to give to other tests as horizontal dep.) and
 --                                                  a List of the results (if a test was not successfull, its index will be filled 
@@ -106,10 +106,10 @@ noDeps = (const Nothing, [])
 runTest :: (Eq a) => Monad m =>
                     Description
                   -> [a]                     
-                  -> (a -> Maybe [a], [Int])       
+                  -> (a -> [a], [Int])       
                   -> (a -> m (Maybe b, Spec))
                   -> TestM m Int                   
-runTest descr exs (depFunc, depIds) spectest = do
+runTest descr exs (depFunc, depIds) testFunc = do
   let examples = map Just exs
   conf <- ask
   
@@ -117,7 +117,7 @@ runTest descr exs (depFunc, depIds) spectest = do
   horizontalDepTests <- extractDeps depIds examples
 
   -- actually run tests
-  tested <- dependencyTesting [] horizontalDepTests depFunc spectest
+  tested <- depTesting [] horizontalDepTests depFunc testFunc
 
   let results = case conf of
                   DefConf -> map (join . fmap (`lookup` tested)) examples
@@ -140,10 +140,10 @@ runTest descr exs (depFunc, depIds) spectest = do
 runTestFromResult :: (Eq a) => Monad m =>
                     Description
                   -> Int                                    -- Values to be tested
-                  -> (a -> Maybe [a], [Int])                -- Function for dependencies
+                  -> (a -> [a], [Int])                      -- Function for dependencies
                   -> (a -> m (Maybe b, Spec))
                   -> TestM m Int                            -- returns just the id of the test
-runTestFromResult descr exId (depFunc, depIds) spectest = do
+runTestFromResult descr exId (depFunc, depIds) testFunc = do
   conf <- ask
   -- get the testresults associated with the given index
   exs <- getExamplesById exId
@@ -153,7 +153,7 @@ runTestFromResult descr exId (depFunc, depIds) spectest = do
 
   -- Run tests with vertical dependencies (they are not in the cache so far)
   -- TODO: Maybe run 
-  tested <- dependencyTestingTR [] horizontalDepTests depFunc spectest
+  tested <- depTestingTransitive [] horizontalDepTests depFunc testFunc
 
   let results = case conf of
                   DefConf -> map (\tr -> case tr of 
@@ -172,61 +172,61 @@ runTestFromResult descr exId (depFunc, depIds) spectest = do
   return testId
 
 
-dependencyTesting :: Eq a => Monad m =>
-                             [(a, (Maybe b, Spec))]                -- Collection of result list
-                             -> [Maybe a]                          -- Values to be tested
-                             -> (a -> Maybe [a])                   -- DependencyFunction  
-                             -> (a -> m (Maybe b, Spec))           -- spectest
+depTesting :: Eq a => Monad m =>
+                             [(a, (Maybe b, Spec))]                -- A Result Dictionary
+                             -> [Maybe a]                          -- The To-Test Values
+                             -> (a -> [a])                         -- A Dependency Function 
+                             -> (a -> m (Maybe b, Spec))           -- A Testing Function
                              -> TestM m [(a, (Maybe b, Spec))]
-dependencyTesting steps [] _ _ = return steps
-dependencyTesting steps (Nothing: as) depFunc spectest = dependencyTesting steps as depFunc spectest
-dependencyTesting resMap (Just x : as) depFunc spectest =
+depTesting steps [] _ _ = return steps
+depTesting steps (Nothing: resDict) depFunc testFunc = depTesting steps resDict depFunc testFunc
+depTesting resMap (Just x : resDict) depFunc testFunc =
   case lookup x resMap of
-    Just _  -> dependencyTesting resMap as depFunc spectest
+    Just _  -> depTesting resMap resDict depFunc testFunc
     Nothing ->
       let dependencies = depFunc x
       in case dependencies of
-        Nothing -> do                                  
-           testResult <- liftTestM $ spectest x
-           dependencyTesting ((x, testResult):resMap) as depFunc spectest
-        Just deps -> do
-          resMap' <- dependencyTesting resMap (map Just deps) depFunc spectest
+        [] -> do                                  
+           testResult <- liftTestM $ testFunc x
+           depTesting ((x, testResult):resMap) resDict depFunc testFunc
+        deps -> do
+          resMap' <- depTesting resMap (map Just deps) depFunc testFunc
           let dependenciesFullfilled = all (\dep -> case lookup dep resMap' of
                                                      Just (Just _, _) -> True
                                                      _                -> False)
                                             deps
           if dependenciesFullfilled then do
-                                      testResult <- liftTestM $ spectest x
-                                      dependencyTesting ((x, testResult):resMap) as depFunc spectest
-                                    else dependencyTesting resMap' as depFunc spectest
+                                      testResult <- liftTestM $ testFunc x
+                                      depTesting ((x, testResult):resMap) resDict depFunc testFunc
+                                    else depTesting resMap' resDict depFunc testFunc
 
 
--- DependencyTestingTR is supposed to do the same thing as dependencyTesting, 
+-- depTestingTransitive is supposed to do the same thing as depTesting, 
 -- but utilizing TestResult
-dependencyTestingTR :: Eq a => Monad m =>
-                             [(a, (Maybe b, Spec))]                -- Collection of result list
-                             -> [Maybe TestResult]                 -- Values to be tested
-                             -> (a -> Maybe [a])                   -- DependencyFunction  
-                             -> (a -> m (Maybe b, Spec))           -- spectest
+depTestingTransitive :: Eq a => Monad m =>
+                             [(a, (Maybe b, Spec))]                -- A Result Dictionary
+                             -> [Maybe TestResult]                 -- The To-Test Values
+                             -> (a -> [a])                         -- A Dependency Function 
+                             -> (a -> m (Maybe b, Spec))           -- A Testing Function
                              -> TestM m [(a, (Maybe b, Spec))]
-dependencyTestingTR steps [] _ _ = return steps
-dependencyTestingTR steps (Nothing: as) depFunc spectest = dependencyTestingTR steps as depFunc spectest
-dependencyTestingTR resMap (Just (TestResult x) : as) depFunc spectest =
+depTestingTransitive steps [] _ _ = return steps
+depTestingTransitive steps (Nothing: resDict) depFunc testFunc = depTestingTransitive steps resDict depFunc testFunc
+depTestingTransitive resMap (Just (TestResult x) : resDict) depFunc testFunc =
   case lookup (unsafeCoerce x) resMap of
-    Just _  -> dependencyTestingTR resMap as depFunc spectest
+    Just _  -> depTestingTransitive resMap resDict depFunc testFunc
     Nothing ->
       let dependencies = depFunc $ unsafeCoerce x
       in case dependencies of
-        Nothing -> do                                  
-           specTestResult <- liftTestM $ spectest $ unsafeCoerce x
-           dependencyTestingTR ((unsafeCoerce x, specTestResult):resMap) as depFunc spectest
-        Just deps -> do
-          resMap' <- dependencyTestingTR resMap (map (Just . TestResult) deps) depFunc spectest
+        [] -> do                                  
+           testFuncResult <- liftTestM $ testFunc $ unsafeCoerce x
+           depTestingTransitive ((unsafeCoerce x, testFuncResult):resMap) resDict depFunc testFunc
+        deps -> do
+          resMap' <- depTestingTransitive resMap (map (Just . TestResult) deps) depFunc testFunc
           let dependenciesFullfilled = all (\dep -> case lookup dep resMap' of
                                                      Just (Just _, _) -> True
                                                      _                -> False)
                                             deps
           if dependenciesFullfilled then do
-                                      testResult <- liftTestM $ spectest $ unsafeCoerce x
-                                      dependencyTestingTR ((unsafeCoerce x, testResult):resMap') as depFunc spectest
-                                    else dependencyTestingTR resMap' as depFunc spectest
+                                      testResult <- liftTestM $ testFunc $ unsafeCoerce x
+                                      depTestingTransitive ((unsafeCoerce x, testResult):resMap') resDict depFunc testFunc
+                                    else depTestingTransitive resMap' resDict depFunc testFunc
