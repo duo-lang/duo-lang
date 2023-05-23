@@ -29,6 +29,7 @@ common shared-build-depends
     , duo-lang-parser
     , duo-lang-renamer
     , duo-lang-desugaring
+    , interdependency-testing
     , filepath
     , fgl >=5.7 && <6
     , graphviz >=2999.20 && < 3000

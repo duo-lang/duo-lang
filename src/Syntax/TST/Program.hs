@@ -163,3 +163,6 @@ data Module = MkModule
   }
 
 deriving instance Show Module
+--  deriving instance Eq Module
+instance Eq Module where
+  m1 == m2 = m1.mod_name == m2.mod_name && m1.mod_libpath == m2.mod_libpath
