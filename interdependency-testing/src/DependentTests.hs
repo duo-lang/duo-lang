@@ -153,7 +153,7 @@ runTestFromResult descr exId (depFunc, depIds) testFunc = do
 
   -- Run tests with vertical dependencies (they are not in the cache so far)
   -- TODO: Maybe run 
-  tested <- depTestingTransitive [] horizontalDepTests depFunc testFunc
+  tested <- depTestingWrapped [] horizontalDepTests depFunc testFunc
 
   let results = case conf of
                   DefConf -> map (\tr -> case tr of 
@@ -201,32 +201,32 @@ depTesting resMap (Just x : resDict) depFunc testFunc =
                                     else depTesting resMap' resDict depFunc testFunc
 
 
--- depTestingTransitive is supposed to do the same thing as depTesting, 
+-- depTestingWrapped is supposed to do the same thing as depTesting, 
 -- but utilizing TestResult
-depTestingTransitive :: Eq a => Monad m =>
+depTestingWrapped :: Eq a => Monad m =>
                              [(a, (Maybe b, Spec))]                -- A Result Dictionary
                              -> [Maybe TestResult]                 -- The To-Test Values
                              -> (a -> [a])                         -- A Dependency Function 
                              -> (a -> m (Maybe b, Spec))           -- A Testing Function
                              -> TestM m [(a, (Maybe b, Spec))]
-depTestingTransitive steps [] _ _ = return steps
-depTestingTransitive steps (Nothing: resDict) depFunc testFunc = depTestingTransitive steps resDict depFunc testFunc
-depTestingTransitive resMap (Just (TestResult x) : resDict) depFunc testFunc =
+depTestingWrapped steps [] _ _ = return steps
+depTestingWrapped steps (Nothing: resDict) depFunc testFunc = depTestingWrapped steps resDict depFunc testFunc
+depTestingWrapped resMap (Just (TestResult x) : resDict) depFunc testFunc =
   case lookup (unsafeCoerce x) resMap of
-    Just _  -> depTestingTransitive resMap resDict depFunc testFunc
+    Just _  -> depTestingWrapped resMap resDict depFunc testFunc
     Nothing ->
       let dependencies = depFunc $ unsafeCoerce x
       in case dependencies of
         [] -> do                                  
            testFuncResult <- liftTestM $ testFunc $ unsafeCoerce x
-           depTestingTransitive ((unsafeCoerce x, testFuncResult):resMap) resDict depFunc testFunc
+           depTestingWrapped ((unsafeCoerce x, testFuncResult):resMap) resDict depFunc testFunc
         deps -> do
-          resMap' <- depTestingTransitive resMap (map (Just . TestResult) deps) depFunc testFunc
+          resMap' <- depTestingWrapped resMap (map (Just . TestResult) deps) depFunc testFunc
           let dependenciesFullfilled = all (\dep -> case lookup dep resMap' of
                                                      Just (Just _, _) -> True
                                                      _                -> False)
                                             deps
           if dependenciesFullfilled then do
                                       testResult <- liftTestM $ testFunc $ unsafeCoerce x
-                                      depTestingTransitive ((unsafeCoerce x, testResult):resMap') resDict depFunc testFunc
-                                    else depTestingTransitive resMap' resDict depFunc testFunc
+                                      depTestingWrapped ((unsafeCoerce x, testResult):resMap') resDict depFunc testFunc
+                                    else depTestingWrapped resMap' resDict depFunc testFunc
